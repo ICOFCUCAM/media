@@ -1,25 +1,22 @@
 {
-  "name": "@cineforge/worker",
+  "name": "@cineforge/gpu",
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "scripts": {
-    "dev": "tsx watch src/main.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run"
   },
   "dependencies": {
-    "@cineforge/db": "workspace:*",
-    "@cineforge/gpu": "workspace:*",
-    "@cineforge/model-adapters": "workspace:*",
     "@cineforge/shared": "workspace:*",
     "bullmq": "^5.7.0",
     "ioredis": "^5.4.0"
   },
   "devDependencies": {
-    "tsx": "^4.10.0",
     "typescript": "^5.4.0"
   }
 }

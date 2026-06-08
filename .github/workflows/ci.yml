@@ -24,6 +24,8 @@ jobs:
 
       - name: Validate Prisma schema
         run: pnpm --filter @cineforge/db prisma validate
+        env:
+          DATABASE_URL: postgresql://user:pass@localhost:5432/cineforge
 
       - name: Lint
         run: pnpm lint

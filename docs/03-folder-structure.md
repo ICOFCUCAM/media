@@ -33,6 +33,7 @@ cineforge/
 │  │  │  ├─ continuity/            # Continuity Engine
 │  │  │  ├─ bibles/                # Character + World Bible
 │  │  │  ├─ render/                # render job orchestration
+│  │  │  ├─ gpu/                   # GpuService -> @cineforge/gpu (ensureRunning, status)
 │  │  │  ├─ billing/               # tiers, quotas, Stripe
 │  │  │  ├─ queue/                 # BullMQ producers + flow definitions
 │  │  │  ├─ realtime/              # WebSocket gateway (Redis adapter)
@@ -51,7 +52,7 @@ cineforge/
 │  │  │  │  ├─ audio.processor.ts  # voice/music/sfx
 │  │  │  │  └─ render.processor.ts # FFmpeg assemble
 │  │  │  ├─ ffmpeg/                # render engine wrapper
-│  │  │  └─ gpu/                   # RunPod client, autoscale signals
+│  │  │  └─ main.ts                # processors + GPU lifecycle reconcile loops
 │  │  └─ package.json
 │  │
 │  └─ gpu-worker/                  # Python service deployed on RunPod
@@ -79,6 +80,14 @@ cineforge/
 │  │  │  ├─ registry.ts            # ModelRegistry
 │  │  │  ├─ wan/wan.adapter.ts
 │  │  │  ├─ hunyuan/hunyuan.adapter.ts
+│  │  │  └─ index.ts
+│  │  └─ package.json
+│  ├─ gpu/                         # @cineforge/gpu — Auto GPU Lifecycle Manager
+│  │  ├─ src/
+│  │  │  ├─ active-job-tracker.ts  # reference-counted active jobs (BullMQ state)
+│  │  │  ├─ runpod-control.ts      # start/stop RunPod pod/serverless + health
+│  │  │  ├─ lifecycle-manager.ts   # start-on-demand + grace-period auto-shutdown
+│  │  │  ├─ factory.ts             # createGpuManagers(env): one per model pool
 │  │  │  └─ index.ts
 │  │  └─ package.json
 │  └─ db/                          # @cineforge/db

@@ -43,11 +43,19 @@ generation remains. It only stops after the last one finishes and no new job
 arrives during the grace window.
 
 ## Components (code)
+The lifecycle code is a **shared package** (`packages/gpu`) so the API
+(start-on-demand) and the worker (auto-shutdown loop) use the same managers and
+the same Redis-coordinated state.
+
 | Piece | File | Role |
 |-------|------|------|
-| **ActiveJobTracker** | `apps/worker/src/gpu/active-job-tracker.ts` | The active-job counter. Source of truth = BullMQ queue state across all GPU queues (video + GPU-audio), so it's correct across all users **and** all server nodes. |
-| **RunpodControlClient** | `apps/worker/src/gpu/runpod-control.ts` | Starts/stops the RunPod pod or serverless endpoint; health-checks the worker. |
-| **GpuLifecycleManager** | `apps/worker/src/gpu/lifecycle-manager.ts` | Orchestrates start-on-demand + grace-period shutdown; Redis-coordinated for multi-node safety. |
+| **ActiveJobTracker** | `packages/gpu/src/active-job-tracker.ts` | The active-job counter. Source of truth = BullMQ queue state across all GPU queues (video + GPU-audio), so it's correct across all users **and** all server nodes. |
+| **RunpodControlClient** | `packages/gpu/src/runpod-control.ts` | Starts/stops the RunPod pod or serverless endpoint; health-checks the worker. |
+| **GpuLifecycleManager** | `packages/gpu/src/lifecycle-manager.ts` | Orchestrates start-on-demand + grace-period shutdown; Redis-coordinated for multi-node safety. |
+| **createGpuManagers** | `packages/gpu/src/factory.ts` | Builds one manager per model pool (Wan, Hunyuan) from env; shared by API + worker. |
+| API wiring | `apps/api/src/gpu/` + `apps/api/src/films/films.service.ts` | `GpuService.ensureRunning(modelId)` called in the `/generate-film` path before enqueue. |
+| Admin endpoint | `apps/api/src/admin/admin.controller.ts` | `GET /admin/gpu` surfaces `status()` for every pool. |
+| Worker loop | `apps/worker/src/main.ts` | Starts reconcile loops + triggers reconcile on queue `drained`/`completed`. |
 
 ### Active Job Counter
 ```jsonc
@@ -55,13 +63,13 @@ arrives during the grace window.
 { "queued": 2, "running": 1, "pending": 0, "total": 3 }   // GPU stays ON
 ```
 
-## Start logic (on submit)
-The API calls `ensureRunning()` **before** enqueuing — the job only runs once
-the GPU is healthy:
+## Start logic (on submit) — implemented
+`FilmsService.generateFilm()` calls `ensureRunning()` **before** enqueuing — the
+job only runs once the GPU is healthy:
 ```ts
-// apps/api/src/films/films.service.ts (generate path)
-await gpuManager.ensureRunning();          // start GPU + wait until /health ok
-await videoQueue.add("shot", videoJob);    // then push the job
+// apps/api/src/films/films.service.ts
+await this.gpu.ensureRunning(project.modelId);   // start GPU + wait until /health ok
+await this.filmQueue.add("plan", { projectId }); // then push the job
 ```
 `ensureRunning()` is idempotent and lock-guarded: 50 concurrent submissions
 start the GPU **once**, and it clears any pending shutdown immediately.
@@ -93,6 +101,11 @@ BullMQ `drained` events) and applies the predicate:
 
 It's also a safety net: if a worker crashed leaving the GPU orphaned, the loop
 reconciles it to STOPPED once the queue is empty.
+
+The worker (`apps/worker/src/main.ts`) owns this: it calls `startLoop()` per
+pool **and** subscribes to BullMQ `drained`/`completed` events to fire an
+immediate `reconcile()` the moment the last job leaves a GPU queue — so the
+grace countdown starts instantly rather than on the next interval tick.
 
 ## Grace period
 Never shut down instantly — default **15 min** (`GPU_IDLE_GRACE_SEC`, also
@@ -127,11 +140,13 @@ GPU_RECONCILE_SEC=30
 ```
 
 ## Implementation checklist
-- [ ] `ActiveJobTracker` over video + GPU-audio queues
-- [ ] `RunpodControlClient` start/stop (pods **and** serverless) + health wait
-- [ ] `GpuLifecycleManager` with Redis state/idle/lock + reconcile loop
-- [ ] `ensureRunning()` called in the API generate path before enqueue
-- [ ] One manager per model pool (Wan, Hunyuan)
-- [ ] Trigger reconcile on BullMQ `drained` in addition to the interval
-- [ ] Admin GPU panel shows `status()` (state, idleSince, counts)
+- [x] `ActiveJobTracker` over video + GPU-audio queues
+- [x] `RunpodControlClient` start/stop (pods **and** serverless) + health wait
+- [x] `GpuLifecycleManager` with Redis state/idle/lock + reconcile loop
+- [x] `ensureRunning()` called in the API generate path before enqueue
+- [x] One manager per model pool (Wan, Hunyuan) via `createGpuManagers`
+- [x] Trigger reconcile on BullMQ `drained` in addition to the interval
+- [x] Admin GPU panel endpoint `GET /admin/gpu` shows `status()` (state, idleSince, counts)
+- [ ] Real RunPod control API calibration (GraphQL/REST version) + auth scoping
 - [ ] Alert if GPU RUNNING while `total == 0` beyond grace (stuck stop)
+- [ ] Tests: concurrent `ensureRunning` starts once; shutdown only after grace

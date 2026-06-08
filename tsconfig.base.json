@@ -17,6 +17,7 @@
     "paths": {
       "@cineforge/shared": ["packages/shared/src/index.ts"],
       "@cineforge/model-adapters": ["packages/model-adapters/src/index.ts"],
+      "@cineforge/gpu": ["packages/gpu/src/index.ts"],
       "@cineforge/db": ["packages/db/src/index.ts"]
     }
   }
