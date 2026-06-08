@@ -1,7 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "installCommand": "pnpm install --filter @cineforge/web...",
-  "buildCommand": "pnpm --filter @cineforge/web build",
-  "outputDirectory": "apps/web/.next"
-}
