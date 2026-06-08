@@ -79,8 +79,9 @@ new Worker<VideoJob>(QUEUES.video, async (job) => {
 - Redis in cluster mode; separate Redis (or logical DBs) for queue vs cache.
 
 ## Implementation checklist
-- [ ] Shared queue contracts + connection factory
-- [ ] Flow producer for full-film fan-out
-- [ ] Processors for all 5 queues with retries/DLQ
-- [ ] bull-board + Prometheus exporter
+- [x] Shared queue contracts (`packages/shared/src/queue`)
+- [x] Flow producer for full-film fan-out (`apps/worker/src/processors/film.processor.ts`)
+- [x] Processors for all 5 queues (`film`/`scene`/`video`/`audio`/`render`) with retries
+- [ ] DLQ wiring + bull-board + Prometheus exporter
 - [ ] Priority lanes for preview
+- [ ] Real Director LLM, GPU inference, audio adapters, FFmpeg assembly (stubs in place)

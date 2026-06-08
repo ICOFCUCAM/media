@@ -79,9 +79,11 @@ audio: ~100 music + ~N voice + ~M sfx jobs
 ```
 
 ## Implementation checklist
-- [ ] Prompt Builder with bible+continuity composition
-- [ ] Adapter dispatch + poll/stream
+- [x] BullMQ flow (parent render + scene children + shot/audio grandchildren) — `film.processor.ts`
+- [x] Per-shot prompt composition (basic) in the Director — `director.service.ts`
+- [x] Adapter dispatch — `video.processor.ts` via `@cineforge/model-adapters`
+- [x] Idempotent shot rows (unique `sceneId,index`) + retries
+- [ ] Prompt Builder with full continuity composition
 - [ ] QC gates (blackdetect, embedding, CLIP, ffprobe)
-- [ ] BullMQ flow (parent render + scene children + shot grandchildren)
 - [ ] Preview-first prioritization
-- [ ] Idempotent retries + dead-letter for stuck shots
+- [ ] Dead-letter for stuck shots

@@ -82,8 +82,17 @@ and [docs/20-deployment-plan.md](docs/20-deployment-plan.md) for production.
 
 ## Status
 
-This repository is a **production-grade architecture + scaffold**. The
-documentation set is complete and implementation-ready; the code provides the
-monorepo skeleton, the model-abstraction layer, queue contracts, the Prisma
-schema, and key service stubs so a senior team can begin filling in
-implementation immediately. See each doc's "Implementation checklist".
+This repository is a **production-grade architecture + working scaffold**. The
+documentation set is complete and implementation-ready. Implemented in code:
+
+- Monorepo (pnpm + Turborepo), Prisma schema, shared queue contracts.
+- **Model abstraction layer** — Wan 2.1 (primary) + Hunyuan (premium) adapters + registry.
+- **Auto GPU Lifecycle Manager** (`packages/gpu`) — start-on-demand + reference-counted
+  auto-shutdown, **unit-tested** (`pnpm --filter @cineforge/gpu test`).
+- **End-to-end queue fan-out** — `film → scene → video/audio → render` via a BullMQ flow
+  (Director planner persists scenes/shots; processors drive the lifecycle to a `Film` row).
+- **API wiring** — `POST /generate-film` (starts GPU then enqueues), `GET /admin/gpu`.
+
+Stubbed (clearly marked, shapes match the schema so swap-in is local): the Director
+LLM calls, GPU inference, audio adapters, and FFmpeg assembly. See each doc's
+"Implementation checklist".

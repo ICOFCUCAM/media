@@ -8,8 +8,11 @@
 import { QueueEvents } from "bullmq";
 import { QUEUES } from "@cineforge/shared";
 import { createGpuManagers } from "@cineforge/gpu";
+import "./processors/film.processor";
+import "./processors/scene.processor";
 import "./processors/video.processor";
-// import "./processors/film.processor";  import "./processors/scene.processor"; ...
+import "./processors/audio.processor";
+import "./processors/render.processor";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
