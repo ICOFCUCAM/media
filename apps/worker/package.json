@@ -11,9 +11,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.580.0",
     "@cineforge/db": "workspace:*",
     "@cineforge/gpu": "workspace:*",
     "@cineforge/model-adapters": "workspace:*",
+    "@cineforge/realtime": "workspace:*",
     "@cineforge/shared": "workspace:*",
     "bullmq": "^5.7.0",
     "ioredis": "^5.4.0"

@@ -11,6 +11,7 @@ import { Worker } from "bullmq";
 import { QUEUES, type VideoJob } from "@cineforge/shared";
 import { buildDefaultRegistry, type ShotRequest } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
+import { realtime } from "../realtime";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
@@ -77,6 +78,13 @@ export const videoWorker = new Worker<VideoJob>(
         gpuMs: result.gpuMs,
         kind: "video",
       },
+    });
+
+    await realtime.emit("shot.ready", {
+      projectId: job.data.projectId,
+      sceneId: job.data.sceneId,
+      shotId,
+      thumbnailKey: result.thumbnailKey,
     });
 
     return { shotId, videoKey: result.videoKey, gpuMs: result.gpuMs };

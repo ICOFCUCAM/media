@@ -16,6 +16,7 @@ import { Worker, FlowProducer } from "bullmq";
 import { QUEUES, type FilmJob } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
 import { DirectorService } from "../director/director.service";
+import { realtime } from "../realtime";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const director = new DirectorService();
@@ -57,6 +58,7 @@ export const filmWorker = new Worker<FilmJob>(
     });
 
     await prisma.project.update({ where: { id: projectId }, data: { status: "GENERATING" } });
+    await realtime.emit("project.progress", { projectId, progress: 0, status: "GENERATING" });
     return { projectId, scenes: plan.scenes.length };
   },
   { connection, concurrency: 4 },

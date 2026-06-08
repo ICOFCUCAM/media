@@ -8,6 +8,7 @@
 import { Worker } from "bullmq";
 import { QUEUES, type SceneJob } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
+import { realtime } from "../realtime";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
@@ -29,11 +30,11 @@ export const sceneWorker = new Worker<SceneJob>(
       prisma.scene.count({ where: { projectId } }),
       prisma.scene.count({ where: { projectId, status: "READY" } }),
     ]);
-    await prisma.project.update({
-      where: { id: projectId },
-      data: { progress: total ? ready / total : 0 },
-    });
+    const progress = total ? ready / total : 0;
+    await prisma.project.update({ where: { id: projectId }, data: { progress } });
 
+    await realtime.emit("scene.ready", { projectId, sceneId, index: job.data.index });
+    await realtime.emit("project.progress", { projectId, progress, status: "GENERATING" });
     return { sceneId, durationSec };
   },
   { connection, concurrency: 8 },

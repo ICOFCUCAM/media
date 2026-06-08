@@ -151,6 +151,13 @@ GET /admin/revenue              GET /admin/films          GET /admin/models
 `wss://api.cineforge.app/v1/ws?token=<JWT>` — Socket.IO, Redis adapter for
 multi-node fan-out. Client subscribes to a project room.
 
+**Implemented:** `apps/api/src/realtime/realtime.gateway.ts` authenticates the
+JWT on connect and joins `project:<id>` rooms. Workers (separate processes)
+publish events via `@cineforge/realtime` (`RealtimePublisher` → Redis channel);
+the gateway's `RealtimeSubscriber` forwards them into the right room, so it works
+across many API nodes. Event names/payloads are typed once in
+`packages/realtime/src/events.ts`.
+
 ```jsonc
 // client -> server
 { "event": "subscribe", "data": { "projectId": "ckp_8s..." } }

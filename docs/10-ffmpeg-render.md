@@ -114,10 +114,22 @@ The render processor streams `render.progress` over WebSocket using
 - Render scenes in parallel, concat at the end.
 - `-movflags +faststart` for instant web playback.
 
+## Implementation (code)
+- Pure, unit-tested arg builders: `apps/worker/src/ffmpeg/commands.ts`
+  (`normalizeArgs`, `concatArgs`, `xfadeArgs`, `audioMixArgs`, `muxArgs`,
+  `hlsArgs`) + `commands.test.ts`.
+- Progress-streaming runner: `apps/worker/src/ffmpeg/ffmpeg.ts`.
+- Orchestrator: `apps/worker/src/ffmpeg/render-engine.ts` (download → normalize →
+  concat → ducked mix → mux → poster → HLS → upload), Storage-injected.
+- S3 storage port: `apps/worker/src/storage/storage.ts`.
+- Wired in `render.processor.ts`, emitting `render.progress` + `film.ready`.
+
 ## Implementation checklist
-- [ ] Clip normalization step
-- [ ] Programmatic xfade chain builder
-- [ ] Ducked audio mixdown
+- [x] Clip normalization step
+- [x] Ducked audio mixdown (sidechaincompress + R128 loudnorm)
+- [x] Concat assembly + mux + faststart
+- [x] HLS ladder + S3 upload + Film row write
+- [ ] Programmatic xfade chain across scene boundaries (builder present; wiring TODO)
 - [ ] Subtitle styling (.ass) generator from `DialogueLine`
 - [ ] Intro/outro/credits templates
-- [ ] HLS ladder + S3 upload + Film row write
+- [ ] Per-scene audio timeline placement (current mix is a single bed)
