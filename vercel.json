@@ -3,6 +3,5 @@
   "framework": "nextjs",
   "installCommand": "pnpm install --filter @cineforge/web...",
   "buildCommand": "pnpm --filter @cineforge/web build",
-  "outputDirectory": "apps/web/.next",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- apps/web packages vercel.json"
+  "outputDirectory": "apps/web/.next"
 }
