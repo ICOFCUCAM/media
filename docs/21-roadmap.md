@@ -7,6 +7,9 @@ GPU-mocked pipeline.
 ## Phase 1 — MVP (single short films, 1–5 min)
 - Director AI (multi-pass) end-to-end.
 - Wan 2.1 GPU worker on RunPod (real generation).
+- **Auto GPU Lifecycle Manager** ([23](23-gpu-lifecycle-manager.md)):
+  start-on-demand + reference-counted auto-shutdown (70–95% GPU savings). Ship
+  this from day one.
 - Continuity Engine v1 (snapshots + wardrobe windows + identity refs).
 - Character/World Bible CRUD + reference uploads.
 - Scene pipeline + QC (blackdetect, identity, ffprobe).

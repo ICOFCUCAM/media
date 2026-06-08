@@ -60,6 +60,13 @@ target_workers = clamp(ceil(pending_video_jobs / jobs_per_worker),
 - The autoscaler is the safety net: it reconciles desired vs actual every N
   seconds and stops orphaned pods.
 
+> **The authoritative mechanism for start-on-demand + auto-shutdown is the
+> [Auto GPU Lifecycle Manager](23-gpu-lifecycle-manager.md) (Phase 1).** It
+> reference-counts active jobs across all users/nodes and shuts the GPU down
+> only after the **last** generation completes + a 15-min grace period —
+> `ACTIVE==0 && QUEUED==0 && IDLE>=15m`. The per-worker self-termination above
+> is a redundant secondary guard.
+
 ## "Start on demand" lifecycle
 ```mermaid
 sequenceDiagram

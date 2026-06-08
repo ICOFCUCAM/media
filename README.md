@@ -45,6 +45,8 @@ The design is the deliverable. Start here:
 | 19 | [docs/19-scaling-cost.md](docs/19-scaling-cost.md) | Scaling 10 → 1M users, cost optimization |
 | 20 | [docs/20-deployment-plan.md](docs/20-deployment-plan.md) | Production deployment plan |
 | 21 | [docs/21-roadmap.md](docs/21-roadmap.md) | Future roadmap |
+| 22 | [docs/22-video-models.md](docs/22-video-models.md) | Models (Wan/Hunyuan) & "own API" cost strategy |
+| 23 | [docs/23-gpu-lifecycle-manager.md](docs/23-gpu-lifecycle-manager.md) | **Auto GPU Lifecycle Manager** (start-on-demand, auto-shutdown) |
 
 ## Code map
 

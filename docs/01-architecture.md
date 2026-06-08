@@ -38,6 +38,7 @@ flowchart TB
     Wscene[Scene Worker]
     Waudio[Audio Worker]
     Wrender[Render Worker - FFmpeg]
+    GMGR[GPU Lifecycle Manager]
   end
 
   subgraph GPU[RunPod GPU Pool - autoscaled, idle-shutdown]
@@ -63,6 +64,9 @@ flowchart TB
   Qscene --> Waudio --> Qaudio
   Qvideo --> GW1
   Qvideo --> GW2
+  GMGR -->|start on demand / auto-shutdown| GPU
+  Qvideo -.queue depth / job counts.-> GMGR
+  API -->|ensureRunning before enqueue| GMGR
   Wscene -->|render trigger| Qrender --> Wrender --> S3
   GW1 --> S3
   GW2 --> S3
