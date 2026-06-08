@@ -152,7 +152,9 @@ GET /admin/revenue              GET /admin/films          GET /admin/models
 multi-node fan-out. Client subscribes to a project room.
 
 **Implemented:** `apps/api/src/realtime/realtime.gateway.ts` authenticates the
-JWT on connect and joins `project:<id>` rooms. Workers (separate processes)
+JWT on connect and joins `project:<id>` rooms **only after verifying the caller
+owns the project** (Prisma ownership check in `onSubscribe`; unauthorized
+subscribes are rejected with an `error` event). Workers (separate processes)
 publish events via `@cineforge/realtime` (`RealtimePublisher` → Redis channel);
 the gateway's `RealtimeSubscriber` forwards them into the right room, so it works
 across many API nodes. Event names/payloads are typed once in

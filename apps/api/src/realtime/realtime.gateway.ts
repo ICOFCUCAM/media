@@ -10,6 +10,7 @@ import {
 import type { Server, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { RealtimeSubscriber, projectRoom } from "@cineforge/realtime";
+import { prisma } from "@cineforge/db";
 
 /**
  * WebSocket gateway (docs/04). Authenticates the JWT on connect, lets a client
@@ -49,9 +50,24 @@ export class RealtimeGateway implements OnGatewayConnection, OnModuleInit {
   }
 
   @SubscribeMessage("subscribe")
-  onSubscribe(@ConnectedSocket() client: Socket, @MessageBody() body: { projectId: string }) {
-    if (!client.data.userId || !body?.projectId) return { ok: false };
-    // TODO: verify the user owns body.projectId before joining (docs/17).
+  async onSubscribe(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { projectId: string },
+  ) {
+    const userId: string | undefined = client.data.userId;
+    if (!userId || !body?.projectId) return { ok: false, error: "bad_request" };
+
+    // Ownership check: only join the room if the project belongs to the caller
+    // (docs/17). Prevents subscribing to another user's project events.
+    const owned = await prisma.project.findFirst({
+      where: { id: body.projectId, userId },
+      select: { id: true },
+    });
+    if (!owned) {
+      client.emit("error", { scope: "subscribe", message: "forbidden", projectId: body.projectId });
+      return { ok: false, error: "forbidden" };
+    }
+
     client.join(projectRoom(body.projectId));
     return { ok: true, room: projectRoom(body.projectId) };
   }
