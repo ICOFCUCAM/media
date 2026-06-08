@@ -1,0 +1,23 @@
+{
+  "name": "cineforge",
+  "private": true,
+  "version": "0.0.0",
+  "description": "AI Film Generation Platform — long-form films from a prompt using Wan 2.1 / Hunyuan on RunPod.",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:migrate": "pnpm --filter @cineforge/db prisma migrate dev",
+    "db:generate": "pnpm --filter @cineforge/db prisma generate"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

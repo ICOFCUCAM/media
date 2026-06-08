@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Prisma
+packages/db/prisma/migrations/dev.db*
+
+# Python (gpu-worker)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs / OS
+*.log
+.DS_Store
+
+# Editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Turbo
+.turbo/

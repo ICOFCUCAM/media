@@ -1,0 +1,406 @@
+// Cineforge — Prisma schema
+// PostgreSQL. See docs/02-database-schema.md for narrative + ERD.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Identity & billing
+// ─────────────────────────────────────────────────────────────
+
+enum Tier {
+  FREE
+  CREATOR
+  STUDIO
+  ENTERPRISE
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String?
+  displayName  String?
+  role         Role      @default(USER)
+  tier         Tier      @default(FREE)
+  creditsMs    Int       @default(0) // remaining generation budget, in GPU-ms
+  stripeId     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  projects     Project[]
+  apiKeys      ApiKey[]
+  usage        UsageRecord[]
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hashed    String   @unique
+  label     String?
+  lastUsed  DateTime?
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Project / film
+// ─────────────────────────────────────────────────────────────
+
+enum ProjectStatus {
+  DRAFT
+  PLANNING        // Director AI running
+  GENERATING      // scenes/shots generating
+  RENDERING       // FFmpeg assembling
+  READY
+  FAILED
+}
+
+model Project {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  prompt        String                       // original user prompt
+  targetSeconds Int                           // requested duration
+  aspectRatio   String        @default("16:9")
+  modelId       String        @default("wan-2.1")
+  status        ProjectStatus @default(DRAFT)
+  progress      Float         @default(0)     // 0..1
+  errorMessage  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  screenplay    Screenplay?
+  characters    Character[]
+  locations     Location[]
+  objects       WorldObject[]
+  scenes        Scene[]
+  continuity    ContinuityState[]
+  film          Film?
+  renderJobs    RenderJob[]
+
+  @@index([userId, status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Screenplay (Director AI output)
+// ─────────────────────────────────────────────────────────────
+
+model Screenplay {
+  id         String   @id @default(cuid())
+  projectId  String   @unique
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  logline    String
+  synopsis   String
+  genre      String?
+  tone       String?
+  acts       Json     // structured acts -> scene refs
+  raw        Json     // full LLM screenplay object
+  createdAt  DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────
+// Character Bible
+// ─────────────────────────────────────────────────────────────
+
+model Character {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name          String
+  age           Int?
+  gender        String?
+  ethnicity     String?
+  appearance    String                 // canonical visual description
+  personality   String?
+  voiceProfile  Json?                  // tts engine, voiceId, pitch, accent
+  arc           String?
+  referenceUrls String[]               // S3 keys for ref images / IP-adapter
+  embedding     Json?                  // identity embedding for consistency
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  wardrobes     Wardrobe[]
+  relationships Relationship[] @relation("fromChar")
+  related       Relationship[] @relation("toChar")
+  sceneRoles    SceneCharacter[]
+
+  @@index([projectId])
+}
+
+model Wardrobe {
+  id          String  @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  label       String                  // "royal armor", "peasant tunic"
+  description String
+  validFromScene Int?                 // continuity: when this outfit applies
+  validToScene   Int?
+
+  @@index([characterId])
+}
+
+model Relationship {
+  id       String @id @default(cuid())
+  fromId   String
+  toId     String
+  from     Character @relation("fromChar", fields: [fromId], references: [id], onDelete: Cascade)
+  to       Character @relation("toChar", fields: [toId], references: [id], onDelete: Cascade)
+  kind     String                     // "sibling", "rival", "ally"
+
+  @@unique([fromId, toId, kind])
+}
+
+// ─────────────────────────────────────────────────────────────
+// World Bible
+// ─────────────────────────────────────────────────────────────
+
+enum LocationKind {
+  CITY
+  KINGDOM
+  BUILDING
+  ROOM
+  LANDSCAPE
+  INTERIOR
+  EXTERIOR
+}
+
+model Location {
+  id          String       @id @default(cuid())
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  kind        LocationKind
+  description String                  // canonical visual description
+  parentId    String?                 // room belongs to building belongs to city
+  parent      Location?    @relation("loc", fields: [parentId], references: [id])
+  children    Location[]   @relation("loc")
+  referenceUrls String[]
+  createdAt   DateTime     @default(now())
+
+  scenes      Scene[]
+
+  @@index([projectId])
+}
+
+model WorldObject {
+  id          String  @id @default(cuid())
+  projectId   String
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String                  // "the crown", "ceremonial sword"
+  description String
+  referenceUrls String[]
+
+  @@index([projectId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Scenes & shots
+// ─────────────────────────────────────────────────────────────
+
+enum SceneStatus {
+  PENDING
+  PROMPTING
+  GENERATING
+  AUDIO
+  QC
+  READY
+  FAILED
+}
+
+model Scene {
+  id          String      @id @default(cuid())
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  index       Int                      // ordering within film
+  locationId  String?
+  location    Location?   @relation(fields: [locationId], references: [id])
+  heading     String                   // "INT. THRONE ROOM - NIGHT"
+  summary     String
+  timeOfDay   String?
+  weather     String?
+  status      SceneStatus @default(PENDING)
+  durationSec Float       @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  shots       Shot[]
+  characters  SceneCharacter[]
+  dialogue    DialogueLine[]
+  audioTracks AudioTrack[]
+
+  @@unique([projectId, index])
+  @@index([projectId, status])
+}
+
+model SceneCharacter {
+  id          String    @id @default(cuid())
+  sceneId     String
+  scene       Scene     @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  wardrobeId  String?                  // resolved by continuity engine
+
+  @@unique([sceneId, characterId])
+}
+
+enum ShotStatus {
+  PENDING
+  QUEUED
+  GENERATING
+  UPLOADED
+  QC_PASS
+  QC_FAIL
+  READY
+  FAILED
+}
+
+model Shot {
+  id            String     @id @default(cuid())
+  sceneId       String
+  scene         Scene      @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  index         Int
+  prompt        String                 // final constructed prompt
+  negativePrompt String?
+  cameraPlan    Json?                  // shot size, movement, angle, lens
+  seed          BigInt?
+  durationSec   Float      @default(5)
+  modelId       String     @default("wan-2.1")
+  status        ShotStatus @default(PENDING)
+  videoKey      String?                // S3 key of generated clip
+  thumbnailKey  String?
+  qcScore       Float?
+  gpuMs         Int?                   // billed GPU time
+  attempts      Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([sceneId, index])
+  @@index([status])
+}
+
+model DialogueLine {
+  id          String  @id @default(cuid())
+  sceneId     String
+  scene       Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  index       Int
+  characterId String?
+  text        String
+  emotion     String?
+  audioKey    String?                  // S3 key of synthesized voice
+  startMs     Int?                     // placement on the scene timeline
+
+  @@index([sceneId])
+}
+
+enum AudioKind {
+  VOICE
+  MUSIC
+  SFX
+  AMBIENCE
+}
+
+model AudioTrack {
+  id        String    @id @default(cuid())
+  sceneId   String
+  scene     Scene     @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  kind      AudioKind
+  key       String                     // S3 key
+  startMs   Int       @default(0)
+  durationMs Int?
+  gainDb    Float     @default(0)
+  meta      Json?                      // mood, source engine, prompt
+
+  @@index([sceneId, kind])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Continuity Engine
+// ─────────────────────────────────────────────────────────────
+
+// One row = the canonical world state as of a given scene index.
+// Lets the prompt builder ask "what is true at scene N?" deterministically.
+model ContinuityState {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sceneIndex Int
+  state      Json     // { characters:{id:{wardrobeId,mood,injuries}}, world:{...}, story:{flags} }
+  createdAt  DateTime @default(now())
+
+  @@unique([projectId, sceneIndex])
+  @@index([projectId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Film & rendering
+// ─────────────────────────────────────────────────────────────
+
+enum RenderStatus {
+  QUEUED
+  ASSEMBLING
+  TRANSCODING
+  DONE
+  FAILED
+}
+
+model RenderJob {
+  id          String       @id @default(cuid())
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind        String       @default("final") // "preview" | "final" | "scene"
+  status      RenderStatus @default(QUEUED)
+  progress    Float        @default(0)
+  outputKey   String?
+  log         String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([projectId, status])
+}
+
+model Film {
+  id          String   @id @default(cuid())
+  projectId   String   @unique
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  mp4Key      String                   // S3 key of final MP4
+  hlsKey      String?                  // S3 key of master .m3u8
+  posterKey   String?
+  durationSec Float
+  subtitleKey String?
+  sizeBytes   BigInt?
+  views       Int      @default(0)
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────
+// Usage / quotas
+// ─────────────────────────────────────────────────────────────
+
+model UsageRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String?
+  gpuMs     Int      @default(0)
+  kind      String                     // "video" | "voice" | "music" | "render"
+  costUsd   Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
