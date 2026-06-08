@@ -80,6 +80,7 @@ model Project {
   modelId       String        @default("wan-2.1")
   status        ProjectStatus @default(DRAFT)
   progress      Float         @default(0)     // 0..1
+  estimatedMs   Int?                          // pre-flight GPU-ms budget (docs/24 §C8)
   errorMessage  String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt

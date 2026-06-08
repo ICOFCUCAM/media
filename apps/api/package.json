@@ -12,6 +12,7 @@
   "dependencies": {
     "@cineforge/db": "workspace:*",
     "@cineforge/gpu": "workspace:*",
+    "@cineforge/model-adapters": "workspace:*",
     "@cineforge/realtime": "workspace:*",
     "@cineforge/shared": "workspace:*",
     "@nestjs/common": "^10.3.0",

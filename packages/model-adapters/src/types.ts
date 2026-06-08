@@ -53,6 +53,8 @@ export interface ShotResult {
 export interface ModelCapabilities {
   id: string;
   displayName: string;
+  /** Pinned model version for provenance / cache keys (docs/24 §C7). */
+  version?: string;
   /** "primary" (Wan 2.1) | "premium" (Hunyuan) | "external" (future APIs) */
   class: "primary" | "premium" | "external";
   maxDurationSec: number;

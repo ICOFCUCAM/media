@@ -200,6 +200,16 @@ Generalizes the Phase 1 GPU Lifecycle Manager from one pool to a cluster.
 - Phoneme/viseme timing stored on `DialogueLine` for alignment.
 
 ### C7. Deterministic asset cache & partial re-render
+> **Implemented (first pass):** provenance + content-addressed cache.
+> - Pure hashing in `@cineforge/shared` (`computeCacheKey`, `computePromptHash`,
+>   `deterministicSeed`) + tests.
+> - Director assigns each shot a deterministic `seed`, `promptHash`, `cacheKey`,
+>   and `modelVersion` (`director.service.ts`).
+> - `video.processor` reuses an existing READY clip with the same `cacheKey` in
+>   the project (zero GPU spend) before generating — this is what makes editor
+>   re-renders cheap. Schema: `Shot.cacheKey/promptHash/modelVersion` (+ index).
+> - Remaining: dependency-graph invalidation UI + canon branching.
+
 - **Content-addressed cache:** every shot/audio/render keyed by
   `hash(inputs + seed + modelVersion + refVersions)`. Identical inputs → cache
   hit, no GPU spend.
@@ -212,6 +222,16 @@ Generalizes the Phase 1 GPU Lifecycle Manager from one pool to a cluster.
   episodes show a "stale vs. re-render" diff instead of silent corruption.
 
 ### C8. Cost governor / FinOps
+> **Implemented (first pass):** pre-flight estimate + credit gate + metered debit.
+> - Pure estimator in `@cineforge/model-adapters` (`estimateShotMs`,
+>   `estimateFilmMs`, shared single cost formula adapters delegate to) + tests.
+> - `GET /projects/:id/estimate` returns `{ estimatedMs, creditsMs, affordable }`.
+> - `POST /generate-film` rejects with `INSUFFICIENT_CREDITS` (non-Enterprise)
+>   and records `Project.estimatedMs` as the budget ceiling.
+> - `video.processor` meters `UsageRecord` and debits `User.creditsMs` only for
+>   real generation (cache hits cost 0).
+> - Remaining: live per-project pause-on-budget-exceeded (resumable) + margin alerts.
+
 - **Pre-flight estimate:** sum adapter `estimateCost` over the planned shots +
   audio + render → show the user a cost/time estimate and require confirmation
   for feature-length jobs.

@@ -1,4 +1,13 @@
 import { prisma } from "@cineforge/db";
+import {
+  AVG_SHOT_SEC,
+  planSceneCount,
+  planShotsPerScene,
+  computePromptHash,
+  computeCacheKey,
+  deterministicSeed,
+} from "@cineforge/shared";
+import { MODEL_VERSIONS } from "@cineforge/model-adapters";
 
 /**
  * Director AI — planning service.
@@ -14,10 +23,6 @@ import { prisma } from "@cineforge/db";
  * structured output). The shapes it writes already match the schema, so wiring
  * the real LLM does not change the fan-out.
  */
-
-const AVG_SCENE_SEC = 18;
-const AVG_SHOT_SEC = 5;
-const MAX_SCENES = 400; // safety cap for very long films
 
 export interface PlannedShot {
   id: string;
@@ -39,11 +44,10 @@ export class DirectorService {
   async plan(projectId: string): Promise<FilmPlan> {
     const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } });
 
-    const sceneCount = Math.min(
-      MAX_SCENES,
-      Math.max(1, Math.round(project.targetSeconds / AVG_SCENE_SEC)),
-    );
-    const shotsPerScene = Math.max(1, Math.ceil(AVG_SCENE_SEC / AVG_SHOT_SEC));
+    const sceneCount = planSceneCount(project.targetSeconds);
+    const shotsPerScene = planShotsPerScene();
+    const [width, height] = project.aspectRatio === "9:16" ? [720, 1280] : [1280, 720];
+    const modelVersion = MODEL_VERSIONS[project.modelId] ?? "unknown";
 
     const draft = draftWithLLM(project.prompt, sceneCount);
 
@@ -95,13 +99,36 @@ export class DirectorService {
           timeOfDay: i % 2 ? "night" : "day",
           characters: { create: [{ characterId: protagonist.id }] },
           shots: {
-            create: Array.from({ length: shotsPerScene }, (_, s) => ({
-              index: s,
-              prompt: buildShotPrompt(draft, location.description, protagonist.appearance, i, s),
-              negativePrompt: "blurry, watermark, text, extra limbs, deformed",
-              durationSec: AVG_SHOT_SEC,
-              modelId: project.modelId,
-            })),
+            create: Array.from({ length: shotsPerScene }, (_, s) => {
+              const prompt = buildShotPrompt(draft, location.description, protagonist.appearance, i, s);
+              const negativePrompt = "blurry, watermark, text, extra limbs, deformed";
+              const seed = deterministicSeed(projectId, i, s);
+              const promptHash = computePromptHash({ prompt, negativePrompt });
+              // Provenance + content-addressed cache key (docs/24 §C7): identical
+              // inputs across a re-render reuse the existing clip with no GPU spend.
+              const cacheKey = computeCacheKey({
+                modelId: project.modelId,
+                modelVersion,
+                promptHash,
+                seed,
+                width,
+                height,
+                durationSec: AVG_SHOT_SEC,
+                referenceKeys: protagonist.referenceUrls,
+                loraKey: protagonist.loraKey ?? undefined,
+              });
+              return {
+                index: s,
+                prompt,
+                negativePrompt,
+                durationSec: AVG_SHOT_SEC,
+                modelId: project.modelId,
+                modelVersion,
+                promptHash,
+                cacheKey,
+                seed: BigInt(seed),
+              };
+            }),
           },
         },
         include: { shots: { orderBy: { index: "asc" } } },

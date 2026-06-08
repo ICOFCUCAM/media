@@ -6,6 +6,7 @@ import {
   HealthStatus,
 } from "../types";
 import { RunpodClient } from "../runpod-client";
+import { estimateShotMs, MODEL_VERSIONS } from "../cost";
 
 /**
  * Hunyuan Video — the PREMIUM model. Self-hosted on a RunPod A40 48GB GPU
@@ -20,6 +21,7 @@ export class HunyuanAdapter implements VideoModelAdapter {
     return {
       id: this.id,
       displayName: "Hunyuan Video",
+      version: MODEL_VERSIONS[this.id],
       class: "premium",
       maxDurationSec: 5,
       resolutions: [
@@ -33,10 +35,7 @@ export class HunyuanAdapter implements VideoModelAdapter {
   }
 
   estimateCost(req: ShotRequest): number {
-    const pixels = req.width * req.height;
-    const base = 18_000; // premium model ~2x Wan on A40
-    const resFactor = pixels / (1280 * 720);
-    return Math.round(base * resFactor * (req.durationSec / 5));
+    return estimateShotMs(this.id, req);
   }
 
   async generate(req: ShotRequest, signal?: AbortSignal): Promise<ShotResult> {

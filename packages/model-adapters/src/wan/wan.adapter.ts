@@ -6,6 +6,7 @@ import {
   HealthStatus,
 } from "../types";
 import { RunpodClient } from "../runpod-client";
+import { estimateShotMs, MODEL_VERSIONS } from "../cost";
 
 /**
  * Wan 2.1 — the PRIMARY model. Self-hosted on a RunPod A40 48GB GPU worker.
@@ -20,6 +21,7 @@ export class WanAdapter implements VideoModelAdapter {
     return {
       id: this.id,
       displayName: "Wan 2.1",
+      version: MODEL_VERSIONS[this.id],
       class: "primary",
       maxDurationSec: 5, // per-clip; scenes stitch multiple clips
       resolutions: [
@@ -33,11 +35,7 @@ export class WanAdapter implements VideoModelAdapter {
   }
 
   estimateCost(req: ShotRequest): number {
-    // Rough GPU-ms estimate on A40 48GB; calibrate from real telemetry.
-    const pixels = req.width * req.height;
-    const base = 9_000; // ms baseline per ~5s clip @ 480p
-    const resFactor = pixels / (832 * 480);
-    return Math.round(base * resFactor * (req.durationSec / 5));
+    return estimateShotMs(this.id, req);
   }
 
   async generate(req: ShotRequest, signal?: AbortSignal): Promise<ShotResult> {
