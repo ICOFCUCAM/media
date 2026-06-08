@@ -178,15 +178,25 @@ Make adjacent clips continuous, not just individually good.
   facts (kingdoms, factions, locations, statuses), not an agent sim. Bounded.
 
 ### C5. Multi-GPU scheduler (dynamic, fair, heterogeneous, preemptible)
-> **Implemented (first seam):** model routing policy.
-> - Pure tier→model gating in `@cineforge/model-adapters/policy.ts`
->   (`isModelAllowed`, `allowedModels`, `resolveModel`) + tests.
-> - `POST /generate-film` rejects with `MODEL_NOT_ALLOWED` (with the allowed
->   list) when a tier requests a gated model.
-> - Remaining: the cluster scheduler itself — heterogeneous GPU throughput
->   routing (A40/A100/H100), weighted-fair queueing per tenant, preemption + spot
->   handling. The per-pool reference-counted lifecycle ([23](23-gpu-lifecycle-manager.md))
->   already generalizes; this layer chooses *which* pool/GPU a job lands on.
+> **Implemented:** model routing policy + cluster router + fair scheduling +
+> multi-GPU dispatch.
+> - **Tier gating:** `@cineforge/model-adapters/policy.ts` (`isModelAllowed`,
+>   `allowedModels`, `resolveModel`); `POST /generate-film` rejects
+>   `MODEL_NOT_ALLOWED`. Tested.
+> - **Heterogeneous routing:** `@cineforge/gpu/cluster.ts` `GpuClusterRouter`
+>   picks the worker with the lowest throughput-normalized load (A40/A100/H100
+>   weights), skips unhealthy workers, tie-breaks toward the faster GPU; env
+>   parsing via `parseClusterFromEnv`. Tested.
+> - **Fair scheduling:** `@cineforge/gpu/fairness.ts` `tierPriority` +
+>   `DeficitFairScheduler` (weighted, no starvation). The film flow enqueues
+>   video/audio jobs with **per-tier BullMQ priority** so one epic can't starve
+>   others. Tested.
+> - **Multi-GPU dispatch:** `RunpodClient` is routing-aware (`resolveBaseUrl`);
+>   `buildClusterRegistry` round-robins across `WAN_GPU_URLS`/`HUNYUAN_GPU_URLS`
+>   so a pool of GPUs is actually utilized. The video worker uses it.
+> - Remaining: live load/health feeding the router from the RunPod API +
+>   preemption/spot-interruption handling (the selection core + lifecycle hooks
+>   are in place; this is the live-infra integration).
 
 Generalizes the Phase 1 GPU Lifecycle Manager from one pool to a cluster.
 - **Dynamic work-stealing** via the existing queues — *delete* static slicing.
@@ -247,7 +257,9 @@ Generalizes the Phase 1 GPU Lifecycle Manager from one pool to a cluster.
 >   (optionally `{ addBudgetMs }`) re-checks affordability, restarts the GPU, and
 >   re-enqueues the flow **without re-planning** — completed shots short-circuit,
 >   audio tracks are skipped, so resume is idempotent and cheap.
-> - Remaining: margin alerts in the admin dashboard.
+> - **Margin alerts:** `GET /admin/cost` aggregates GPU spend (total + by kind)
+>   and lists projects that paused over budget — the FinOps view for the admin
+>   dashboard.
 
 - **Pre-flight estimate:** sum adapter `estimateCost` over the planned shots +
   audio + render → show the user a cost/time estimate and require confirmation

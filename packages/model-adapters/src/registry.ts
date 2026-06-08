@@ -50,3 +50,44 @@ export function buildDefaultRegistry(env: BuildRegistryEnv): ModelRegistry {
     .register(new WanAdapter(wanGpu))
     .register(new HunyuanAdapter(hunyuanGpu));
 }
+
+/** Round-robin over a list of worker URLs (docs/24 §C5 multi-GPU dispatch). */
+export function roundRobin(urls: string[]): () => string {
+  let i = 0;
+  return () => urls[i++ % urls.length]!;
+}
+
+export interface BuildClusterEnv {
+  /** Comma-separated worker URLs per model (falls back to the single URL). */
+  WAN_GPU_URLS?: string;
+  WAN_GPU_URL?: string;
+  HUNYUAN_GPU_URLS?: string;
+  HUNYUAN_GPU_URL?: string;
+  RUNPOD_API_KEY?: string;
+}
+
+/**
+ * Cluster registry: each model is backed by N workers, dispatched round-robin
+ * so a multi-GPU pool is actually utilized. Health/least-load routing plugs in
+ * via @cineforge/gpu GpuClusterRouter; this provides the simple default.
+ */
+export function buildClusterRegistry(env: BuildClusterEnv): ModelRegistry {
+  const urlsOf = (csv?: string, single?: string) =>
+    (csv ?? single ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+
+  const wanUrls = urlsOf(env.WAN_GPU_URLS, env.WAN_GPU_URL);
+  const hunyuanUrls = urlsOf(env.HUNYUAN_GPU_URLS, env.HUNYUAN_GPU_URL);
+
+  const registry = new ModelRegistry();
+  if (wanUrls.length) {
+    registry.register(
+      new WanAdapter(new RunpodClient({ resolveBaseUrl: roundRobin(wanUrls), apiKey: env.RUNPOD_API_KEY })),
+    );
+  }
+  if (hunyuanUrls.length) {
+    registry.register(
+      new HunyuanAdapter(new RunpodClient({ resolveBaseUrl: roundRobin(hunyuanUrls), apiKey: env.RUNPOD_API_KEY })),
+    );
+  }
+  return registry;
+}

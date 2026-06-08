@@ -10,15 +10,19 @@
  */
 import { Worker, UnrecoverableError } from "bullmq";
 import { QUEUES, shouldPauseForBudget, type VideoJob } from "@cineforge/shared";
-import { buildDefaultRegistry, MODEL_VERSIONS, type ShotRequest } from "@cineforge/model-adapters";
+import { buildClusterRegistry, MODEL_VERSIONS, type ShotRequest } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
 import { realtime } from "../realtime";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
-const registry = buildDefaultRegistry({
-  WAN_GPU_URL: process.env.WAN_GPU_URL!,
-  HUNYUAN_GPU_URL: process.env.HUNYUAN_GPU_URL!,
+// Multi-GPU dispatch (docs/24 §C5): each model is backed by N workers
+// (WAN_GPU_URLS / HUNYUAN_GPU_URLS comma-separated), round-robined per call.
+const registry = buildClusterRegistry({
+  WAN_GPU_URLS: process.env.WAN_GPU_URLS,
+  WAN_GPU_URL: process.env.WAN_GPU_URL,
+  HUNYUAN_GPU_URLS: process.env.HUNYUAN_GPU_URLS,
+  HUNYUAN_GPU_URL: process.env.HUNYUAN_GPU_URL,
   RUNPOD_API_KEY: process.env.RUNPOD_API_KEY,
 });
 

@@ -44,6 +44,7 @@ flowchart TB
 GET /admin/users?cursor=&q=        GET /admin/users/:id
 POST /admin/users/:id/credits      POST /admin/users/:id/tier      POST /admin/users/:id/suspend
 GET /admin/gpu                     GET /admin/gpu/events
+GET /admin/cost                    # FinOps: GPU spend + over-budget projects (docs/24 §C8)
 GET /admin/revenue?range=          GET /admin/films?range=         GET /admin/models
 GET /admin/jobs                    POST /admin/jobs/:id/retry
 ```

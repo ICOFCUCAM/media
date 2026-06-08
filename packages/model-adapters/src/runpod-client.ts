@@ -9,7 +9,13 @@
 
 export interface RunpodClientOptions {
   /** Base URL of the gpu-worker service (serverless endpoint or pod). */
-  baseUrl: string;
+  baseUrl?: string;
+  /**
+   * Per-call URL resolver for multi-GPU routing (docs/24 §C5). When provided it
+   * takes precedence over `baseUrl`, so each request can be routed to a
+   * different worker in the pool (round-robin / least-loaded).
+   */
+  resolveBaseUrl?: () => string;
   apiKey?: string; // RunPod token when calling the serverless API
   timeoutMs?: number;
 }
@@ -38,7 +44,16 @@ export interface GpuGenerateOutput {
 }
 
 export class RunpodClient {
-  constructor(private readonly opts: RunpodClientOptions) {}
+  constructor(private readonly opts: RunpodClientOptions) {
+    if (!opts.baseUrl && !opts.resolveBaseUrl) {
+      throw new Error("RunpodClient: provide baseUrl or resolveBaseUrl");
+    }
+  }
+
+  /** Resolve the target worker URL for this call (routing-aware). */
+  private url(): string {
+    return this.opts.resolveBaseUrl ? this.opts.resolveBaseUrl() : this.opts.baseUrl!;
+  }
 
   private headers(): Record<string, string> {
     const h: Record<string, string> = { "content-type": "application/json" };
@@ -51,7 +66,7 @@ export class RunpodClient {
     const t = setTimeout(() => ctrl.abort(), this.opts.timeoutMs ?? 15 * 60_000);
     if (signal) signal.addEventListener("abort", () => ctrl.abort());
     try {
-      const res = await fetch(`${this.opts.baseUrl}/generate`, {
+      const res = await fetch(`${this.url()}/generate`, {
         method: "POST",
         headers: this.headers(),
         body: JSON.stringify(input),
@@ -67,12 +82,12 @@ export class RunpodClient {
   }
 
   async health(): Promise<{ status: string; modelLoaded: boolean }> {
-    const res = await fetch(`${this.opts.baseUrl}/health`, { headers: this.headers() });
+    const res = await fetch(`${this.url()}/health`, { headers: this.headers() });
     if (!res.ok) return { status: "down", modelLoaded: false };
     return (await res.json()) as { status: string; modelLoaded: boolean };
   }
 
   async warm(): Promise<void> {
-    await fetch(`${this.opts.baseUrl}/warm`, { method: "POST", headers: this.headers() });
+    await fetch(`${this.url()}/warm`, { method: "POST", headers: this.headers() });
   }
 }
