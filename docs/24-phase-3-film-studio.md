@@ -178,6 +178,16 @@ Make adjacent clips continuous, not just individually good.
   facts (kingdoms, factions, locations, statuses), not an agent sim. Bounded.
 
 ### C5. Multi-GPU scheduler (dynamic, fair, heterogeneous, preemptible)
+> **Implemented (first seam):** model routing policy.
+> - Pure tier→model gating in `@cineforge/model-adapters/policy.ts`
+>   (`isModelAllowed`, `allowedModels`, `resolveModel`) + tests.
+> - `POST /generate-film` rejects with `MODEL_NOT_ALLOWED` (with the allowed
+>   list) when a tier requests a gated model.
+> - Remaining: the cluster scheduler itself — heterogeneous GPU throughput
+>   routing (A40/A100/H100), weighted-fair queueing per tenant, preemption + spot
+>   handling. The per-pool reference-counted lifecycle ([23](23-gpu-lifecycle-manager.md))
+>   already generalizes; this layer chooses *which* pool/GPU a job lands on.
+
 Generalizes the Phase 1 GPU Lifecycle Manager from one pool to a cluster.
 - **Dynamic work-stealing** via the existing queues — *delete* static slicing.
 - **Heterogeneous routing:** the scheduler knows per-GPU throughput
@@ -230,7 +240,14 @@ Generalizes the Phase 1 GPU Lifecycle Manager from one pool to a cluster.
 >   and records `Project.estimatedMs` as the budget ceiling.
 > - `video.processor` meters `UsageRecord` and debits `User.creditsMs` only for
 >   real generation (cache hits cost 0).
-> - Remaining: live per-project pause-on-budget-exceeded (resumable) + margin alerts.
+> - **Live pause/resume:** `video.processor` tracks `Project.spentMs` and, once
+>   spend passes `estimate × 1.25` (`shouldPauseForBudget`, tested), sets the
+>   project `PAUSED` and emits `project.paused`; queued shots then fail-fast at a
+>   pause gate so the GPU drains and shuts down. `POST /projects/:id/resume`
+>   (optionally `{ addBudgetMs }`) re-checks affordability, restarts the GPU, and
+>   re-enqueues the flow **without re-planning** — completed shots short-circuit,
+>   audio tracks are skipped, so resume is idempotent and cheap.
+> - Remaining: margin alerts in the admin dashboard.
 
 - **Pre-flight estimate:** sum adapter `estimateCost` over the planned shots +
   audio + render → show the user a cost/time estimate and require confirmation

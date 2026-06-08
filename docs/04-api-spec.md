@@ -86,6 +86,17 @@ GET  /projects/:id/scenes             -> { data:[scene] }
 GET  /scenes/:id                      -> { scene, shots, dialogue, audioTracks }
 ```
 
+## Budget & resume (docs/24 §C8)
+
+```
+GET  /projects/:id/estimate     -> { estimatedMs, creditsMs, affordable }
+POST /projects/:id/resume       -> { jobId, status, estimatedMs, spentMs }   // body: { addBudgetMs? }
+```
+`POST /generate-film` may reject with `MODEL_NOT_ALLOWED` (tier gating) or
+`INSUFFICIENT_CREDITS` (pre-flight estimate). A project that exceeds its budget
+ceiling mid-generation transitions to `PAUSED` and emits a `project.paused` WS
+event; `resume` continues it without re-planning.
+
 ## Per-scene / per-shot generation & regeneration
 
 ```

@@ -65,6 +65,7 @@ enum ProjectStatus {
   PLANNING        // Director AI running
   GENERATING      // scenes/shots generating
   RENDERING       // FFmpeg assembling
+  PAUSED          // budget ceiling reached — resumable (docs/24 §C8)
   READY
   FAILED
 }
@@ -81,6 +82,7 @@ model Project {
   status        ProjectStatus @default(DRAFT)
   progress      Float         @default(0)     // 0..1
   estimatedMs   Int?                          // pre-flight GPU-ms budget (docs/24 §C8)
+  spentMs       Int           @default(0)     // GPU-ms spent so far (budget tracking)
   errorMessage  String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt

@@ -20,9 +20,15 @@ export const audioWorker = new Worker<AudioJob>(
   async (job) => {
     const { sceneId, kind } = job.data;
 
+    // Idempotent (resume-safe, docs/24 §C8): don't regenerate an existing track.
+    const existing = await prisma.audioTrack.findFirst({
+      where: { sceneId, kind: KIND[kind] },
+      select: { id: true, key: true },
+    });
+    if (existing) return { sceneId, kind, key: existing.key, skipped: true };
+
     // TODO: call the matching audio adapter and upload the result to S3.
     const key = `scenes/${sceneId}/audio/${kind}/${job.id}.mp3`;
-
     await prisma.audioTrack.create({
       data: { sceneId, kind: KIND[kind], key, meta: { generated: "stub" } },
     });

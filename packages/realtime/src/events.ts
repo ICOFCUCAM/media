@@ -15,6 +15,7 @@ export interface RealtimeEvents {
   "shot.ready": { projectId: string; sceneId: string; shotId: string; thumbnailKey?: string };
   "render.progress": { projectId: string; renderJobId?: string; progress: number };
   "film.ready": { projectId: string; filmId: string; mp4Key: string; hlsKey?: string };
+  "project.paused": { projectId: string; reason: string; spentMs: number; estimatedMs?: number };
   "error": { projectId: string; scope: string; id?: string; message: string };
 }
 

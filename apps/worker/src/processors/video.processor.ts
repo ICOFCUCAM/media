@@ -8,8 +8,8 @@
  *    clip in the same project with the same cacheKey (editor re-render / repeats).
  *  - Cost metering + credit debit (C8): only billed when GPU is actually used.
  */
-import { Worker } from "bullmq";
-import { QUEUES, type VideoJob } from "@cineforge/shared";
+import { Worker, UnrecoverableError } from "bullmq";
+import { QUEUES, shouldPauseForBudget, type VideoJob } from "@cineforge/shared";
 import { buildDefaultRegistry, MODEL_VERSIONS, type ShotRequest } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
 import { realtime } from "../realtime";
@@ -68,6 +68,17 @@ export const videoWorker = new Worker<VideoJob>(
     const { shotId, modelId, projectId, sceneId } = job.data;
     const shot = await loadShot(shotId);
 
+    // ── Idempotent resume (C8): a shot already generated is a no-op ──────
+    if (shot.status === "READY" && shot.videoKey) {
+      await realtime.emit("shot.ready", { projectId, sceneId, shotId, thumbnailKey: shot.thumbnailKey ?? undefined });
+      return { shotId, videoKey: shot.videoKey, gpuMs: 0, alreadyDone: true };
+    }
+
+    // ── Budget pause gate (C8): stop dispatching GPU work when paused ────
+    if (shot.scene.project.status === "PAUSED") {
+      throw new UnrecoverableError("project paused (budget ceiling reached)");
+    }
+
     // ── Cache hit (C7): reuse an identical clip, zero GPU spend ──────────
     const cached = await findCacheHit(shot);
     if (cached) {
@@ -106,9 +117,9 @@ export const videoWorker = new Worker<VideoJob>(
       },
     });
 
-    // ── Meter + debit (C8): bill GPU-ms only for real generation ────────
+    // ── Meter + debit + budget tracking (C8) ────────────────────────────
     const { userId } = shot.scene.project;
-    await prisma.$transaction([
+    const [, , updatedProject] = await prisma.$transaction([
       prisma.usageRecord.create({
         data: { userId, projectId, gpuMs: result.gpuMs, kind: "video" },
       }),
@@ -116,9 +127,29 @@ export const videoWorker = new Worker<VideoJob>(
         where: { id: userId },
         data: { creditsMs: { decrement: result.gpuMs } },
       }),
+      prisma.project.update({
+        where: { id: projectId },
+        data: { spentMs: { increment: result.gpuMs } },
+        select: { spentMs: true, estimatedMs: true },
+      }),
     ]);
 
     await realtime.emit("shot.ready", { projectId, sceneId, shotId, thumbnailKey: result.thumbnailKey });
+
+    // Pause the project if it blew past its budget ceiling. Already-queued
+    // shots then fail-fast at the gate above; the GPU drains and shuts down.
+    if (shouldPauseForBudget(updatedProject.estimatedMs, updatedProject.spentMs)) {
+      await prisma.project.update({
+        where: { id: projectId },
+        data: { status: "PAUSED", errorMessage: "Budget ceiling reached" },
+      });
+      await realtime.emit("project.paused", {
+        projectId,
+        reason: "budget",
+        spentMs: updatedProject.spentMs,
+        estimatedMs: updatedProject.estimatedMs ?? undefined,
+      });
+    }
 
     return { shotId, videoKey: result.videoKey, gpuMs: result.gpuMs };
   },

@@ -31,4 +31,14 @@ export class FilmsController {
   generate(@Req() req: { user: { id: string } }, @Body() dto: GenerateFilmDto) {
     return this.films.generateFilm(req.user.id, dto.projectId);
   }
+
+  /** POST /projects/:id/resume — resume a budget-paused project (docs/24 §C8). */
+  @Post("projects/:id/resume")
+  resume(
+    @Req() req: { user: { id: string } },
+    @Param("id") id: string,
+    @Body() dto: { addBudgetMs?: number },
+  ) {
+    return this.films.resumeFilm(req.user.id, id, dto?.addBudgetMs ?? 0);
+  }
 }
