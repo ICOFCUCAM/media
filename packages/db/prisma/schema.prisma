@@ -93,7 +93,70 @@ model Project {
   film          Film?
   renderJobs    RenderJob[]
 
+  // Phase 3 (docs/24): episodic series + event-sourced canon.
+  series        Series?
+  storyEvents   StoryEvent[]
+
   @@index([userId, status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 3 — Episodic hierarchy (docs/24 §C/D). Additive: single
+// films keep using Project->Scene directly; series add Season/Episode.
+// ─────────────────────────────────────────────────────────────
+
+model Series {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title     String
+  synopsis  String?
+  createdAt DateTime @default(now())
+
+  seasons   Season[]
+}
+
+model Season {
+  id        String   @id @default(cuid())
+  seriesId  String
+  series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  number    Int
+  title     String?
+  createdAt DateTime @default(now())
+
+  episodes  Episode[]
+
+  @@unique([seriesId, number])
+}
+
+model Episode {
+  id        String   @id @default(cuid())
+  seasonId  String
+  season    Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  number    Int
+  title     String
+  synopsis  String?
+  createdAt DateTime @default(now())
+
+  scenes    Scene[]
+
+  @@unique([seasonId, number])
+}
+
+// Append-only canon log (docs/24 §C4): the event-sourced source of truth from
+// which ContinuityState snapshots and the story graph are projected.
+model StoryEvent {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  episodeIndex Int?
+  sceneIndex   Int?
+  kind         String                   // "death" | "destruction" | "betrayal" | ...
+  summary      String                   // "King loses his son"
+  payload      Json?                    // structured actors/objects/consequences
+  createdAt    DateTime @default(now())
+
+  @@index([projectId, episodeIndex, sceneIndex])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -130,7 +193,9 @@ model Character {
   voiceProfile  Json?                  // tts engine, voiceId, pitch, accent
   arc           String?
   referenceUrls String[]               // S3 keys for ref images / IP-adapter
-  embedding     Json?                  // identity embedding for consistency
+  embedding     Json?                  // identity embedding (-> pgvector in Phase 3, docs/24 §C3)
+  loraKey       String?                // S3 key of trained per-character LoRA (docs/24 §C3)
+  loraVersion   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -231,6 +296,8 @@ model Scene {
   location    Location?   @relation(fields: [locationId], references: [id])
   heading     String                   // "INT. THRONE ROOM - NIGHT"
   summary     String
+  episodeId   String?                  // Phase 3: scene belongs to an episode (docs/24)
+  episode     Episode?    @relation(fields: [episodeId], references: [id])
   timeOfDay   String?
   weather     String?
   status      SceneStatus @default(PENDING)
@@ -280,6 +347,9 @@ model Shot {
   seed          BigInt?
   durationSec   Float      @default(5)
   modelId       String     @default("wan-2.1")
+  modelVersion  String?                // provenance/reproducibility (docs/24 §C7)
+  promptHash    String?                // content-addressed cache key input
+  cacheKey      String?                // hash(inputs+seed+modelVersion+refs)
   status        ShotStatus @default(PENDING)
   videoKey      String?                // S3 key of generated clip
   thumbnailKey  String?
@@ -291,6 +361,7 @@ model Shot {
 
   @@unique([sceneId, index])
   @@index([status])
+  @@index([cacheKey])
 }
 
 model DialogueLine {
@@ -383,6 +454,7 @@ model Film {
   durationSec Float
   subtitleKey String?
   sizeBytes   BigInt?
+  version     Int      @default(1) // canon/edit version (docs/24 §C7)
   views       Int      @default(0)
   publishedAt DateTime?
   createdAt   DateTime @default(now())

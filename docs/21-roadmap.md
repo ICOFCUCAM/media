@@ -24,6 +24,10 @@ GPU-mocked pipeline.
 - Scene-aware music score plan; AudioGen SFX; dialogue ducking.
 - Studio tier, character LoRA training, API access.
 
+> **Phase 3 has a dedicated, critically-evaluated design:**
+> [24-phase-3-film-studio.md](24-phase-3-film-studio.md) — feature-length &
+> episodic engine, with the missing coherence/state/cost/legal systems filled in.
+
 ## Phase 3 — Scale & polish
 - Multi-region, partitioning, KEDA autoscaling, multi-provider GPU.
 - Lip-sync (e.g. LatentSync-style) for dialogue.

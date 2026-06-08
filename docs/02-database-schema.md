@@ -75,6 +75,14 @@ For 1M users, partition high-volume tables by time/project:
 - `Shot`, `AudioTrack`, `UsageRecord` → range/hash partition.
 - Archive `READY` projects' shots to cold storage; keep `Film` hot.
 
+## Phase 3 additions (docs/24)
+Additive, non-breaking: `Series` / `Season` / `Episode` (episodic hierarchy,
+`Scene.episodeId?`), `StoryEvent` (append-only canon log — source of truth for
+continuity/world state), provenance + cache fields on `Shot`
+(`modelVersion`, `promptHash`, `cacheKey` + index), `Character.loraKey/loraVersion`
+(per-character LoRA), and `Film.version` (canon/edit versioning). Single films are
+unchanged; series populate the new hierarchy.
+
 ## Migrations
 ```bash
 pnpm --filter @cineforge/db prisma migrate dev --name init

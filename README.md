@@ -47,6 +47,7 @@ The design is the deliverable. Start here:
 | 21 | [docs/21-roadmap.md](docs/21-roadmap.md) | Future roadmap |
 | 22 | [docs/22-video-models.md](docs/22-video-models.md) | Models (Wan/Hunyuan) & "own API" cost strategy |
 | 23 | [docs/23-gpu-lifecycle-manager.md](docs/23-gpu-lifecycle-manager.md) | **Auto GPU Lifecycle Manager** (start-on-demand, auto-shutdown) |
+| 24 | [docs/24-phase-3-film-studio.md](docs/24-phase-3-film-studio.md) | **Phase 3** — feature-film/series engine: critique + the missing systems |
 
 ## Code map
 
