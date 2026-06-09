@@ -14,6 +14,6 @@ export async function enqueuePublish(job: PublishJob): Promise<void> {
   await publishQueue.add(
     "publish",
     { ...job, providers },
-    { jobId: `publish:${job.projectId}:${providers.join("-")}`, attempts: 2, removeOnComplete: 100, removeOnFail: 100 },
+    { jobId: `publish-${job.projectId}-${providers.join("_")}`, attempts: 2, removeOnComplete: 100, removeOnFail: 100 },
   );
 }

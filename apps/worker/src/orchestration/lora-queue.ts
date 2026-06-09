@@ -16,7 +16,7 @@ const opts = { jobId: undefined as string | undefined, attempts: 2, removeOnComp
 /** Enqueue training for a character (dedup by jobId). Caller has already checked
  *  the character is eligible. */
 export async function enqueueLora(characterId: string, projectId?: string): Promise<void> {
-  await loraQueue.add("train", { characterId, projectId }, { ...opts, jobId: `lora:${characterId}` });
+  await loraQueue.add("train", { characterId, projectId }, { ...opts, jobId: `lora-${characterId}` });
 }
 
 /** Enqueue training iff the character has reference frames and no LoRA yet. */

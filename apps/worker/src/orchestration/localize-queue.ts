@@ -16,7 +16,7 @@ export async function enqueueLocalize(projectId: string, languages: string[]): P
   await localizeQueue.add(
     "localize",
     { projectId, languages: langs },
-    { jobId: `localize:${projectId}:${langs.join("-")}`, attempts: 2, removeOnComplete: 50, removeOnFail: 50 },
+    { jobId: `localize-${projectId}-${langs.join("_")}`, attempts: 2, removeOnComplete: 50, removeOnFail: 50 },
   );
   return langs;
 }

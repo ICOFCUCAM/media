@@ -39,7 +39,7 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
           data: { status: "GENERATING" },
         });
         if (claimed.count === 1) {
-          await filmQueue.add("plan", { projectId: p.id }, { jobId: `film:${p.id}`, attempts: 2, removeOnComplete: 100 });
+          await filmQueue.add("plan", { projectId: p.id }, { jobId: `film-${p.id}`, attempts: 2, removeOnComplete: 100 });
           console.log(`[poller] enqueued film for project ${p.id}`);
         }
       }
