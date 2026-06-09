@@ -18,13 +18,30 @@ const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
 // Multi-GPU dispatch (docs/24 §C5): each model is backed by N workers
 // (WAN_GPU_URLS / HUNYUAN_GPU_URLS comma-separated), round-robined per call.
-const registry = buildClusterRegistry({
-  WAN_GPU_URLS: process.env.WAN_GPU_URLS,
-  WAN_GPU_URL: process.env.WAN_GPU_URL,
-  HUNYUAN_GPU_URLS: process.env.HUNYUAN_GPU_URLS,
-  HUNYUAN_GPU_URL: process.env.HUNYUAN_GPU_URL,
-  RUNPOD_API_KEY: process.env.RUNPOD_API_KEY,
-});
+// An external provider (text/image-to-video) is registered automatically when
+// EXTERNAL_VIDEO_API_URL is set — drop a key in, no code changes (docs/22).
+const assetBase = process.env.ASSET_PUBLIC_BASE_URL?.replace(/\/$/, "");
+const registry = buildClusterRegistry(
+  {
+    WAN_GPU_URLS: process.env.WAN_GPU_URLS,
+    WAN_GPU_URL: process.env.WAN_GPU_URL,
+    HUNYUAN_GPU_URLS: process.env.HUNYUAN_GPU_URLS,
+    HUNYUAN_GPU_URL: process.env.HUNYUAN_GPU_URL,
+    RUNPOD_API_KEY: process.env.RUNPOD_API_KEY,
+    EXTERNAL_VIDEO_API_URL: process.env.EXTERNAL_VIDEO_API_URL,
+    EXTERNAL_VIDEO_API_KEY: process.env.EXTERNAL_VIDEO_API_KEY,
+    EXTERNAL_VIDEO_MODEL_ID: process.env.EXTERNAL_VIDEO_MODEL_ID,
+    EXTERNAL_VIDEO_MODEL_NAME: process.env.EXTERNAL_VIDEO_MODEL_NAME,
+    EXTERNAL_VIDEO_MAX_SEC: process.env.EXTERNAL_VIDEO_MAX_SEC,
+  },
+  {
+    // External providers fetch the seed frame by URL; resolve our (private)
+    // storage key to a public/CDN URL. Self-hosted workers read keys directly,
+    // so this only matters for the external adapter. Swap in a signed-URL
+    // resolver here if the bucket isn't fronted by a public CDN.
+    resolveImageUrl: assetBase ? async (key: string) => `${assetBase}/${key}` : undefined,
+  },
+);
 
 type ShotWithScene = Awaited<ReturnType<typeof loadShot>>;
 
@@ -38,6 +55,9 @@ function loadShot(shotId: string) {
 /** Compose the final ShotRequest from the persisted shot + bible/continuity. */
 function buildShotRequest(shot: ShotWithScene): ShotRequest {
   const [w, h] = shot.scene.project.aspectRatio === "9:16" ? [720, 1280] : [1280, 720];
+  // image-to-video: pass the scene's seed frame as a reference image.
+  const referenceImageKeys =
+    shot.source === "image" && shot.seedImageKey ? [shot.seedImageKey] : undefined;
   return {
     prompt: shot.prompt,
     negativePrompt: shot.negativePrompt ?? undefined,
@@ -46,6 +66,7 @@ function buildShotRequest(shot: ShotWithScene): ShotRequest {
     width: w,
     height: h,
     camera: (shot.cameraPlan as ShotRequest["camera"]) ?? undefined,
+    referenceImageKeys,
   };
 }
 

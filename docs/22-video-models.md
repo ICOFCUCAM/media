@@ -52,10 +52,57 @@ API contracts don't change** (`modelId` is just a string the UI lists).
 - Model weights baked into the image / network volume; loaded once and kept
   warm; scale-to-zero on idle ([12](12-runpod-gpu.md)).
 
+## External providers (drop-in)
+
+Wan and Hunyuan are **self-hosted** (you operate the GPU; no API key). For a
+**hosted** provider you "drop a key into," there's a generic
+`ExternalApiAdapter` (`class: "external"`) that implements the same
+`VideoModelAdapter` contract. Set two env vars and the model auto-registers —
+it appears at `GET /models` and is dispatchable like any other model, with no
+API or frontend changes:
+
+```
+EXTERNAL_VIDEO_API_URL=https://provider.example/v1
+EXTERNAL_VIDEO_API_KEY=sk-...
+EXTERNAL_VIDEO_MODEL_ID=external-video      # used in shots/projects.model_id
+EXTERNAL_VIDEO_MAX_SEC=10
+ASSET_PUBLIC_BASE_URL=https://cdn.example   # so the provider can fetch seed frames
+```
+
+### Provider contract
+
+The provider (or a thin shim) must speak this small HTTP contract:
+
+```
+POST {baseUrl}/generate
+  { prompt, negative_prompt?, seed?, seconds, width, height, fps?, image_url? }
+  → 200 { status: "succeeded", video_url, seed? }      // synchronous
+    or  { id }                                          // asynchronous
+
+GET {baseUrl}/tasks/{id}
+  → { status: "processing" | "succeeded" | "failed", video_url?, error? }
+```
+
+- **Text-to-video:** `image_url` omitted.
+- **Image-to-video:** the scene's seed frame
+  (`shots.seed_image_key`, set in the Storyboard's Image→Video mode) flows
+  through `ShotRequest.referenceImageKeys`. The worker resolves the private
+  storage key to a fetchable URL (`ASSET_PUBLIC_BASE_URL` or an injected
+  signed-URL resolver) and sends it as `image_url`.
+- **Result mirroring:** by default the provider's `video_url` is returned as the
+  clip key; inject an `upload` hook (`ExternalHooks`) to mirror the bytes into
+  your own bucket so DB rows reference your keys, not a vendor URL.
+
+The worker's `video.processor.ts` registers the external model from env and
+supplies the seed-frame resolver, so an image-to-video scene works end to end
+the moment a key is present.
+
 ## Code references
 - Interface: `packages/model-adapters/src/types.ts`
 - RunPod client: `packages/model-adapters/src/runpod-client.ts`
 - Wan 2.1: `packages/model-adapters/src/wan/wan.adapter.ts`
 - Hunyuan: `packages/model-adapters/src/hunyuan/hunyuan.adapter.ts`
-- Registry (defaults to Wan + Hunyuan): `packages/model-adapters/src/registry.ts`
+- External adapter: `packages/model-adapters/src/external/external.adapter.ts`
+- Registry (Wan + Hunyuan + optional external): `packages/model-adapters/src/registry.ts`
+- Worker route (seed frame → adapter → DB): `apps/worker/src/processors/video.processor.ts`
 - GPU worker service: `apps/gpu-worker/`

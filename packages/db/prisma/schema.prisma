@@ -346,6 +346,8 @@ model Shot {
   index         Int
   prompt        String                 // final constructed prompt
   negativePrompt String?
+  source        String     @default("text") // text | image (image-to-video uses seedImageKey)
+  seedImageKey  String?                // storage key of the seed frame (image-to-video)
   cameraPlan    Json?                  // shot size, movement, angle, lens
   seed          BigInt?
   durationSec   Float      @default(5)

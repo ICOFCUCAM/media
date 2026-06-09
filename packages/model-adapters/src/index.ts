@@ -5,3 +5,7 @@ export * from "./policy";
 export * from "./registry";
 export { WanAdapter } from "./wan/wan.adapter";
 export { HunyuanAdapter } from "./hunyuan/hunyuan.adapter";
+export { ExternalApiAdapter } from "./external/external.adapter";
+export type { ExternalAdapterOptions } from "./external/external.adapter";
+export { ExternalVideoClient } from "./external/external-client";
+export type { ExternalVideoClientOptions, ExternalGenerateInput, ExternalGenerateOutput } from "./external/external-client";
