@@ -107,6 +107,10 @@ export class DirectorService {
         season: beat.state?.season || ac.season,
         locationStatus: beat.state?.locationStatus || ac.locationStatus,
         goal: beat.state?.goal || ac.goal,
+        // Visual continuity: every scene references the SAME character asset id;
+        // wardrobe carries forward unless the Director changes it.
+        assetId: protagonist.id,
+        wardrobe: beat.state?.wardrobe,
       });
 
       await prisma.scene.deleteMany({ where: { projectId, index: i } });

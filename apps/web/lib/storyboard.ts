@@ -30,7 +30,9 @@ export interface SceneDraft {
   script: string; // scene prompt
   // Bible references (from the user's Library).
   character: string; // character name
+  characterId: string; // stable library asset id — anchors visual continuity
   world: string; // world name
+  wardrobe: string; // the character's look this scene (carries forward)
   // Workbench fields.
   dialogue: string;
   narration: string;
@@ -64,7 +66,9 @@ export function newDraft(index: number, heading = "", script = ""): SceneDraft {
     heading: heading || `Scene ${index + 1}`,
     script,
     character: "",
+    characterId: "",
     world: "",
+    wardrobe: "",
     dialogue: "",
     narration: "",
     location: "",
@@ -146,6 +150,8 @@ export function buildStatePatch(d: SceneDraft): StatePatch {
     season: d.season,
     locationStatus: d.locationStatus,
     goal: d.goal,
+    assetId: d.characterId,
+    wardrobe: d.wardrobe,
   });
 }
 

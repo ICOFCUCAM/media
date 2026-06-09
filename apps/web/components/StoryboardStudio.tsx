@@ -464,7 +464,12 @@ function SceneCard({
           value={s.character}
           options={anchors.characters.map((c) => c.name)}
           empty="No saved characters — add one in Library"
-          onChange={(v) => { onPatch({ character: v }); save(); }}
+          onChange={(v) => {
+            // Anchor visual continuity to the library asset id, not just the name.
+            const id = anchors.characters.find((c) => c.name === v)?.id ?? "";
+            onPatch({ character: v, characterId: id });
+            save();
+          }}
         />
         <SelectField
           label="World"
@@ -545,7 +550,8 @@ function SceneCard({
           {continuity && (
             <div className="mt-2.5 space-y-3">
               <div className="flex flex-wrap gap-1.5 text-[11px]">
-                {s.character && <Tag>✓ {s.character}</Tag>}
+                {s.character && <Tag>✓ {s.character}{s.characterId ? ` · ${s.characterId}` : ""}</Tag>}
+                {s.wardrobe && <Tag>👗 {s.wardrobe}</Tag>}
                 {s.world && <Tag>✓ {s.world}</Tag>}
                 {s.location && <Tag>✓ {s.location}</Tag>}
               </div>
@@ -582,6 +588,7 @@ function SceneCard({
                 <Label>State this scene changes</Label>
                 <div className="mt-1 grid gap-2 sm:grid-cols-2">
                   <DetailField label="Health / injuries" value={s.health} onChange={(v) => onPatch({ health: v })} onSave={save} placeholder="bandaged arm" />
+                  <DetailField label="Wardrobe / look" value={s.wardrobe} onChange={(v) => onPatch({ wardrobe: v })} onSave={save} placeholder="royal armor" />
                   <DetailField label="Season" value={s.season} onChange={(v) => onPatch({ season: v })} onSave={save} placeholder="winter" />
                   <DetailField label="Location status" value={s.locationStatus} onChange={(v) => onPatch({ locationStatus: v })} onSave={save} placeholder="destroyed" />
                   <DetailField label="Goal" value={s.goal} onChange={(v) => onPatch({ goal: v })} onSave={save} placeholder="find evidence" />

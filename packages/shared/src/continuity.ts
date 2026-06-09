@@ -244,6 +244,10 @@ export interface StateFields {
   season?: string | null;
   locationStatus?: string | null;
   goal?: string | null;
+  /** Visual continuity: a stable library asset id, so future scenes reference
+   *  the SAME character/look rather than "generate the king again". */
+  assetId?: string | null;
+  wardrobe?: string | null;
 }
 
 /** Build a StatePatch from flat fields (single source for web + worker). */
@@ -251,6 +255,9 @@ export function statePatchFrom(f: StateFields): StatePatch {
   const patch: StatePatch = {};
   if (f.character) {
     const attrs: Record<string, string> = {};
+    // Visual-continuity anchors come first so they read clearly in the preamble.
+    if (f.assetId) attrs.id = f.assetId;
+    if (f.wardrobe) attrs.wardrobe = f.wardrobe;
     if (f.emotion) attrs.emotion = f.emotion;
     if (f.health) attrs.health = f.health;
     if (Object.keys(attrs).length) patch.characters = { [f.character]: attrs };

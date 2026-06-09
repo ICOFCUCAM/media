@@ -123,4 +123,21 @@ describe("continuity engine", () => {
     // Scene 2 returns to the destroyed Village → flagged.
     expect(perScene[2]!.notes.some((n) => /destroyed/.test(n))).toBe(true);
   });
+
+  it("carries a visual asset id + wardrobe forward (same character, not 'generate again')", () => {
+    const { perScene } = computeContinuity([
+      // Scene 0 anchors the character to a stable asset id + wardrobe.
+      { index: 0, heading: "Crowned", characterRef: "King Adisa", statePatch: statePatchFrom({ character: "King Adisa", assetId: "adisa_001", wardrobe: "royal_armor_v3" }), bridge: null },
+      // Scene 1 only changes mood — the visual anchors must still be inherited.
+      { index: 1, heading: "Betrayed", characterRef: "King Adisa", statePatch: statePatchFrom({ character: "King Adisa", emotion: "betrayed" }), bridge: null },
+      { index: 2, heading: "War", characterRef: "King Adisa", bridge: null },
+    ]);
+
+    expect(perScene[1]!.inherited.characters["King Adisa"]).toMatchObject({ id: "adisa_001", wardrobe: "royal_armor_v3" });
+    const c2 = perScene[2]!.inherited.characters["King Adisa"]!;
+    expect(c2.id).toBe("adisa_001"); // same asset id 3 scenes later
+    expect(c2.wardrobe).toBe("royal_armor_v3");
+    expect(c2.emotion).toBe("betrayed");
+    expect(renderStatePreamble(perScene[2]!)).toContain("adisa_001");
+  });
 });

@@ -62,9 +62,9 @@ function userPrompt(brief: string, sceneCount: number): string {
     `scenes (array of exactly ${sceneCount} objects), each:`,
     '{ heading (e.g. "EXT. OLD LAGOS - NIGHT"), summary (string), timeOfDay (string),',
     "  bridge { whatJustHappened, whatChanged, whatCarriesForward, nextSceneRequirements } (all strings),",
-    "  state { emotion, health, season, locationStatus, goal } (strings; the protagonist's emotion and",
-    '  health after this scene, the world season, this scene\'s location status e.g. "destroyed", and the',
-    "  protagonist's current goal — omit or leave empty when unchanged) }.",
+    "  state { emotion, health, wardrobe, season, locationStatus, goal } (strings; the protagonist's emotion,",
+    '  health and wardrobe/look after this scene, the world season, this scene\'s location status e.g.',
+    '  "destroyed", and the protagonist\'s current goal — omit or leave empty when unchanged) }.',
   ].join("\n");
 }
 
@@ -109,6 +109,7 @@ function parseState(v: unknown): StateFields | undefined {
     season: strOrNull(o.season),
     locationStatus: strOrNull(o.locationStatus),
     goal: strOrNull(o.goal),
+    wardrobe: strOrNull(o.wardrobe),
   };
   return Object.values(s).some(Boolean) ? s : undefined;
 }
@@ -136,6 +137,7 @@ const stateProps = {
   properties: {
     emotion: { type: "string" },
     health: { type: "string" },
+    wardrobe: { type: "string" },
     season: { type: "string" },
     locationStatus: { type: "string" },
     goal: { type: "string" },

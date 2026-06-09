@@ -101,10 +101,27 @@ same in the browser and the worker:
 `statePatchFrom(fields)` is the single builder both sides use to turn flat
 fields into a `state_patch`.
 
-## Visual continuity (next)
+## Visual continuity
 
-State carries *facts* forward today. Asset-ID continuity (same `character_id` /
-`wardrobe` references rather than "generate the king again") rides on the seed
-frame + reference-video path already wired in docs/22 and the Library anchors;
-binding a stable asset id per character/wardrobe into `state_patch` is the next
-increment.
+State carries *facts* and *assets* forward. A scene's `state_patch` records the
+character's stable **asset id** and **wardrobe** under `characters[name]`
+(`{ id, wardrobe, emotion, health }`), so every later scene inherits the same
+`id` — it references the *same* character/look rather than "generate the king
+again". `StateFields.assetId` / `wardrobe` flow through the one `statePatchFrom`
+builder:
+
+- **Storyboard** — picking a Library character anchors `characterId` to that
+  asset's id; a Wardrobe field carries the look. The continuity panel shows
+  `✓ King Adisa · adisa_001` and `👗 royal_armor_v3`, and the inherited-state
+  chips/preamble surface them on every downstream scene.
+- **Director** — sets `assetId: protagonist.id` on every scene and threads the
+  per-scene `wardrobe` from Claude's `state`, so an auto-planned film is visually
+  anchored from scene 1.
+- **Worker** — `renderStatePreamble` injects `King Adisa — id: adisa_001,
+  wardrobe: royal_armor_v3, …` into the generation prompt; combined with the
+  shared reference frame (seed) + reference-video path (docs/22), the same
+  identity drives every shot.
+
+The id is the join key to the Library asset (its reference frames / LoRA);
+binding that asset's reference image directly into `referenceImageKeys` for
+storyboard-mode shots is the next increment.
