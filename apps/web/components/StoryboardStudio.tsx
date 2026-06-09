@@ -25,13 +25,22 @@ const CLIP_DURATIONS = [5, 10];
  * alone. Per-scene status streams back over Supabase Realtime — the same
  * job-per-artifact model, on our own Wan/Hunyuan pipeline.
  */
-export function StoryboardStudio() {
+export interface StoryboardStudioProps {
+  initialBrief?: string;
+  initialScenes?: SceneDraft[];
+  defaultSource?: ShotSource;
+  intro?: ReactNode;
+}
+
+export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = "text", intro }: StoryboardStudioProps = {}) {
   const [brief, setBrief] = useState(
-    "A neon-noir detective story set in a rain-soaked megacity where memories can be stolen.",
+    initialBrief ?? "A neon-noir detective story set in a rain-soaked megacity where memories can be stolen.",
   );
   const [count, setCount] = useState(4);
   const [projectId, setProjectId] = useState<string | null>(null);
-  const [scenes, setScenes] = useState<SceneDraft[]>([]);
+  const [scenes, setScenes] = useState<SceneDraft[]>(() =>
+    (initialScenes ?? []).map((s) => ({ ...s, source: s.source ?? defaultSource })),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [assembled, setAssembled] = useState(false);
@@ -40,6 +49,7 @@ export function StoryboardStudio() {
 
   const totalSeconds = useMemo(() => scenes.reduce((s, d) => s + d.durationSec, 0), [scenes]);
   const allReady = scenes.length > 0 && scenes.every((s) => s.status === "READY");
+  const persisted = Boolean(projectId);
 
   useEffect(() => {
     return () => {
@@ -60,28 +70,42 @@ export function StoryboardStudio() {
     });
   }
 
-  async function startStoryboard(initial: SceneDraft[]) {
+  /**
+   * Deferred project creation: scenes are composed locally first, and the
+   * project + scene/shot rows are only written to Supabase the moment a
+   * persisting action (generate, upload, assemble) happens.
+   */
+  async function ensureStarted(list = scenes): Promise<{ id: string; scenes: SceneDraft[] }> {
+    if (projectId) return { id: projectId, scenes: list };
     setBusy(true);
     setError(null);
     try {
-      const id = await createStoryboardProject({ title: brief, brief, totalSeconds: initial.reduce((s, d) => s + d.durationSec, 0) || 20 });
+      const id = await createStoryboardProject({ title: brief, brief, totalSeconds: totalSeconds || 20 });
       setProjectId(id);
       attachRealtime(id);
-      const persisted: SceneDraft[] = [];
-      for (const d of initial) {
+      const out: SceneDraft[] = [];
+      for (const d of list) {
         const { sceneId, shotId } = await persistScene(id, d);
-        persisted.push({ ...d, sceneId, shotId });
+        out.push({ ...d, sceneId, shotId });
       }
-      setScenes(persisted);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to start storyboard");
+      setScenes(out);
+      return { id, scenes: out };
     } finally {
       setBusy(false);
     }
   }
 
+  function loadDrafts(list: SceneDraft[]) {
+    cancelers.current.forEach((c) => c.cancel());
+    cancelers.current.clear();
+    channelRef.current?.unsubscribe();
+    setProjectId(null);
+    setAssembled(false);
+    setScenes(list);
+  }
+
   async function onSaveScene(key: string) {
-    if (!projectId) return;
+    if (!projectId) return; // local-only until the storyboard is started
     const d = scenes.find((s) => s.key === key);
     if (!d) return;
     try {
@@ -92,21 +116,15 @@ export function StoryboardStudio() {
     }
   }
 
-  async function onAddScene() {
-    const d = newDraft(scenes.length);
-    if (!projectId) {
-      await startStoryboard([d]);
-      return;
-    }
-    const { sceneId, shotId } = await persistScene(projectId, d);
-    setScenes((prev) => [...prev, { ...d, sceneId, shotId }]);
+  function onAddScene() {
+    setScenes((prev) => [...prev, { ...newDraft(prev.length), source: defaultSource }]);
   }
 
   async function onUpload(key: string, file: File) {
-    if (!projectId) return;
     patch(key, { source: "image" });
     try {
-      const { key: seedKey, url } = await uploadSeedImage(projectId, key, file);
+      const { id } = await ensureStarted();
+      const { key: seedKey, url } = await uploadSeedImage(id, key, file);
       patch(key, { seedKey, seedUrl: url, source: "image" });
       await onSaveScene(key);
     } catch (e) {
@@ -121,19 +139,33 @@ export function StoryboardStudio() {
     onSaveScene(key);
   }
 
-  function onGenerate(key: string) {
-    const d = scenes.find((s) => s.key === key);
-    if (!d?.sceneId || !d.shotId) return;
-    cancelers.current.get(key)?.cancel();
-    patch(key, { status: "GENERATING" });
-    cancelers.current.set(key, generateScene(d.sceneId, d.shotId));
+  function startGen(d: SceneDraft) {
+    if (!d.sceneId || !d.shotId) return;
+    cancelers.current.get(d.key)?.cancel();
+    patch(d.key, { status: "GENERATING" });
+    cancelers.current.set(d.key, generateScene(d.sceneId, d.shotId));
   }
 
-  function onGenerateAll() {
-    scenes.forEach((s) => s.status !== "READY" && onGenerate(s.key));
+  async function onGenerate(key: string) {
+    try {
+      const { scenes: list } = await ensureStarted();
+      const d = list.find((s) => s.key === key);
+      if (d) startGen(d);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Generate failed");
+    }
   }
 
-  async function onRemove(key: string) {
+  async function onGenerateAll() {
+    try {
+      const { scenes: list } = await ensureStarted();
+      list.forEach((s) => s.status !== "READY" && startGen(s));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Generate failed");
+    }
+  }
+
+  function onRemove(key: string) {
     cancelers.current.get(key)?.cancel();
     setScenes((prev) => prev.filter((s) => s.key !== key).map((s, i) => ({ ...s, index: i })));
   }
@@ -162,6 +194,7 @@ export function StoryboardStudio() {
 
   return (
     <div className="space-y-6">
+      {intro}
       {/* Brief / plan */}
       <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
         <Label>Brief</Label>
@@ -179,14 +212,14 @@ export function StoryboardStudio() {
             ))}
           </div>
           <button
-            onClick={() => startStoryboard(draftScenesFromBrief(brief, count))}
+            onClick={() => loadDrafts(draftScenesFromBrief(brief, count))}
             disabled={busy}
             className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
           >
-            {busy && scenes.length === 0 ? "Drafting…" : projectId ? "Re-draft scenes" : "Draft storyboard"}
+            {persisted ? "Re-draft scenes" : "Draft storyboard"}
           </button>
           <button onClick={onAddScene} disabled={busy} className="rounded-lg border border-white/15 px-4 py-2 text-sm hover:bg-white/5">
-            Start blank
+            Add scene
           </button>
         </div>
         {error && <p className="mt-3 text-xs text-amber-300">{error}</p>}
@@ -205,6 +238,7 @@ export function StoryboardStudio() {
             <div className="text-sm text-white/55">
               {scenes.length} scenes · {fmtDuration(totalSeconds)} ·{" "}
               <span className="text-white/40">{scenes.filter((s) => s.status === "READY").length} ready</span>
+              {!persisted && <span className="ml-1 text-white/30">· not saved yet — generating saves it</span>}
             </div>
             <div className="flex gap-2">
               <button onClick={onGenerateAll} className="rounded-lg border border-white/15 px-4 py-2 text-sm hover:bg-white/5">

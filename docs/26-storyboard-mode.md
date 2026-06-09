@@ -13,9 +13,32 @@ differ only in how the initial scene plan is produced.
 | `auto` | one prompt → whole film | `FilmStudio` (Auto tab) |
 | `storyboard` | scene-by-scene authoring | `StoryboardStudio` |
 
-More entry points (script, image, audio, video, character-first, world-first,
-episode-first) are surfaced in the **Create** hub (`/create`) and resolve into
-one of the modes above by pre-filling the scene plan.
+More entry points are surfaced in the **Create** hub (`/create`) and resolve
+into one of the modes above by pre-filling the scene plan.
+
+## Creation entry points (`/create`)
+
+A project can begin from any asset, not just a prompt. Each path lands in the
+Create Film workspace at a specific mode rail tab (`?mode=`), or in the library
+/ series builder. Source: `apps/web/lib/creation.ts`.
+
+| Entry point | Status | Lands in |
+|---|---|---|
+| Prompt → Film | live | mode rail · Prompt (one-prompt Auto) |
+| Script → Film | live | mode rail · Script → parsed scenes → Storyboard |
+| Scene-by-Scene | live | mode rail · Storyboard |
+| Image → Video | live | mode rail · Image (image-to-video per shot) |
+| Storyboard → Film (upload boards) | beta | mode rail · Image |
+| Audio → Film | beta | mode rail · Audio → scene plan → Storyboard |
+| Video → Video | beta | mode rail · Video → scaffolded scenes |
+| Character-First | soon | Library · Characters |
+| World-First | soon | Library · Worlds |
+| Episode-First | live | Create Series |
+
+The **Script** path parses sluglines (`INT.`/`EXT.`) — or paragraphs as a
+fallback — into editable scenes. **Image**, **Audio** and **Video** scaffold an
+initial scene plan and drop into the same scene workbench, so every entry point
+shares one editing/regeneration surface and one schema.
 
 ## Storyboard mode
 

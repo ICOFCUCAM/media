@@ -16,12 +16,12 @@ export default function Home() {
             Imagine it. Watch it become a film.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-white/70">
-            Type one idea and Cineforge writes it, casts it, films it and scores it — then publishes it
-            everywhere and helps you earn from it. Netflix, Pixar and a film crew, in your browser.
+            Start from anything — an idea, a script, a storyboard, an image, a voice or a whole world.
+            Cineforge writes, casts, films and scores it, then publishes everywhere and helps you earn from it.
           </p>
           <div className="mt-8 flex items-center justify-center gap-3">
             <Link
-              href="/create/film"
+              href="/create"
               className="rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-black transition hover:bg-white/90"
             >
               Start creating →
@@ -32,6 +32,11 @@ export default function Home() {
             >
               Explore the marketplace
             </Link>
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs text-white/45">
+            {["Prompt", "Script", "Storyboard", "Image", "Audio", "Video", "Character", "World", "Episode"].map((m) => (
+              <span key={m} className="rounded-full border border-white/10 px-2.5 py-0.5">{m}</span>
+            ))}
           </div>
         </section>
 

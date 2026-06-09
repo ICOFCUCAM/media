@@ -5,6 +5,8 @@ import { useAuth } from "./AuthProvider";
 import { AuthCard } from "./AuthCard";
 import { CreateStudio } from "./CreateStudio";
 import { StoryboardStudio } from "./StoryboardStudio";
+import { ScriptStudio, ImageStudio, AudioStudio, VideoStudio } from "./EntrySurfaces";
+import { STUDIO_MODES, type StudioMode } from "../lib/creation";
 import { productById } from "../lib/products";
 import { estimateMs, planShots, fmtDuration } from "../lib/system";
 import {
@@ -104,24 +106,37 @@ export function FilmStudio() {
   return <FilmWorkspace email={user.email ?? "you"} onSignOut={signOut} />;
 }
 
-/** Tabbed workspace: the one-prompt Auto flow and the scene-by-scene Storyboard. */
+const MODE_BLURB: Record<StudioMode, string> = {
+  prompt: "One prompt → a full film, saved live to your studio.",
+  script: "Bring a screenplay; we break it into a shot list and scenes.",
+  storyboard: "Build and generate scene by scene — full creative control.",
+  image: "Start from images; add motion and camera per shot.",
+  audio: "Upload narration; we build the visuals around it.",
+  video: "Upload a clip; generate variations, extensions or a sequel.",
+};
+
+/** Mode-aware workspace: every creation entry point on one screen. Reads ?mode=. */
 function FilmWorkspace({ email, onSignOut }: { email: string; onSignOut: () => void }) {
-  const [tab, setTab] = useState<"auto" | "storyboard">("auto");
+  const [mode, setMode] = useState<StudioMode>("prompt");
+
+  // Read the requested mode from the URL (avoids useSearchParams' Suspense
+  // requirement on statically-rendered routes).
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("mode");
+    if (q && STUDIO_MODES.some((m) => m.id === q)) setMode(q as StudioMode);
+  }, []);
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            Create a Feature Film
+            Create a Film
             <span className="rounded-full border border-emerald-400/40 px-2 py-0.5 text-[10px] font-normal text-emerald-300">
               Live · Supabase
             </span>
           </h1>
-          <p className="mt-1 text-sm text-white/55">
-            {tab === "auto"
-              ? "One prompt → a full film, saved live to your studio."
-              : "Write and generate scene by scene — provide an image per scene, or go text-to-video."}
-          </p>
+          <p className="mt-1 text-sm text-white/55">{MODE_BLURB[mode]}</p>
         </div>
         <div className="text-right text-xs text-white/45">
           <div>{email}</div>
@@ -129,24 +144,30 @@ function FilmWorkspace({ email, onSignOut }: { email: string; onSignOut: () => v
         </div>
       </header>
 
-      <div className="mb-6 inline-flex rounded-lg border border-white/10 bg-white/5 p-1 text-sm">
-        <TabBtn active={tab === "auto"} onClick={() => setTab("auto")}>Auto · one prompt</TabBtn>
-        <TabBtn active={tab === "storyboard"} onClick={() => setTab("storyboard")}>Storyboard · scene by scene</TabBtn>
+      <div className="mb-6 flex flex-wrap gap-1 rounded-lg border border-white/10 bg-white/5 p-1 text-sm">
+        {STUDIO_MODES.map((m) => (
+          <button
+            key={m.id}
+            onClick={() => setMode(m.id)}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition ${
+              mode === m.id ? "bg-white text-black" : "text-white/60 hover:text-white"
+            }`}
+          >
+            {m.label}
+            {m.status === "beta" && (
+              <span className={`rounded-full px-1.5 text-[9px] uppercase ${mode === m.id ? "bg-black/10 text-black/60" : "text-amber-300"}`}>beta</span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {tab === "auto" ? <AutoStudioBody /> : <StoryboardStudio />}
+      {mode === "prompt" && <AutoStudioBody />}
+      {mode === "script" && <ScriptStudio />}
+      {mode === "storyboard" && <StoryboardStudio />}
+      {mode === "image" && <ImageStudio />}
+      {mode === "audio" && <AudioStudio />}
+      {mode === "video" && <VideoStudio />}
     </div>
-  );
-}
-
-function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`rounded-md px-3 py-1.5 transition ${active ? "bg-white text-black" : "text-white/60 hover:text-white"}`}
-    >
-      {children}
-    </button>
   );
 }
 
