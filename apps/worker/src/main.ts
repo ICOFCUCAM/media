@@ -18,6 +18,12 @@ import "./processors/localize.processor";
 import "./processors/publish.processor";
 import { startProjectPoller } from "./orchestration/project-poller";
 
+// Resilience net: a background worker must not die on a transient connection
+// blip (Redis/Postgres reconnecting, a socket reset). BullMQ + ioredis recover
+// on their own — log loudly and keep running rather than crash-looping.
+process.on("uncaughtException", (e) => console.error("[worker] uncaughtException:", e));
+process.on("unhandledRejection", (e) => console.error("[worker] unhandledRejection:", e));
+
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
 const gpu = createGpuManagers({

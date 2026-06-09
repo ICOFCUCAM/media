@@ -34,6 +34,10 @@ export interface GpuManagers {
 
 export function createGpuManagers(env: GpuEnv): GpuManagers {
   const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
+  // Without an 'error' listener, ioredis turns a transient Redis blip (e.g. the
+  // Key Value store not ready yet at boot) into an unhandled 'error' event that
+  // crashes the whole process. Log and let ioredis reconnect instead.
+  redis.on("error", (e: Error) => console.error("[gpu] redis error:", e.message));
   const tracker = new ActiveJobTracker({ url: env.REDIS_URL });
   const graceMs = Number(env.GPU_IDLE_GRACE_SEC ?? 900) * 1000;
   const reconcileMs = Number(env.GPU_RECONCILE_SEC ?? 30) * 1000;
