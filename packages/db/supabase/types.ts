@@ -567,6 +567,8 @@ export type Database = {
           time_of_day: string | null
           updated_at: string
           weather: string | null
+          character_ref: string | null
+          world_ref: string | null
         }
         Insert: {
           camera?: string | null
@@ -588,6 +590,8 @@ export type Database = {
           time_of_day?: string | null
           updated_at?: string
           weather?: string | null
+          character_ref?: string | null
+          world_ref?: string | null
         }
         Update: {
           camera?: string | null
@@ -609,6 +613,8 @@ export type Database = {
           time_of_day?: string | null
           updated_at?: string
           weather?: string | null
+          character_ref?: string | null
+          world_ref?: string | null
         }
         Relationships: [
           {
@@ -761,6 +767,9 @@ export type Database = {
           scene_id: string
           seed: number | null
           seed_image_key: string | null
+          camera_type: string | null
+          camera_movement: string | null
+          reference_video_key: string | null
           source: string
           status: Database["public"]["Enums"]["shot_status"]
           thumbnail_key: string | null
@@ -785,6 +794,9 @@ export type Database = {
           scene_id: string
           seed?: number | null
           seed_image_key?: string | null
+          camera_type?: string | null
+          camera_movement?: string | null
+          reference_video_key?: string | null
           source?: string
           status?: Database["public"]["Enums"]["shot_status"]
           thumbnail_key?: string | null
@@ -808,6 +820,9 @@ export type Database = {
           qc_score?: number | null
           scene_id?: string
           seed?: number | null
+          camera_type?: string | null
+          camera_movement?: string | null
+          reference_video_key?: string | null
           status?: Database["public"]["Enums"]["shot_status"]
           thumbnail_key?: string | null
           updated_at?: string

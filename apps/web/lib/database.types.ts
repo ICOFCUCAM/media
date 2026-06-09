@@ -109,6 +109,8 @@ export interface Database {
           mood: string | null;
           music: string | null;
           location_note: string | null;
+          character_ref: string | null;
+          world_ref: string | null;
           status: SceneStatus;
           duration_sec: number;
           created_at: string;
@@ -125,6 +127,8 @@ export interface Database {
           mood?: string | null;
           music?: string | null;
           location_note?: string | null;
+          character_ref?: string | null;
+          world_ref?: string | null;
           status?: SceneStatus;
           duration_sec?: number;
         };
@@ -138,6 +142,8 @@ export interface Database {
           mood?: string | null;
           music?: string | null;
           location_note?: string | null;
+          character_ref?: string | null;
+          world_ref?: string | null;
           status?: SceneStatus;
           duration_sec?: number;
         };
@@ -171,6 +177,9 @@ export interface Database {
           model_id: string;
           source: ShotSource;
           seed_image_key: string | null;
+          camera_type: string | null;
+          camera_movement: string | null;
+          reference_video_key: string | null;
           status: ShotStatus;
           video_key: string | null;
           thumbnail_key: string | null;
@@ -185,6 +194,9 @@ export interface Database {
           model_id?: string;
           source?: ShotSource;
           seed_image_key?: string | null;
+          camera_type?: string | null;
+          camera_movement?: string | null;
+          reference_video_key?: string | null;
           status?: ShotStatus;
           duration_sec?: number;
         };
@@ -192,6 +204,9 @@ export interface Database {
           prompt?: string;
           source?: ShotSource;
           seed_image_key?: string | null;
+          camera_type?: string | null;
+          camera_movement?: string | null;
+          reference_video_key?: string | null;
           status?: ShotStatus;
           video_key?: string | null;
         };

@@ -5,7 +5,7 @@ import { useAuth } from "./AuthProvider";
 import { AuthCard } from "./AuthCard";
 import { CreateStudio } from "./CreateStudio";
 import { StoryboardStudio } from "./StoryboardStudio";
-import { ScriptStudio, ImageStudio, AudioStudio, VideoStudio } from "./EntrySurfaces";
+import { ScriptStudio, ImageStudio, AudioStudio, VideoStudio, HybridStudio } from "./EntrySurfaces";
 import { STUDIO_MODES, type StudioMode } from "../lib/creation";
 import { productById } from "../lib/products";
 import { estimateMs, planShots, fmtDuration } from "../lib/system";
@@ -73,7 +73,8 @@ export function FilmStudio() {
 }
 
 const MODE_BLURB: Record<StudioMode, string> = {
-  prompt: "One prompt → a full film: screenplay, cast, locations, score and a final cut.",
+  prompt: "Auto — one prompt → a full film: screenplay, cast, locations, score and a final cut.",
+  hybrid: "Auto-draft the screenplay & scenes, then refine each in the Storyboard.",
   script: "Bring a screenplay; we break it into a shot list and scenes.",
   storyboard: "Build and generate scene by scene — full creative control.",
   image: "Start from images; add motion and camera per shot.",
@@ -167,6 +168,7 @@ function FilmWorkspace() {
             cta="Create film"
           />
         ))}
+      {mode === "hybrid" && <HybridStudio />}
       {mode === "script" && <ScriptStudio />}
       {mode === "storyboard" && <StoryboardStudio />}
       {mode === "image" && <ImageStudio />}

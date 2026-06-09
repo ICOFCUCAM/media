@@ -10,7 +10,7 @@
 export type ModeStatus = "live" | "beta" | "soon";
 
 /** Workspace surfaces that the Create Film studio can render (the mode rail). */
-export type StudioMode = "prompt" | "script" | "storyboard" | "image" | "audio" | "video";
+export type StudioMode = "prompt" | "hybrid" | "script" | "storyboard" | "image" | "audio" | "video";
 
 export interface ProjectType {
   id: string;
@@ -125,9 +125,10 @@ export const CREATION_MODES: CreationMode[] = [
 ];
 
 export const STUDIO_MODES: { id: StudioMode; label: string; status: ModeStatus }[] = [
-  { id: "prompt", label: "Prompt", status: "live" },
-  { id: "script", label: "Script", status: "live" },
+  { id: "prompt", label: "Auto", status: "live" },
+  { id: "hybrid", label: "Hybrid", status: "live" },
   { id: "storyboard", label: "Scene-by-Scene", status: "live" },
+  { id: "script", label: "Script", status: "live" },
   { id: "image", label: "Image", status: "live" },
   { id: "audio", label: "Audio", status: "beta" },
   { id: "video", label: "Video", status: "beta" },

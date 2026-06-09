@@ -2,8 +2,54 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { StoryboardStudio } from "./StoryboardStudio";
-import { newDraft, type SceneDraft } from "../lib/storyboard";
+import { newDraft, draftScenesFromBrief, type SceneDraft } from "../lib/storyboard";
 import type { ShotSource } from "../lib/database.types";
+
+/* ─── Hybrid → auto-plan, then refine in the storyboard ───────
+ * Auto generates a screenplay/scene plan, then opens the Storyboard editor so
+ * the creator refines each scene before rendering.
+ */
+export function HybridStudio() {
+  const [brief, setBrief] = useState(
+    "A historical epic about an African kingdom fighting for its independence.",
+  );
+  const [count, setCount] = useState(5);
+  const [scenes, setScenes] = useState<SceneDraft[] | null>(null);
+
+  if (scenes) {
+    return (
+      <StoryboardStudio
+        initialBrief={brief}
+        initialScenes={scenes}
+        intro={<Banner>Auto-generated plan loaded. Refine any scene — character, image, camera, dialogue — then generate.</Banner>}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Banner>Hybrid: we draft the screenplay, world, characters and scenes, then drop you into the Storyboard editor to refine before rendering.</Banner>
+      <textarea
+        value={brief}
+        onChange={(e) => setBrief(e.target.value)}
+        rows={3}
+        className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm outline-none focus:border-white/30"
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-xs text-white/40">Scenes</span>
+        {[4, 5, 6, 8].map((c) => (
+          <Pill key={c} active={count === c} onClick={() => setCount(c)}>{c}</Pill>
+        ))}
+        <button
+          onClick={() => setScenes(draftScenesFromBrief(brief, count))}
+          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-white/90"
+        >
+          Generate plan & open Storyboard →
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /* ─── Script → Film ───────────────────────────────────────────
  * Paste or upload a screenplay; we break it into scenes (on INT./EXT.

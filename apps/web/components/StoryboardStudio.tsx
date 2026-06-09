@@ -8,9 +8,14 @@ import {
   createStoryboardProject,
   persistScene,
   uploadSeedImage,
+  uploadAsset,
   subscribeScenes,
   generateScene,
   assembleStoryboard,
+  CAMERA_TYPES,
+  CAMERA_MOVEMENTS,
+  MUSIC_STYLES,
+  CLIP_DURATIONS,
   type SceneDraft,
 } from "../lib/storyboard";
 import type { ShotSource } from "../lib/database.types";
@@ -18,7 +23,7 @@ import { listAnchors } from "../lib/library";
 import { useAuth } from "./AuthProvider";
 
 const SCENE_COUNTS = [3, 4, 5, 6, 8];
-const CLIP_DURATIONS = [5, 10];
+type Anchors = { characters: { id: string; name: string }[]; worlds: { id: string; name: string }[] };
 
 /**
  * Scene-by-scene authoring. Each card is an independent unit of work: the
@@ -53,12 +58,15 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
   // a preview (no account needed) so the full flow is usable on the deploy.
   const { enabled, user } = useAuth();
   const live = enabled && !!user;
+  const [anchors, setAnchors] = useState<Anchors>({ characters: [], worlds: [] });
 
   const totalSeconds = useMemo(() => scenes.reduce((s, d) => s + d.durationSec, 0), [scenes]);
   const allReady = scenes.length > 0 && scenes.every((s) => s.status === "READY");
   const persisted = Boolean(projectId);
 
   useEffect(() => {
+    // Library characters/worlds available as scene anchors.
+    listAnchors().then(setAnchors).catch(() => {});
     return () => {
       cancelers.current.forEach((c) => c.cancel());
       channelRef.current?.unsubscribe();
@@ -156,6 +164,21 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
     // synthetic seed so the image→video path is exercised end to end.
     patch(key, { source: "image", seedKey: `generated:${key}`, seedUrl: null });
     onSaveScene(key);
+  }
+
+  async function onUploadVideo(key: string, file: File) {
+    if (!live) {
+      patch(key, { refVideoKey: `local:${key}`, refVideoName: file.name });
+      return;
+    }
+    try {
+      const { id } = await ensureStarted();
+      const { key: refKey } = await uploadAsset(id, key, file, "refvideo");
+      patch(key, { refVideoKey: refKey, refVideoName: file.name });
+      await onSaveScene(key);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Video upload failed");
+    }
   }
 
   function startGen(d: SceneDraft) {
@@ -300,11 +323,13 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
               <SceneCard
                 key={s.key}
                 scene={s}
+                anchors={anchors}
                 isFirst={i === 0}
                 isLast={i === scenes.length - 1}
                 onPatch={(p) => patch(s.key, p)}
                 onSave={() => onSaveScene(s.key)}
                 onUpload={(f) => onUpload(s.key, f)}
+                onUploadVideo={(f) => onUploadVideo(s.key, f)}
                 onGenerateImage={() => onGenerateImage(s.key)}
                 onGenerate={() => onGenerate(s.key)}
                 onRemove={() => onRemove(s.key)}
@@ -318,31 +343,39 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
   );
 }
 
+/** A scene as a complete production object — prompt, character/world, sources,
+ *  camera plan, dialogue/narration, music and duration. */
 function SceneCard({
   scene: s,
+  anchors,
   isFirst,
   isLast,
   onPatch,
   onSave,
   onUpload,
+  onUploadVideo,
   onGenerateImage,
   onGenerate,
   onRemove,
   onMove,
 }: {
   scene: SceneDraft;
+  anchors: Anchors;
   isFirst: boolean;
   isLast: boolean;
   onPatch: (p: Partial<SceneDraft>) => void;
   onSave: () => void;
   onUpload: (f: File) => void;
+  onUploadVideo: (f: File) => void;
   onGenerateImage: () => void;
   onGenerate: () => void;
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
 }) {
-  const fileRef = useRef<HTMLInputElement>(null);
+  const imgRef = useRef<HTMLInputElement>(null);
+  const vidRef = useRef<HTMLInputElement>(null);
   const [details, setDetails] = useState(false);
+  const save = () => onSave();
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
       <div className="flex items-center justify-between gap-3">
@@ -360,83 +393,138 @@ function SceneCard({
       <input
         value={s.heading}
         onChange={(e) => onPatch({ heading: e.target.value })}
-        onBlur={onSave}
+        onBlur={save}
         placeholder="Scene title"
         className="mt-3 w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-medium outline-none focus:border-white/30"
       />
-      <textarea
-        value={s.script}
-        onChange={(e) => onPatch({ script: e.target.value })}
-        onBlur={onSave}
-        rows={2}
-        placeholder="What happens in this scene? (action / description)"
-        className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm outline-none focus:border-white/30"
-      />
+      <label className="mt-3 block">
+        <span className="text-[10px] uppercase tracking-wider text-white/40">Scene prompt</span>
+        <textarea
+          value={s.script}
+          onChange={(e) => onPatch({ script: e.target.value })}
+          onBlur={save}
+          rows={2}
+          placeholder="Describe the scene — what happens, who's there, the mood…"
+          className="mt-1 w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm outline-none focus:border-white/30"
+        />
+      </label>
 
-      <button onClick={() => setDetails((v) => !v)} className="mt-2 text-xs text-white/45 transition hover:text-white">
-        {details ? "▾ Hide scene details" : "▸ Scene details — dialogue, narration, camera, location, mood, music"}
-      </button>
-      {details && (
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          <DetailField label="Dialogue" value={s.dialogue} onChange={(v) => onPatch({ dialogue: v })} onSave={onSave} placeholder="Spoken lines" />
-          <DetailField label="Narration" value={s.narration} onChange={(v) => onPatch({ narration: v })} onSave={onSave} placeholder="Voiceover" />
-          <DetailField label="Camera" value={s.camera} onChange={(v) => onPatch({ camera: v })} onSave={onSave} placeholder="e.g. slow dolly in, low angle" />
-          <DetailField label="Location" value={s.location} onChange={(v) => onPatch({ location: v })} onSave={onSave} placeholder="Where it takes place" />
-          <DetailField label="Mood" value={s.mood} onChange={(v) => onPatch({ mood: v })} onSave={onSave} placeholder="e.g. tense, melancholic" />
-          <DetailField label="Music" value={s.music} onChange={(v) => onPatch({ music: v })} onSave={onSave} placeholder="e.g. somber strings" />
-        </div>
-      )}
+      {/* Bible references */}
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <SelectField
+          label="Character"
+          value={s.character}
+          options={anchors.characters.map((c) => c.name)}
+          empty="No saved characters — add one in Library"
+          onChange={(v) => { onPatch({ character: v }); save(); }}
+        />
+        <SelectField
+          label="World"
+          value={s.world}
+          options={anchors.worlds.map((w) => w.name)}
+          empty="No saved worlds — add one in Library"
+          onChange={(v) => { onPatch({ world: v }); save(); }}
+        />
+      </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
+      {/* Source + reference video */}
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
         <div>
           <Label>Source</Label>
           <div className="mt-1.5 flex gap-2">
             {(["text", "image"] as ShotSource[]).map((src) => (
-              <Chip key={src} active={s.source === src} onClick={() => { onPatch({ source: src }); }}>
+              <Chip key={src} active={s.source === src} onClick={() => { onPatch({ source: src }); save(); }}>
                 {src === "text" ? "Text → Video" : "Image → Video"}
               </Chip>
             ))}
           </div>
-
           {s.source === "image" && (
-            <div className="mt-3 flex items-center gap-3">
+            <div className="mt-2 flex items-center gap-3">
               <SeedPreview scene={s} />
               <div className="flex flex-col gap-1.5">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
-                />
-                <button onClick={() => fileRef.current?.click()} className="rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/5">
-                  Upload image
-                </button>
-                <button onClick={onGenerateImage} title="Generate a seed image from this scene" className="rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/5">
-                  AI seed image
-                </button>
-                <ReferencePicker onPick={(label) => { onPatch({ seedKey: `ref:${label}`, seedUrl: null, source: "image" }); onSave(); }} />
+                <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
+                <button onClick={() => imgRef.current?.click()} className="rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/5">Upload image</button>
+                <button onClick={onGenerateImage} title="Generate a seed image from this scene" className="rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/5">AI seed image</button>
               </div>
             </div>
           )}
         </div>
-
-        <div className="flex flex-col items-end justify-between gap-2">
-          <div className="flex gap-1.5">
-            {CLIP_DURATIONS.map((d) => (
-              <Chip key={d} active={s.durationSec === d} onClick={() => { onPatch({ durationSec: d }); onSave(); }}>{d}s</Chip>
-            ))}
+        <div>
+          <Label>Reference video (motion style)</Label>
+          <div className="mt-1.5 flex items-center gap-2">
+            <input ref={vidRef} type="file" accept="video/*" className="hidden" onChange={(e) => e.target.files?.[0] && onUploadVideo(e.target.files[0])} />
+            <button onClick={() => vidRef.current?.click()} className="rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/5">Upload video</button>
+            {s.refVideoName && <span className="truncate text-xs text-white/50">{s.refVideoName}</span>}
           </div>
-          <button
-            onClick={onGenerate}
-            disabled={s.status === "GENERATING"}
-            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-50"
-          >
-            {s.status === "GENERATING" ? "Generating…" : s.status === "READY" ? "Regenerate" : "Generate"}
-          </button>
         </div>
       </div>
+
+      {/* Camera plan + music */}
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <SelectField label="Camera" value={s.cameraType} options={[...CAMERA_TYPES]} onChange={(v) => { onPatch({ cameraType: v }); save(); }} />
+        <SelectField label="Movement" value={s.movement} options={[...CAMERA_MOVEMENTS]} onChange={(v) => { onPatch({ movement: v }); save(); }} />
+        <SelectField label="Music" value={s.musicStyle} options={[...MUSIC_STYLES]} onChange={(v) => { onPatch({ musicStyle: v }); save(); }} />
+      </div>
+
+      {/* Dialogue / narration / scene details */}
+      <button onClick={() => setDetails((v) => !v)} className="mt-3 text-xs text-white/45 transition hover:text-white">
+        {details ? "▾ Hide dialogue & details" : "▸ Dialogue, narration, location & mood"}
+      </button>
+      {details && (
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <DetailField label="Dialogue" value={s.dialogue} onChange={(v) => onPatch({ dialogue: v })} onSave={save} placeholder="King: “We ride at dawn.”" />
+          <DetailField label="Narration" value={s.narration} onChange={(v) => onPatch({ narration: v })} onSave={save} placeholder="Voiceover" />
+          <DetailField label="Location" value={s.location} onChange={(v) => onPatch({ location: v })} onSave={save} placeholder="Where it takes place" />
+          <DetailField label="Mood" value={s.mood} onChange={(v) => onPatch({ mood: v })} onSave={save} placeholder="e.g. tense, melancholic" />
+        </div>
+      )}
+
+      {/* Duration + generate */}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          {CLIP_DURATIONS.map((d) => (
+            <Chip key={d} active={s.durationSec === d} onClick={() => { onPatch({ durationSec: d }); save(); }}>{d}s</Chip>
+          ))}
+        </div>
+        <button
+          onClick={onGenerate}
+          disabled={s.status === "GENERATING"}
+          className="rounded-lg bg-white px-5 py-2 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-50"
+        >
+          {s.status === "GENERATING" ? "Generating…" : s.status === "READY" ? "Regenerate scene" : "Generate scene"}
+        </button>
+      </div>
     </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  options,
+  empty,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  empty?: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[10px] uppercase tracking-wider text-white/40">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full rounded-lg border border-white/10 bg-[#0a0a0f] px-2.5 py-1.5 text-sm outline-none focus:border-white/30"
+      >
+        <option value="">{options.length === 0 && empty ? empty : `— ${label} —`}</option>
+        {options.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -453,56 +541,6 @@ function SeedPreview({ scene: s }: { scene: SceneDraft }) {
     );
   }
   return <div className="flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-white/15 text-[10px] text-white/40">no seed</div>;
-}
-
-function ReferencePicker({ onPick }: { onPick: (label: string) => void }) {
-  // Real character/world anchors from the user's Library (RLS-scoped).
-  const [open, setOpen] = useState(false);
-  const [anchors, setAnchors] = useState<{ characters: { id: string; name: string }[]; worlds: { id: string; name: string }[] } | null>(null);
-
-  useEffect(() => {
-    if (open && !anchors) listAnchors().then(setAnchors).catch(() => setAnchors({ characters: [], worlds: [] }));
-  }, [open, anchors]);
-
-  const empty = anchors && anchors.characters.length === 0 && anchors.worlds.length === 0;
-
-  return (
-    <div className="relative">
-      <button onClick={() => setOpen((o) => !o)} className="rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/5">
-        Reference…
-      </button>
-      {open && (
-        <div className="absolute z-10 mt-1 max-h-64 w-48 overflow-y-auto rounded-lg border border-white/15 bg-[#0a0a0f] p-2 text-xs shadow-xl">
-          {!anchors ? (
-            <p className="px-1 py-1 text-white/40">Loading…</p>
-          ) : empty ? (
-            <p className="px-1 py-1 text-white/40">
-              No saved assets yet. Create characters and worlds in your Library to anchor scenes.
-            </p>
-          ) : (
-            <>
-              {anchors.characters.length > 0 && <p className="px-1 pb-1 pt-0.5 text-white/40">Characters</p>}
-              {anchors.characters.map((c) => (
-                <AnchorBtn key={c.id} name={c.name} onClick={() => { onPick(c.name); setOpen(false); }} />
-              ))}
-              {anchors.worlds.length > 0 && <p className="px-1 pb-1 pt-1.5 text-white/40">Worlds</p>}
-              {anchors.worlds.map((w) => (
-                <AnchorBtn key={w.id} name={w.name} onClick={() => { onPick(w.name); setOpen(false); }} />
-              ))}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AnchorBtn({ name, onClick }: { name: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="block w-full truncate rounded px-2 py-1 text-left text-white/70 hover:bg-white/10">
-      {name}
-    </button>
-  );
 }
 
 /* ── small UI bits ──────────────────────────────────────────── */

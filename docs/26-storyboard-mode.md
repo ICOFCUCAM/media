@@ -60,6 +60,44 @@ This is the same job-per-artifact philosophy as an async render farm, but on our
 own Wan/Hunyuan pipeline (no Runway) and persisted in our own schema instead of
 a parallel `pipeline_jobs` table.
 
+## Creation modes (mode rail)
+
+Create Film now exposes the modes as a rail (read from `?mode=`):
+
+- **Auto** — one prompt → whole film.
+- **Hybrid** — auto-drafts the screenplay/scene plan, then opens the Storyboard
+  editor so the creator refines each scene before rendering.
+- **Scene-by-Scene** (Storyboard), **Script**, **Image**, **Audio**, **Video**.
+
+Hybrid is the bridge between beginner and pro: it never forces a single image
+source and lands every project in the same editable Storyboard.
+
+## The scene as a production object
+
+Each scene card is a complete production object, not just an image-to-video
+request. Per scene the creator can mix:
+
+| Field | Storage |
+|---|---|
+| Scene prompt | `scenes.summary` / `shots.prompt` |
+| Character (Library) | `scenes.character_ref` |
+| World (Library) | `scenes.world_ref` |
+| Source (text / image) + seed frame | `shots.source`, `shots.seed_image_key` (upload / AI-generate / reference) |
+| Reference video (motion style) | `shots.reference_video_key` |
+| Camera type | `shots.camera_type` (Wide/Medium/Close-Up/POV/Drone/Tracking/Crane/Handheld) |
+| Camera movement | `shots.camera_movement` (Static/Dolly/Orbit/Push-In/Pull-Out) |
+| Dialogue / Narration | `scenes.dialogue` / `scenes.narration` |
+| Music style | `scenes.music` |
+| Location / Mood | `scenes.location_note` / `scenes.mood` |
+| Duration | 5 / 10 / 15 / 30 / 60s |
+
+Schema: migration `0008_scene_production_object.sql` adds
+`scenes.character_ref/world_ref` and
+`shots.camera_type/camera_movement/reference_video_key`. The three seed sources
+(upload my own / AI-generate / reference a character or world) are all
+supported; uploads (image and reference video) go to `cineforge-assets` and
+persist on first generate, exactly like the seed frame.
+
 ## Scene Workbench (per-scene depth)
 
 Each scene card expands into a full editable object. Beyond the action/script
