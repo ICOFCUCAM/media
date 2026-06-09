@@ -16,6 +16,28 @@ export type ProjectStatus =
   | "READY"
   | "FAILED";
 
+export type SceneStatus =
+  | "PENDING"
+  | "PROMPTING"
+  | "GENERATING"
+  | "AUDIO"
+  | "QC"
+  | "READY"
+  | "FAILED";
+
+export type ShotStatus =
+  | "PENDING"
+  | "QUEUED"
+  | "GENERATING"
+  | "UPLOADED"
+  | "QC_PASS"
+  | "QC_FAIL"
+  | "READY"
+  | "FAILED";
+
+export type ProjectMode = "auto" | "storyboard";
+export type ShotSource = "text" | "image";
+
 export interface Database {
   public: {
     Tables: {
@@ -43,6 +65,7 @@ export interface Database {
           target_seconds: number;
           aspect_ratio: string;
           model_id: string;
+          mode: ProjectMode;
           status: ProjectStatus;
           progress: number;
           estimated_ms: number | null;
@@ -59,6 +82,7 @@ export interface Database {
           target_seconds: number;
           aspect_ratio?: string;
           model_id?: string;
+          mode?: ProjectMode;
           status?: ProjectStatus;
           progress?: number;
           estimated_ms?: number | null;
@@ -68,6 +92,70 @@ export interface Database {
           progress?: number;
           spent_ms?: number;
           error_message?: string | null;
+        };
+        Relationships: [];
+      };
+      scenes: {
+        Row: {
+          id: string;
+          project_id: string;
+          index: number;
+          heading: string;
+          summary: string;
+          status: SceneStatus;
+          duration_sec: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          project_id: string;
+          index: number;
+          heading: string;
+          summary: string;
+          status?: SceneStatus;
+          duration_sec?: number;
+        };
+        Update: {
+          index?: number;
+          heading?: string;
+          summary?: string;
+          status?: SceneStatus;
+          duration_sec?: number;
+        };
+        Relationships: [];
+      };
+      shots: {
+        Row: {
+          id: string;
+          scene_id: string;
+          index: number;
+          prompt: string;
+          model_id: string;
+          source: ShotSource;
+          seed_image_key: string | null;
+          status: ShotStatus;
+          video_key: string | null;
+          thumbnail_key: string | null;
+          duration_sec: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          scene_id: string;
+          index: number;
+          prompt: string;
+          model_id?: string;
+          source?: ShotSource;
+          seed_image_key?: string | null;
+          status?: ShotStatus;
+          duration_sec?: number;
+        };
+        Update: {
+          prompt?: string;
+          source?: ShotSource;
+          seed_image_key?: string | null;
+          status?: ShotStatus;
+          video_key?: string | null;
         };
         Relationships: [];
       };

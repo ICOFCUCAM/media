@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "./AuthProvider";
 import { AuthCard } from "./AuthCard";
 import { CreateStudio } from "./CreateStudio";
+import { StoryboardStudio } from "./StoryboardStudio";
 import { productById } from "../lib/products";
 import { estimateMs, planShots, fmtDuration } from "../lib/system";
 import {
@@ -100,10 +101,56 @@ export function FilmStudio() {
     );
   }
 
-  return <SignedInStudio email={user.email ?? "you"} onSignOut={signOut} />;
+  return <FilmWorkspace email={user.email ?? "you"} onSignOut={signOut} />;
 }
 
-function SignedInStudio({ email, onSignOut }: { email: string; onSignOut: () => void }) {
+/** Tabbed workspace: the one-prompt Auto flow and the scene-by-scene Storyboard. */
+function FilmWorkspace({ email, onSignOut }: { email: string; onSignOut: () => void }) {
+  const [tab, setTab] = useState<"auto" | "storyboard">("auto");
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-8">
+      <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            Create a Feature Film
+            <span className="rounded-full border border-emerald-400/40 px-2 py-0.5 text-[10px] font-normal text-emerald-300">
+              Live · Supabase
+            </span>
+          </h1>
+          <p className="mt-1 text-sm text-white/55">
+            {tab === "auto"
+              ? "One prompt → a full film, saved live to your studio."
+              : "Write and generate scene by scene — provide an image per scene, or go text-to-video."}
+          </p>
+        </div>
+        <div className="text-right text-xs text-white/45">
+          <div>{email}</div>
+          <button onClick={onSignOut} className="mt-1 underline hover:text-white">Sign out</button>
+        </div>
+      </header>
+
+      <div className="mb-6 inline-flex rounded-lg border border-white/10 bg-white/5 p-1 text-sm">
+        <TabBtn active={tab === "auto"} onClick={() => setTab("auto")}>Auto · one prompt</TabBtn>
+        <TabBtn active={tab === "storyboard"} onClick={() => setTab("storyboard")}>Storyboard · scene by scene</TabBtn>
+      </div>
+
+      {tab === "auto" ? <AutoStudioBody /> : <StoryboardStudio />}
+    </div>
+  );
+}
+
+function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-md px-3 py-1.5 transition ${active ? "bg-white text-black" : "text-white/60 hover:text-white"}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function AutoStudioBody() {
   const p = productById("film")!;
   const [prompt, setPrompt] = useState(
     "An epic about an African kingdom fighting for its independence, told over three generations.",
@@ -175,26 +222,7 @@ function SignedInStudio({ email, onSignOut }: { email: string; onSignOut: () => 
   const readyShots = Math.floor(progress * totalShots);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            Create a Feature Film
-            <span className="rounded-full border border-emerald-400/40 px-2 py-0.5 text-[10px] font-normal text-emerald-300">
-              Live · Supabase
-            </span>
-          </h1>
-          <p className="mt-1 text-sm text-white/55">
-            Saved to your studio in real time — progress streams back over Supabase Realtime.
-          </p>
-        </div>
-        <div className="text-right text-xs text-white/45">
-          <div>{email}</div>
-          <button onClick={onSignOut} className="mt-1 underline hover:text-white">Sign out</button>
-        </div>
-      </header>
-
-      <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
+    <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
         <aside className="space-y-5">
           <Field label="What do you want to make?">
             <textarea
@@ -304,7 +332,6 @@ function SignedInStudio({ email, onSignOut }: { email: string; onSignOut: () => 
             </div>
           )}
         </section>
-      </div>
     </div>
   );
 }

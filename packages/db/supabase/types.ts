@@ -384,6 +384,7 @@ export type Database = {
           error_message: string | null
           estimated_ms: number | null
           id: string
+          mode: string
           model_id: string
           progress: number
           prompt: string
@@ -400,6 +401,7 @@ export type Database = {
           error_message?: string | null
           estimated_ms?: number | null
           id?: string
+          mode?: string
           model_id?: string
           progress?: number
           prompt: string
@@ -740,6 +742,8 @@ export type Database = {
           qc_score: number | null
           scene_id: string
           seed: number | null
+          seed_image_key: string | null
+          source: string
           status: Database["public"]["Enums"]["shot_status"]
           thumbnail_key: string | null
           updated_at: string
@@ -762,6 +766,8 @@ export type Database = {
           qc_score?: number | null
           scene_id: string
           seed?: number | null
+          seed_image_key?: string | null
+          source?: string
           status?: Database["public"]["Enums"]["shot_status"]
           thumbnail_key?: string | null
           updated_at?: string
