@@ -309,6 +309,7 @@ function SceneCard({
   onMove: (dir: -1 | 1) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [details, setDetails] = useState(false);
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
       <div className="flex items-center justify-between gap-3">
@@ -335,9 +336,23 @@ function SceneCard({
         onChange={(e) => onPatch({ script: e.target.value })}
         onBlur={onSave}
         rows={2}
-        placeholder="What happens in this scene? (script / action / dialogue)"
+        placeholder="What happens in this scene? (action / description)"
         className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm outline-none focus:border-white/30"
       />
+
+      <button onClick={() => setDetails((v) => !v)} className="mt-2 text-xs text-white/45 transition hover:text-white">
+        {details ? "▾ Hide scene details" : "▸ Scene details — dialogue, narration, camera, location, mood, music"}
+      </button>
+      {details && (
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <DetailField label="Dialogue" value={s.dialogue} onChange={(v) => onPatch({ dialogue: v })} onSave={onSave} placeholder="Spoken lines" />
+          <DetailField label="Narration" value={s.narration} onChange={(v) => onPatch({ narration: v })} onSave={onSave} placeholder="Voiceover" />
+          <DetailField label="Camera" value={s.camera} onChange={(v) => onPatch({ camera: v })} onSave={onSave} placeholder="e.g. slow dolly in, low angle" />
+          <DetailField label="Location" value={s.location} onChange={(v) => onPatch({ location: v })} onSave={onSave} placeholder="Where it takes place" />
+          <DetailField label="Mood" value={s.mood} onChange={(v) => onPatch({ mood: v })} onSave={onSave} placeholder="e.g. tense, melancholic" />
+          <DetailField label="Music" value={s.music} onChange={(v) => onPatch({ music: v })} onSave={onSave} placeholder="e.g. somber strings" />
+        </div>
+      )}
 
       <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
         <div>
@@ -459,6 +474,32 @@ function AnchorBtn({ name, onClick }: { name: string; onClick: () => void }) {
 }
 
 /* ── small UI bits ──────────────────────────────────────────── */
+function DetailField({
+  label,
+  value,
+  onChange,
+  onSave,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onSave: () => void;
+  placeholder: string;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[10px] uppercase tracking-wider text-white/40">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onSave}
+        placeholder={placeholder}
+        className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-sm outline-none focus:border-white/30"
+      />
+    </label>
+  );
+}
 function Label({ children }: { children: ReactNode }) {
   return <span className="text-xs uppercase tracking-wider text-white/40">{children}</span>;
 }

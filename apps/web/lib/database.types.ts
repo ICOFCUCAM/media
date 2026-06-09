@@ -103,6 +103,12 @@ export interface Database {
           index: number;
           heading: string;
           summary: string;
+          dialogue: string | null;
+          narration: string | null;
+          camera: string | null;
+          mood: string | null;
+          music: string | null;
+          location_note: string | null;
           status: SceneStatus;
           duration_sec: number;
           created_at: string;
@@ -113,6 +119,12 @@ export interface Database {
           index: number;
           heading: string;
           summary: string;
+          dialogue?: string | null;
+          narration?: string | null;
+          camera?: string | null;
+          mood?: string | null;
+          music?: string | null;
+          location_note?: string | null;
           status?: SceneStatus;
           duration_sec?: number;
         };
@@ -120,9 +132,34 @@ export interface Database {
           index?: number;
           heading?: string;
           summary?: string;
+          dialogue?: string | null;
+          narration?: string | null;
+          camera?: string | null;
+          mood?: string | null;
+          music?: string | null;
+          location_note?: string | null;
           status?: SceneStatus;
           duration_sec?: number;
         };
+        Relationships: [];
+      };
+      world_objects: {
+        Row: {
+          id: string;
+          project_id: string;
+          name: string;
+          description: string;
+          category: string;
+          reference_urls: string[];
+        };
+        Insert: {
+          project_id: string;
+          name: string;
+          description: string;
+          category?: string;
+          reference_urls?: string[];
+        };
+        Update: { name?: string; description?: string; category?: string; reference_urls?: string[] };
         Relationships: [];
       };
       shots: {

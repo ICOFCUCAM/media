@@ -5,8 +5,12 @@ import type { Database, LocationKind } from "./database.types";
 
 export type CharacterRow = Database["public"]["Tables"]["characters"]["Row"];
 export type LocationRow = Database["public"]["Tables"]["locations"]["Row"];
+export type AssetRow = Database["public"]["Tables"]["world_objects"]["Row"];
 
 export const LOCATION_KINDS: LocationKind[] = ["CITY", "KINGDOM", "BUILDING", "ROOM", "LANDSCAPE", "INTERIOR", "EXTERIOR"];
+
+export const ASSET_CATEGORIES = ["prop", "vehicle", "creature", "logo", "brand", "object"] as const;
+export type AssetCategory = (typeof ASSET_CATEGORIES)[number];
 
 /**
  * Reusable assets (characters, worlds) live in a per-user sentinel "Library"
@@ -94,6 +98,31 @@ export async function listLocations(): Promise<LocationRow[]> {
   const sb = getSupabase();
   if (!sb) return [];
   const { data } = await sb.from("locations").select().order("created_at", { ascending: false });
+  return data ?? [];
+}
+
+/* ── Visual assets (props, vehicles, creatures, logos, brands) ── */
+export async function createAsset(input: {
+  name: string;
+  category: AssetCategory;
+  description: string;
+}): Promise<AssetRow> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("Supabase not configured");
+  const projectId = await getLibraryProjectId();
+  const { data, error } = await sb
+    .from("world_objects")
+    .insert({ project_id: projectId, name: input.name, category: input.category, description: input.description })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function listAssets(): Promise<AssetRow[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb.from("world_objects").select().order("name", { ascending: true });
   return data ?? [];
 }
 

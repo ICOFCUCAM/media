@@ -548,13 +548,19 @@ export type Database = {
       }
       scenes: {
         Row: {
+          camera: string | null
           created_at: string
+          dialogue: string | null
           duration_sec: number
           episode_id: string | null
           heading: string
           id: string
           index: number
           location_id: string | null
+          location_note: string | null
+          mood: string | null
+          music: string | null
+          narration: string | null
           project_id: string
           status: Database["public"]["Enums"]["scene_status"]
           summary: string
@@ -563,13 +569,19 @@ export type Database = {
           weather: string | null
         }
         Insert: {
+          camera?: string | null
           created_at?: string
+          dialogue?: string | null
           duration_sec?: number
           episode_id?: string | null
           heading: string
           id?: string
           index: number
           location_id?: string | null
+          location_note?: string | null
+          mood?: string | null
+          music?: string | null
+          narration?: string | null
           project_id: string
           status?: Database["public"]["Enums"]["scene_status"]
           summary: string
@@ -578,13 +590,19 @@ export type Database = {
           weather?: string | null
         }
         Update: {
+          camera?: string | null
           created_at?: string
+          dialogue?: string | null
           duration_sec?: number
           episode_id?: string | null
           heading?: string
           id?: string
           index?: number
           location_id?: string | null
+          location_note?: string | null
+          mood?: string | null
+          music?: string | null
+          narration?: string | null
           project_id?: string
           status?: Database["public"]["Enums"]["scene_status"]
           summary?: string
@@ -964,6 +982,7 @@ export type Database = {
       }
       world_objects: {
         Row: {
+          category: string
           description: string
           id: string
           name: string
@@ -971,6 +990,7 @@ export type Database = {
           reference_urls: string[]
         }
         Insert: {
+          category?: string
           description: string
           id?: string
           name: string
@@ -978,6 +998,7 @@ export type Database = {
           reference_urls?: string[]
         }
         Update: {
+          category?: string
           description?: string
           id?: string
           name?: string

@@ -60,6 +60,24 @@ This is the same job-per-artifact philosophy as an async render farm, but on our
 own Wan/Hunyuan pipeline (no Runway) and persisted in our own schema instead of
 a parallel `pipeline_jobs` table.
 
+## Scene Workbench (per-scene depth)
+
+Each scene card expands into a full editable object. Beyond the action/script
+(`scenes.summary`), every scene carries **dialogue**, **narration**, **camera**,
+**location**, **mood** and **music** (`scenes.dialogue/narration/camera/
+location_note/mood/music`), plus its per-shot **source** + **seed frame**. A
+creator can regenerate one scene — or one shot — without touching the rest, so
+control is granular and re-render cost is low. Fields are saved on blur and
+persisted with the scene row.
+
+## Visual Asset Studio (reusable assets)
+
+Beyond characters and worlds, the Library holds **props, vehicles, creatures,
+logos and brands** (`/library/assets`), persisted to `world_objects` with a
+`category`. Like characters/worlds they live in the per-user `library` project
+and are reusable across every project. Source: `apps/web/lib/library.ts`
+(`createAsset` / `listAssets`, `ASSET_CATEGORIES`).
+
 ## Asset reuse (Characters & Worlds)
 
 Characters and worlds are first-class, reusable assets, created in the Library

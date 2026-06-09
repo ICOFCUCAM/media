@@ -17,6 +17,13 @@ export interface SceneDraft {
   index: number;
   heading: string;
   script: string;
+  // Scene Workbench fields — each scene is a rich, editable object.
+  dialogue: string;
+  narration: string;
+  camera: string;
+  location: string;
+  mood: string;
+  music: string;
   source: ShotSource;
   seedKey: string | null; // storage key of the seed frame
   seedUrl: string | null; // signed URL for preview
@@ -31,6 +38,12 @@ export function newDraft(index: number, heading = "", script = ""): SceneDraft {
     index,
     heading: heading || `Scene ${index + 1}`,
     script,
+    dialogue: "",
+    narration: "",
+    camera: "",
+    location: "",
+    mood: "",
+    music: "",
     source: "text",
     seedKey: null,
     seedUrl: null,
@@ -92,16 +105,26 @@ export async function persistScene(projectId: string, d: SceneDraft): Promise<{ 
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase not configured");
 
+  const sceneFields = {
+    index: d.index,
+    heading: d.heading,
+    summary: d.script,
+    dialogue: d.dialogue || null,
+    narration: d.narration || null,
+    camera: d.camera || null,
+    location_note: d.location || null,
+    mood: d.mood || null,
+    music: d.music || null,
+    duration_sec: d.durationSec,
+  };
+
   let sceneId = d.sceneId;
   if (sceneId) {
-    await sb
-      .from("scenes")
-      .update({ index: d.index, heading: d.heading, summary: d.script, duration_sec: d.durationSec })
-      .eq("id", sceneId);
+    await sb.from("scenes").update(sceneFields).eq("id", sceneId);
   } else {
     const { data, error } = await sb
       .from("scenes")
-      .insert({ project_id: projectId, index: d.index, heading: d.heading, summary: d.script, duration_sec: d.durationSec })
+      .insert({ project_id: projectId, ...sceneFields })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
