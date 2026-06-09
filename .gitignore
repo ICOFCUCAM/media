@@ -7,6 +7,11 @@ dist/
 .next/
 out/
 *.tsbuildinfo
+# Compiled output accidentally emitted beside TS sources (pure-TS packages)
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+apps/worker/src/**/*.js
+apps/worker/src/**/*.d.ts
 
 # Env
 .env
