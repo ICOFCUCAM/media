@@ -105,14 +105,14 @@ export const CREATION_MODES: CreationMode[] = [
     id: "character",
     title: "Character-First",
     blurb: "Design a character, then build scenes and stories around them.",
-    status: "soon",
+    status: "live",
     href: "/library/characters",
   },
   {
     id: "world",
     title: "World-First",
     blurb: "Create a kingdom, city or universe, then generate stories inside it.",
-    status: "soon",
+    status: "live",
     href: "/library/worlds",
   },
   {

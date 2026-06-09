@@ -35,8 +35,9 @@ export type ShotStatus =
   | "READY"
   | "FAILED";
 
-export type ProjectMode = "auto" | "storyboard";
+export type ProjectMode = "auto" | "storyboard" | "library";
 export type ShotSource = "text" | "image";
+export type LocationKind = "CITY" | "KINGDOM" | "BUILDING" | "ROOM" | "LANDSCAPE" | "INTERIOR" | "EXTERIOR";
 
 export interface Database {
   public: {
@@ -156,6 +157,68 @@ export interface Database {
           seed_image_key?: string | null;
           status?: ShotStatus;
           video_key?: string | null;
+        };
+        Relationships: [];
+      };
+      characters: {
+        Row: {
+          id: string;
+          project_id: string;
+          name: string;
+          appearance: string;
+          age: number | null;
+          gender: string | null;
+          ethnicity: string | null;
+          personality: string | null;
+          arc: string | null;
+          reference_urls: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          project_id: string;
+          name: string;
+          appearance: string;
+          age?: number | null;
+          gender?: string | null;
+          ethnicity?: string | null;
+          personality?: string | null;
+          arc?: string | null;
+          reference_urls?: string[];
+        };
+        Update: {
+          name?: string;
+          appearance?: string;
+          personality?: string | null;
+          arc?: string | null;
+          reference_urls?: string[];
+        };
+        Relationships: [];
+      };
+      locations: {
+        Row: {
+          id: string;
+          project_id: string;
+          name: string;
+          kind: LocationKind;
+          description: string;
+          parent_id: string | null;
+          reference_urls: string[];
+          created_at: string;
+        };
+        Insert: {
+          project_id: string;
+          name: string;
+          kind: LocationKind;
+          description: string;
+          parent_id?: string | null;
+          reference_urls?: string[];
+        };
+        Update: {
+          name?: string;
+          kind?: LocationKind;
+          description?: string;
+          reference_urls?: string[];
         };
         Relationships: [];
       };

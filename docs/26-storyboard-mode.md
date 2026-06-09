@@ -60,6 +60,23 @@ This is the same job-per-artifact philosophy as an async render farm, but on our
 own Wan/Hunyuan pipeline (no Runway) and persisted in our own schema instead of
 a parallel `pipeline_jobs` table.
 
+## Asset reuse (Characters & Worlds)
+
+Characters and worlds are first-class, reusable assets, created in the Library
+(`/library/characters`, `/library/worlds`) and persisted to the existing
+`characters` / `locations` tables. Because those tables require a `project_id`,
+reusable assets are parented to a per-user **sentinel project** (`projects.mode
+= 'library'`, hidden from the Projects list). RLS scopes every read to the
+owner, so the Library lists the user's whole catalog across projects — true
+reuse — and a scene in any project can reference an asset by id (both
+`owns_character` and `owns_scene` pass for the owner). The storyboard's
+**Reference** picker reads this catalog (`listAnchors`) so seed frames can be
+anchored to a saved character or world. Source: `apps/web/lib/library.ts`.
+
+The **Character-First** and **World-First** entry points (`/create`) are these
+Library creators; once you've made an asset, "Use in a film" drops into the
+scene workbench.
+
 ## Worker boundary
 
 The browser only ever writes intent (project/scene/shot rows, seed uploads).

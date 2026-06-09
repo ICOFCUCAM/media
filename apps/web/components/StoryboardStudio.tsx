@@ -14,6 +14,7 @@ import {
   type SceneDraft,
 } from "../lib/storyboard";
 import type { ShotSource } from "../lib/database.types";
+import { listAnchors } from "../lib/library";
 
 const SCENE_COUNTS = [3, 4, 5, 6, 8];
 const CLIP_DURATIONS = [5, 10];
@@ -408,29 +409,52 @@ function SeedPreview({ scene: s }: { scene: SceneDraft }) {
 }
 
 function ReferencePicker({ onPick }: { onPick: (label: string) => void }) {
-  // Character/world anchors live in your library; a fresh project has none yet.
+  // Real character/world anchors from the user's Library (RLS-scoped).
   const [open, setOpen] = useState(false);
+  const [anchors, setAnchors] = useState<{ characters: { id: string; name: string }[]; worlds: { id: string; name: string }[] } | null>(null);
+
+  useEffect(() => {
+    if (open && !anchors) listAnchors().then(setAnchors).catch(() => setAnchors({ characters: [], worlds: [] }));
+  }, [open, anchors]);
+
+  const empty = anchors && anchors.characters.length === 0 && anchors.worlds.length === 0;
+
   return (
     <div className="relative">
       <button onClick={() => setOpen((o) => !o)} className="rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/5">
         Reference…
       </button>
       {open && (
-        <div className="absolute z-10 mt-1 w-44 rounded-lg border border-white/15 bg-[#0a0a0f] p-2 text-xs shadow-xl">
-          <p className="px-1 pb-1 text-white/40">Saved characters & worlds</p>
-          <p className="px-1 py-1 text-white/30">None yet — create one in your Library, or pick a placeholder:</p>
-          {["Protagonist", "Antagonist", "City"].map((n) => (
-            <button
-              key={n}
-              onClick={() => { onPick(n); setOpen(false); }}
-              className="block w-full rounded px-2 py-1 text-left text-white/70 hover:bg-white/10"
-            >
-              {n}
-            </button>
-          ))}
+        <div className="absolute z-10 mt-1 max-h-64 w-48 overflow-y-auto rounded-lg border border-white/15 bg-[#0a0a0f] p-2 text-xs shadow-xl">
+          {!anchors ? (
+            <p className="px-1 py-1 text-white/40">Loading…</p>
+          ) : empty ? (
+            <p className="px-1 py-1 text-white/40">
+              No saved assets yet. Create characters and worlds in your Library to anchor scenes.
+            </p>
+          ) : (
+            <>
+              {anchors.characters.length > 0 && <p className="px-1 pb-1 pt-0.5 text-white/40">Characters</p>}
+              {anchors.characters.map((c) => (
+                <AnchorBtn key={c.id} name={c.name} onClick={() => { onPick(c.name); setOpen(false); }} />
+              ))}
+              {anchors.worlds.length > 0 && <p className="px-1 pb-1 pt-1.5 text-white/40">Worlds</p>}
+              {anchors.worlds.map((w) => (
+                <AnchorBtn key={w.id} name={w.name} onClick={() => { onPick(w.name); setOpen(false); }} />
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+function AnchorBtn({ name, onClick }: { name: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="block w-full truncate rounded px-2 py-1 text-left text-white/70 hover:bg-white/10">
+      {name}
+    </button>
   );
 }
 

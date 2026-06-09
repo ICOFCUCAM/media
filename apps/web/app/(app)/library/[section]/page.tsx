@@ -1,19 +1,9 @@
 import { notFound } from "next/navigation";
 import { WorkspacePage } from "../../../../components/WorkspacePage";
 
+// Characters and Worlds have dedicated routes (real creators); this dynamic
+// route covers the remaining library sections.
 const SECTIONS: Record<string, { title: string; subtitle: string; headline: string; hint: string }> = {
-  characters: {
-    title: "Characters",
-    subtitle: "Your reusable cast — locked identity, wardrobe and voice.",
-    headline: "No characters yet.",
-    hint: "Characters you create are saved here and can be reused across any project, keeping their exact look.",
-  },
-  worlds: {
-    title: "Worlds",
-    subtitle: "Locations, lore and continuity bibles you can film in again.",
-    headline: "No worlds yet.",
-    hint: "Build a world once — its locations and rules stay consistent across every scene and episode.",
-  },
   voices: {
     title: "Voices",
     subtitle: "Cloned and designed voices for narration and dialogue.",

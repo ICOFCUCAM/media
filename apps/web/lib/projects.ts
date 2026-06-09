@@ -72,6 +72,7 @@ export async function listProjects(limit = 8): Promise<ProjectRow[]> {
   const { data } = await sb
     .from("projects")
     .select()
+    .neq("mode", "library") // hide the reusable-asset container
     .order("created_at", { ascending: false })
     .limit(limit);
   return data ?? [];
