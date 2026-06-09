@@ -12,8 +12,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # torch + CUDA 12.4 wheels first (kept off requirements.txt so the version/index
-# are explicit), then the rest of the inference stack.
-RUN pip3 install --no-cache-dir torch==2.4.0 --index-url https://download.pytorch.org/whl/cu124
+# are explicit), then the rest of the inference stack. Torch 2.6 (not 2.4) is
+# required: 2.4's torch.library.infer_schema can't parse the stringized type
+# hints on the flash-attention op that recent transformers/diffusers register at
+# import time ("Parameter q has unsupported type torch.Tensor"); fixed in 2.5+.
+RUN pip3 install --no-cache-dir torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
