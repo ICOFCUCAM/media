@@ -91,7 +91,12 @@ same in the browser and the worker:
   per scene (`director/llm.ts`); these are parsed defensively and preferred
   field-by-field, with the deterministic `autoContinuity` filling any blanks (and
   covering the no-API-key / parse-failure paths). Best of both: semantic when the
-  model delivers, never empty when it doesn't.
+  model delivers, never empty when it doesn't. The plan is requested via **forced
+  tool use** — a `submit_film_plan` tool whose `input_schema` encodes the whole
+  plan (logline/bible/scenes + per-scene `bridge`/`state`), with `tool_choice`
+  pinned to it — so the Director reads a schema-shaped object straight off
+  `tool_use.input` (no JSON scraping). Extracting JSON from a text reply is the
+  fallback, then the deterministic stub.
 
 `statePatchFrom(fields)` is the single builder both sides use to turn flat
 fields into a `state_patch`.

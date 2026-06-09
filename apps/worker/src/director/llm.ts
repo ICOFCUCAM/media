@@ -48,14 +48,14 @@ const SYSTEM = [
   "state of the ones before it. For every scene give a `bridge` to the next scene",
   "and the `state` it changes, so emotions, injuries, season and destroyed places",
   "carry forward and never silently contradict.",
-  "Respond with ONLY a single JSON object — no prose, no markdown fences.",
+  "Provide your plan by calling the submit_film_plan tool.",
 ].join(" ");
 
 function userPrompt(brief: string, sceneCount: number): string {
   return [
     `Brief: ${brief}`,
     "",
-    `Plan exactly ${sceneCount} scenes. Return a JSON object with these keys:`,
+    `Plan exactly ${sceneCount} scenes. Call submit_film_plan with these fields:`,
     "logline (string), synopsis (string), genre (string), tone (string),",
     'location { name (string), kind (one of CITY|KINGDOM|BUILDING|ROOM|LANDSCAPE|INTERIOR|EXTERIOR), description (string) },',
     "protagonist { name (string), age (number or null), gender (string or null), appearance (string), personality (string or null) },",
@@ -113,55 +113,145 @@ function parseState(v: unknown): StateFields | undefined {
   return Object.values(s).some(Boolean) ? s : undefined;
 }
 
+/**
+ * JSON Schema for the Director's plan. Used as a tool `input_schema` so we force
+ * Claude to emit the plan as a single structured tool call (`tool_choice: tool`)
+ * — a hard schema guarantee, no JSON scraping. We still coerce defensively in
+ * case a field is missing or off-type.
+ */
+const PLAN_TOOL = "submit_film_plan";
+const bridgeProps = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    whatJustHappened: { type: "string" },
+    whatChanged: { type: "string" },
+    whatCarriesForward: { type: "string" },
+    nextSceneRequirements: { type: "string" },
+  },
+} as const;
+const stateProps = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    emotion: { type: "string" },
+    health: { type: "string" },
+    season: { type: "string" },
+    locationStatus: { type: "string" },
+    goal: { type: "string" },
+  },
+} as const;
+const PLAN_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["logline", "synopsis", "genre", "tone", "location", "protagonist", "scenes"],
+  properties: {
+    logline: { type: "string" },
+    synopsis: { type: "string" },
+    genre: { type: "string" },
+    tone: { type: "string" },
+    location: {
+      type: "object",
+      additionalProperties: false,
+      required: ["name", "kind", "description"],
+      properties: {
+        name: { type: "string" },
+        kind: { type: "string", enum: LOCATION_KINDS as unknown as string[] },
+        description: { type: "string" },
+      },
+    },
+    protagonist: {
+      type: "object",
+      additionalProperties: false,
+      required: ["name", "appearance"],
+      properties: {
+        name: { type: "string" },
+        age: { type: ["integer", "null"] },
+        gender: { type: ["string", "null"] },
+        appearance: { type: "string" },
+        personality: { type: ["string", "null"] },
+      },
+    },
+    scenes: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["heading", "summary", "timeOfDay"],
+        properties: {
+          heading: { type: "string" },
+          summary: { type: "string" },
+          timeOfDay: { type: "string" },
+          bridge: bridgeProps,
+          state: stateProps,
+        },
+      },
+    },
+  },
+} as const;
+
+/** Coerce a raw plan object (from the tool call or extracted JSON) into a FilmDraft. */
+function coerceDraft(j: Record<string, unknown>, brief: string, sceneCount: number): FilmDraft {
+  const loc = (j.location ?? {}) as Record<string, unknown>;
+  const pro = (j.protagonist ?? {}) as Record<string, unknown>;
+  const rawScenes = Array.isArray(j.scenes) ? (j.scenes as Record<string, unknown>[]) : [];
+  const scenes: SceneBeat[] = Array.from({ length: sceneCount }, (_, i) => {
+    const s = rawScenes[i] ?? {};
+    const tod = str(s.timeOfDay, i % 2 ? "night" : "day");
+    return {
+      heading: str(s.heading, `EXT. ${str(loc.name, "LOCATION").toUpperCase()} - ${tod.toUpperCase()}`),
+      summary: str(s.summary, `Beat ${i + 1}.`),
+      timeOfDay: tod,
+      bridge: parseBridge(s.bridge),
+      state: parseState(s.state),
+    };
+  });
+
+  return {
+    logline: str(j.logline, brief.slice(0, 80)),
+    synopsis: str(j.synopsis, brief),
+    genre: str(j.genre, "drama"),
+    tone: str(j.tone, "cinematic"),
+    location: { name: str(loc.name, "The Location"), kind: asKind(loc.kind), description: str(loc.description, "a vivid setting") },
+    protagonist: {
+      name: str(pro.name, "Protagonist"),
+      age: numOrNull(pro.age),
+      gender: strOrNull(pro.gender),
+      appearance: str(pro.appearance, "a distinctive lead with a memorable, consistent look"),
+      personality: strOrNull(pro.personality),
+    },
+    scenes,
+    raw: j,
+  };
+}
+
 /** Plan a film with Claude; deterministic fallback when unavailable. */
 export async function draftFilm(brief: string, sceneCount: number): Promise<FilmDraft> {
   if (!process.env.ANTHROPIC_API_KEY) return stubDraft(brief, sceneCount);
   try {
     const client = new Anthropic(); // reads ANTHROPIC_API_KEY
+    // Force the plan through a tool's input_schema (structured output). Reading
+    // tool_use.input gives us a schema-shaped object directly; if the model
+    // returns text instead, fall back to extracting JSON from it.
     const res = await client.messages.create({
       model: process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8",
       max_tokens: 16000,
       system: SYSTEM,
-      // For an even stricter guarantee, swap to output_config.format with a
-      // json_schema (structured outputs); prompt-instructed JSON keeps this
-      // robust across SDK versions.
+      tools: [{ name: PLAN_TOOL, description: "Return the complete film plan.", input_schema: PLAN_SCHEMA as unknown as Anthropic.Tool.InputSchema }],
+      tool_choice: { type: "tool", name: PLAN_TOOL },
       messages: [{ role: "user", content: userPrompt(brief, sceneCount) }],
     });
-    const text = res.content.find((b): b is Anthropic.TextBlock => b.type === "text");
-    if (!text) throw new Error("Director: no text block in response");
-    const j = extractJson(text.text);
 
-    const loc = (j.location ?? {}) as Record<string, unknown>;
-    const pro = (j.protagonist ?? {}) as Record<string, unknown>;
-    const rawScenes = Array.isArray(j.scenes) ? (j.scenes as Record<string, unknown>[]) : [];
-    const scenes: SceneBeat[] = Array.from({ length: sceneCount }, (_, i) => {
-      const s = rawScenes[i] ?? {};
-      const tod = str(s.timeOfDay, i % 2 ? "night" : "day");
-      return {
-        heading: str(s.heading, `EXT. ${str(loc.name, "LOCATION").toUpperCase()} - ${tod.toUpperCase()}`),
-        summary: str(s.summary, `Beat ${i + 1}.`),
-        timeOfDay: tod,
-        bridge: parseBridge(s.bridge),
-        state: parseState(s.state),
-      };
-    });
-
-    return {
-      logline: str(j.logline, brief.slice(0, 80)),
-      synopsis: str(j.synopsis, brief),
-      genre: str(j.genre, "drama"),
-      tone: str(j.tone, "cinematic"),
-      location: { name: str(loc.name, "The Location"), kind: asKind(loc.kind), description: str(loc.description, "a vivid setting") },
-      protagonist: {
-        name: str(pro.name, "Protagonist"),
-        age: numOrNull(pro.age),
-        gender: strOrNull(pro.gender),
-        appearance: str(pro.appearance, "a distinctive lead with a memorable, consistent look"),
-        personality: strOrNull(pro.personality),
-      },
-      scenes,
-      raw: j,
-    };
+    const toolUse = res.content.find((b): b is Anthropic.ToolUseBlock => b.type === "tool_use" && b.name === PLAN_TOOL);
+    let j: Record<string, unknown>;
+    if (toolUse && toolUse.input && typeof toolUse.input === "object") {
+      j = toolUse.input as Record<string, unknown>;
+    } else {
+      const text = res.content.find((b): b is Anthropic.TextBlock => b.type === "text");
+      if (!text) throw new Error("Director: no tool_use or text block in response");
+      j = extractJson(text.text);
+    }
+    return coerceDraft(j, brief, sceneCount);
   } catch (err) {
     console.error("[director] LLM planning failed, using deterministic fallback:", err);
     return stubDraft(brief, sceneCount);
