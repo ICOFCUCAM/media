@@ -115,7 +115,7 @@ export function AudioStudio() {
 
   return (
     <div className="space-y-4">
-      <Banner tone="beta">Audio → Film is in beta. Upload a voice recording or narration and we’ll scaffold visuals beat-by-beat.</Banner>
+      <Banner tone="beta">Audio → Film is in beta. Upload a voice recording, or generate narration with OpenAI TTS (voice “onyx”); we scaffold visuals beat-by-beat.</Banner>
       <div className="rounded-xl border border-dashed border-white/15 p-8 text-center">
         <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={(e) => setName(e.target.files?.[0]?.name ?? null)} />
         <p className="text-sm text-white/60">{name ? `Loaded: ${name}` : "Upload narration (MP3 / WAV / M4A)"}</p>

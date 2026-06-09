@@ -77,15 +77,17 @@ export interface Subsystem {
 }
 
 export const SUBSYSTEMS: Subsystem[] = [
-  { name: "AI Director", status: "Stubbed", blurb: "Prompt → screenplay → scenes → shots with deterministic seeds, prompts & camera. LLM content stubbed; structure is real.", doc: "docs/05-director-ai.md" },
+  { name: "AI Director (Anthropic Claude)", status: "Stubbed", blurb: "Prompt → screenplay → scenes → shots with deterministic seeds, prompts & camera. Claude writes the structure; LLM call is the marked integration point.", doc: "docs/05-director-ai.md" },
   { name: "Continuity Engine", status: "Design", blurb: "Per-scene canonical state (wardrobe, world, story flags) so characters & locations never drift.", doc: "docs/06-continuity-engine.md" },
   { name: "Character & World Bible", status: "Stubbed", blurb: "Reusable, referenced (not inlined) character/location definitions with identity refs.", doc: "docs/07-character-bible.md" },
-  { name: "Model Abstraction (Wan / Hunyuan)", status: "Implemented", blurb: "Pluggable VideoModelAdapter + registry; tier-gated routing. New models = one adapter.", doc: "docs/22-video-models.md" },
+  { name: "Video Models (Wan / Hunyuan / External)", status: "Implemented", blurb: "Pluggable VideoModelAdapter + registry; self-hosted Wan/Hunyuan plus a drop-in external provider. New models = one adapter.", doc: "docs/22-video-models.md" },
+  { name: "OpenAI Images (GPT-image-1)", status: "Implemented", blurb: "Seed frames for image-to-video + standalone stills, in three orientations. Adapter unit-tested.", doc: "docs/22-video-models.md" },
+  { name: "OpenAI Voice (TTS · onyx)", status: "Implemented", blurb: "Narration & dialogue via tts-1 (voice 'onyx'); bytes uploaded to storage. Adapter unit-tested.", doc: "docs/22-video-models.md" },
   { name: "Auto GPU Lifecycle", status: "Implemented", blurb: "Reference-counted start-on-demand + auto-shutdown after the last job. Unit-tested.", doc: "docs/23-gpu-lifecycle-manager.md" },
   { name: "Cluster Scheduler (C5)", status: "Implemented", blurb: "Heterogeneous A40/A100/H100 routing + weighted-fair per-tenant scheduling. Tested.", doc: "docs/24-phase-3-film-studio.md" },
   { name: "Cost Governor (C8)", status: "Implemented", blurb: "Pre-flight estimate, credit gate, metered debit, live budget pause/resume. Tested.", doc: "docs/24-phase-3-film-studio.md" },
   { name: "Asset Cache + Provenance (C7)", status: "Implemented", blurb: "Content-addressed cacheKey + seed/model-version provenance; cheap editor re-renders. Tested.", doc: "docs/24-phase-3-film-studio.md" },
   { name: "BullMQ Queues + Flow", status: "Implemented", blurb: "film → scene → video/audio → render fan-out with dependency-enforcing flows.", doc: "docs/13-queues.md" },
   { name: "FFmpeg Render Engine", status: "Implemented", blurb: "Normalize → concat → ducked mix → mux → HLS ladder → S3. Builders unit-tested.", doc: "docs/10-ffmpeg-render.md" },
-  { name: "Realtime (WebSocket)", status: "Implemented", blurb: "Redis pub/sub → Socket.IO room fan-out with project-ownership checks.", doc: "docs/04-api-spec.md" },
+  { name: "Realtime (Supabase / WebSocket)", status: "Implemented", blurb: "Postgres Changes to the browser; Redis pub/sub → Socket.IO room fan-out with ownership checks.", doc: "docs/04-api-spec.md" },
 ];

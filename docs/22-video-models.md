@@ -97,8 +97,33 @@ The worker's `video.processor.ts` registers the external model from env and
 supplies the seed-frame resolver, so an image-to-video scene works end to end
 the moment a key is present.
 
+## OpenAI providers (images + voice)
+
+Text/Director work runs on **Anthropic (Claude)**; **OpenAI** covers the two
+jobs it's strongest at here, behind the same adapter boundary (key in env,
+optional storage `upload` hook, no callers coupled to OpenAI):
+
+| Provider | Adapter | Endpoint / model | Used for |
+|---|---|---|---|
+| OpenAI Images | `OpenAIImageAdapter` | `/v1/images/generations`, `gpt-image-1` (1536×1024 / 1024×1536 / 1024×1024) | seed frames for image-to-video + stills |
+| OpenAI TTS | `OpenAITtsAdapter` | `/v1/audio/speech`, `tts-1`, voice `onyx` | narration / dialogue (mp3) |
+
+```
+OPENAI_API_KEY=sk-...
+OPENAI_IMAGE_MODEL=gpt-image-1
+OPENAI_TTS_MODEL=tts-1
+OPENAI_TTS_VOICE=onyx
+```
+
+`buildOpenAIProviders(env, upload)` returns the configured providers; the worker
+passes a storage `upload(bytes, contentType)` hook so generated PNG/MP3 bytes
+land in the assets bucket and DB rows reference our keys. The storyboard's "AI
+seed · GPT-image-1" button and the Audio→Film narration path map to these.
+Source: `packages/model-adapters/src/openai/openai.ts` (unit-tested).
+
 ## Code references
 - Interface: `packages/model-adapters/src/types.ts`
+- OpenAI image + TTS: `packages/model-adapters/src/openai/openai.ts`
 - RunPod client: `packages/model-adapters/src/runpod-client.ts`
 - Wan 2.1: `packages/model-adapters/src/wan/wan.adapter.ts`
 - Hunyuan: `packages/model-adapters/src/hunyuan/hunyuan.adapter.ts`

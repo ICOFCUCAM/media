@@ -9,3 +9,18 @@ export { ExternalApiAdapter } from "./external/external.adapter";
 export type { ExternalAdapterOptions } from "./external/external.adapter";
 export { ExternalVideoClient } from "./external/external-client";
 export type { ExternalVideoClientOptions, ExternalGenerateInput, ExternalGenerateOutput } from "./external/external-client";
+export {
+  OpenAIImageAdapter,
+  OpenAITtsAdapter,
+  buildOpenAIProviders,
+} from "./openai/openai";
+export type {
+  ImageModelAdapter,
+  TtsAdapter,
+  ImageGenRequest,
+  ImageGenResult,
+  TtsRequest,
+  TtsResult,
+  UploadBytes,
+  OpenAIEnv,
+} from "./openai/openai";
