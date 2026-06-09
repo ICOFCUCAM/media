@@ -90,6 +90,7 @@ model Project {
   aspectRatio   String        @default("16:9") @map("aspect_ratio")
   modelId       String        @default("wan-2.1") @map("model_id")
   status        ProjectStatus @default(DRAFT)
+  mode          String        @default("auto") // auto | hybrid | storyboard | script | library …
   progress      Float         @default(0)
   estimatedMs   Int?          @map("estimated_ms")
   spentMs       Int           @default(0) @map("spent_ms")

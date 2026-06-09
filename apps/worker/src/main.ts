@@ -16,6 +16,7 @@ import "./processors/render.processor";
 import "./processors/lora.processor";
 import "./processors/localize.processor";
 import "./processors/publish.processor";
+import { startProjectPoller } from "./orchestration/project-poller";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
@@ -47,11 +48,15 @@ for (const name of [QUEUES.video, QUEUES.audio]) {
   events.on("completed", reconcileAll); // last active job finishing also triggers a check
 }
 
-console.log("cineforge worker up: processors + GPU lifecycle loops running");
+// Watch the database for web-created Auto films and enqueue them (Gap 2 bridge).
+const stopPoller = startProjectPoller();
+
+console.log("cineforge worker up: processors + project watcher + GPU lifecycle loops running");
 
 // Graceful shutdown.
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, async () => {
+    stopPoller();
     for (const mgr of gpu.byModel.values()) mgr.stopLoop();
     await gpu.tracker.close();
     await gpu.redis.quit();
