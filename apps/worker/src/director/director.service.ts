@@ -8,20 +8,16 @@ import {
   deterministicSeed,
 } from "@cineforge/shared";
 import { MODEL_VERSIONS } from "@cineforge/model-adapters";
+import { draftFilm, type FilmDraft } from "./llm";
 
 /**
  * Director AI — planning service.
  *
  * Turns a project (prompt + targetSeconds) into a persisted, production-ready
- * plan: screenplay, Character/World Bible, scenes, and shots. The film
- * processor then fans these out onto the queues.
- *
- * NOTE: the structural planner below (duration -> scene/shot counts) is real and
- * deterministic; the *content* (headings, descriptions, dialogue) is generated
- * by a stub here. Replace `draftWithLLM()` with the multi-pass Claude calls in
- * docs/05-director-ai.md (use the claude-api skill for current model ids +
- * structured output). The shapes it writes already match the schema, so wiring
- * the real LLM does not change the fan-out.
+ * plan: screenplay, Character/World Bible, scenes, and shots. The content is
+ * authored by Claude (see ./llm.ts) and is what makes shot prompts bible-aware;
+ * the structural planner (duration -> scene/shot counts), provenance and cache
+ * keys are deterministic. The film processor then fans these onto the queues.
  */
 
 export interface PlannedShot {
@@ -49,14 +45,15 @@ export class DirectorService {
     const [width, height] = project.aspectRatio === "9:16" ? [720, 1280] : [1280, 720];
     const modelVersion = MODEL_VERSIONS[project.modelId] ?? "unknown";
 
-    const draft = draftWithLLM(project.prompt, sceneCount);
+    // Director writes the screenplay + bible (Claude, or deterministic fallback).
+    const draft = await draftFilm(project.prompt, sceneCount);
 
     // World + Character Bible (canonical, reusable — see docs/07, 08).
     const location = await prisma.location.create({
       data: {
         projectId,
         name: draft.location.name,
-        kind: "EXTERIOR",
+        kind: draft.location.kind,
         description: draft.location.description,
       },
     });
@@ -64,43 +61,40 @@ export class DirectorService {
       data: {
         projectId,
         name: draft.protagonist.name,
+        age: draft.protagonist.age,
+        gender: draft.protagonist.gender,
         appearance: draft.protagonist.appearance,
+        personality: draft.protagonist.personality,
       },
     });
 
+    const acts = [{ act: 1, scenes: draft.scenes.map((_, i) => i) }] as unknown as object;
     await prisma.screenplay.upsert({
       where: { projectId },
-      create: {
-        projectId,
-        logline: draft.logline,
-        synopsis: draft.synopsis,
-        acts: draft.acts,
-        raw: draft.raw,
-      },
-      update: { logline: draft.logline, synopsis: draft.synopsis, acts: draft.acts, raw: draft.raw },
+      create: { projectId, logline: draft.logline, synopsis: draft.synopsis, genre: draft.genre, tone: draft.tone, acts, raw: draft.raw as object },
+      update: { logline: draft.logline, synopsis: draft.synopsis, genre: draft.genre, tone: draft.tone, acts, raw: draft.raw as object },
     });
 
     // Scenes + shots. Create per-scene with nested shots so we get ids back for
-    // the queue fan-out. Upsert-by-index keeps re-runs idempotent.
+    // the queue fan-out. Delete-by-index keeps re-runs idempotent.
     const scenes: PlannedScene[] = [];
     for (let i = 0; i < sceneCount; i++) {
-      const heading = `EXT. ${draft.location.name.toUpperCase()} - ${i % 2 ? "NIGHT" : "DAY"}`;
-      const summary = draft.sceneSummary(i);
+      const beat = draft.scenes[i]!;
 
-      // Clean any prior shots/scene for idempotency, then recreate.
       await prisma.scene.deleteMany({ where: { projectId, index: i } });
       const scene = await prisma.scene.create({
         data: {
           projectId,
           index: i,
           locationId: location.id,
-          heading,
-          summary,
-          timeOfDay: i % 2 ? "night" : "day",
+          heading: beat.heading,
+          summary: beat.summary,
+          timeOfDay: beat.timeOfDay,
           characters: { create: [{ characterId: protagonist.id }] },
           shots: {
             create: Array.from({ length: shotsPerScene }, (_, s) => {
-              const prompt = buildShotPrompt(draft, location.description, protagonist.appearance, i, s);
+              // Prompt Builder composition (docs/09): bible + scene beat + camera.
+              const prompt = buildShotPrompt(beat.summary, draft, s);
               const negativePrompt = "blurry, watermark, text, extra limbs, deformed";
               const seed = deterministicSeed(projectId, i, s);
               const promptHash = computePromptHash({ prompt, negativePrompt });
@@ -145,36 +139,15 @@ export class DirectorService {
   }
 }
 
-/** STUB for the multi-pass LLM (docs/05). Deterministic placeholder content. */
-function draftWithLLM(prompt: string, sceneCount: number) {
-  const title = prompt.slice(0, 60);
-  return {
-    logline: `A story generated from: ${title}`,
-    synopsis: `An auto-generated synopsis for "${title}", told across ${sceneCount} scenes.`,
-    acts: [{ act: 1, scenes: Array.from({ length: sceneCount }, (_, i) => i) }] as unknown as object,
-    raw: { prompt } as unknown as object,
-    location: { name: "The Kingdom", description: "a vast sunlit African kingdom of red earth and stone" },
-    protagonist: { name: "Adisa", appearance: "a regal warrior, dark skin, gold-threaded robes, close-cropped hair" },
-    sceneSummary: (i: number) => `Beat ${i + 1}: the conflict deepens toward independence.`,
-  };
-}
-
-function buildShotPrompt(
-  draft: ReturnType<typeof draftWithLLM>,
-  locationDesc: string,
-  appearance: string,
-  sceneIndex: number,
-  shotIndex: number,
-): string {
-  // Prompt Builder composition (docs/09): bible + continuity + camera. The
-  // continuity lookup is omitted in this stub.
+/** Compose a shot prompt from the Director's bible + scene beat + camera. */
+function buildShotPrompt(sceneSummary: string, draft: FilmDraft, shotIndex: number): string {
   const sizes = ["wide establishing shot", "medium shot", "close-up", "tracking shot"];
   return [
     "cinematic, film still,",
     sizes[shotIndex % sizes.length] + " of",
-    appearance,
+    draft.protagonist.appearance,
     "in",
-    locationDesc + ".",
-    draft.sceneSummary(sceneIndex),
+    draft.location.description + ".",
+    sceneSummary,
   ].join(" ");
 }

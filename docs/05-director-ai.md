@@ -99,3 +99,21 @@ a **BullMQ flow** to fan out one `scene-job` per scene with a parent
 - [ ] Duration→structure planner (configurable per genre)
 - [ ] Persist + emit `project.progress` per pass
 - [ ] Idempotency: re-running a pass is safe (upsert by index)
+
+## Status — Anthropic Director wired
+
+The content planner is now backed by **Anthropic Claude** (default
+`claude-opus-4-8`, override `ANTHROPIC_MODEL`); set `ANTHROPIC_API_KEY` to
+enable it. It produces a structured plan — logline, synopsis, genre/tone, a
+visually-consistent protagonist (appearance, age, gender, personality), a
+primary location (with `kind`), and a beat-by-beat scene list — persisted to the
+Character/World Bible, `screenplays`, `scenes` and `shots`.
+
+Because each shot's `prompt` is composed from this bible + scene beat, the shot
+prompts are **bible-aware**, and any seed frame generated from a shot prompt
+(`OpenAIImageAdapter`, docs/22) inherits the same look — keeping the AI seed in
+line with the Director. Falls back to a deterministic stub when the key is unset
+or the call fails, so the render pipeline never hard-stops on an LLM hiccup.
+
+Implementation: `apps/worker/src/director/llm.ts` (Claude call + parsing) and
+`director.service.ts` (persistence + prompt composition).
