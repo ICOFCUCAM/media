@@ -305,6 +305,17 @@ model Scene {
   weather     String?
   status      SceneStatus @default(PENDING)
   durationSec Float       @default(0)
+
+  // Continuity Engine (docs/28) — bible anchors + the Scene Bridge + the state
+  // this scene changes; the running Project Memory Graph is folded from these.
+  characterRef    String?              // anchored library character
+  worldRef        String?              // anchored library world
+  locationNote    String?              // free-text location (for the location graph)
+  bridge          Json?                // { whatJustHappened, whatChanged, whatCarriesForward, nextSceneRequirements }
+  statePatch      Json?                // { characters, relationships, locations, world, goals }
+  dependsOn       Int[]   @default([]) // scene indexes this one depends on
+  continuityScore Int?                 // cached 0..100
+
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 

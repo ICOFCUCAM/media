@@ -16,7 +16,11 @@ import {
   CAMERA_MOVEMENTS,
   MUSIC_STYLES,
   CLIP_DURATIONS,
+  computeContinuity,
+  toSceneInput,
   type SceneDraft,
+  type SceneContinuity,
+  type ProjectState,
 } from "../lib/storyboard";
 import type { ShotSource } from "../lib/database.types";
 import { listAnchors } from "../lib/library";
@@ -63,6 +67,11 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
   const totalSeconds = useMemo(() => scenes.reduce((s, d) => s + d.durationSec, 0), [scenes]);
   const allReady = scenes.length > 0 && scenes.every((s) => s.status === "READY");
   const persisted = Boolean(projectId);
+
+  // The Continuity Engine: fold every scene into per-scene inherited state +
+  // score + dependencies, and the running project timeline.
+  const continuity = useMemo(() => computeContinuity(scenes.map(toSceneInput)), [scenes]);
+  const contByIndex = useMemo(() => new Map(continuity.perScene.map((c) => [c.index, c])), [continuity]);
 
   useEffect(() => {
     // Library characters/worlds available as scene anchors.
@@ -131,7 +140,8 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
     const d = scenes.find((s) => s.key === key);
     if (!d) return;
     try {
-      const { sceneId, shotId } = await persistScene(projectId, d);
+      const c = contByIndex.get(d.index);
+      const { sceneId, shotId } = await persistScene(projectId, d, { continuityScore: c?.score, dependsOn: c?.dependsOn });
       patch(key, { sceneId, shotId });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
@@ -324,6 +334,8 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
                 key={s.key}
                 scene={s}
                 anchors={anchors}
+                cont={contByIndex.get(s.index)}
+                timeline={continuity.final.timeline}
                 isFirst={i === 0}
                 isLast={i === scenes.length - 1}
                 onPatch={(p) => patch(s.key, p)}
@@ -348,6 +360,8 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
 function SceneCard({
   scene: s,
   anchors,
+  cont,
+  timeline,
   isFirst,
   isLast,
   onPatch,
@@ -361,6 +375,8 @@ function SceneCard({
 }: {
   scene: SceneDraft;
   anchors: Anchors;
+  cont?: SceneContinuity;
+  timeline: ProjectState["timeline"];
   isFirst: boolean;
   isLast: boolean;
   onPatch: (p: Partial<SceneDraft>) => void;
@@ -375,7 +391,9 @@ function SceneCard({
   const imgRef = useRef<HTMLInputElement>(null);
   const vidRef = useRef<HTMLInputElement>(null);
   const [details, setDetails] = useState(false);
+  const [continuity, setContinuity] = useState(false);
   const save = () => onSave();
+  const patchBridge = (p: Partial<SceneDraft["bridge"]>) => onPatch({ bridge: { ...s.bridge, ...p } });
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
       <div className="flex items-center justify-between gap-3">
@@ -479,6 +497,84 @@ function SceneCard({
         </div>
       )}
 
+      {/* Continuity — inherited state, score, dependencies, timeline + the bridge */}
+      {cont && (
+        <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.015] p-2.5">
+          <button onClick={() => setContinuity((v) => !v)} className="flex w-full items-center justify-between gap-2 text-xs">
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="text-white/45">Continuity</span>
+              <ScoreBadge score={cont.score} />
+              {cont.dependsOn.length > 0 && (
+                <span className="text-white/40">depends on {cont.dependsOn.map((d) => `S${d + 1}`).join(", ")}</span>
+              )}
+              {cont.affects.length > 0 && <span className="text-white/30">· affects {cont.affects.map((d) => `S${d + 1}`).join(", ")}</span>}
+            </span>
+            <span className="text-white/40">{continuity ? "▾" : "▸"}</span>
+          </button>
+
+          {continuity && (
+            <div className="mt-2.5 space-y-3">
+              <div className="flex flex-wrap gap-1.5 text-[11px]">
+                {s.character && <Tag>✓ {s.character}</Tag>}
+                {s.world && <Tag>✓ {s.world}</Tag>}
+                {s.location && <Tag>✓ {s.location}</Tag>}
+              </div>
+
+              <div>
+                <Label>Inherited state</Label>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {inheritedChips(cont.inherited).map((c) => (
+                    <span key={c} className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[11px] text-white/60">{c}</span>
+                  ))}
+                  {inheritedChips(cont.inherited).length === 0 && <span className="text-[11px] text-white/35">Nothing inherited yet — this is the opening state.</span>}
+                </div>
+                {cont.bridgeIn?.whatCarriesForward.trim() && (
+                  <p className="mt-1 text-[11px] text-white/50">↪ Carried forward: {cont.bridgeIn.whatCarriesForward}</p>
+                )}
+                {cont.notes.length > 0 && (
+                  <ul className="mt-1 list-disc pl-4 text-[11px] text-amber-300/70">
+                    {cont.notes.map((n) => <li key={n}>{n}</li>)}
+                  </ul>
+                )}
+              </div>
+
+              <div>
+                <Label>Scene Bridge → next scene</Label>
+                <div className="mt-1 grid gap-2 sm:grid-cols-2">
+                  <DetailField label="What just happened" value={s.bridge.whatJustHappened} onChange={(v) => patchBridge({ whatJustHappened: v })} onSave={save} placeholder="Enemy invaded" />
+                  <DetailField label="What changes" value={s.bridge.whatChanged} onChange={(v) => patchBridge({ whatChanged: v })} onSave={save} placeholder="King loses his army" />
+                  <DetailField label="Carries forward" value={s.bridge.whatCarriesForward} onChange={(v) => patchBridge({ whatCarriesForward: v })} onSave={save} placeholder="Fear, a thirst for revenge" />
+                  <DetailField label="Next scene requires" value={s.bridge.nextSceneRequirements} onChange={(v) => patchBridge({ nextSceneRequirements: v })} onSave={save} placeholder="Emergency council meeting" />
+                </div>
+              </div>
+
+              <div>
+                <Label>State this scene changes</Label>
+                <div className="mt-1 grid gap-2 sm:grid-cols-2">
+                  <DetailField label="Health / injuries" value={s.health} onChange={(v) => onPatch({ health: v })} onSave={save} placeholder="bandaged arm" />
+                  <DetailField label="Season" value={s.season} onChange={(v) => onPatch({ season: v })} onSave={save} placeholder="winter" />
+                  <DetailField label="Location status" value={s.locationStatus} onChange={(v) => onPatch({ locationStatus: v })} onSave={save} placeholder="destroyed" />
+                  <DetailField label="Goal" value={s.goal} onChange={(v) => onPatch({ goal: v })} onSave={save} placeholder="find evidence" />
+                </div>
+              </div>
+
+              {timeline.length > 0 && (
+                <div>
+                  <Label>Project timeline</Label>
+                  <ol className="mt-1 space-y-0.5 text-[11px] text-white/55">
+                    {timeline.map((t) => (
+                      <li key={t.index} className={t.index === s.index ? "text-white/90" : undefined}>
+                        <span className="text-white/35">S{t.index + 1}</span> · {t.event}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Duration + generate */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-1.5">
@@ -541,6 +637,30 @@ function SeedPreview({ scene: s }: { scene: SceneDraft }) {
     );
   }
   return <div className="flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-white/15 text-[10px] text-white/40">no seed</div>;
+}
+
+/* ── continuity UI bits ─────────────────────────────────────── */
+function ScoreBadge({ score }: { score: number }) {
+  const tone = score >= 80 ? "bg-emerald-500/15 text-emerald-300" : score >= 50 ? "bg-amber-500/15 text-amber-300" : "bg-rose-500/15 text-rose-300";
+  return <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${tone}`}>{score}%</span>;
+}
+
+function Tag({ children }: { children: ReactNode }) {
+  return <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-emerald-300/80">{children}</span>;
+}
+
+/** Flatten the inherited Project Memory Graph into short display chips. */
+function inheritedChips(s: ProjectState): string[] {
+  const out: string[] = [];
+  for (const [name, attrs] of Object.entries(s.characters)) {
+    const v = Object.values(attrs).filter(Boolean).join(" · ");
+    if (v) out.push(`${name}: ${v}`);
+  }
+  for (const [pair, rel] of Object.entries(s.relationships)) out.push(`${pair}: ${rel}`);
+  for (const [loc, status] of Object.entries(s.locations)) out.push(`${loc} — ${status}`);
+  for (const [k, v] of Object.entries(s.world)) out.push(`${k}: ${v}`);
+  for (const [who, goal] of Object.entries(s.goals)) out.push(`${who} wants: ${goal}`);
+  return out;
 }
 
 /* ── small UI bits ──────────────────────────────────────────── */

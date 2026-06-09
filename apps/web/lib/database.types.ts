@@ -111,6 +111,10 @@ export interface Database {
           location_note: string | null;
           character_ref: string | null;
           world_ref: string | null;
+          bridge: Json | null;
+          state_patch: Json | null;
+          depends_on: number[];
+          continuity_score: number | null;
           status: SceneStatus;
           duration_sec: number;
           created_at: string;
@@ -129,6 +133,10 @@ export interface Database {
           location_note?: string | null;
           character_ref?: string | null;
           world_ref?: string | null;
+          bridge?: Json | null;
+          state_patch?: Json | null;
+          depends_on?: number[];
+          continuity_score?: number | null;
           status?: SceneStatus;
           duration_sec?: number;
         };
@@ -144,6 +152,10 @@ export interface Database {
           location_note?: string | null;
           character_ref?: string | null;
           world_ref?: string | null;
+          bridge?: Json | null;
+          state_patch?: Json | null;
+          depends_on?: number[];
+          continuity_score?: number | null;
           status?: SceneStatus;
           duration_sec?: number;
         };

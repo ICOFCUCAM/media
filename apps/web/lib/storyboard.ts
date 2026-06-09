@@ -3,6 +3,10 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabase } from "./supabase";
 import type { Database, SceneStatus, ShotSource } from "./database.types";
+import { EMPTY_BRIDGE, type SceneBridge, type StatePatch, type SceneInput } from "./continuity";
+
+export type { SceneBridge } from "./continuity";
+export { computeContinuity, renderStatePreamble, type SceneContinuity, type ProjectState } from "./continuity";
 
 export type SceneRow = Database["public"]["Tables"]["scenes"]["Row"];
 export type ShotRow = Database["public"]["Tables"]["shots"]["Row"];
@@ -36,6 +40,12 @@ export interface SceneDraft {
   // Camera plan.
   cameraType: string;
   movement: string;
+  // Continuity Engine — the state this scene changes + the bridge to the next.
+  health: string; // character health/injuries that must carry forward
+  season: string; // world season (winter can't become summer later)
+  locationStatus: string; // e.g. "destroyed" — a destroyed place can't reappear intact
+  goal: string; // the character's current goal
+  bridge: SceneBridge;
   // Sources.
   source: ShotSource;
   seedKey: string | null; // storage key of the seed frame
@@ -62,6 +72,11 @@ export function newDraft(index: number, heading = "", script = ""): SceneDraft {
     musicStyle: "None",
     cameraType: "",
     movement: "",
+    health: "",
+    season: "",
+    locationStatus: "",
+    goal: "",
+    bridge: { ...EMPTY_BRIDGE },
     source: "text",
     seedKey: null,
     seedUrl: null,
@@ -120,8 +135,50 @@ export async function createStoryboardProject(input: {
   return data.id;
 }
 
-/** Insert (or update) a scene + its lead shot, returning the persisted ids. */
-export async function persistScene(projectId: string, d: SceneDraft): Promise<{ sceneId: string; shotId: string }> {
+/** Build this scene's state_patch (what it changes about the world) from the
+ *  editable fields, so the Continuity Engine can fold it forward. */
+export function buildStatePatch(d: SceneDraft): StatePatch {
+  const patch: StatePatch = {};
+  if (d.character) {
+    const attrs: Record<string, string> = {};
+    if (d.mood) attrs.emotion = d.mood;
+    if (d.health) attrs.health = d.health;
+    if (Object.keys(attrs).length) patch.characters = { [d.character]: attrs };
+    if (d.goal) patch.goals = { [d.character]: d.goal };
+  }
+  if (d.location && d.locationStatus) patch.locations = { [d.location]: d.locationStatus };
+  if (d.season) patch.world = { season: d.season };
+  return patch;
+}
+
+function bridgeOrNull(b: SceneBridge): SceneBridge | null {
+  return Object.values(b).some((v) => v.trim()) ? b : null;
+}
+
+function patchOrNull(p: StatePatch): StatePatch | null {
+  return Object.keys(p).length ? p : null;
+}
+
+/** A draft as the Continuity Engine sees it. */
+export function toSceneInput(d: SceneDraft): SceneInput {
+  return {
+    index: d.index,
+    heading: d.heading,
+    characterRef: d.character || null,
+    worldRef: d.world || null,
+    locationRef: d.location || null,
+    statePatch: patchOrNull(buildStatePatch(d)),
+    bridge: bridgeOrNull(d.bridge),
+  };
+}
+
+/** Insert (or update) a scene + its lead shot, returning the persisted ids.
+ *  `meta` carries the folded continuity (score + dependencies) for this scene. */
+export async function persistScene(
+  projectId: string,
+  d: SceneDraft,
+  meta?: { continuityScore?: number; dependsOn?: number[] },
+): Promise<{ sceneId: string; shotId: string }> {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase not configured");
 
@@ -138,6 +195,10 @@ export async function persistScene(projectId: string, d: SceneDraft): Promise<{ 
     music: d.musicStyle && d.musicStyle !== "None" ? d.musicStyle : null,
     character_ref: d.character || null,
     world_ref: d.world || null,
+    bridge: bridgeOrNull(d.bridge) as unknown as Database["public"]["Tables"]["scenes"]["Insert"]["bridge"],
+    state_patch: patchOrNull(buildStatePatch(d)) as unknown as Database["public"]["Tables"]["scenes"]["Insert"]["state_patch"],
+    depends_on: meta?.dependsOn ?? [],
+    continuity_score: meta?.continuityScore ?? null,
     duration_sec: d.durationSec,
   };
 
