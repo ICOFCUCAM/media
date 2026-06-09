@@ -80,6 +80,7 @@ export interface BuildClusterEnv {
  */
 export interface ExternalHooks {
   resolveImageUrl?: (key: string) => Promise<string>;
+  resolveVideoUrl?: (key: string) => Promise<string>;
   upload?: (videoUrl: string) => Promise<string>;
 }
 
@@ -117,6 +118,7 @@ export function buildClusterRegistry(env: BuildClusterEnv, hooks: ExternalHooks 
         apiKey: env.EXTERNAL_VIDEO_API_KEY,
         maxDurationSec: env.EXTERNAL_VIDEO_MAX_SEC ? Number(env.EXTERNAL_VIDEO_MAX_SEC) : undefined,
         resolveImageUrl: hooks.resolveImageUrl,
+        resolveVideoUrl: hooks.resolveVideoUrl,
         upload: hooks.upload,
       }),
     );

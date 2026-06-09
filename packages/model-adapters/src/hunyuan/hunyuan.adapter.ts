@@ -29,6 +29,7 @@ export class HunyuanAdapter implements VideoModelAdapter {
         { width: 1920, height: 1080 },
       ],
       supportsReferenceImage: true,
+      supportsReferenceVideo: true,
       supportsSeed: true,
       tiers: ["STUDIO", "ENTERPRISE"],
     };
@@ -49,6 +50,9 @@ export class HunyuanAdapter implements VideoModelAdapter {
         height: req.height,
         fps: req.fps ?? 24,
         referenceImageKeys: req.referenceImageKeys,
+        referenceVideoKeys: req.referenceVideoKeys,
+        videoOp: req.videoOp,
+        motionStrength: req.motionStrength,
         camera: req.camera as unknown as Record<string, unknown>,
         extra: req.extra,
       },

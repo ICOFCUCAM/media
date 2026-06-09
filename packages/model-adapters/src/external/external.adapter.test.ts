@@ -14,7 +14,22 @@ describe("ExternalApiAdapter", () => {
     const caps = a.capabilities();
     expect(caps.class).toBe("external");
     expect(caps.supportsReferenceImage).toBe(true);
+    expect(caps.supportsReferenceVideo).toBe(true);
     expect(caps.id).toBe("ext-vid");
+  });
+
+  it("conditions on a reference video (video-to-video)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ status: "succeeded", video_url: "https://cdn/out.mp4" }));
+    const resolveVideoUrl = vi.fn().mockResolvedValue("https://signed/ref.mp4");
+    const a = new ExternalApiAdapter({ id: "ext", displayName: "Ext", baseUrl: "https://api.x", resolveVideoUrl, fetchImpl });
+
+    await a.generate({ ...baseReq, referenceVideoKeys: ["projects/p/refvideo/0.mp4"], videoOp: "style", motionStrength: 0.7 });
+
+    expect(resolveVideoUrl).toHaveBeenCalledWith("projects/p/refvideo/0.mp4");
+    const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    expect(body.reference_video_url).toBe("https://signed/ref.mp4");
+    expect(body.operation).toBe("style");
+    expect(body.motion_strength).toBe(0.7);
   });
 
   it("handles a synchronous provider response", async () => {

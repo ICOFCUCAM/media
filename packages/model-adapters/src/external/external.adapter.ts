@@ -17,7 +17,10 @@ export interface ExternalAdapterOptions {
   apiKey?: string;
   maxDurationSec?: number;
   tiers?: ModelCapabilities["tiers"];
+  /** Whether the provider supports video-to-video (default true). */
+  supportsReferenceVideo?: boolean;
   resolveImageUrl?: (key: string) => Promise<string>;
+  resolveVideoUrl?: (key: string) => Promise<string>;
   upload?: (videoUrl: string) => Promise<string>;
   timeoutMs?: number;
   pollIntervalMs?: number;
@@ -43,6 +46,7 @@ export class ExternalApiAdapter implements VideoModelAdapter {
       baseUrl: opts.baseUrl,
       apiKey: opts.apiKey,
       resolveImageUrl: opts.resolveImageUrl,
+      resolveVideoUrl: opts.resolveVideoUrl,
       upload: opts.upload,
       timeoutMs: opts.timeoutMs,
       pollIntervalMs: opts.pollIntervalMs,
@@ -62,6 +66,7 @@ export class ExternalApiAdapter implements VideoModelAdapter {
         { width: 720, height: 1280 },
       ],
       supportsReferenceImage: true,
+      supportsReferenceVideo: this.opts.supportsReferenceVideo ?? true,
       supportsSeed: true,
       tiers: this.opts.tiers ?? ["CREATOR", "STUDIO", "ENTERPRISE"],
     };
@@ -84,6 +89,9 @@ export class ExternalApiAdapter implements VideoModelAdapter {
         height: req.height,
         fps: req.fps,
         imageKey: req.referenceImageKeys?.[0],
+        videoKey: req.referenceVideoKeys?.[0],
+        videoOp: req.videoOp,
+        motionStrength: req.motionStrength,
       },
       signal,
     );

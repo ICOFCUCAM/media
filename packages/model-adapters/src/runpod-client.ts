@@ -29,6 +29,9 @@ export interface GpuGenerateInput {
   height: number;
   fps?: number;
   referenceImageKeys?: string[];
+  referenceVideoKeys?: string[];
+  videoOp?: string;
+  motionStrength?: number;
   camera?: Record<string, unknown>;
   extra?: Record<string, unknown>;
 }

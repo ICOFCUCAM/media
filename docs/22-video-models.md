@@ -75,7 +75,9 @@ The provider (or a thin shim) must speak this small HTTP contract:
 
 ```
 POST {baseUrl}/generate
-  { prompt, negative_prompt?, seed?, seconds, width, height, fps?, image_url? }
+  { prompt, negative_prompt?, seed?, seconds, width, height, fps?,
+    image_url?,                                          // image-to-video seed
+    reference_video_url?, operation?, motion_strength? } // video-to-video
   → 200 { status: "succeeded", video_url, seed? }      // synchronous
     or  { id }                                          // asynchronous
 
@@ -84,6 +86,13 @@ GET {baseUrl}/tasks/{id}
 ```
 
 - **Text-to-video:** `image_url` omitted.
+- **Video-to-video:** an uploaded reference video
+  (`shots.reference_video_key`, set in the scene card) flows through
+  `ShotRequest.referenceVideoKeys` → resolved to `reference_video_url`
+  (via `ASSET_PUBLIC_BASE_URL` / a signed-URL resolver) with `operation`
+  (`variation|extend|remaster|style|sequel`, default `style` for "use this
+  motion style") and `motion_strength`. Self-hosted Wan/Hunyuan pass the keys
+  straight to the GPU worker. Gated by `ModelCapabilities.supportsReferenceVideo`.
 - **Image-to-video:** the scene's seed frame
   (`shots.seed_image_key`, set in the Storyboard's Image→Video mode) flows
   through `ShotRequest.referenceImageKeys`. The worker resolves the private

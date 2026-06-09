@@ -27,6 +27,15 @@ export interface ShotRequest {
   negativePrompt?: string;
   /** S3/HTTP keys of reference images for identity/location conditioning. */
   referenceImageKeys?: string[];
+  /**
+   * Storage keys of reference videos for VIDEO-TO-VIDEO conditioning — "use this
+   * motion style", or a source clip for variation/extension/remaster/sequel.
+   */
+  referenceVideoKeys?: string[];
+  /** Video-to-video operation when a reference video is present. */
+  videoOp?: VideoOp;
+  /** 0..1 — how strongly the reference video drives the output (motion fidelity). */
+  motionStrength?: number;
   /** Deterministic seed for reproducibility / character anchoring. */
   seed?: number;
   durationSec: number;
@@ -37,6 +46,9 @@ export interface ShotRequest {
   /** Free-form, model-specific knobs (motion strength, guidance, steps). */
   extra?: Record<string, unknown>;
 }
+
+/** Video-to-video operations (mirror the Video → Video studio). */
+export type VideoOp = "variation" | "extend" | "remaster" | "style" | "sequel";
 
 export interface ShotResult {
   /** S3 key of the generated clip (worker uploaded it). */
@@ -60,6 +72,8 @@ export interface ModelCapabilities {
   maxDurationSec: number;
   resolutions: Array<{ width: number; height: number }>;
   supportsReferenceImage: boolean;
+  /** Whether the model can condition on a reference video (video-to-video). */
+  supportsReferenceVideo: boolean;
   supportsSeed: boolean;
   /** Tiers allowed to use this model (see docs/15-monetization.md). */
   tiers: Array<"FREE" | "CREATOR" | "STUDIO" | "ENTERPRISE">;

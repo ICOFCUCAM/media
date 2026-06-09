@@ -26,6 +26,8 @@ export interface ExternalVideoClientOptions {
   pollIntervalMs?: number;
   /** Private storage key → a URL the provider can fetch (e.g. a signed URL). */
   resolveImageUrl?: (key: string) => Promise<string>;
+  /** Private storage key → a URL for a reference video (video-to-video). */
+  resolveVideoUrl?: (key: string) => Promise<string>;
   /** Persist the finished clip to our storage; return its key. */
   upload?: (videoUrl: string) => Promise<string>;
   /** Injectable for tests. */
@@ -42,6 +44,11 @@ export interface ExternalGenerateInput {
   fps?: number;
   /** Seed frame storage key — present for image-to-video. */
   imageKey?: string;
+  /** Reference video storage key — present for video-to-video (motion style). */
+  videoKey?: string;
+  /** Video-to-video operation + strength. */
+  videoOp?: string;
+  motionStrength?: number;
 }
 
 export interface ExternalGenerateOutput {
@@ -82,6 +89,8 @@ export class ExternalVideoClient {
     if (signal) signal.addEventListener("abort", () => ctrl.abort());
     try {
       const imageUrl = input.imageKey && this.opts.resolveImageUrl ? await this.opts.resolveImageUrl(input.imageKey) : undefined;
+      const resolveVideo = this.opts.resolveVideoUrl ?? this.opts.resolveImageUrl;
+      const referenceVideoUrl = input.videoKey && resolveVideo ? await resolveVideo(input.videoKey) : undefined;
 
       const submit = await this.post(`${this.opts.baseUrl}/generate`, {
         prompt: input.prompt,
@@ -92,6 +101,9 @@ export class ExternalVideoClient {
         height: input.height,
         fps: input.fps,
         image_url: imageUrl,
+        reference_video_url: referenceVideoUrl,
+        operation: input.videoOp,
+        motion_strength: input.motionStrength,
       }, ctrl.signal);
 
       const final = submit.video_url ? submit : await this.poll(submit, ctrl.signal);

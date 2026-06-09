@@ -348,6 +348,9 @@ model Shot {
   negativePrompt String?
   source        String     @default("text") // text | image (image-to-video uses seedImageKey)
   seedImageKey  String?                // storage key of the seed frame (image-to-video)
+  referenceVideoKey String?            // storage key of a reference video (video-to-video / motion style)
+  cameraType    String?                // Wide | Medium | Close-Up | POV | Drone | Tracking | Crane | Handheld
+  cameraMovement String?               // Static | Dolly | Orbit | Push-In | Pull-Out
   cameraPlan    Json?                  // shot size, movement, angle, lens
   seed          BigInt?
   durationSec   Float      @default(5)
