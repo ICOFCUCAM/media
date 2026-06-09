@@ -25,6 +25,8 @@ export interface CreateStudioProps {
   /** Vertical platform presets — only the Shorts studio passes these. */
   platforms?: ShortPlatform[];
   cta?: string;
+  /** Render without the outer container/header (when nested under a workspace). */
+  embedded?: boolean;
 }
 
 /**
@@ -77,11 +79,13 @@ export function CreateStudio(props: CreateStudioProps) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">{props.heading}</h1>
-        <p className="mt-1 text-sm text-white/55">{props.blurb}</p>
-      </header>
+    <div className={props.embedded ? "" : "mx-auto max-w-6xl px-6 py-8"}>
+      {!props.embedded && (
+        <header className="mb-6">
+          <h1 className="text-2xl font-semibold">{props.heading}</h1>
+          <p className="mt-1 text-sm text-white/55">{props.blurb}</p>
+        </header>
+      )}
 
       <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
         <aside className="space-y-5">

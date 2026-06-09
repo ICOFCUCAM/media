@@ -15,6 +15,7 @@ import {
 } from "../lib/storyboard";
 import type { ShotSource } from "../lib/database.types";
 import { listAnchors } from "../lib/library";
+import { useAuth } from "./AuthProvider";
 
 const SCENE_COUNTS = [3, 4, 5, 6, 8];
 const CLIP_DURATIONS = [5, 10];
@@ -48,6 +49,11 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
   const cancelers = useRef<Map<string, { cancel: () => void }>>(new Map());
   const channelRef = useRef<{ unsubscribe: () => void } | null>(null);
 
+  // Live = persist to Supabase + Realtime. Otherwise everything runs locally as
+  // a preview (no account needed) so the full flow is usable on the deploy.
+  const { enabled, user } = useAuth();
+  const live = enabled && !!user;
+
   const totalSeconds = useMemo(() => scenes.reduce((s, d) => s + d.durationSec, 0), [scenes]);
   const allReady = scenes.length > 0 && scenes.every((s) => s.status === "READY");
   const persisted = Boolean(projectId);
@@ -78,6 +84,13 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
    */
   async function ensureStarted(list = scenes): Promise<{ id: string; scenes: SceneDraft[] }> {
     if (projectId) return { id: projectId, scenes: list };
+    // Preview: assign local ids, no database.
+    if (!live) {
+      const out = list.map((d) => ({ ...d, sceneId: d.sceneId ?? `local_${d.key}`, shotId: d.shotId ?? `local_${d.key}` }));
+      setProjectId("preview");
+      setScenes(out);
+      return { id: "preview", scenes: out };
+    }
     setBusy(true);
     setError(null);
     try {
@@ -106,7 +119,7 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
   }
 
   async function onSaveScene(key: string) {
-    if (!projectId) return; // local-only until the storyboard is started
+    if (!live || !projectId) return; // local-only in preview / until started
     const d = scenes.find((s) => s.key === key);
     if (!d) return;
     try {
@@ -123,6 +136,11 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
 
   async function onUpload(key: string, file: File) {
     patch(key, { source: "image" });
+    // Preview: show the image locally via an object URL (no upload).
+    if (!live) {
+      patch(key, { seedKey: `local:${key}`, seedUrl: URL.createObjectURL(file), source: "image" });
+      return;
+    }
     try {
       const { id } = await ensureStarted();
       const { key: seedKey, url } = await uploadSeedImage(id, key, file);
@@ -144,7 +162,14 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
     if (!d.sceneId || !d.shotId) return;
     cancelers.current.get(d.key)?.cancel();
     patch(d.key, { status: "GENERATING" });
-    cancelers.current.set(d.key, generateScene(d.sceneId, d.shotId));
+    if (live) {
+      // Worker writes status → Realtime → UI.
+      cancelers.current.set(d.key, generateScene(d.sceneId, d.shotId));
+    } else {
+      // Preview: simulate the render locally.
+      const t = setTimeout(() => patch(d.key, { status: "READY" }), 1400 + Math.random() * 1200);
+      cancelers.current.set(d.key, { cancel: () => clearTimeout(t) });
+    }
   }
 
   async function onGenerate(key: string) {
@@ -184,6 +209,10 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
 
   async function onAssemble() {
     if (!projectId) return;
+    if (!live) {
+      setAssembled(true);
+      return;
+    }
     setBusy(true);
     try {
       await assembleStoryboard(projectId, totalSeconds);
@@ -239,7 +268,11 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
             <div className="text-sm text-white/55">
               {scenes.length} scenes · {fmtDuration(totalSeconds)} ·{" "}
               <span className="text-white/40">{scenes.filter((s) => s.status === "READY").length} ready</span>
-              {!persisted && <span className="ml-1 text-white/30">· not saved yet — generating saves it</span>}
+              {!live ? (
+                <span className="ml-1 text-amber-300/70">· preview — sign in to save</span>
+              ) : (
+                !persisted && <span className="ml-1 text-white/30">· not saved yet — generating saves it</span>
+              )}
             </div>
             <div className="flex gap-2">
               <button onClick={onGenerateAll} className="rounded-lg border border-white/15 px-4 py-2 text-sm hover:bg-white/5">

@@ -69,45 +69,11 @@ class FilmWorker {
 }
 
 export function FilmStudio() {
-  const { enabled, loading, user, signOut } = useAuth();
-
-  // No Supabase env configured → fall back to the built-in preview engine.
-  if (!enabled) {
-    const p = productById("film")!;
-    return (
-      <CreateStudio
-        kind="film"
-        heading="Create a Feature Film"
-        blurb="One prompt becomes a full film — screenplay, cast, locations, score and a streamable final cut."
-        durations={p.durations}
-        defaultSeconds={p.defaultSeconds}
-        defaultPrompt="An epic about an African kingdom fighting for its independence, told over three generations."
-        cta="Create film"
-      />
-    );
-  }
-
-  if (loading) {
-    return <div className="mx-auto max-w-6xl px-6 py-16 text-sm text-white/40">Loading your studio…</div>;
-  }
-
-  if (!user) {
-    return (
-      <div className="mx-auto max-w-6xl px-6 py-16">
-        <header className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold">Create a Feature Film</h1>
-          <p className="mt-1 text-sm text-white/55">Sign in to create films that save to your studio.</p>
-        </header>
-        <AuthCard />
-      </div>
-    );
-  }
-
-  return <FilmWorkspace email={user.email ?? "you"} onSignOut={signOut} />;
+  return <FilmWorkspace />;
 }
 
 const MODE_BLURB: Record<StudioMode, string> = {
-  prompt: "One prompt → a full film, saved live to your studio.",
+  prompt: "One prompt → a full film: screenplay, cast, locations, score and a final cut.",
   script: "Bring a screenplay; we break it into a shot list and scenes.",
   storyboard: "Build and generate scene by scene — full creative control.",
   image: "Start from images; add motion and camera per shot.",
@@ -115,9 +81,18 @@ const MODE_BLURB: Record<StudioMode, string> = {
   video: "Upload a clip; generate variations, extensions or a sequel.",
 };
 
-/** Mode-aware workspace: every creation entry point on one screen. Reads ?mode=. */
-function FilmWorkspace({ email, onSignOut }: { email: string; onSignOut: () => void }) {
+/**
+ * Mode-aware workspace: every creation entry point on one screen (Prompt ·
+ * Script · Scene-by-Scene · Image · Audio · Video), read from ?mode=. The mode
+ * rail is ALWAYS shown — each surface works in preview without Supabase and
+ * persists once you're signed in.
+ */
+function FilmWorkspace() {
+  const { enabled, user, signOut } = useAuth();
+  const live = enabled && !!user;
   const [mode, setMode] = useState<StudioMode>("prompt");
+  const [showAuth, setShowAuth] = useState(false);
+  const p = productById("film")!;
 
   // Read the requested mode from the URL (avoids useSearchParams' Suspense
   // requirement on statically-rendered routes).
@@ -132,17 +107,33 @@ function FilmWorkspace({ email, onSignOut }: { email: string; onSignOut: () => v
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
             Create a Film
-            <span className="rounded-full border border-emerald-400/40 px-2 py-0.5 text-[10px] font-normal text-emerald-300">
-              Live · Supabase
-            </span>
+            {live ? (
+              <span className="rounded-full border border-emerald-400/40 px-2 py-0.5 text-[10px] font-normal text-emerald-300">Live · Supabase</span>
+            ) : (
+              <span className="rounded-full border border-amber-400/40 px-2 py-0.5 text-[10px] font-normal text-amber-300">Preview</span>
+            )}
           </h1>
           <p className="mt-1 text-sm text-white/55">{MODE_BLURB[mode]}</p>
         </div>
         <div className="text-right text-xs text-white/45">
-          <div>{email}</div>
-          <button onClick={onSignOut} className="mt-1 underline hover:text-white">Sign out</button>
+          {live ? (
+            <>
+              <div>{user!.email}</div>
+              <button onClick={signOut} className="mt-1 underline hover:text-white">Sign out</button>
+            </>
+          ) : enabled ? (
+            <button onClick={() => setShowAuth((v) => !v)} className="underline hover:text-white">Sign in to save</button>
+          ) : (
+            <span title="Set NEXT_PUBLIC_SUPABASE_URL to persist your work">Preview — not saved</span>
+          )}
         </div>
       </header>
+
+      {showAuth && !live && (
+        <div className="mb-6">
+          <AuthCard />
+        </div>
+      )}
 
       <div className="mb-6 flex flex-wrap gap-1 rounded-lg border border-white/10 bg-white/5 p-1 text-sm">
         {STUDIO_MODES.map((m) => (
@@ -161,7 +152,21 @@ function FilmWorkspace({ email, onSignOut }: { email: string; onSignOut: () => v
         ))}
       </div>
 
-      {mode === "prompt" && <AutoStudioBody />}
+      {mode === "prompt" &&
+        (live ? (
+          <AutoStudioBody />
+        ) : (
+          <CreateStudio
+            kind="film"
+            embedded
+            heading=""
+            blurb=""
+            durations={p.durations}
+            defaultSeconds={p.defaultSeconds}
+            defaultPrompt="An epic about an African kingdom fighting for its independence, told over three generations."
+            cta="Create film"
+          />
+        ))}
       {mode === "script" && <ScriptStudio />}
       {mode === "storyboard" && <StoryboardStudio />}
       {mode === "image" && <ImageStudio />}
