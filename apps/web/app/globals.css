@@ -10,3 +10,30 @@ body {
   background: #0a0a0f;
   color: #f5f5f7;
 }
+
+/* ── Homepage cinematic motion ─────────────────────────────── */
+@keyframes cf-pan {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+@keyframes cf-flow {
+  0% { transform: translateX(-120%); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateX(120%); opacity: 0; }
+}
+@keyframes cf-shimmer {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+@keyframes cf-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.cf-pan { background-size: 200% 200%; animation: cf-pan 8s ease-in-out infinite alternate; }
+.cf-flow { animation: cf-flow 2.6s ease-in-out infinite; }
+.cf-shimmer { animation: cf-shimmer 2.4s ease-in-out infinite; }
+.cf-marquee { animation: cf-marquee 30s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-pan, .cf-flow, .cf-shimmer, .cf-marquee { animation: none; }
+}

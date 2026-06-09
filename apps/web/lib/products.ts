@@ -139,6 +139,29 @@ export const MARKETPLACE_CATEGORIES: { id: string; name: string; blurb: string }
   { id: "templates", name: "Templates", blurb: "Genre kits, trailer formats and short-form recipes." },
 ];
 
+/** Sample marketplace listings (priced) — a real economy, not placeholders. */
+export const MARKETPLACE_ITEMS: { name: string; kind: string; price: number; accent: string }[] = [
+  { name: "Heroine Character Pack", kind: "Character", price: 49, accent: "from-indigo-500/40 to-fuchsia-500/30" },
+  { name: "Fantasy Kingdom", kind: "Story World", price: 199, accent: "from-amber-500/40 to-rose-500/30" },
+  { name: "Narrator Voice — “Onyx”", kind: "Voice Pack", price: 29, accent: "from-cyan-500/40 to-blue-500/30" },
+  { name: "Cyberpunk Megacity", kind: "Story World", price: 149, accent: "from-emerald-500/40 to-teal-500/30" },
+  { name: "Trailer Template — Teaser", kind: "Template", price: 19, accent: "from-rose-500/40 to-orange-500/30" },
+  { name: "Creature Set — Beasts", kind: "Asset Pack", price: 79, accent: "from-violet-500/40 to-purple-500/30" },
+];
+
+/** Idea → Audience: the full transformation Cineforge sells. */
+export const IDEA_TO_AUDIENCE: string[] = [
+  "Idea", "Script", "Characters", "Scenes", "Film", "Trailer", "YouTube", "TikTok", "Revenue",
+];
+
+/** Pricing tiers (mirrors the `tier` enum). */
+export const PRICING: { tier: string; price: string; tagline: string; features: string[]; highlight?: boolean }[] = [
+  { tier: "Free", price: "$0", tagline: "Try the studio", features: ["Shorts & trailers", "Preview renders", "Watermarked exports", "Community marketplace"] },
+  { tier: "Creator", price: "$29/mo", tagline: "For solo creators", features: ["Films up to 30 min", "All entry modes", "Publish to every channel", "Sell in the marketplace"], highlight: true },
+  { tier: "Studio", price: "$99/mo", tagline: "For production teams", features: ["Feature-length films & series", "Premium models", "Teams & brand kit", "Priority GPU"] },
+  { tier: "Enterprise", price: "Custom", tagline: "For media companies", features: ["Unlimited runtime", "Dedicated GPUs", "Governance & SSO", "Custom models & SLAs"] },
+];
+
 /** Left-nav information architecture. The `admin` section is gated by role. */
 export interface NavItem {
   label: string;
