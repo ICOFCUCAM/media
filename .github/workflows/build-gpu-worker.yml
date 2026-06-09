@@ -6,6 +6,11 @@ name: Build GPU worker image
 #   DOCKERHUB_USERNAME  — your Docker Hub username (e.g. icofcucam)
 #   DOCKERHUB_TOKEN     — a Docker Hub access token with Read & Write
 on:
+  push:
+    branches: [claude/sleepy-johnson-8fu6b3]
+    paths:
+      - "apps/gpu-worker/**"
+      - ".github/workflows/build-gpu-worker.yml"
   workflow_dispatch:
     inputs:
       tag:
@@ -42,4 +47,4 @@ jobs:
           file: apps/gpu-worker/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cineforge-gpu:${{ inputs.tag }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cineforge-gpu:${{ inputs.tag || 'latest' }}
