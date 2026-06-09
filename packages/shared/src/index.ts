@@ -3,3 +3,5 @@ export * from "./cache";
 export * from "./planning";
 export * from "./budget";
 export * from "./continuity";
+export * from "./i18n";
+export * from "./subtitles";
