@@ -15,6 +15,7 @@ describe("ExternalApiAdapter", () => {
     expect(caps.class).toBe("external");
     expect(caps.supportsReferenceImage).toBe(true);
     expect(caps.supportsReferenceVideo).toBe(true);
+    expect(caps.supportsLora).toBe(false); // hosted providers can't load our LoRA
     expect(caps.id).toBe("ext-vid");
   });
 

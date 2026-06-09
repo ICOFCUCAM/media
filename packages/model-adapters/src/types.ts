@@ -36,6 +36,9 @@ export interface ShotRequest {
   videoOp?: VideoOp;
   /** 0..1 — how strongly the reference video drives the output (motion fidelity). */
   motionStrength?: number;
+  /** Storage keys of trained per-character LoRA adapters — the tightest identity
+   *  lock (docs/28). Self-hosted models load these; external APIs ignore them. */
+  loraKeys?: string[];
   /** Deterministic seed for reproducibility / character anchoring. */
   seed?: number;
   durationSec: number;
@@ -74,6 +77,8 @@ export interface ModelCapabilities {
   supportsReferenceImage: boolean;
   /** Whether the model can condition on a reference video (video-to-video). */
   supportsReferenceVideo: boolean;
+  /** Whether the model can load per-character LoRA adapters for identity lock. */
+  supportsLora: boolean;
   supportsSeed: boolean;
   /** Tiers allowed to use this model (see docs/15-monetization.md). */
   tiers: Array<"FREE" | "CREATOR" | "STUDIO" | "ENTERPRISE">;

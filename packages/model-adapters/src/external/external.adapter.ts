@@ -67,6 +67,7 @@ export class ExternalApiAdapter implements VideoModelAdapter {
       ],
       supportsReferenceImage: true,
       supportsReferenceVideo: this.opts.supportsReferenceVideo ?? true,
+      supportsLora: false, // hosted providers can't load our private LoRA artifacts
       supportsSeed: true,
       tiers: this.opts.tiers ?? ["CREATOR", "STUDIO", "ENTERPRISE"],
     };

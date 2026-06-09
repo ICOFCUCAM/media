@@ -30,6 +30,7 @@ export class WanAdapter implements VideoModelAdapter {
       ],
       supportsReferenceImage: true,
       supportsReferenceVideo: true,
+      supportsLora: true,
       supportsSeed: true,
       tiers: ["FREE", "CREATOR", "STUDIO", "ENTERPRISE"],
     };
@@ -53,6 +54,7 @@ export class WanAdapter implements VideoModelAdapter {
         referenceVideoKeys: req.referenceVideoKeys,
         videoOp: req.videoOp,
         motionStrength: req.motionStrength,
+        loraKeys: req.loraKeys,
         camera: req.camera as unknown as Record<string, unknown>,
         extra: req.extra,
       },

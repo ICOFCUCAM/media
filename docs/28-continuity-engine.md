@@ -125,6 +125,12 @@ builder:
   shot at the pixel level, not just in prose — and it degrades gracefully: an
   asset with no stored frames simply adds nothing.
 
-Reference frames are an IP-adapter/identity signal to the model; the asset id is
-also the join key to a per-character LoRA (`Character.loraKey`), which the
-adapter can load for even stronger identity lock when training is wired.
+Reference frames are an IP-adapter/identity signal; for the tightest lock the
+asset id also joins to a per-character **LoRA** (`Character.loraKey`).
+`resolveContinuity` resolves those too and `buildShotRequest` passes them as
+`ShotRequest.loraKeys` → the self-hosted Wan/Hunyuan adapters forward them to the
+GPU worker (capability `supportsLora`; external hosted APIs report `false` and
+ignore them). So the full identity stack is: **prose** (preamble `id`/wardrobe) →
+**seed** → **IP-adapter reference frames** → **LoRA**. The remaining work is
+out-of-band: a training job that produces `Character.loraKey`, and the GPU
+worker honoring the key at load time.

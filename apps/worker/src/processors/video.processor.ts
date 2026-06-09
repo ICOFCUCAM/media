@@ -72,7 +72,7 @@ function loadShot(shotId: string) {
  * inherited character **asset ids** into actual reference frames so the SAME
  * character drives every shot — pixel-level visual continuity, not just a prompt.
  */
-async function resolveContinuity(shot: ShotWithScene): Promise<{ preamble: string; referenceImageKeys: string[] }> {
+async function resolveContinuity(shot: ShotWithScene): Promise<{ preamble: string; referenceImageKeys: string[]; loraKeys: string[] }> {
   const scenes = await prisma.scene.findMany({
     where: { projectId: shot.scene.projectId, index: { lte: shot.scene.index } },
     orderBy: { index: "asc" },
@@ -101,22 +101,31 @@ async function resolveContinuity(shot: ShotWithScene): Promise<{ preamble: strin
   if (here) collect(here.inherited.characters);
   collect(self?.statePatch?.characters ?? undefined);
 
-  // Resolve each asset id to its stored reference frames (Library / IP-adapter).
+  // Resolve each asset id to its stored reference frames + trained LoRA — the
+  // reference frames are an IP-adapter signal; the LoRA is the tightest lock.
   let referenceImageKeys: string[] = [];
+  let loraKeys: string[] = [];
   if (assetIds.size) {
     const chars = await prisma.character.findMany({
       where: { id: { in: [...assetIds] } },
-      select: { referenceUrls: true },
+      select: { referenceUrls: true, loraKey: true },
     });
     referenceImageKeys = [...new Set(chars.flatMap((c) => c.referenceUrls))].slice(0, 4);
+    loraKeys = [...new Set(chars.map((c) => c.loraKey).filter((k): k is string => Boolean(k)))];
   }
-  return { preamble, referenceImageKeys };
+  return { preamble, referenceImageKeys, loraKeys };
 }
 
 /** Compose the final ShotRequest. `seedKey` is the resolved seed frame for
  *  image-to-video; `preamble` is the inherited-state continuity block; `refKeys`
  *  are the character's reference frames (visual continuity). */
-function buildShotRequest(shot: ShotWithScene, seedKey?: string, preamble?: string, refKeys: string[] = []): ShotRequest {
+function buildShotRequest(
+  shot: ShotWithScene,
+  seedKey?: string,
+  preamble?: string,
+  refKeys: string[] = [],
+  loraKeys: string[] = [],
+): ShotRequest {
   const [w, h] = shot.scene.project.aspectRatio === "9:16" ? [720, 1280] : [1280, 720];
   // video-to-video: an uploaded reference video drives the motion style.
   const refVideo = shot.referenceVideoKey && !PREVIEW_SEED.test(shot.referenceVideoKey) ? shot.referenceVideoKey : undefined;
@@ -134,6 +143,7 @@ function buildShotRequest(shot: ShotWithScene, seedKey?: string, preamble?: stri
     referenceVideoKeys: refVideo ? [refVideo] : undefined,
     videoOp: refVideo ? "style" : undefined,
     motionStrength: refVideo ? 0.7 : undefined,
+    loraKeys: loraKeys.length ? loraKeys : undefined,
   };
 }
 
@@ -220,8 +230,8 @@ export const videoWorker = new Worker<VideoJob>(
     const seedKey = await resolveSeedKey(shot);
     // Continuity: inherit prior scenes into the prompt + reuse the same character
     // reference frames so identity is locked pixel-level (docs/28).
-    const { preamble, referenceImageKeys } = await resolveContinuity(shot);
-    const result = await adapter.generate(buildShotRequest(shot, seedKey, preamble, referenceImageKeys));
+    const { preamble, referenceImageKeys, loraKeys } = await resolveContinuity(shot);
+    const result = await adapter.generate(buildShotRequest(shot, seedKey, preamble, referenceImageKeys, loraKeys));
 
     // QC gate (docs/09) omitted here; on failure throw to trigger retry.
 
