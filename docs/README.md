@@ -33,6 +33,11 @@ and [01-architecture](01-architecture.md); this page is the map.
 - [18 — DevOps](18-devops.md) · [19 — Scaling & cost](19-scaling-cost.md)
 - [20 — Deployment plan](20-deployment-plan.md) · [27 — Deploy the worker](27-deploy-worker.md)
 
+**Distribution & growth**
+- [29 — Multilingual export](29-multilingual.md) · one film → many languages
+- [30 — Ads & licensed stock](30-ads-and-stock.md) · ad presets + Pexels/Pixabay
+- [31 — Social publishing](31-social-publishing.md) · push to YouTube/TikTok/…
+
 ## Continuity & identity — the coherent-movie spine
 
 Scenes are not isolated clips. Every scene **inherits the folded state of all

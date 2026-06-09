@@ -12,6 +12,7 @@ export const QUEUES = {
   render: "render-queue",
   lora: "lora-queue",
   localize: "localize-queue",
+  publish: "publish-queue",
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -61,6 +62,15 @@ export interface LocalizeJob {
   languages: string[]; // target language codes; e.g. ["es", "fr", "sw"]
 }
 
+/** Publish a finished film/ad to social platforms (docs/31). */
+export interface PublishJob {
+  projectId: string;
+  providers: string[]; // e.g. ["youtube", "tiktok"]
+  title?: string;
+  description?: string;
+  tags?: string[];
+}
+
 export interface JobPayloads {
   [QUEUES.film]: FilmJob;
   [QUEUES.scene]: SceneJob;
@@ -69,4 +79,5 @@ export interface JobPayloads {
   [QUEUES.render]: RenderJob;
   [QUEUES.lora]: LoraJob;
   [QUEUES.localize]: LocalizeJob;
+  [QUEUES.publish]: PublishJob;
 }

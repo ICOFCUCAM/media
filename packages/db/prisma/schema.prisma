@@ -477,6 +477,7 @@ model Film {
   version     Int      @default(1) // canon/edit version (docs/24 §C7)
   views       Int      @default(0)
   publishedAt DateTime?
+  publications Json?               // provider -> { status, id?, url?, detail? } (docs/31)
   createdAt   DateTime @default(now())
 }
 
