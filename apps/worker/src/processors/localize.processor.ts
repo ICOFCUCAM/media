@@ -27,17 +27,23 @@ export const localizeWorker = new Worker<LocalizeJob>(
         id: true,
         durationSec: true,
         summary: true,
+        dialogue: true,
+        narration: true,
         subtitles: true,
-        dialogue: { orderBy: { index: "asc" }, select: { text: true } },
+        dialogueLines: { orderBy: { index: "asc" }, select: { text: true } },
       },
     });
 
     let written = 0;
     for (const scene of scenes) {
-      // Caption source = the scene's dialogue lines, else the scene summary.
-      const lines = scene.dialogue.length
-        ? scene.dialogue.map((d) => d.text).filter((t) => t.trim())
-        : (scene.summary ?? "").split(/\n+/).filter((t) => t.trim());
+      // Caption source: dialogue_lines (Director) → dialogue/narration text
+      // columns (web) → the scene summary.
+      const lines = scene.dialogueLines.length
+        ? scene.dialogueLines.map((d) => d.text).filter((t) => t.trim())
+        : [scene.dialogue, scene.narration, scene.summary]
+            .filter((v): v is string => Boolean(v && v.trim()))
+            .flatMap((v) => v.split(/\n+/))
+            .filter((t) => t.trim());
       if (lines.length === 0) continue;
 
       const existing = (scene.subtitles as Record<string, string> | null) ?? {};

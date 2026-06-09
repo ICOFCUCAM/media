@@ -1,5 +1,7 @@
 // Cineforge — Prisma schema
-// PostgreSQL. See docs/02-database-schema.md for narrative + ERD.
+// PostgreSQL. Mapped onto the Supabase database (snake_case tables/columns,
+// uuid ids, Postgres enum types) so the worker/API read & write the SAME tables
+// the web app uses via Supabase. See docs/02-database-schema.md.
 
 generator client {
   provider = "prisma-client-js"
@@ -19,41 +21,47 @@ enum Tier {
   CREATOR
   STUDIO
   ENTERPRISE
+
+  @@map("tier")
 }
 
 enum Role {
   USER
   ADMIN
+
+  @@map("role")
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  passwordHash String?
-  displayName  String?
-  role         Role      @default(USER)
-  tier         Tier      @default(FREE)
-  creditsMs    Int       @default(0) // remaining generation budget, in GPU-ms
-  stripeId     String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          String   @id @default(uuid()) @db.Uuid
+  email       String   @unique
+  displayName String?  @map("display_name")
+  role        Role     @default(USER)
+  tier        Tier     @default(FREE)
+  creditsMs   Int      @default(0) @map("credits_ms") // remaining generation budget, in GPU-ms
+  stripeId    String?  @map("stripe_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  projects     Project[]
-  apiKeys      ApiKey[]
-  usage        UsageRecord[]
+  projects Project[]
+  apiKeys  ApiKey[]
+  usage    UsageRecord[]
+
+  @@map("users")
 }
 
 model ApiKey {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  hashed    String   @unique
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hashed    String    @unique
   label     String?
-  lastUsed  DateTime?
-  revokedAt DateTime?
-  createdAt DateTime @default(now())
+  lastUsed  DateTime? @map("last_used") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId])
+  @@map("api_keys")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -62,104 +70,107 @@ model ApiKey {
 
 enum ProjectStatus {
   DRAFT
-  PLANNING        // Director AI running
-  GENERATING      // scenes/shots generating
-  RENDERING       // FFmpeg assembling
-  PAUSED          // budget ceiling reached — resumable (docs/24 §C8)
+  PLANNING
+  GENERATING
+  RENDERING
+  PAUSED
   READY
   FAILED
+
+  @@map("project_status")
 }
 
 model Project {
-  id            String        @id @default(cuid())
-  userId        String
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   title         String
-  prompt        String                       // original user prompt
-  targetSeconds Int                           // requested duration
-  aspectRatio   String        @default("16:9")
-  modelId       String        @default("wan-2.1")
+  prompt        String
+  targetSeconds Int           @map("target_seconds")
+  aspectRatio   String        @default("16:9") @map("aspect_ratio")
+  modelId       String        @default("wan-2.1") @map("model_id")
   status        ProjectStatus @default(DRAFT)
-  progress      Float         @default(0)     // 0..1
-  estimatedMs   Int?                          // pre-flight GPU-ms budget (docs/24 §C8)
-  spentMs       Int           @default(0)     // GPU-ms spent so far (budget tracking)
-  errorMessage  String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  progress      Float         @default(0)
+  estimatedMs   Int?          @map("estimated_ms")
+  spentMs       Int           @default(0) @map("spent_ms")
+  errorMessage  String?       @map("error_message")
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  screenplay    Screenplay?
-  characters    Character[]
-  locations     Location[]
-  objects       WorldObject[]
-  scenes        Scene[]
-  continuity    ContinuityState[]
-  film          Film?
-  renderJobs    RenderJob[]
-
-  // Phase 3 (docs/24): episodic series + event-sourced canon.
-  series        Series?
-  storyEvents   StoryEvent[]
+  screenplay  Screenplay?
+  characters  Character[]
+  locations   Location[]
+  objects     WorldObject[]
+  scenes      Scene[]
+  continuity  ContinuityState[]
+  film        Film?
+  renderJobs  RenderJob[]
+  series      Series?
+  storyEvents StoryEvent[]
 
   @@index([userId, status])
+  @@map("projects")
 }
 
 // ─────────────────────────────────────────────────────────────
-// Phase 3 — Episodic hierarchy (docs/24 §C/D). Additive: single
-// films keep using Project->Scene directly; series add Season/Episode.
+// Phase 3 — Episodic hierarchy
 // ─────────────────────────────────────────────────────────────
 
 model Series {
-  id        String   @id @default(cuid())
-  projectId String   @unique
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @unique @map("project_id") @db.Uuid
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   title     String
   synopsis  String?
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  seasons   Season[]
+  seasons Season[]
+
+  @@map("series")
 }
 
 model Season {
-  id        String   @id @default(cuid())
-  seriesId  String
+  id        String   @id @default(uuid()) @db.Uuid
+  seriesId  String   @map("series_id") @db.Uuid
   series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
   number    Int
   title     String?
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  episodes  Episode[]
+  episodes Episode[]
 
   @@unique([seriesId, number])
+  @@map("seasons")
 }
 
 model Episode {
-  id        String   @id @default(cuid())
-  seasonId  String
+  id        String   @id @default(uuid()) @db.Uuid
+  seasonId  String   @map("season_id") @db.Uuid
   season    Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
   number    Int
   title     String
   synopsis  String?
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  scenes    Scene[]
+  scenes Scene[]
 
   @@unique([seasonId, number])
+  @@map("episodes")
 }
 
-// Append-only canon log (docs/24 §C4): the event-sourced source of truth from
-// which ContinuityState snapshots and the story graph are projected.
 model StoryEvent {
-  id           String   @id @default(cuid())
-  projectId    String
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
   project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  episodeIndex Int?
-  sceneIndex   Int?
-  kind         String                   // "death" | "destruction" | "betrayal" | ...
-  summary      String                   // "King loses his son"
-  payload      Json?                    // structured actors/objects/consequences
-  createdAt    DateTime @default(now())
+  episodeIndex Int?     @map("episode_index")
+  sceneIndex   Int?     @map("scene_index")
+  kind         String
+  summary      String
+  payload      Json?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([projectId, episodeIndex, sceneIndex])
+  @@map("story_events")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -167,16 +178,18 @@ model StoryEvent {
 // ─────────────────────────────────────────────────────────────
 
 model Screenplay {
-  id         String   @id @default(cuid())
-  projectId  String   @unique
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  logline    String
-  synopsis   String
-  genre      String?
-  tone       String?
-  acts       Json     // structured acts -> scene refs
-  raw        Json     // full LLM screenplay object
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @unique @map("project_id") @db.Uuid
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  logline   String
+  synopsis  String
+  genre     String?
+  tone      String?
+  acts      Json
+  raw       Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("screenplays")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -184,53 +197,55 @@ model Screenplay {
 // ─────────────────────────────────────────────────────────────
 
 model Character {
-  id            String   @id @default(cuid())
-  projectId     String
+  id            String   @id @default(uuid()) @db.Uuid
+  projectId     String   @map("project_id") @db.Uuid
   project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   name          String
   age           Int?
   gender        String?
   ethnicity     String?
-  appearance    String                 // canonical visual description
+  appearance    String
   personality   String?
-  voiceProfile  Json?                  // tts engine, voiceId, pitch, accent
+  voiceProfile  Json?    @map("voice_profile")
   arc           String?
-  referenceUrls String[]               // S3 keys for ref images / IP-adapter
-  embedding     Json?                  // identity embedding (-> pgvector in Phase 3, docs/24 §C3)
-  loraKey       String?                // S3 key of trained per-character LoRA (docs/24 §C3)
-  loraVersion   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  referenceUrls String[] @map("reference_urls")
+  loraKey       String?  @map("lora_key")
+  loraVersion   String?  @map("lora_version")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   wardrobes     Wardrobe[]
-  relationships Relationship[] @relation("fromChar")
-  related       Relationship[] @relation("toChar")
+  relationships Relationship[]   @relation("fromChar")
+  related       Relationship[]   @relation("toChar")
   sceneRoles    SceneCharacter[]
 
   @@index([projectId])
+  @@map("characters")
 }
 
 model Wardrobe {
-  id          String  @id @default(cuid())
-  characterId String
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  label       String                  // "royal armor", "peasant tunic"
-  description String
-  validFromScene Int?                 // continuity: when this outfit applies
-  validToScene   Int?
+  id             String    @id @default(uuid()) @db.Uuid
+  characterId    String    @map("character_id") @db.Uuid
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  label          String
+  description    String
+  validFromScene Int?      @map("valid_from_scene")
+  validToScene   Int?      @map("valid_to_scene")
 
   @@index([characterId])
+  @@map("wardrobes")
 }
 
 model Relationship {
-  id       String @id @default(cuid())
-  fromId   String
-  toId     String
-  from     Character @relation("fromChar", fields: [fromId], references: [id], onDelete: Cascade)
-  to       Character @relation("toChar", fields: [toId], references: [id], onDelete: Cascade)
-  kind     String                     // "sibling", "rival", "ally"
+  id     String    @id @default(uuid()) @db.Uuid
+  fromId String    @map("from_id") @db.Uuid
+  toId   String    @map("to_id") @db.Uuid
+  from   Character @relation("fromChar", fields: [fromId], references: [id], onDelete: Cascade)
+  to     Character @relation("toChar", fields: [toId], references: [id], onDelete: Cascade)
+  kind   String
 
   @@unique([fromId, toId, kind])
+  @@map("relationships")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -245,35 +260,40 @@ enum LocationKind {
   LANDSCAPE
   INTERIOR
   EXTERIOR
+
+  @@map("location_kind")
 }
 
 model Location {
-  id          String       @id @default(cuid())
-  projectId   String
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  name        String
-  kind        LocationKind
-  description String                  // canonical visual description
-  parentId    String?                 // room belongs to building belongs to city
-  parent      Location?    @relation("loc", fields: [parentId], references: [id])
-  children    Location[]   @relation("loc")
-  referenceUrls String[]
-  createdAt   DateTime     @default(now())
+  id            String       @id @default(uuid()) @db.Uuid
+  projectId     String       @map("project_id") @db.Uuid
+  project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name          String
+  kind          LocationKind
+  description   String
+  parentId      String?      @map("parent_id") @db.Uuid
+  parent        Location?    @relation("loc", fields: [parentId], references: [id])
+  children      Location[]   @relation("loc")
+  referenceUrls String[]     @map("reference_urls")
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  scenes      Scene[]
+  scenes Scene[]
 
   @@index([projectId])
+  @@map("locations")
 }
 
 model WorldObject {
-  id          String  @id @default(cuid())
-  projectId   String
-  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  name        String                  // "the crown", "ceremonial sword"
-  description String
-  referenceUrls String[]
+  id            String   @id @default(uuid()) @db.Uuid
+  projectId     String   @map("project_id") @db.Uuid
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name          String
+  description   String
+  referenceUrls String[] @map("reference_urls")
+  category      String   @default("object")
 
   @@index([projectId])
+  @@map("world_objects")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -288,56 +308,64 @@ enum SceneStatus {
   QC
   READY
   FAILED
+
+  @@map("scene_status")
 }
 
 model Scene {
-  id          String      @id @default(cuid())
-  projectId   String
+  id          String      @id @default(uuid()) @db.Uuid
+  projectId   String      @map("project_id") @db.Uuid
   project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  index       Int                      // ordering within film
-  locationId  String?
+  index       Int
+  locationId  String?     @map("location_id") @db.Uuid
   location    Location?   @relation(fields: [locationId], references: [id])
-  heading     String                   // "INT. THRONE ROOM - NIGHT"
+  heading     String
   summary     String
-  episodeId   String?                  // Phase 3: scene belongs to an episode (docs/24)
+  episodeId   String?     @map("episode_id") @db.Uuid
   episode     Episode?    @relation(fields: [episodeId], references: [id])
-  timeOfDay   String?
+  timeOfDay   String?     @map("time_of_day")
   weather     String?
   status      SceneStatus @default(PENDING)
-  durationSec Float       @default(0)
+  durationSec Float       @default(0) @map("duration_sec")
 
-  // Continuity Engine (docs/28) — bible anchors + the Scene Bridge + the state
-  // this scene changes; the running Project Memory Graph is folded from these.
-  characterRef    String?              // anchored library character
-  worldRef        String?              // anchored library world
-  locationNote    String?              // free-text location (for the location graph)
-  bridge          Json?                // { whatJustHappened, whatChanged, whatCarriesForward, nextSceneRequirements }
-  statePatch      Json?                // { characters, relationships, locations, world, goals }
-  subtitles       Json?                // multilingual: language code -> subtitle (.srt) storage key (docs/29)
-  dependsOn       Int[]   @default([]) // scene indexes this one depends on
-  continuityScore Int?                 // cached 0..100
+  // Continuity Engine (docs/28)
+  dialogue        String?
+  narration       String?
+  camera          String?
+  mood            String?
+  music           String?
+  characterRef    String? @map("character_ref")
+  worldRef        String? @map("world_ref")
+  locationNote    String? @map("location_note")
+  bridge          Json?
+  statePatch      Json?   @map("state_patch")
+  subtitles       Json?
+  dependsOn       Int[]   @default([]) @map("depends_on")
+  continuityScore Int?    @map("continuity_score")
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   shots       Shot[]
   characters  SceneCharacter[]
-  dialogue    DialogueLine[]
+  dialogueLines DialogueLine[]
   audioTracks AudioTrack[]
 
   @@unique([projectId, index])
   @@index([projectId, status])
+  @@map("scenes")
 }
 
 model SceneCharacter {
-  id          String    @id @default(cuid())
-  sceneId     String
+  id          String    @id @default(uuid()) @db.Uuid
+  sceneId     String    @map("scene_id") @db.Uuid
   scene       Scene     @relation(fields: [sceneId], references: [id], onDelete: Cascade)
-  characterId String
+  characterId String    @map("character_id") @db.Uuid
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  wardrobeId  String?                  // resolved by continuity engine
+  wardrobeId  String?   @map("wardrobe_id") @db.Uuid
 
   @@unique([sceneId, characterId])
+  @@map("scene_characters")
 }
 
 enum ShotStatus {
@@ -349,53 +377,57 @@ enum ShotStatus {
   QC_FAIL
   READY
   FAILED
+
+  @@map("shot_status")
 }
 
 model Shot {
-  id            String     @id @default(cuid())
-  sceneId       String
-  scene         Scene      @relation(fields: [sceneId], references: [id], onDelete: Cascade)
-  index         Int
-  prompt        String                 // final constructed prompt
-  negativePrompt String?
-  source        String     @default("text") // text | image (image-to-video uses seedImageKey)
-  seedImageKey  String?                // storage key of the seed frame (image-to-video)
-  referenceVideoKey String?            // storage key of a reference video (video-to-video / motion style)
-  cameraType    String?                // Wide | Medium | Close-Up | POV | Drone | Tracking | Crane | Handheld
-  cameraMovement String?               // Static | Dolly | Orbit | Push-In | Pull-Out
-  cameraPlan    Json?                  // shot size, movement, angle, lens
-  seed          BigInt?
-  durationSec   Float      @default(5)
-  modelId       String     @default("wan-2.1")
-  modelVersion  String?                // provenance/reproducibility (docs/24 §C7)
-  promptHash    String?                // content-addressed cache key input
-  cacheKey      String?                // hash(inputs+seed+modelVersion+refs)
-  status        ShotStatus @default(PENDING)
-  videoKey      String?                // S3 key of generated clip
-  thumbnailKey  String?
-  qcScore       Float?
-  gpuMs         Int?                   // billed GPU time
-  attempts      Int        @default(0)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id                String     @id @default(uuid()) @db.Uuid
+  sceneId           String     @map("scene_id") @db.Uuid
+  scene             Scene      @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  index             Int
+  prompt            String
+  negativePrompt    String?    @map("negative_prompt")
+  source            String     @default("text")
+  seedImageKey      String?    @map("seed_image_key")
+  referenceVideoKey String?    @map("reference_video_key")
+  cameraType        String?    @map("camera_type")
+  cameraMovement    String?    @map("camera_movement")
+  cameraPlan        Json?      @map("camera_plan")
+  seed              BigInt?
+  durationSec       Float      @default(5) @map("duration_sec")
+  modelId           String     @default("wan-2.1") @map("model_id")
+  modelVersion      String?    @map("model_version")
+  promptHash        String?    @map("prompt_hash")
+  cacheKey          String?    @map("cache_key")
+  status            ShotStatus @default(PENDING)
+  videoKey          String?    @map("video_key")
+  thumbnailKey      String?    @map("thumbnail_key")
+  qcScore           Float?     @map("qc_score")
+  gpuMs             Int?       @map("gpu_ms")
+  attempts          Int        @default(0)
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([sceneId, index])
   @@index([status])
   @@index([cacheKey])
+  @@map("shots")
 }
 
 model DialogueLine {
-  id          String  @id @default(cuid())
-  sceneId     String
+  id          String  @id @default(uuid()) @db.Uuid
+  sceneId     String  @map("scene_id") @db.Uuid
   scene       Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)
   index       Int
-  characterId String?
+  characterId String? @map("character_id") @db.Uuid
   text        String
   emotion     String?
-  audioKey    String?                  // S3 key of synthesized voice
-  startMs     Int?                     // placement on the scene timeline
+  audioKey    String? @map("audio_key")
+  startMs     Int?    @map("start_ms")
 
   @@index([sceneId])
+  @@map("dialogue_lines")
 }
 
 enum AudioKind {
@@ -403,38 +435,40 @@ enum AudioKind {
   MUSIC
   SFX
   AMBIENCE
+
+  @@map("audio_kind")
 }
 
 model AudioTrack {
-  id        String    @id @default(cuid())
-  sceneId   String
-  scene     Scene     @relation(fields: [sceneId], references: [id], onDelete: Cascade)
-  kind      AudioKind
-  key       String                     // S3 key
-  startMs   Int       @default(0)
-  durationMs Int?
-  gainDb    Float     @default(0)
-  meta      Json?                      // mood, source engine, prompt
+  id         String    @id @default(uuid()) @db.Uuid
+  sceneId    String    @map("scene_id") @db.Uuid
+  scene      Scene     @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  kind       AudioKind
+  key        String
+  startMs    Int       @default(0) @map("start_ms")
+  durationMs Int?      @map("duration_ms")
+  gainDb     Float     @default(0) @map("gain_db")
+  meta       Json?
 
   @@index([sceneId, kind])
+  @@map("audio_tracks")
 }
 
 // ─────────────────────────────────────────────────────────────
 // Continuity Engine
 // ─────────────────────────────────────────────────────────────
 
-// One row = the canonical world state as of a given scene index.
-// Lets the prompt builder ask "what is true at scene N?" deterministically.
 model ContinuityState {
-  id         String   @id @default(cuid())
-  projectId  String
+  id         String   @id @default(uuid()) @db.Uuid
+  projectId  String   @map("project_id") @db.Uuid
   project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sceneIndex Int
-  state      Json     // { characters:{id:{wardrobeId,mood,injuries}}, world:{...}, story:{flags} }
-  createdAt  DateTime @default(now())
+  sceneIndex Int      @map("scene_index")
+  state      Json
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@unique([projectId, sceneIndex])
   @@index([projectId])
+  @@map("continuity_states")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -447,38 +481,43 @@ enum RenderStatus {
   TRANSCODING
   DONE
   FAILED
+
+  @@map("render_status")
 }
 
 model RenderJob {
-  id          String       @id @default(cuid())
-  projectId   String
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  kind        String       @default("final") // "preview" | "final" | "scene"
-  status      RenderStatus @default(QUEUED)
-  progress    Float        @default(0)
-  outputKey   String?
-  log         String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id        String       @id @default(uuid()) @db.Uuid
+  projectId String       @map("project_id") @db.Uuid
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind      String       @default("final")
+  status    RenderStatus @default(QUEUED)
+  progress  Float        @default(0)
+  outputKey String?      @map("output_key")
+  log       String?
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([projectId, status])
+  @@map("render_jobs")
 }
 
 model Film {
-  id          String   @id @default(cuid())
-  projectId   String   @unique
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  mp4Key      String                   // S3 key of final MP4
-  hlsKey      String?                  // S3 key of master .m3u8
-  posterKey   String?
-  durationSec Float
-  subtitleKey String?
-  sizeBytes   BigInt?
-  version     Int      @default(1) // canon/edit version (docs/24 §C7)
-  views       Int      @default(0)
-  publishedAt DateTime?
-  publications Json?               // provider -> { status, id?, url?, detail? } (docs/31)
-  createdAt   DateTime @default(now())
+  id           String    @id @default(uuid()) @db.Uuid
+  projectId    String    @unique @map("project_id") @db.Uuid
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  mp4Key       String    @map("mp4_key")
+  hlsKey       String?   @map("hls_key")
+  posterKey    String?   @map("poster_key")
+  durationSec  Float     @map("duration_sec")
+  subtitleKey  String?   @map("subtitle_key")
+  sizeBytes    BigInt?   @map("size_bytes")
+  version      Int       @default(1)
+  views        Int       @default(0)
+  publishedAt  DateTime? @map("published_at") @db.Timestamptz(6)
+  publications Json?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("films")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -486,14 +525,15 @@ model Film {
 // ─────────────────────────────────────────────────────────────
 
 model UsageRecord {
-  id        String   @id @default(cuid())
-  userId    String
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projectId String?
-  gpuMs     Int      @default(0)
-  kind      String                     // "video" | "voice" | "music" | "render"
-  costUsd   Float    @default(0)
-  createdAt DateTime @default(now())
+  projectId String?  @map("project_id") @db.Uuid
+  gpuMs     Int      @default(0) @map("gpu_ms")
+  kind      String
+  costUsd   Float    @default(0) @map("cost_usd")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId, createdAt])
+  @@map("usage_records")
 }

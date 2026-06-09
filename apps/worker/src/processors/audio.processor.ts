@@ -32,9 +32,11 @@ export const audioWorker = new Worker<AudioJob>(
     if (kind === "voice" && process.env.OPENAI_API_KEY && process.env.S3_BUCKET) {
       const scene = await prisma.scene.findUnique({
         where: { id: sceneId },
-        include: { dialogue: { orderBy: { index: "asc" } } },
+        include: { dialogueLines: { orderBy: { index: "asc" } } },
       });
-      const text = (scene?.dialogue.map((d) => d.text).join(" ") || scene?.summary || "").trim();
+      const fromLines = scene?.dialogueLines.map((d) => d.text).join(" ") ?? "";
+      // Director-created scenes use dialogue_lines; web scenes use the text columns.
+      const text = (fromLines || [scene?.dialogue, scene?.narration].filter(Boolean).join(" ") || scene?.summary || "").trim();
       if (text) {
         const key = `scenes/${sceneId}/audio/voice/${job.id}.mp3`;
         const { tts } = buildOpenAIProviders(process.env, (bytes, ct) => storage.putBytes(key, bytes, ct));
