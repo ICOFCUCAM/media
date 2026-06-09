@@ -117,11 +117,14 @@ builder:
 - **Director** — sets `assetId: protagonist.id` on every scene and threads the
   per-scene `wardrobe` from Claude's `state`, so an auto-planned film is visually
   anchored from scene 1.
-- **Worker** — `renderStatePreamble` injects `King Adisa — id: adisa_001,
-  wardrobe: royal_armor_v3, …` into the generation prompt; combined with the
-  shared reference frame (seed) + reference-video path (docs/22), the same
-  identity drives every shot.
+- **Worker** — `resolveContinuity(shot)` both injects `King Adisa — id:
+  adisa_001, wardrobe: royal_armor_v3, …` into the prompt **and** resolves every
+  in-play asset id (inherited + this scene's) to the character's stored reference
+  frames (`Character.referenceUrls`), merging them into `referenceImageKeys`
+  alongside the seed (deduped, capped at 4). So the same identity drives every
+  shot at the pixel level, not just in prose — and it degrades gracefully: an
+  asset with no stored frames simply adds nothing.
 
-The id is the join key to the Library asset (its reference frames / LoRA);
-binding that asset's reference image directly into `referenceImageKeys` for
-storyboard-mode shots is the next increment.
+Reference frames are an IP-adapter/identity signal to the model; the asset id is
+also the join key to a per-character LoRA (`Character.loraKey`), which the
+adapter can load for even stronger identity lock when training is wired.

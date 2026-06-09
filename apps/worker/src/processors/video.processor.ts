@@ -67,12 +67,12 @@ function loadShot(shotId: string) {
 }
 
 /**
- * The Continuity Engine preamble for this shot's scene: fold every prior scene
- * of the project into the inherited state + incoming bridge, so the generation
- * prompt continues the story consistently (docs/28). Returns "" if there's
- * nothing to inherit.
+ * Resolve the Continuity Engine for this shot's scene: fold every prior scene of
+ * the project into the inherited state + incoming bridge (docs/28), and turn the
+ * inherited character **asset ids** into actual reference frames so the SAME
+ * character drives every shot — pixel-level visual continuity, not just a prompt.
  */
-async function continuityPreamble(shot: ShotWithScene): Promise<string> {
+async function resolveContinuity(shot: ShotWithScene): Promise<{ preamble: string; referenceImageKeys: string[] }> {
   const scenes = await prisma.scene.findMany({
     where: { projectId: shot.scene.projectId, index: { lte: shot.scene.index } },
     orderBy: { index: "asc" },
@@ -91,15 +91,37 @@ async function continuityPreamble(shot: ShotWithScene): Promise<string> {
   const { perScene } = computeContinuity(inputs);
   const here = perScene.find((c) => c.index === shot.scene.index);
   const self = inputs.find((c) => c.index === shot.scene.index);
-  return here && self ? renderStatePreamble(here, self) : "";
+  const preamble = here ? renderStatePreamble(here) : "";
+
+  // Collect the character asset ids in play (inherited + this scene's own).
+  const assetIds = new Set<string>();
+  const collect = (chars?: Record<string, Record<string, string>>) => {
+    for (const attrs of Object.values(chars ?? {})) if (attrs.id) assetIds.add(attrs.id);
+  };
+  if (here) collect(here.inherited.characters);
+  collect(self?.statePatch?.characters ?? undefined);
+
+  // Resolve each asset id to its stored reference frames (Library / IP-adapter).
+  let referenceImageKeys: string[] = [];
+  if (assetIds.size) {
+    const chars = await prisma.character.findMany({
+      where: { id: { in: [...assetIds] } },
+      select: { referenceUrls: true },
+    });
+    referenceImageKeys = [...new Set(chars.flatMap((c) => c.referenceUrls))].slice(0, 4);
+  }
+  return { preamble, referenceImageKeys };
 }
 
 /** Compose the final ShotRequest. `seedKey` is the resolved seed frame for
- *  image-to-video; `preamble` is the inherited-state continuity block. */
-function buildShotRequest(shot: ShotWithScene, seedKey?: string, preamble?: string): ShotRequest {
+ *  image-to-video; `preamble` is the inherited-state continuity block; `refKeys`
+ *  are the character's reference frames (visual continuity). */
+function buildShotRequest(shot: ShotWithScene, seedKey?: string, preamble?: string, refKeys: string[] = []): ShotRequest {
   const [w, h] = shot.scene.project.aspectRatio === "9:16" ? [720, 1280] : [1280, 720];
   // video-to-video: an uploaded reference video drives the motion style.
   const refVideo = shot.referenceVideoKey && !PREVIEW_SEED.test(shot.referenceVideoKey) ? shot.referenceVideoKey : undefined;
+  // Seed frame first, then the character's reference frames (deduped).
+  const refs = [...new Set([seedKey, ...refKeys].filter((k): k is string => Boolean(k)))];
   return {
     prompt: preamble ? `${preamble}\n\n${shot.prompt}` : shot.prompt,
     negativePrompt: shot.negativePrompt ?? undefined,
@@ -108,7 +130,7 @@ function buildShotRequest(shot: ShotWithScene, seedKey?: string, preamble?: stri
     width: w,
     height: h,
     camera: (shot.cameraPlan as unknown as ShotRequest["camera"]) ?? undefined,
-    referenceImageKeys: seedKey ? [seedKey] : undefined,
+    referenceImageKeys: refs.length ? refs : undefined,
     referenceVideoKeys: refVideo ? [refVideo] : undefined,
     videoOp: refVideo ? "style" : undefined,
     motionStrength: refVideo ? 0.7 : undefined,
@@ -196,9 +218,10 @@ export const videoWorker = new Worker<VideoJob>(
 
     // image-to-video: use the uploaded seed, or generate one (OpenAI) first.
     const seedKey = await resolveSeedKey(shot);
-    // Continuity: inherit the folded state of all prior scenes into the prompt.
-    const preamble = await continuityPreamble(shot);
-    const result = await adapter.generate(buildShotRequest(shot, seedKey, preamble));
+    // Continuity: inherit prior scenes into the prompt + reuse the same character
+    // reference frames so identity is locked pixel-level (docs/28).
+    const { preamble, referenceImageKeys } = await resolveContinuity(shot);
+    const result = await adapter.generate(buildShotRequest(shot, seedKey, preamble, referenceImageKeys));
 
     // QC gate (docs/09) omitted here; on failure throw to trigger retry.
 
