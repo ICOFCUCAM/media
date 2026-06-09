@@ -1,19 +1,10 @@
-import { CreateStudio } from "../../../../components/CreateStudio";
-import { productById } from "../../../../lib/products";
+import { FilmStudio } from "../../../../components/FilmStudio";
 
 export const metadata = { title: "Create a Film — Cineforge" };
 
+// Live, Supabase-backed when env is configured; falls back to the preview engine
+// (CreateStudio) otherwise. Auth, project persistence and Realtime progress all
+// run through Supabase. See docs/25-supabase.md.
 export default function CreateFilmPage() {
-  const p = productById("film")!;
-  return (
-    <CreateStudio
-      kind="film"
-      heading="Create a Feature Film"
-      blurb="One prompt becomes a full film — screenplay, cast, locations, score and a streamable final cut."
-      durations={p.durations}
-      defaultSeconds={p.defaultSeconds}
-      defaultPrompt="An epic about an African kingdom fighting for its independence, told over three generations."
-      cta="Create film"
-    />
-  );
+  return <FilmStudio />;
 }

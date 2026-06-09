@@ -122,6 +122,26 @@ export const admin = createClient<Database>(
 );
 ```
 
+## Live Create Film flow (apps/web)
+
+`/create/film` is wired end-to-end to Supabase when the `NEXT_PUBLIC_SUPABASE_*`
+env vars are present (otherwise it falls back to the built-in preview engine):
+
+1. **Auth** — email/password via Supabase Auth (`components/AuthProvider`). New
+   sign-ups confirm by email; the `handle_new_user` trigger creates the profile.
+2. **Create** — inserts a `projects` row owned by `auth.uid()` (RLS-enforced).
+3. **Realtime** — the UI subscribes to Postgres Changes on that row and renders
+   progress *only* from what comes back over Realtime.
+4. **Worker stand-in** — `FilmWorker` advances the row's status/progress and
+   writes a `films` row at the end. In production `apps/worker` does these same
+   writes (service-role key) after the Director, GPU jobs and FFmpeg.
+5. **Projects** — `/projects` reads the signed-in user's rows (RLS-scoped).
+
+To go live on Vercel, set `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the project's env (they're inlined at
+build time). Types the frontend uses live in `apps/web/lib/database.types.ts`
+(a focused subset; full schema in `packages/db/supabase/types.ts`).
+
 ## Advisor notes
 
 `get_advisors(security)` is clean except for intentional, low-risk items:
