@@ -8,6 +8,7 @@ import {
   deterministicSeed,
   autoContinuity,
   statePatchFrom,
+  type SceneBridge,
 } from "@cineforge/shared";
 import { MODEL_VERSIONS } from "@cineforge/model-adapters";
 import { draftFilm, type FilmDraft } from "./llm";
@@ -90,14 +91,22 @@ export class DirectorService {
     for (let i = 0; i < sceneCount; i++) {
       const beat = draft.scenes[i]!;
       const ac = auto[i]!;
+      // Prefer the Director's own continuity; fall back to the deterministic
+      // derivation field-by-field so blanks are always filled.
+      const bridge: SceneBridge = {
+        whatJustHappened: beat.bridge?.whatJustHappened?.trim() || ac.bridge.whatJustHappened,
+        whatChanged: beat.bridge?.whatChanged?.trim() || ac.bridge.whatChanged,
+        whatCarriesForward: beat.bridge?.whatCarriesForward?.trim() || ac.bridge.whatCarriesForward,
+        nextSceneRequirements: beat.bridge?.nextSceneRequirements?.trim() || ac.bridge.nextSceneRequirements,
+      };
       const statePatch = statePatchFrom({
         character: protagonist.name,
         location: location.name,
-        emotion: ac.emotion,
-        health: ac.health,
-        season: ac.season,
-        locationStatus: ac.locationStatus,
-        goal: ac.goal,
+        emotion: beat.state?.emotion || ac.emotion,
+        health: beat.state?.health || ac.health,
+        season: beat.state?.season || ac.season,
+        locationStatus: beat.state?.locationStatus || ac.locationStatus,
+        goal: beat.state?.goal || ac.goal,
       });
 
       await prisma.scene.deleteMany({ where: { projectId, index: i } });
@@ -111,7 +120,7 @@ export class DirectorService {
           timeOfDay: beat.timeOfDay,
           characterRef: protagonist.name,
           locationNote: location.name,
-          bridge: ac.bridge as unknown as object,
+          bridge: bridge as unknown as object,
           statePatch: statePatch as unknown as object,
           dependsOn: i > 0 ? [i - 1] : [],
           characters: { create: [{ characterId: protagonist.id }] },

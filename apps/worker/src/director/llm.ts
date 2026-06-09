@@ -12,6 +12,7 @@
  * fails, so the pipeline never hard-stops on an LLM hiccup.
  */
 import Anthropic from "@anthropic-ai/sdk";
+import type { SceneBridge, StateFields } from "@cineforge/shared";
 
 export const LOCATION_KINDS = ["CITY", "KINGDOM", "BUILDING", "ROOM", "LANDSCAPE", "INTERIOR", "EXTERIOR"] as const;
 export type LocationKind = (typeof LOCATION_KINDS)[number];
@@ -20,6 +21,10 @@ export interface SceneBeat {
   heading: string; // "EXT. THRONE ROOM - NIGHT"
   summary: string;
   timeOfDay: string; // "day" | "night" | ...
+  // Continuity Engine (docs/28): the Director's own proposal for what this scene
+  // changes + how it bridges to the next. Optional — falls back to autoContinuity.
+  bridge?: SceneBridge;
+  state?: StateFields;
 }
 export interface FilmDraft {
   logline: string;
@@ -39,6 +44,10 @@ const SYSTEM = [
   "specific physical appearance (so the look stays consistent across every shot),",
   "ONE primary location, and a beat-by-beat scene list.",
   "Keep the protagonist and location visually consistent so they never drift.",
+  "Treat the film as ONE continuous story: each scene must inherit and advance the",
+  "state of the ones before it. For every scene give a `bridge` to the next scene",
+  "and the `state` it changes, so emotions, injuries, season and destroyed places",
+  "carry forward and never silently contradict.",
   "Respond with ONLY a single JSON object — no prose, no markdown fences.",
 ].join(" ");
 
@@ -50,7 +59,12 @@ function userPrompt(brief: string, sceneCount: number): string {
     "logline (string), synopsis (string), genre (string), tone (string),",
     'location { name (string), kind (one of CITY|KINGDOM|BUILDING|ROOM|LANDSCAPE|INTERIOR|EXTERIOR), description (string) },',
     "protagonist { name (string), age (number or null), gender (string or null), appearance (string), personality (string or null) },",
-    `scenes (array of exactly ${sceneCount} objects: { heading (e.g. "EXT. OLD LAGOS - NIGHT"), summary (string), timeOfDay (string) }).`,
+    `scenes (array of exactly ${sceneCount} objects), each:`,
+    '{ heading (e.g. "EXT. OLD LAGOS - NIGHT"), summary (string), timeOfDay (string),',
+    "  bridge { whatJustHappened, whatChanged, whatCarriesForward, nextSceneRequirements } (all strings),",
+    "  state { emotion, health, season, locationStatus, goal } (strings; the protagonist's emotion and",
+    '  health after this scene, the world season, this scene\'s location status e.g. "destroyed", and the',
+    "  protagonist's current goal — omit or leave empty when unchanged) }.",
   ].join("\n");
 }
 
@@ -71,6 +85,33 @@ const asKind = (v: unknown): LocationKind =>
 const str = (v: unknown, fallback = ""): string => (typeof v === "string" && v.trim() ? v : fallback);
 const numOrNull = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const strOrNull = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v : null);
+
+/** Parse the Director's per-scene bridge; undefined if it gave us nothing usable. */
+function parseBridge(v: unknown): SceneBridge | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const o = v as Record<string, unknown>;
+  const b: SceneBridge = {
+    whatJustHappened: str(o.whatJustHappened),
+    whatChanged: str(o.whatChanged),
+    whatCarriesForward: str(o.whatCarriesForward),
+    nextSceneRequirements: str(o.nextSceneRequirements),
+  };
+  return Object.values(b).some((x) => x) ? b : undefined;
+}
+
+/** Parse the Director's per-scene state changes; undefined if empty. */
+function parseState(v: unknown): StateFields | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const o = v as Record<string, unknown>;
+  const s: StateFields = {
+    emotion: strOrNull(o.emotion),
+    health: strOrNull(o.health),
+    season: strOrNull(o.season),
+    locationStatus: strOrNull(o.locationStatus),
+    goal: strOrNull(o.goal),
+  };
+  return Object.values(s).some(Boolean) ? s : undefined;
+}
 
 /** Plan a film with Claude; deterministic fallback when unavailable. */
 export async function draftFilm(brief: string, sceneCount: number): Promise<FilmDraft> {
@@ -100,6 +141,8 @@ export async function draftFilm(brief: string, sceneCount: number): Promise<Film
         heading: str(s.heading, `EXT. ${str(loc.name, "LOCATION").toUpperCase()} - ${tod.toUpperCase()}`),
         summary: str(s.summary, `Beat ${i + 1}.`),
         timeOfDay: tod,
+        bridge: parseBridge(s.bridge),
+        state: parseState(s.state),
       };
     });
 

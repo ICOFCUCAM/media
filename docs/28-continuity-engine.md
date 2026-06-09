@@ -83,10 +83,15 @@ same in the browser and the worker:
 - **Storyboard** — the **✨ Auto-fill continuity** button folds proposals across
   every scene, filling *blank fields only* (a creator's own edits are never
   overwritten), then persists the recomputed score + dependencies.
-- **Director** — `DirectorService.plan` runs `autoContinuity` over the beats
-  Claude authored and persists each scene's `bridge` + `state_patch` (+
-  `characterRef`/`locationNote`/`depends_on`), so an auto-generated film arrives
-  with a populated, consistent Project Memory Graph from the first render.
+- **Director** — `DirectorService.plan` persists each scene's `bridge` +
+  `state_patch` (+ `characterRef`/`locationNote`/`depends_on`), so an
+  auto-generated film arrives with a populated, consistent Project Memory Graph
+  from the first render. The Director asks **Claude directly** for a structured
+  `bridge { … }` and `state { emotion, health, season, locationStatus, goal }`
+  per scene (`director/llm.ts`); these are parsed defensively and preferred
+  field-by-field, with the deterministic `autoContinuity` filling any blanks (and
+  covering the no-API-key / parse-failure paths). Best of both: semantic when the
+  model delivers, never empty when it doesn't.
 
 `statePatchFrom(fields)` is the single builder both sides use to turn flat
 fields into a `state_patch`.
