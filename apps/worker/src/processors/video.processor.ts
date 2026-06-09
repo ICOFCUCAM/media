@@ -65,7 +65,7 @@ function buildShotRequest(shot: ShotWithScene): ShotRequest {
     durationSec: shot.durationSec,
     width: w,
     height: h,
-    camera: (shot.cameraPlan as ShotRequest["camera"]) ?? undefined,
+    camera: (shot.cameraPlan as unknown as ShotRequest["camera"]) ?? undefined,
     referenceImageKeys,
   };
 }

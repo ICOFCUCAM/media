@@ -148,5 +148,9 @@ describe("GpuLifecycleManager.reconcile — shutdown predicate", () => {
   });
 });
 
-afterEach(() => vi.restoreAllMocks());
-beforeEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+beforeEach(() => {
+  vi.restoreAllMocks();
+});

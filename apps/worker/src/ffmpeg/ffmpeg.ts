@@ -14,11 +14,11 @@ export function ffmpeg(args: string[], onProgress?: (p: number) => void): Promis
       const s = b.toString();
       stderr += s;
       const m = /Duration: (\d+):(\d+):(\d+\.\d+)/.exec(s);
-      if (m) durationMs = (+m[1] * 3600 + +m[2] * 60 + +m[3]) * 1000;
+      if (m) durationMs = (+m[1]! * 3600 + +m[2]! * 60 + +m[3]!) * 1000;
     });
     proc.stdout.on("data", (b: Buffer) => {
       const m = /out_time_ms=(\d+)/.exec(b.toString());
-      if (m && durationMs && onProgress) onProgress(Math.min(1, +m[1] / 1000 / durationMs));
+      if (m && durationMs && onProgress) onProgress(Math.min(1, +m[1]! / 1000 / durationMs));
     });
     proc.on("error", reject);
     proc.on("close", (code) =>

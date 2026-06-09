@@ -36,9 +36,12 @@ describe("DeficitFairScheduler (C5)", () => {
       { id: "free", weight: TIER_WEIGHT.FREE, pending: 1000 },
     ];
     const counts: Record<string, number> = { ent: 0, free: 0 };
-    for (let i = 0; i < 260; i++) counts[s.pick(queues)!]++;
+    for (let i = 0; i < 260; i++) {
+      const k = s.pick(queues)!;
+      counts[k] = (counts[k] ?? 0) + 1;
+    }
 
-    expect(counts.ent).toBeGreaterThan(counts.free * 3); // enterprise gets the lion's share
-    expect(counts.free).toBeGreaterThan(0); // but free is never starved
+    expect(counts.ent ?? 0).toBeGreaterThan((counts.free ?? 0) * 3); // enterprise gets the lion's share
+    expect(counts.free ?? 0).toBeGreaterThan(0); // but free is never starved
   });
 });
