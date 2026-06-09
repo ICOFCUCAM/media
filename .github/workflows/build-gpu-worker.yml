@@ -35,10 +35,15 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        # Trim whitespace/newlines from the secrets (a trailing newline pasted
+        # into the secret produces "malformed HTTP Authorization header"), then
+        # log in via stdin so buildx picks up the credentials.
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          user="$(printf '%s' "$DH_USER" | tr -d '[:space:]')"
+          printf '%s' "$DH_TOKEN" | tr -d '[:space:]' | docker login -u "$user" --password-stdin
 
       - name: Build and push
         uses: docker/build-push-action@v6
