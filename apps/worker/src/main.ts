@@ -13,6 +13,7 @@ import "./processors/scene.processor";
 import "./processors/video.processor";
 import "./processors/audio.processor";
 import "./processors/render.processor";
+import "./processors/lora.processor";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 

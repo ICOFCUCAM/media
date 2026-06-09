@@ -10,6 +10,7 @@ export const QUEUES = {
   video: "video-queue",
   audio: "audio-queue",
   render: "render-queue",
+  lora: "lora-queue",
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -47,10 +48,17 @@ export interface RenderJob {
   sceneId?: string;
 }
 
+/** Train a per-character LoRA from the character's reference frames (docs/28). */
+export interface LoraJob {
+  characterId: string;
+  projectId?: string;
+}
+
 export interface JobPayloads {
   [QUEUES.film]: FilmJob;
   [QUEUES.scene]: SceneJob;
   [QUEUES.video]: VideoJob;
   [QUEUES.audio]: AudioJob;
   [QUEUES.render]: RenderJob;
+  [QUEUES.lora]: LoraJob;
 }

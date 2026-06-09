@@ -56,6 +56,11 @@ services:
         sync: false
       - key: RUNPOD_API_KEY
         sync: false
+      # Per-character LoRA trainer (optional — tightest identity lock).
+      - key: LORA_TRAINER_URL
+        sync: false
+      - key: LORA_TRAINER_KEY
+        sync: false
 
   - type: keyvalue
     name: cineforge-redis

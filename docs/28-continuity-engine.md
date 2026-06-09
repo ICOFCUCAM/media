@@ -131,6 +131,25 @@ asset id also joins to a per-character **LoRA** (`Character.loraKey`).
 `ShotRequest.loraKeys` → the self-hosted Wan/Hunyuan adapters forward them to the
 GPU worker (capability `supportsLora`; external hosted APIs report `false` and
 ignore them). So the full identity stack is: **prose** (preamble `id`/wardrobe) →
-**seed** → **IP-adapter reference frames** → **LoRA**. The remaining work is
-out-of-band: a training job that produces `Character.loraKey`, and the GPU
-worker honoring the key at load time.
+**seed** → **IP-adapter reference frames** → **LoRA**.
+
+### Training the LoRA (lora-queue)
+
+A character's LoRA is produced by the **`lora-queue`** worker:
+
+- **Producer** — `resolveContinuity` already fetches every in-play character; any
+  that has reference frames but no `loraKey` is enqueued via `enqueueLora`
+  (deduped by `jobId = lora:<characterId>`), so the *next* render uses the
+  trained adapter. `maybeEnqueueLoraTraining(characterId)` is the guarded entry
+  point for other triggers (e.g. the moment frames are uploaded).
+- **Trainer** — `LoraTrainerClient` (`buildLoraTrainer(env)`) submits the
+  character's name + appearance + reference-frame URLs to `LORA_TRAINER_URL`
+  (submit + poll, same "drop a key in" shape as the external video adapter) and
+  returns `{ loraKey, version }`.
+- **Processor** — `lora.processor` writes `Character.loraKey`/`loraVersion` back.
+  Resume-safe and graceful: already-trained → no-op, no frames → skip, trainer
+  unset → labelled skip (identity falls back to seed + reference frames).
+
+The remaining work is the GPU side: a training endpoint behind `LORA_TRAINER_URL`
+that consumes frames and emits a `.safetensors`, and the inference GPU worker
+honoring `loraKeys` at load time.

@@ -23,6 +23,7 @@ import { buildClusterRegistry, buildOpenAIProviders, MODEL_VERSIONS, type ShotRe
 import { prisma } from "@cineforge/db";
 import { realtime } from "../realtime";
 import { S3Storage } from "../storage/storage";
+import { enqueueLora } from "../orchestration/lora-queue";
 
 // Bytes uploader for provider adapters (OpenAI seed frames).
 const storage = new S3Storage();
@@ -108,10 +109,15 @@ async function resolveContinuity(shot: ShotWithScene): Promise<{ preamble: strin
   if (assetIds.size) {
     const chars = await prisma.character.findMany({
       where: { id: { in: [...assetIds] } },
-      select: { referenceUrls: true, loraKey: true },
+      select: { id: true, referenceUrls: true, loraKey: true },
     });
     referenceImageKeys = [...new Set(chars.flatMap((c) => c.referenceUrls))].slice(0, 4);
     loraKeys = [...new Set(chars.map((c) => c.loraKey).filter((k): k is string => Boolean(k)))];
+    // Train the tightest lock in the background: any framed-but-untrained
+    // character gets a LoRA job (deduped by character id). Next render uses it.
+    for (const c of chars) {
+      if (c.referenceUrls.length > 0 && !c.loraKey) await enqueueLora(c.id, shot.scene.projectId);
+    }
   }
   return { preamble, referenceImageKeys, loraKeys };
 }
