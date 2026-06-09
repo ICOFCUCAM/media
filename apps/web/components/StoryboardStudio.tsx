@@ -409,7 +409,6 @@ function SceneCard({
 
 function SeedPreview({ scene: s }: { scene: SceneDraft }) {
   if (s.seedUrl) {
-    // eslint-disable-next-line @next/next/no-img-element
     return <img src={s.seedUrl} alt="seed" className="h-16 w-28 rounded-lg object-cover" />;
   }
   if (s.seedKey) {

@@ -141,14 +141,14 @@ export function CreateStudio(props: CreateStudioProps) {
 
         <section className="space-y-6">
           <Stages status={state?.status ?? null} />
-          {state ? <Pipeline state={state} platforms={props.platforms} /> : <EmptyState kind={props.kind} />}
+          {state ? <Pipeline state={state} /> : <EmptyState kind={props.kind} />}
         </section>
       </div>
     </div>
   );
 }
 
-function Pipeline({ state, platforms }: { state: DemoState; platforms?: ShortPlatform[] }) {
+function Pipeline({ state }: { state: DemoState }) {
   const ready = state.shots.filter((s) => s.status === "ready" || s.status === "cached");
   const visible = state.shots.slice(0, 160);
   return (
