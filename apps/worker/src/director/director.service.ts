@@ -6,6 +6,8 @@ import {
   computePromptHash,
   computeCacheKey,
   deterministicSeed,
+  autoContinuity,
+  statePatchFrom,
 } from "@cineforge/shared";
 import { MODEL_VERSIONS } from "@cineforge/model-adapters";
 import { draftFilm, type FilmDraft } from "./llm";
@@ -75,11 +77,28 @@ export class DirectorService {
       update: { logline: draft.logline, synopsis: draft.synopsis, genre: draft.genre, tone: draft.tone, acts, raw: draft.raw as object },
     });
 
+    // Continuity Engine (docs/28): the Director proposes a Scene Bridge + the
+    // state each scene changes, derived from its own beats, so the film starts
+    // with a populated Project Memory Graph that carries forward consistently.
+    const auto = autoContinuity(
+      draft.scenes.map((b, i) => ({ index: i, heading: b.heading, summary: b.summary, character: protagonist.name, location: location.name })),
+    );
+
     // Scenes + shots. Create per-scene with nested shots so we get ids back for
     // the queue fan-out. Delete-by-index keeps re-runs idempotent.
     const scenes: PlannedScene[] = [];
     for (let i = 0; i < sceneCount; i++) {
       const beat = draft.scenes[i]!;
+      const ac = auto[i]!;
+      const statePatch = statePatchFrom({
+        character: protagonist.name,
+        location: location.name,
+        emotion: ac.emotion,
+        health: ac.health,
+        season: ac.season,
+        locationStatus: ac.locationStatus,
+        goal: ac.goal,
+      });
 
       await prisma.scene.deleteMany({ where: { projectId, index: i } });
       const scene = await prisma.scene.create({
@@ -90,6 +109,11 @@ export class DirectorService {
           heading: beat.heading,
           summary: beat.summary,
           timeOfDay: beat.timeOfDay,
+          characterRef: protagonist.name,
+          locationNote: location.name,
+          bridge: ac.bridge as unknown as object,
+          statePatch: statePatch as unknown as object,
+          dependsOn: i > 0 ? [i - 1] : [],
           characters: { create: [{ characterId: protagonist.id }] },
           shots: {
             create: Array.from({ length: shotsPerScene }, (_, s) => {

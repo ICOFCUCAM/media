@@ -229,3 +229,115 @@ export function renderStatePreamble(c: SceneContinuity, _scene?: SceneInput): st
   if (c.bridgeIn?.nextSceneRequirements.trim()) parts.push(`This scene must: ${c.bridgeIn.nextSceneRequirements.trim()}`);
   return parts.join("\n");
 }
+
+/* ── Auto-fill: derive a StatePatch + Scene Bridge from the script ──────────
+ * The Director (or the storyboard's "auto-fill" button) proposes continuity so
+ * creators start from a populated graph instead of blank fields. Deterministic
+ * and dependency-free, so it runs identically in the worker and the browser. */
+
+/** The editable continuity fields a scene contributes (UI-friendly). */
+export interface StateFields {
+  character?: string | null;
+  location?: string | null;
+  emotion?: string | null;
+  health?: string | null;
+  season?: string | null;
+  locationStatus?: string | null;
+  goal?: string | null;
+}
+
+/** Build a StatePatch from flat fields (single source for web + worker). */
+export function statePatchFrom(f: StateFields): StatePatch {
+  const patch: StatePatch = {};
+  if (f.character) {
+    const attrs: Record<string, string> = {};
+    if (f.emotion) attrs.emotion = f.emotion;
+    if (f.health) attrs.health = f.health;
+    if (Object.keys(attrs).length) patch.characters = { [f.character]: attrs };
+    if (f.goal) patch.goals = { [f.character]: f.goal };
+  }
+  if (f.location && f.locationStatus) patch.locations = { [f.location]: f.locationStatus };
+  if (f.season) patch.world = { season: f.season };
+  return patch;
+}
+
+export interface AutoSceneInput {
+  index: number;
+  heading?: string;
+  summary: string;
+  character?: string | null;
+  location?: string | null;
+  mood?: string | null;
+}
+
+export interface AutoContinuity {
+  bridge: SceneBridge;
+  emotion: string;
+  health: string;
+  season: string;
+  locationStatus: string;
+  goal: string;
+}
+
+const EMOTIONS: [RegExp, string][] = [
+  [/betray/i, "betrayed"],
+  [/grief|mourn|\bloss\b|weep|sorrow/i, "grieving"],
+  [/rage|fury|furious|anger|angry|wrath/i, "furious"],
+  [/fear|afraid|terror|dread|panic/i, "afraid"],
+  [/triumph|victor|celebrat|crown/i, "triumphant"],
+  [/\blove\b|romance|embrace/i, "in love"],
+  [/hope/i, "hopeful"],
+  [/despair|hopeless|broken/i, "despairing"],
+  [/resolve|determined|\bvow\b|swear/i, "resolved"],
+];
+const HEALTHS: [RegExp, string][] = [
+  [/\b(die|dies|died|death|slain|killed)\b/i, "dead"],
+  [/wound|injur|hurt|bleed|stab|\bshot\b|bandage|broken arm/i, "injured"],
+  [/\bheal|recover|mend/i, "recovering"],
+];
+const SEASONS: [RegExp, string][] = [
+  [/winter|snow|frost|blizzard/i, "winter"],
+  [/summer|scorch|drought/i, "summer"],
+  [/spring|bloom|thaw/i, "spring"],
+  [/autumn|harvest/i, "autumn"],
+];
+const DESTROYED = /destroy|burn|burnt|raze|ruin|sack|fallen|levell?ed/i;
+const GOAL = /\b(seek|search for|hunt|find|avenge|reclaim|rescue|save|stop|defeat|protect|escape|return)\b[^.,;!?\n]*/i;
+
+function firstSentence(t: string): string {
+  const m = t.trim().match(/^[^.!?\n]+[.!?]?/);
+  return (m?.[0] ?? t).trim();
+}
+function pick(pairs: [RegExp, string][], text: string): string {
+  for (const [re, val] of pairs) if (re.test(text)) return val;
+  return "";
+}
+
+/** Propose a Scene Bridge + state fields per scene, derived from the script. */
+export function autoContinuity(scenes: AutoSceneInput[]): AutoContinuity[] {
+  const ordered = [...scenes].sort((a, b) => a.index - b.index);
+  return ordered.map((s, i) => {
+    const text = `${s.heading ?? ""} ${s.summary}`;
+    const emotion = (s.mood && s.mood.trim()) || pick(EMOTIONS, text);
+    const health = pick(HEALTHS, text);
+    const season = pick(SEASONS, text);
+    const locationStatus = DESTROYED.test(text) ? "destroyed" : "";
+    const goal = (text.match(GOAL)?.[0] ?? "").trim().toLowerCase();
+
+    const who = (s.character && s.character.trim()) || "The protagonist";
+    const changes: string[] = [];
+    if (health === "dead") changes.push(`${who} dies`);
+    else if (health === "injured") changes.push(`${who} is wounded`);
+    if (locationStatus) changes.push(`${s.location || "the location"} is destroyed`);
+    if (emotion) changes.push(`${who} is ${emotion}`);
+    const next = ordered[i + 1];
+
+    const bridge: SceneBridge = {
+      whatJustHappened: firstSentence(s.summary),
+      whatChanged: changes.join("; ") || "The story advances.",
+      whatCarriesForward: emotion ? `${who} carries being ${emotion}` : "Rising tension.",
+      nextSceneRequirements: next ? firstSentence(next.summary) : "Bring the story to its resolution.",
+    };
+    return { bridge, emotion, health, season, locationStatus, goal };
+  });
+}

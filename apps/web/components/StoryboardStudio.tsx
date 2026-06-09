@@ -18,6 +18,7 @@ import {
   CLIP_DURATIONS,
   computeContinuity,
   toSceneInput,
+  applyAutoContinuity,
   type SceneDraft,
   type SceneContinuity,
   type ProjectState,
@@ -152,6 +153,25 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
     setScenes((prev) => [...prev, { ...newDraft(prev.length), source: defaultSource }]);
   }
 
+  /** Director auto-fill: propose a Scene Bridge + state for every scene from the
+   *  script (blanks only), then persist the folded score/deps for saved scenes. */
+  async function onAutoContinuity() {
+    const filled = applyAutoContinuity(scenes);
+    setScenes(filled);
+    if (!live || !projectId) return;
+    const folded = computeContinuity(filled.map(toSceneInput));
+    const cByIdx = new Map(folded.perScene.map((c) => [c.index, c]));
+    for (const d of filled) {
+      if (!d.sceneId) continue; // new scenes persist on their first save/generate
+      const c = cByIdx.get(d.index);
+      try {
+        await persistScene(projectId, d, { continuityScore: c?.score, dependsOn: c?.dependsOn });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Auto-fill save failed");
+      }
+    }
+  }
+
   async function onUpload(key: string, file: File) {
     patch(key, { source: "image" });
     // Preview: show the image locally via an object URL (no upload).
@@ -284,6 +304,16 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
           <button onClick={onAddScene} disabled={busy} className="rounded-lg border border-white/15 px-4 py-2 text-sm hover:bg-white/5">
             Add scene
           </button>
+          {scenes.length > 0 && (
+            <button
+              onClick={onAutoContinuity}
+              disabled={busy}
+              title="Let the Director propose a Scene Bridge + state (emotion, injuries, season, destroyed locations, goals) for every scene from the script. Fills blanks only."
+              className="rounded-lg border border-white/15 px-4 py-2 text-sm hover:bg-white/5"
+            >
+              ✨ Auto-fill continuity
+            </button>
+          )}
         </div>
         {error && <p className="mt-3 text-xs text-amber-300">{error}</p>}
       </div>

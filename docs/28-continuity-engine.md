@@ -73,6 +73,24 @@ back-fills `affects`, so the card shows both *depends on S4* and *affects S6*.
   State" block + the incoming bridge to the shot prompt, so the rendered clip
   continues the story instead of starting fresh.
 
+## Auto-fill (the Director proposes continuity)
+
+Creators don't start from blank bridges. `autoContinuity(scenes)` derives a Scene
+Bridge + state fields (emotion, injuries, season, destroyed locations, goals)
+from each scene's script — deterministic and dependency-free, so it runs the
+same in the browser and the worker:
+
+- **Storyboard** — the **✨ Auto-fill continuity** button folds proposals across
+  every scene, filling *blank fields only* (a creator's own edits are never
+  overwritten), then persists the recomputed score + dependencies.
+- **Director** — `DirectorService.plan` runs `autoContinuity` over the beats
+  Claude authored and persists each scene's `bridge` + `state_patch` (+
+  `characterRef`/`locationNote`/`depends_on`), so an auto-generated film arrives
+  with a populated, consistent Project Memory Graph from the first render.
+
+`statePatchFrom(fields)` is the single builder both sides use to turn flat
+fields into a `state_patch`.
+
 ## Visual continuity (next)
 
 State carries *facts* forward today. Asset-ID continuity (same `character_id` /

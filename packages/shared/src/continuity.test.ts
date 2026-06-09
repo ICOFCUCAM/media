@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeContinuity, renderStatePreamble, type SceneInput } from "./continuity";
+import { computeContinuity, renderStatePreamble, autoContinuity, statePatchFrom, type SceneInput } from "./continuity";
 
 const scenes: SceneInput[] = [
   {
@@ -93,5 +93,34 @@ describe("continuity engine", () => {
     expect(text).toContain("King Adisa");
     expect(text).toContain("find evidence");
     expect(text).toContain("This scene must");
+  });
+
+  it("auto-fills a bridge + state fields from the script, and folds consistently", () => {
+    const auto = autoContinuity([
+      { index: 0, heading: "Coronation", summary: "Adisa is crowned king in the dead of winter.", character: "Adisa" },
+      { index: 1, heading: "Ambush", summary: "His brother betrays him; Adisa is wounded and vows to find the truth.", character: "Adisa", location: "Palace" },
+      { index: 2, heading: "Ruin", summary: "The enemy burns the village to the ground.", character: "Adisa", location: "Village" },
+    ]);
+
+    expect(auto[0]!.season).toBe("winter");
+    expect(auto[0]!.emotion).toBe("triumphant");
+    expect(auto[1]!.emotion).toBe("betrayed");
+    expect(auto[1]!.health).toBe("injured");
+    expect(auto[1]!.goal).toContain("find");
+    expect(auto[2]!.locationStatus).toBe("destroyed");
+    // The bridge carries the previous beat forward into the next requirement.
+    expect(auto[0]!.bridge.nextSceneRequirements).toContain("betrays");
+
+    // The derived patches fold into a consistent, contradiction-aware graph.
+    const patch1 = statePatchFrom({ character: "Adisa", emotion: auto[1]!.emotion, health: auto[1]!.health, goal: auto[1]!.goal });
+    expect(patch1.characters!.Adisa).toEqual({ emotion: "betrayed", health: "injured" });
+
+    const { perScene } = computeContinuity([
+      { index: 0, heading: "Coronation", characterRef: "Adisa", statePatch: statePatchFrom({ character: "Adisa", season: auto[0]!.season }), bridge: auto[0]!.bridge },
+      { index: 1, heading: "Ambush", characterRef: "Adisa", locationRef: "Village", statePatch: statePatchFrom({ location: "Village", locationStatus: auto[2]!.locationStatus }), bridge: auto[1]!.bridge },
+      { index: 2, heading: "Return", characterRef: "Adisa", locationRef: "Village", bridge: auto[2]!.bridge },
+    ]);
+    // Scene 2 returns to the destroyed Village → flagged.
+    expect(perScene[2]!.notes.some((n) => /destroyed/.test(n))).toBe(true);
   });
 });

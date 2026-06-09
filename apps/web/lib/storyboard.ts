@@ -3,7 +3,7 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabase } from "./supabase";
 import type { Database, SceneStatus, ShotSource } from "./database.types";
-import { EMPTY_BRIDGE, type SceneBridge, type StatePatch, type SceneInput } from "./continuity";
+import { EMPTY_BRIDGE, statePatchFrom, autoContinuity, type SceneBridge, type StatePatch, type SceneInput, type AutoContinuity } from "./continuity";
 
 export type { SceneBridge } from "./continuity";
 export { computeContinuity, renderStatePreamble, type SceneContinuity, type ProjectState } from "./continuity";
@@ -138,17 +138,49 @@ export async function createStoryboardProject(input: {
 /** Build this scene's state_patch (what it changes about the world) from the
  *  editable fields, so the Continuity Engine can fold it forward. */
 export function buildStatePatch(d: SceneDraft): StatePatch {
-  const patch: StatePatch = {};
-  if (d.character) {
-    const attrs: Record<string, string> = {};
-    if (d.mood) attrs.emotion = d.mood;
-    if (d.health) attrs.health = d.health;
-    if (Object.keys(attrs).length) patch.characters = { [d.character]: attrs };
-    if (d.goal) patch.goals = { [d.character]: d.goal };
-  }
-  if (d.location && d.locationStatus) patch.locations = { [d.location]: d.locationStatus };
-  if (d.season) patch.world = { season: d.season };
-  return patch;
+  return statePatchFrom({
+    character: d.character,
+    location: d.location,
+    emotion: d.mood,
+    health: d.health,
+    season: d.season,
+    locationStatus: d.locationStatus,
+    goal: d.goal,
+  });
+}
+
+/**
+ * Auto-fill continuity: let the engine propose each scene's Scene Bridge + state
+ * (emotion/health/season/location status/goal) from the script, filling only
+ * BLANK fields so a creator's own edits are never overwritten.
+ */
+export function applyAutoContinuity(drafts: SceneDraft[]): SceneDraft[] {
+  const ordered = [...drafts].sort((a, b) => a.index - b.index);
+  const auto = autoContinuity(
+    ordered.map((d) => ({ index: d.index, heading: d.heading, summary: d.script, character: d.character, location: d.location, mood: d.mood })),
+  );
+  const byIndex = new Map<number, AutoContinuity>();
+  ordered.forEach((d, i) => byIndex.set(d.index, auto[i]!));
+  const fill = (cur: string, val: string) => (cur.trim() ? cur : val);
+
+  return drafts.map((d) => {
+    const a = byIndex.get(d.index);
+    if (!a) return d;
+    return {
+      ...d,
+      bridge: {
+        whatJustHappened: fill(d.bridge.whatJustHappened, a.bridge.whatJustHappened),
+        whatChanged: fill(d.bridge.whatChanged, a.bridge.whatChanged),
+        whatCarriesForward: fill(d.bridge.whatCarriesForward, a.bridge.whatCarriesForward),
+        nextSceneRequirements: fill(d.bridge.nextSceneRequirements, a.bridge.nextSceneRequirements),
+      },
+      mood: fill(d.mood, a.emotion),
+      health: fill(d.health, a.health),
+      season: fill(d.season, a.season),
+      locationStatus: fill(d.locationStatus, a.locationStatus),
+      goal: fill(d.goal, a.goal),
+    };
+  });
 }
 
 function bridgeOrNull(b: SceneBridge): SceneBridge | null {
