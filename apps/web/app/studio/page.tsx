@@ -12,7 +12,8 @@ import {
   type Tier,
 } from "../../lib/system";
 import { DemoRun, type DemoState, type ProjectStatus } from "../../lib/demo";
-import { createProject, generateFilm, getEstimate } from "../../lib/api";
+import { LiveRun } from "../../lib/live";
+import { HlsPlayer } from "../../components/HlsPlayer";
 
 const DURATIONS = [
   { label: "30s", value: 30 },
@@ -32,7 +33,8 @@ export default function Studio() {
   const [seconds, setSeconds] = useState(60);
   const [state, setState] = useState<DemoState | null>(null);
   const [running, setRunning] = useState(false);
-  const runRef = useRef<DemoRun | null>(null);
+  const [token, setToken] = useState("");
+  const runRef = useRef<{ cancel: () => void } | null>(null);
 
   const allowed = modelAllowed(modelId, tier);
   const estMs = useMemo(() => estimateMs(modelId, seconds), [modelId, seconds]);
@@ -43,20 +45,25 @@ export default function Studio() {
     setRunning(true);
     setState(null);
 
+    const onUpdate = (s: DemoState) => {
+      setState(s);
+      if (s.status === "READY") setRunning(false);
+    };
+    const cfg = { prompt, modelId, targetSeconds: seconds };
+
+    // Live mode: drive from the real API + Socket.IO. Fall back to demo on failure.
     if (IS_LIVE) {
+      const live = new LiveRun(cfg, onUpdate, token || undefined);
+      runRef.current = live;
       try {
-        const { project } = await createProject({ title: prompt.slice(0, 60), prompt, targetSeconds: seconds, modelId });
-        await getEstimate(project.id).catch(() => null);
-        await generateFilm(project.id).catch(() => null);
+        await live.start();
+        return;
       } catch {
-        /* live API unreachable — the demo visualization still runs */
+        live.cancel();
       }
     }
 
-    const run = new DemoRun({ prompt, modelId, targetSeconds: seconds }, (s) => {
-      setState(s);
-      if (s.status === "READY") setRunning(false);
-    });
+    const run = new DemoRun(cfg, onUpdate);
     runRef.current = run;
     run.start();
   }
@@ -134,6 +141,17 @@ export default function Studio() {
               ))}
             </div>
           </Field>
+
+          {IS_LIVE && (
+            <Field label="API token (optional)">
+              <input
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="JWT for the live gateway"
+                className="w-full rounded-lg border border-white/10 bg-white/[0.03] p-2 text-sm outline-none focus:border-white/30"
+              />
+            </Field>
+          )}
 
           <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm">
             <Row k="Scenes × shots" v={`${Math.max(1, Math.round(seconds / 18))} × 4`} />
@@ -249,18 +267,27 @@ function FilmResult({ state }: { state: DemoState }) {
           <Btn>↓ Download</Btn>
         </div>
       </div>
-      <div className="mt-4 flex gap-1 overflow-hidden rounded-lg">
-        {strip.map((s, i) => (
-          <div
-            key={i}
-            className="h-16 flex-1"
-            style={{ background: `linear-gradient(135deg, hsl(${s.hue} 65% 45%), hsl(${(s.hue + 40) % 360} 60% 30%))` }}
-          />
-        ))}
-      </div>
-      <p className="mt-3 text-xs text-white/40">
-        Demo render — a live API streams the real MP4/HLS from S3 via the FFmpeg engine.
-      </p>
+      {state.filmUrl ? (
+        <div className="mt-4">
+          <HlsPlayer src={state.filmUrl} />
+          <p className="mt-2 break-all text-xs text-white/40">{state.filmUrl}</p>
+        </div>
+      ) : (
+        <>
+          <div className="mt-4 flex gap-1 overflow-hidden rounded-lg">
+            {strip.map((s, i) => (
+              <div
+                key={i}
+                className="h-16 flex-1"
+                style={{ background: `linear-gradient(135deg, hsl(${s.hue} 65% 45%), hsl(${(s.hue + 40) % 360} 60% 30%))` }}
+              />
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-white/40">
+            Demo render — set NEXT_PUBLIC_API_URL to stream the real MP4/HLS from S3 via the FFmpeg engine.
+          </p>
+        </>
+      )}
     </div>
   );
 }

@@ -40,3 +40,9 @@ export async function generateFilm(projectId: string, token?: string) {
   if (!res.ok) throw new Error(`generate-film ${res.status}`);
   return res.json();
 }
+
+export async function getFilm(filmId: string, token?: string) {
+  const res = await fetch(`${API_URL}/v1/film/${filmId}`, { headers: authHeaders(token) });
+  if (!res.ok) throw new Error(`film ${res.status}`);
+  return res.json() as Promise<{ streamUrl?: string; downloadUrl?: string }>;
+}

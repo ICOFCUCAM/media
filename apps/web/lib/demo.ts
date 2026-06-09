@@ -27,6 +27,8 @@ export interface DemoState {
   locations: { name: string; description: string }[];
   renderProgress: number;
   durationSec: number;
+  /** Set in Live mode on film.ready — a playable HLS (.m3u8) or MP4 URL. */
+  filmUrl?: string;
   log: string[];
 }
 
