@@ -115,6 +115,7 @@ export interface Database {
           state_patch: Json | null;
           depends_on: number[];
           continuity_score: number | null;
+          subtitles: Json | null;
           status: SceneStatus;
           duration_sec: number;
           created_at: string;
@@ -137,6 +138,7 @@ export interface Database {
           state_patch?: Json | null;
           depends_on?: number[];
           continuity_score?: number | null;
+          subtitles?: Json | null;
           status?: SceneStatus;
           duration_sec?: number;
         };
@@ -156,6 +158,7 @@ export interface Database {
           state_patch?: Json | null;
           depends_on?: number[];
           continuity_score?: number | null;
+          subtitles?: Json | null;
           status?: SceneStatus;
           duration_sec?: number;
         };

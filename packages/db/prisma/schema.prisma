@@ -313,6 +313,7 @@ model Scene {
   locationNote    String?              // free-text location (for the location graph)
   bridge          Json?                // { whatJustHappened, whatChanged, whatCarriesForward, nextSceneRequirements }
   statePatch      Json?                // { characters, relationships, locations, world, goals }
+  subtitles       Json?                // multilingual: language code -> subtitle (.srt) storage key (docs/29)
   dependsOn       Int[]   @default([]) // scene indexes this one depends on
   continuityScore Int?                 // cached 0..100
 

@@ -11,6 +11,7 @@ export const QUEUES = {
   audio: "audio-queue",
   render: "render-queue",
   lora: "lora-queue",
+  localize: "localize-queue",
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -54,6 +55,12 @@ export interface LoraJob {
   projectId?: string;
 }
 
+/** Produce subtitle (and optionally dubbed) variants per language (docs/29). */
+export interface LocalizeJob {
+  projectId: string;
+  languages: string[]; // target language codes; e.g. ["es", "fr", "sw"]
+}
+
 export interface JobPayloads {
   [QUEUES.film]: FilmJob;
   [QUEUES.scene]: SceneJob;
@@ -61,4 +68,5 @@ export interface JobPayloads {
   [QUEUES.audio]: AudioJob;
   [QUEUES.render]: RenderJob;
   [QUEUES.lora]: LoraJob;
+  [QUEUES.localize]: LocalizeJob;
 }
