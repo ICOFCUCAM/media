@@ -1,5 +1,10 @@
 # 06 — Continuity Engine
 
+> **This is the original design spec.** The shipped implementation — the pure
+> fold engine, Scene Bridges, continuity score, auto-fill, and the visual
+> identity stack (asset id → reference frames → LoRA) — is documented in
+> [28 — Continuity Engine (implemented)](28-continuity-engine.md).
+
 The single most important system for believable long films. It guarantees that
 characters, clothing, locations, objects, weather, time, and story state stay
 consistent across hundreds of scenes.

@@ -19,17 +19,20 @@ idle-shutdown GPU workers.
 
 ## Documentation map
 
-The design is the deliverable. Start here:
+The design is the deliverable. Start here — or see the full
+**[docs index](docs/README.md)** for the by-area map and the continuity/identity
+overview.
 
 | # | Document | What it covers |
 |---|----------|----------------|
+| — | [docs/README.md](docs/README.md) | **Docs index** + continuity & identity overview |
 | 00 | [docs/00-overview.md](docs/00-overview.md) | Vision, glossary, end-to-end flow |
 | 01 | [docs/01-architecture.md](docs/01-architecture.md) | System architecture + all diagrams |
 | 02 | [docs/02-database-schema.md](docs/02-database-schema.md) | Postgres schema (mirrors `prisma/schema.prisma`) |
 | 03 | [docs/03-folder-structure.md](docs/03-folder-structure.md) | Monorepo layout |
 | 04 | [docs/04-api-spec.md](docs/04-api-spec.md) | REST + WebSocket API, request/response examples |
 | 05 | [docs/05-director-ai.md](docs/05-director-ai.md) | The Director AI (screenplay → shot list) |
-| 06 | [docs/06-continuity-engine.md](docs/06-continuity-engine.md) | Continuity Engine |
+| 06 | [docs/06-continuity-engine.md](docs/06-continuity-engine.md) | Continuity Engine (design — implemented in **28**) |
 | 07 | [docs/07-character-bible.md](docs/07-character-bible.md) | Character Bible |
 | 08 | [docs/08-world-bible.md](docs/08-world-bible.md) | World Bible |
 | 09 | [docs/09-scene-pipeline.md](docs/09-scene-pipeline.md) | Scene generation pipeline + long-film batching |
@@ -48,6 +51,10 @@ The design is the deliverable. Start here:
 | 22 | [docs/22-video-models.md](docs/22-video-models.md) | Models (Wan/Hunyuan) & "own API" cost strategy |
 | 23 | [docs/23-gpu-lifecycle-manager.md](docs/23-gpu-lifecycle-manager.md) | **Auto GPU Lifecycle Manager** (start-on-demand, auto-shutdown) |
 | 24 | [docs/24-phase-3-film-studio.md](docs/24-phase-3-film-studio.md) | **Phase 3** — feature-film/series engine: critique + the missing systems |
+| 25 | [docs/25-supabase.md](docs/25-supabase.md) | Supabase (auth, Postgres, Realtime, storage) |
+| 26 | [docs/26-storyboard-mode.md](docs/26-storyboard-mode.md) | Storyboard mode — the scene as a production object + Hybrid |
+| 27 | [docs/27-deploy-worker.md](docs/27-deploy-worker.md) | Deploying the worker (Docker, Compose, Render) |
+| 28 | [docs/28-continuity-engine.md](docs/28-continuity-engine.md) | **Continuity Engine (implemented)** — memory graph, bridges, identity stack |
 
 ## Code map
 
