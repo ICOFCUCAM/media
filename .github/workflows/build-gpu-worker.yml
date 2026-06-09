@@ -53,7 +53,9 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: .
+          # Context = the gpu-worker dir, since the Dockerfile COPYs
+          # requirements.txt / app relative to that dir (not the repo root).
+          context: ./apps/gpu-worker
           file: apps/gpu-worker/Dockerfile
           platforms: linux/amd64
           push: true
