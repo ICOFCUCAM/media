@@ -1,0 +1,63 @@
+# Render blueprint — deploy the Cineforge worker + a managed Redis (Key Value).
+# Web runs on Vercel; this hosts the background pipeline. Push to GitHub, then
+# "New > Blueprint" in Render and point it at this repo.
+#
+# Secret/connection env vars are marked `sync: false` — set them in the Render
+# dashboard after the first deploy (DATABASE_URL = the Supabase pooled Postgres
+# string; S3_* = your bucket; the AI/provider keys to actually generate media).
+# Run DB migrations once against DATABASE_URL: `prisma migrate deploy`.
+services:
+  - type: worker
+    name: cineforge-worker
+    runtime: docker
+    dockerfilePath: ./apps/worker/Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: cineforge-redis
+          property: connectionString
+      - key: DATABASE_URL # Supabase pooled Postgres connection string
+        sync: false
+      - key: ANTHROPIC_API_KEY # Director
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-4-8
+      - key: OPENAI_API_KEY # seed frames + narration
+        sync: false
+      - key: OPENAI_IMAGE_MODEL
+        value: gpt-image-1
+      - key: OPENAI_TTS_MODEL
+        value: tts-1
+      - key: OPENAI_TTS_VOICE
+        value: onyx
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        value: us-east-1
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: ASSET_PUBLIC_BASE_URL # so providers can fetch seed frames / ref videos
+        sync: false
+      # Video model — drop-in external provider OR self-hosted Wan/Hunyuan.
+      - key: EXTERNAL_VIDEO_API_URL
+        sync: false
+      - key: EXTERNAL_VIDEO_API_KEY
+        sync: false
+      - key: WAN_GPU_URL
+        sync: false
+      - key: HUNYUAN_GPU_URL
+        sync: false
+      - key: RUNPOD_API_KEY
+        sync: false
+
+  - type: keyvalue
+    name: cineforge-redis
+    plan: starter
+    ipAllowList: [] # internal access only

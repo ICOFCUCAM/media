@@ -1,0 +1,12 @@
+# Keep the Docker build context lean (and never bake secrets).
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/*.tsbuildinfo
+.git
+.github
+**/*.log
+.env
+.env.*
+!.env.example
