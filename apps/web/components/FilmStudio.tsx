@@ -30,6 +30,14 @@ const STAGE_LABEL: Record<string, string> = {
 };
 
 /**
+ * When NEXT_PUBLIC_USE_REMOTE_WORKER=true, a real worker (apps/worker) is running
+ * and owns the project lifecycle — so we skip the in-browser stand-in below and
+ * let the genuine Director/GPU/FFmpeg writes drive the UI over Realtime. Left
+ * unset, the stand-in simulates the lifecycle so the demo works with no backend.
+ */
+const USE_REMOTE_WORKER = process.env.NEXT_PUBLIC_USE_REMOTE_WORKER === "true";
+
+/**
  * Worker stand-in: walks a project through its lifecycle by WRITING to Supabase.
  * The UI never reads these values directly — it reflects them only after they
  * round-trip back through Realtime, exercising the real data + realtime path.
@@ -226,10 +234,14 @@ function AutoStudioBody() {
           listProjects().then(setRecent);
         }
       });
-      // Kick off the worker stand-in (writes that round-trip via Realtime).
-      const worker = new FilmWorker(project.id, seconds);
-      workerRef.current = worker;
-      worker.run();
+      // With a real backend, the worker (apps/worker) picks up this PLANNING row
+      // and drives it for real; the UI updates purely from Realtime. Otherwise
+      // run the in-browser stand-in so the demo still progresses.
+      if (!USE_REMOTE_WORKER) {
+        const worker = new FilmWorker(project.id, seconds);
+        workerRef.current = worker;
+        worker.run();
+      }
       listProjects().then(setRecent);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create");
