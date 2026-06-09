@@ -150,6 +150,20 @@ A character's LoRA is produced by the **`lora-queue`** worker:
   Resume-safe and graceful: already-trained → no-op, no frames → skip, trainer
   unset → labelled skip (identity falls back to seed + reference frames).
 
-The remaining work is the GPU side: a training endpoint behind `LORA_TRAINER_URL`
-that consumes frames and emits a `.safetensors`, and the inference GPU worker
-honoring `loraKeys` at load time.
+The GPU side (`apps/gpu-worker`) is scaffolded to honor all of this:
+
+- **Inference** — `/generate` accepts `referenceImageKeys`, `referenceVideoKeys` +
+  `videoOp`/`motionStrength`, and `loraKeys`; `pipeline.generate` loads the LoRA
+  (`_apply_loras`), applies reference frames as the IP-adapter signal, and uses
+  the reference video as the video-to-video init. Capabilities advertise
+  `supportsLora`/`supportsRefVideo`. The placeholder overlay prints
+  `lora:N ref:M v2v:op` so the wiring is observable end-to-end without weights.
+- **Training** — `/train` + `/tasks/{id}` (`app/trainer.py`) match the worker's
+  `LoraTrainerClient`: it ingests the reference frames + caption, trains, uploads
+  the `.safetensors`, and returns `{ lora_key, version }`. Point
+  `LORA_TRAINER_URL` at this worker.
+
+The only remaining work is dropping the real model code into the marked
+integration points (Wan/Hunyuan weights, `load_lora_weights`/`fuse_lora`, the
+fine-tuning loop) — every input those calls consume is already plumbed and
+runnable as a scaffold.

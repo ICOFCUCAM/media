@@ -8,3 +8,6 @@ boto3==1.34.0
 # transformers
 # accelerate
 # imageio[ffmpeg]
+# Per-character LoRA training (docs/28):
+# peft
+# safetensors

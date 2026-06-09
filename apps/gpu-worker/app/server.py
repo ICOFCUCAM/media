@@ -19,11 +19,13 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from .pipeline import VideoPipeline, upload_clip
+from .trainer import LoraTrainer
 
 MODEL_NAME = os.environ.get("MODEL_NAME", "wan-2.1")  # "wan-2.1" | "hunyuan"
 
 app = FastAPI(title=f"cineforge-gpu-worker:{MODEL_NAME}")
 pipeline = VideoPipeline(MODEL_NAME)
+trainer = LoraTrainer()
 
 
 class GenerateInput(BaseModel):
@@ -35,6 +37,11 @@ class GenerateInput(BaseModel):
     height: int = 480
     fps: int = 16
     referenceImageKeys: list[str] | None = None
+    # Video-to-video (motion style) and identity-lock inputs (docs/22, docs/28).
+    referenceVideoKeys: list[str] | None = None
+    videoOp: str | None = None
+    motionStrength: float | None = None
+    loraKeys: list[str] | None = None
     camera: dict | None = None
     extra: dict | None = None
 
@@ -90,6 +97,10 @@ def generate(inp: GenerateInput) -> GenerateOutput:
         height=inp.height,
         fps=inp.fps,
         reference_image_keys=inp.referenceImageKeys or [],
+        reference_video_keys=inp.referenceVideoKeys or [],
+        video_op=inp.videoOp,
+        motion_strength=inp.motionStrength,
+        lora_keys=inp.loraKeys or [],
         camera=inp.camera or {},
         extra=inp.extra or {},
     )
@@ -108,3 +119,40 @@ def generate(inp: GenerateInput) -> GenerateOutput:
         height=inp.height,
         durationSec=inp.durationSec,
     )
+
+
+# ── Per-character LoRA training (docs/28) ──────────────────────────────
+# Matches the worker's LoraTrainerClient: POST /train (submit) → either a
+# terminal result or { id } to poll via GET /tasks/{id}. The scaffold trains
+# synchronously and returns the result directly.
+
+
+class TrainInput(BaseModel):
+    name: str
+    caption: str = ""
+    image_urls: list[str]
+    steps: int = 1200
+
+
+class TrainOutput(BaseModel):
+    status: str = "succeeded"
+    lora_key: str
+    version: str
+
+
+@app.post("/train", response_model=TrainOutput)
+def train(inp: TrainInput) -> TrainOutput:
+    lora_key, version = trainer.train(
+        name=inp.name,
+        caption=inp.caption,
+        image_urls=inp.image_urls,
+        steps=inp.steps,
+    )
+    return TrainOutput(lora_key=lora_key, version=version)
+
+
+@app.get("/tasks/{task_id}")
+def task_status(task_id: str) -> dict:
+    # The scaffold trains synchronously, so jobs are already terminal. A real
+    # async trainer would look the job up in a store and report progress.
+    return trainer.status(task_id)
