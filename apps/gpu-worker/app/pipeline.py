@@ -71,8 +71,16 @@ class VideoPipeline:
         # DiffusionPipeline.from_pretrained resolves the right class (Wan / Hunyuan)
         # from the repo's model_index.json — robust across diffusers versions.
         pipe = DiffusionPipeline.from_pretrained(MODEL_IDS[self.model_name], torch_dtype=dtype)
-        pipe.to("cuda")
-        for opt in ("enable_model_cpu_offload", "enable_vae_tiling", "enable_attention_slicing"):
+        # Model CPU offload keeps each component (esp. the large umt5-xxl text
+        # encoder) on CPU and streams it to the GPU only while it runs, so the
+        # 1.3B model fits a 24GB card. Crucially we do NOT also call
+        # pipe.to("cuda") — that pins everything in VRAM and defeats offload,
+        # causing an OOM on the first inference.
+        try:
+            pipe.enable_model_cpu_offload()
+        except Exception:
+            pipe.to("cuda")  # fallback for pipelines without offload support
+        for opt in ("enable_vae_tiling", "enable_attention_slicing"):
             try:
                 getattr(pipe, opt)()
             except Exception:
@@ -87,11 +95,10 @@ class VideoPipeline:
         from diffusers import DiffusionPipeline  # noqa: PLC0415
 
         pipe = DiffusionPipeline.from_pretrained(WAN_I2V_MODEL_ID, torch_dtype=torch.float16)
-        pipe.to("cuda")
         try:
             pipe.enable_model_cpu_offload()
         except Exception:
-            pass
+            pipe.to("cuda")
         self._i2v = pipe
         return self._i2v
 
