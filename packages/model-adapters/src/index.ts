@@ -26,3 +26,5 @@ export type {
 } from "./openai/openai";
 export { LoraTrainerClient, buildLoraTrainer } from "./lora/lora-client";
 export type { LoraTrainerOptions, LoraTrainInput, LoraTrainOutput, LoraTrainerEnv } from "./lora/lora-client";
+export { StockClient, buildStockClient } from "./stock/stock-client";
+export type { StockClientOptions, StockVideo, StockProvider, StockEnv } from "./stock/stock-client";
