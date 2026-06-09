@@ -412,8 +412,8 @@ function SceneCard({
                 <button onClick={() => fileRef.current?.click()} className="rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/5">
                   Upload image
                 </button>
-                <button onClick={onGenerateImage} title="GPT-image-1" className="rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/5">
-                  AI seed · GPT-image-1
+                <button onClick={onGenerateImage} title="Generate a seed image from this scene" className="rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/5">
+                  AI seed image
                 </button>
                 <ReferencePicker onPick={(label) => { onPatch({ seedKey: `ref:${label}`, seedUrl: null, source: "image" }); onSave(); }} />
               </div>
