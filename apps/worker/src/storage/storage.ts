@@ -47,6 +47,14 @@ export class S3Storage implements Storage {
     );
   }
 
+  /** Upload raw bytes (used by provider adapters that return PNG/MP3 in-memory). */
+  async putBytes(key: string, bytes: Uint8Array, contentType?: string): Promise<string> {
+    await this.s3.send(
+      new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: Buffer.from(bytes), ContentType: contentType }),
+    );
+    return key;
+  }
+
   async uploadDir(dir: string, keyPrefix: string): Promise<void> {
     const entries = await readdir(dir, { withFileTypes: true, recursive: true } as { withFileTypes: true });
     await Promise.all(

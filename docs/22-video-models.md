@@ -117,8 +117,19 @@ OPENAI_TTS_VOICE=onyx
 
 `buildOpenAIProviders(env, upload)` returns the configured providers; the worker
 passes a storage `upload(bytes, contentType)` hook so generated PNG/MP3 bytes
-land in the assets bucket and DB rows reference our keys. The storyboard's "AI
-seed · GPT-image-1" button and the Audio→Film narration path map to these.
+land in the assets bucket and DB rows reference our keys. These are **wired into
+the worker**:
+
+- **Narration** — `apps/worker/src/processors/audio.processor.ts` synthesizes the
+  scene's dialogue/narration with OpenAI TTS (voice "onyx") and writes the
+  `AudioTrack`. Falls back to a stub row when `OPENAI_API_KEY`/`S3` are unset.
+- **Seed frames** — `apps/worker/src/processors/video.processor.ts` resolves an
+  image-to-video shot's seed in this order: **(1)** a creator-**uploaded** seed
+  (`shots.seed_image_key`, a real storage key) is used as-is; **(2)** otherwise
+  OpenAI **generates** one (GPT-image-1) from the shot prompt and persists the
+  key; **(3)** otherwise it falls back to text-to-video. Either way the seed
+  flows to the video model via `ShotRequest.referenceImageKeys`.
+
 Source: `packages/model-adapters/src/openai/openai.ts` (unit-tested).
 
 ## Code references

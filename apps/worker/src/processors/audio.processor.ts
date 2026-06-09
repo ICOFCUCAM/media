@@ -1,19 +1,20 @@
 /**
- * Audio processor — consumes `audio-queue` (voice / music / sfx). This is a
- * stub that records an AudioTrack row so the flow can complete; the real
- * implementation calls the audio adapters in docs/11 (XTTS/ElevenLabs for
- * voice, MusicGen for music, AudioGen/library for sfx) and uploads to S3.
+ * Audio processor — consumes `audio-queue` (voice / music / sfx).
  *
- * Music/SFX generation is GPU-backed (MusicGen/AudioGen), which is why this
- * queue is counted by the GPU lifecycle ActiveJobTracker (docs/23).
+ * Voice: synthesized with OpenAI TTS (tts-1, voice "onyx") from the scene's
+ * dialogue/narration, uploaded to storage. Music/SFX remain stubs until the
+ * GPU MusicGen/AudioGen adapters land (docs/11). All paths are resume-safe and
+ * degrade to a stub row when OPENAI_API_KEY / S3 aren't configured.
  */
 import { Worker } from "bullmq";
 import { QUEUES, type AudioJob } from "@cineforge/shared";
+import { buildOpenAIProviders } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
+import { S3Storage } from "../storage/storage";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
-
 const KIND = { voice: "VOICE", music: "MUSIC", sfx: "SFX" } as const;
+const storage = new S3Storage();
 
 export const audioWorker = new Worker<AudioJob>(
   QUEUES.audio,
@@ -27,12 +28,31 @@ export const audioWorker = new Worker<AudioJob>(
     });
     if (existing) return { sceneId, kind, key: existing.key, skipped: true };
 
-    // TODO: call the matching audio adapter and upload the result to S3.
+    // ── Voice: real narration via OpenAI TTS ────────────────────────────
+    if (kind === "voice" && process.env.OPENAI_API_KEY && process.env.S3_BUCKET) {
+      const scene = await prisma.scene.findUnique({
+        where: { id: sceneId },
+        include: { dialogue: { orderBy: { index: "asc" } } },
+      });
+      const text = (scene?.dialogue.map((d) => d.text).join(" ") || scene?.summary || "").trim();
+      if (text) {
+        const key = `scenes/${sceneId}/audio/voice/${job.id}.mp3`;
+        const { tts } = buildOpenAIProviders(process.env, (bytes, ct) => storage.putBytes(key, bytes, ct));
+        if (tts) {
+          const { audioKey } = await tts.synthesize({ text });
+          await prisma.audioTrack.create({
+            data: { sceneId, kind: "VOICE", key: audioKey, meta: { provider: "openai-tts", voice: process.env.OPENAI_TTS_VOICE ?? "onyx" } },
+          });
+          return { sceneId, kind, key: audioKey, provider: "openai-tts" };
+        }
+      }
+    }
+
+    // ── Music / SFX (and unconfigured voice): stub track so the flow completes.
     const key = `scenes/${sceneId}/audio/${kind}/${job.id}.mp3`;
     await prisma.audioTrack.create({
       data: { sceneId, kind: KIND[kind], key, meta: { generated: "stub" } },
     });
-
     return { sceneId, kind, key };
   },
   { connection, concurrency: 8 },
