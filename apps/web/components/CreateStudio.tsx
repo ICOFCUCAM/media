@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { estimateMs, fmtDuration } from "../lib/system";
+import { estimateMs, fmtDuration, MODELS, modelAllowed } from "../lib/system";
 import type { ProjectStatus } from "../lib/demo";
 import { useCreateRun } from "../lib/useCreateRun";
+import { useAuth } from "./AuthProvider";
 import { RunPanel } from "./RunPanel";
 import type { ShortPlatform } from "../lib/products";
 
@@ -39,9 +40,15 @@ export function CreateStudio(props: CreateStudioProps) {
   const [prompt, setPrompt] = useState(props.defaultPrompt);
   const [seconds, setSeconds] = useState(props.defaultSeconds);
   const [platform, setPlatform] = useState(props.platforms?.[0]?.id ?? "");
+  const [modelId, setModelId] = useState("wan-2.1");
   const { state, running, run, reset } = useCreateRun();
+  const { profile } = useAuth();
 
-  const modelId = "wan-2.1";
+  // Admins may pick any model; otherwise the user's tier decides. Profile loads
+  // async, so default to the FREE allowance until it arrives.
+  const tier = profile?.tier ?? "FREE";
+  const isAdmin = profile?.role === "ADMIN";
+
   const estMs = useMemo(() => estimateMs(modelId, seconds), [modelId, seconds]);
   // One serialized GPU: wall-clock ≈ total GPU time + assembly overhead.
   const readyEstimate = fmtDuration(Math.round(estMs / 1000) + 60);
@@ -89,6 +96,40 @@ export function CreateStudio(props: CreateStudioProps) {
                   {d.label}
                 </Chip>
               ))}
+            </div>
+          </Field>
+
+          <Field label="Quality">
+            <div className="space-y-2">
+              {MODELS.map((m) => {
+                const allowed = isAdmin || modelAllowed(m.id, tier);
+                const label = m.klass === "premium" ? "Cinematic" : "Standard";
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    disabled={!allowed}
+                    onClick={() => allowed && setModelId(m.id)}
+                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
+                      modelId === m.id
+                        ? "border-white/40 bg-white/10"
+                        : allowed
+                          ? "border-white/10 hover:border-white/25"
+                          : "border-white/5 opacity-45"
+                    }`}
+                  >
+                    <span>
+                      <span className="font-medium">{label}</span>
+                      <span className="ml-2 text-xs text-white/45">{m.name}</span>
+                    </span>
+                    {allowed ? (
+                      m.klass === "premium" && <span className="text-[10px] uppercase tracking-wider text-amber-300">Premium</span>
+                    ) : (
+                      <span className="text-[10px] uppercase tracking-wider text-white/35">Studio tier</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </Field>
 
