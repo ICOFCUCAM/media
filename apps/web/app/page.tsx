@@ -45,6 +45,10 @@ function Hero() {
         <h1 className="mx-auto max-w-4xl bg-gradient-to-b from-white to-white/55 bg-clip-text text-5xl font-semibold leading-[1.05] text-transparent sm:text-7xl">
           Imagine it.<br />Watch it become a film.
         </h1>
+        <p className="mx-auto mt-5 max-w-2xl text-base text-white/55 sm:text-lg">
+          One sentence in — a narrated, scored, cinematic film out. Dub it into 20 languages,
+          give it your cloned voice, put your face on camera, and publish everywhere with one button.
+        </p>
         <div className="mt-7 flex items-center justify-center gap-3">
           <Link href="/create/film" className="rounded-lg bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-white/90">
             Create a Film →
