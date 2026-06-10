@@ -1,4 +1,5 @@
 import { MARKETPLACE_CATEGORIES } from "../../../lib/products";
+import { MarketplaceVoices } from "../../../components/MarketplaceVoices";
 
 export const metadata = { title: "Marketplace — Cineforge" };
 
@@ -30,6 +31,8 @@ export default function MarketplacePage() {
           </div>
         ))}
       </div>
+
+      <MarketplaceVoices />
 
       <section className="mt-10 grid gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-6 sm:grid-cols-3">
         {[
