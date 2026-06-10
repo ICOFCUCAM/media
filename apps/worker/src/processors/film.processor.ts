@@ -29,8 +29,22 @@ export const filmWorker = new Worker<FilmJob>(
       // Content gate — before planning, before any GPU spend.
       const project = await prisma.project.findUniqueOrThrow({
         where: { id: projectId },
-        select: { prompt: true },
+        select: { prompt: true, targetSeconds: true, user: { select: { tier: true, role: true } } },
       });
+
+      // Tier length gate — authoritative (the web's locked chips are cosmetic).
+      // Over-length projects are CLAMPED, not failed: the user still gets a
+      // film, at their plan's ceiling, with the reason recorded.
+      const caps: Record<string, number> = { FREE: 30, CREATOR: 180, STUDIO: 600, AGENCY: 1200, ENTERPRISE: Number.MAX_SAFE_INTEGER };
+      const cap = project.user.role === "ADMIN" ? Number.MAX_SAFE_INTEGER : (caps[project.user.tier] ?? 30);
+      if (project.targetSeconds > cap) {
+        await prisma.project.update({
+          where: { id: projectId },
+          data: { targetSeconds: cap, errorMessage: `Length clamped to your plan's ${cap}s ceiling — upgrade for longer films` },
+        });
+        console.log(`[film] clamped project ${projectId} from ${project.targetSeconds}s to ${cap}s (tier ${project.user.tier})`);
+      }
+
       const verdict = await moderatePrompt(project.prompt);
       if (!verdict.allowed) {
         const message = "Content policy: this prompt can't be produced.";
