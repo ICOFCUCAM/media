@@ -67,21 +67,27 @@ Rules: prices shown before every run; failed generations auto-refund
 
 ## C. The plans
 
-| | FREE | CREATOR $19/mo | STUDIO $59/mo | ENTERPRISE from $499/mo |
-|---|---|---|---|---|
-| Monthly credits | 200 one-time trial | 2,500 (~4 std min) | 9,000 (~6 cine min) | 50,000+ pooled |
-| Film engines | Draft only, watermark | Draft + Standard | + **Cinematic (Kling)** | + custom models/LoRA |
-| Max film length | 30s | 3 min | 10 min | unlimited |
-| Scene stills + narration | — | ✓ | ✓ | ✓ |
-| Dubbing languages | — | 3 per film | all 20 | all + custom |
-| Voice cloning | — | 1 voice | 5 voices | unlimited |
-| Speech reading | stock voice, 1 page/day | ✓ | ✓ | ✓ |
-| Talking avatars | — | self-hosted tier (when live) | ✓ incl. premium | ✓ |
-| Voice marketplace | use only | use + offer | + sell (80/20 split) | custom licensing |
-| Social Launchpad | kit preview only | 10 launches/mo | unlimited + scheduling | + team approvals |
-| Concurrency / queue | 1, lowest priority | 2 | 4, priority | dedicated GPU pool |
-| Seats | 1 | 1 | 3 | custom (Teams exists in UI) |
-| Support | community | email | priority | SLA + onboarding |
+| | FREE | CREATOR $19/mo | STUDIO $59/mo | AGENCY $99/mo | ENTERPRISE from $499/mo |
+|---|---|---|---|---|---|
+| Monthly credits | 200 one-time trial | 2,500 (~4 std min) | 9,000 (~6 cine min) | 18,000 (~12 cine min) | 50,000+ pooled |
+| Film engines | Draft only, watermark | Draft + Standard | + **Cinematic (Kling)** | + Cinematic | + custom models/LoRA |
+| Max film length | 30s | 3 min | 10 min | 20 min | unlimited |
+| Scene stills + narration | — | ✓ | ✓ | ✓ | ✓ |
+| Dubbing languages | — | 3 per film | all 20 | all 20 | all + custom |
+| Voice cloning | — | 1 voice | 5 voices | 15 voices | unlimited |
+| Speech reading | stock voice, 1 page/day | ✓ | ✓ | ✓ | ✓ |
+| Talking avatars | — | self-hosted tier (when live) | ✓ incl. premium | ✓ + priority | ✓ |
+| Voice marketplace | use only | use + offer | + sell (80/20 split) | + sell (85/15 split) | custom licensing |
+| Social Launchpad | kit preview only | 10 launches/mo | unlimited + scheduling | + client workspaces | + team approvals |
+| White-label exports | — | — | — | ✓ (no platform branding) | ✓ |
+| Concurrency / queue | 1, lowest priority | 2 | 4, priority | 6, priority | dedicated GPU pool |
+| Seats | 1 | 1 | 3 | 8 | custom (Teams exists in UI) |
+| Support | community | email | priority | priority + onboarding call | SLA + onboarding |
+
+AGENCY rationale: freelancers and small agencies producing client work
+outgrow Studio's credits (~$180 of credit value for $99, COGS worst-case
+~$54 → 45% floor, typical 65%+), need seats + white-label, but can't
+justify Enterprise. It also smooths the upgrade ladder: 19 → 59 → 99 → 499.
 
 Top-ups (any tier): 1,000 cr = $12 · 5,000 cr = $50 · 20,000 cr = $160.
 Annual billing −20%. Credits roll over 90 days on paid plans.

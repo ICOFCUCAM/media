@@ -12,7 +12,7 @@ export const IS_LIVE = API_URL.length > 0;
 export const AVG_SCENE_SEC = 18;
 export const AVG_SHOT_SEC = 5;
 
-export type Tier = "FREE" | "CREATOR" | "STUDIO" | "ENTERPRISE";
+export type Tier = "FREE" | "CREATOR" | "STUDIO" | "AGENCY" | "ENTERPRISE";
 
 export interface ModelInfo {
   id: string;
@@ -27,8 +27,8 @@ export const MODELS: ModelInfo[] = [
   // when GPU spend exceeds estimate × 1.25, so a low-ball here strands films
   // mid-generation. Measured: Wan on the A40 ≈ 40–80s/shot (14B much more);
   // Cinematic (fal.ai frontier models) ≈ 1–3 wall-minutes/shot, run in parallel.
-  { id: "wan-2.1", name: "Wan 2.1 · own GPU", klass: "primary", tiers: ["FREE", "CREATOR", "STUDIO", "ENTERPRISE"], msPer720Shot: 80_000 },
-  { id: "cinematic", name: "Kling 2.1 · fal.ai", klass: "premium", tiers: ["STUDIO", "ENTERPRISE"], msPer720Shot: 180_000 },
+  { id: "wan-2.1", name: "Wan 2.1 · own GPU", klass: "primary", tiers: ["FREE", "CREATOR", "STUDIO", "AGENCY", "ENTERPRISE"], msPer720Shot: 80_000 },
+  { id: "cinematic", name: "Kling 2.1 · fal.ai", klass: "premium", tiers: ["STUDIO", "AGENCY", "ENTERPRISE"], msPer720Shot: 180_000 },
 ];
 
 export function modelAllowed(modelId: string, tier: Tier): boolean {

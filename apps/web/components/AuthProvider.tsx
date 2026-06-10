@@ -5,7 +5,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { getSupabase, SUPABASE_ENABLED } from "../lib/supabase";
 
 export interface Profile {
-  tier: "FREE" | "CREATOR" | "STUDIO" | "ENTERPRISE";
+  tier: "FREE" | "CREATOR" | "STUDIO" | "AGENCY" | "ENTERPRISE";
   creditsMs: number;
   role: "USER" | "ADMIN";
 }

@@ -20,6 +20,7 @@ enum Tier {
   FREE
   CREATOR
   STUDIO
+  AGENCY
   ENTERPRISE
 
   @@map("tier")
