@@ -55,6 +55,13 @@ export class S3Storage implements Storage {
     return key;
   }
 
+  /** Presigned GET URL — lets external platforms (TikTok/IG/FB pull-from-url,
+   *  fal) read a private object for a limited time without making it public. */
+  async signedGetUrl(key: string, expiresSec = 12 * 3600): Promise<string> {
+    const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
+    return getSignedUrl(this.s3, new GetObjectCommand({ Bucket: this.bucket, Key: key }), { expiresIn: expiresSec });
+  }
+
   /** Read an object into memory (small assets: seed stills for data-URI handoff). */
   async getBytes(key: string): Promise<Uint8Array> {
     const res = await this.s3.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));

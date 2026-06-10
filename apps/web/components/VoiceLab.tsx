@@ -15,8 +15,11 @@ import { LANGUAGES } from "../lib/system";
 
 interface VoiceRow {
   id: string;
+  user_id?: string;
   name: string;
   status: string;
+  share_status?: string;
+  share_terms?: string | null;
   error_message: string | null;
 }
 interface VoiceoverRow {
@@ -32,8 +35,11 @@ interface VoiceoverRow {
 const BUCKET = "cineforge-assets";
 
 export function VoiceLab() {
-  const { enabled, loading, user } = useAuth();
+  const { enabled, loading, user, profile } = useAuth();
+  const isAdmin = profile?.role === "ADMIN";
   const [voices, setVoices] = useState<VoiceRow[] | null>(null);
+  const [community, setCommunity] = useState<VoiceRow[] | null>(null);
+  const [pendingReview, setPendingReview] = useState<VoiceRow[] | null>(null);
   const [voiceovers, setVoiceovers] = useState<VoiceoverRow[] | null>(null);
 
   // New-voice form
@@ -54,14 +60,20 @@ export function VoiceLab() {
     const sb = getSupabase();
     if (!sb || !user) return;
     const [v, vo] = await Promise.all([
-      sb.from("voices").select("id,name,status,error_message").order("created_at", { ascending: false }),
+      sb
+        .from("voices")
+        .select("id,user_id,name,status,share_status,share_terms,error_message")
+        .order("created_at", { ascending: false }),
       sb
         .from("voiceovers")
         .select("id,title,language,status,audio_key,error_message,voice_id")
         .order("created_at", { ascending: false })
         .limit(25),
     ]);
-    if (v.data) setVoices(v.data as VoiceRow[]);
+    const rows = (v.data ?? []) as VoiceRow[];
+    setVoices(rows.filter((r) => r.user_id === user.id));
+    setCommunity(rows.filter((r) => r.user_id !== user.id && r.share_status === "APPROVED" && r.status === "READY"));
+    setPendingReview(rows.filter((r) => r.share_status === "PENDING_REVIEW"));
     if (vo.data) setVoiceovers(vo.data as VoiceoverRow[]);
   }, [user]);
 
@@ -122,7 +134,25 @@ export function VoiceLab() {
     }
   }
 
-  const readyVoices = (voices ?? []).filter((v) => v.status === "READY");
+  async function offerVoice(id: string) {
+    const sb = getSupabase();
+    if (!sb) return;
+    const terms = window.prompt(
+      "Your terms for community use (e.g. 'Free for non-commercial', 'Credit me as …'):",
+    );
+    if (terms === null) return;
+    await sb.from("voices").update({ share_status: "PENDING_REVIEW", share_terms: terms }).eq("id", id);
+    await refresh();
+  }
+
+  async function reviewVoice(id: string, approve: boolean) {
+    const sb = getSupabase();
+    if (!sb) return;
+    await sb.from("voices").update({ share_status: approve ? "APPROVED" : "REJECTED" }).eq("id", id);
+    await refresh();
+  }
+
+  const readyVoices = [...(voices ?? []).filter((v) => v.status === "READY"), ...(community ?? [])];
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -171,9 +201,26 @@ export function VoiceLab() {
               </button>
               <div className="space-y-1.5">
                 {(voices ?? []).map((v) => (
-                  <div key={v.id} className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2 text-sm">
-                    <span className="truncate">{v.name}</span>
-                    <StatusChip status={v.status} error={v.error_message} />
+                  <div key={v.id} className="rounded-lg border border-white/10 px-3 py-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="truncate">{v.name}</span>
+                      <StatusChip status={v.status} error={v.error_message} />
+                    </div>
+                    {v.status === "READY" && (
+                      <div className="mt-1 text-[11px] text-white/40">
+                        {v.share_status === "APPROVED" ? (
+                          "✓ shared with the community"
+                        ) : v.share_status === "PENDING_REVIEW" ? (
+                          "awaiting admin approval"
+                        ) : v.share_status === "REJECTED" ? (
+                          "sharing rejected"
+                        ) : (
+                          <button type="button" onClick={() => offerVoice(v.id)} className="text-sky-300/80 hover:text-sky-200">
+                            Offer to community →
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -232,6 +279,46 @@ export function VoiceLab() {
           </div>
 
           <div>
+            {isAdmin && (pendingReview?.length ?? 0) > 0 && (
+              <div className="mb-6 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
+                <h2 className="mb-2 text-sm font-semibold text-amber-200">Voice submissions awaiting review</h2>
+                <div className="space-y-2">
+                  {pendingReview!.map((v) => (
+                    <div key={v.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <div className="truncate">{v.name}</div>
+                        <div className="truncate text-[11px] text-white/45">Terms: {v.share_terms || "—"}</div>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <button onClick={() => reviewVoice(v.id, true)} className="rounded-lg bg-emerald-400 px-3 py-1 text-xs font-semibold text-black">
+                          Approve
+                        </button>
+                        <button onClick={() => reviewVoice(v.id, false)} className="rounded-lg border border-white/20 px-3 py-1 text-xs">
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(community?.length ?? 0) > 0 && (
+              <div className="mb-6">
+                <h2 className="mb-2 text-sm font-semibold text-white/70">Community voices</h2>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {community!.map((v) => (
+                    <div key={v.id} className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm">
+                      <div className="truncate">{v.name}</div>
+                      <div className="truncate text-[11px] text-white/40" title={v.share_terms ?? undefined}>
+                        {v.share_terms || "No terms specified"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <h2 className="mb-3 text-sm font-semibold text-white/70">Your audio</h2>
             {!voiceovers ? (
               <p className="text-sm text-white/40">Loading…</p>

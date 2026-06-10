@@ -29,5 +29,5 @@ export { LoraTrainerClient, buildLoraTrainer } from "./lora/lora-client";
 export type { LoraTrainerOptions, LoraTrainInput, LoraTrainOutput, LoraTrainerEnv } from "./lora/lora-client";
 export { StockClient, buildStockClient } from "./stock/stock-client";
 export type { StockClientOptions, StockVideo, StockProvider, StockEnv } from "./stock/stock-client";
-export { YouTubePublisher, TikTokPublisher, buildPublishers } from "./publish/publish";
+export { YouTubePublisher, TikTokPublisher, InstagramPublisher, FacebookPublisher, XPublisher, buildPublishers } from "./publish/publish";
 export type { Publisher, PublishInput, PublishResult, PublishStatus, PublishEnv } from "./publish/publish";

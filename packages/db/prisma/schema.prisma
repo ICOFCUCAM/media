@@ -550,6 +550,8 @@ model Voice {
   provider        String?
   providerVoiceId String?     @map("provider_voice_id")
   status          String      @default("PENDING")
+  shareStatus     String      @default("PRIVATE") @map("share_status")
+  shareTerms      String?     @map("share_terms")
   errorMessage    String?     @map("error_message")
   createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -573,4 +575,20 @@ model Voiceover {
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("voiceovers")
+}
+
+// ── Social Launchpad (docs/31): upload video -> AI kit -> one-button publish ─
+model SocialLaunch {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  videoKey     String   @map("video_key")
+  brief        String   @default("")
+  status       String   @default("PENDING")
+  kit          Json?
+  results      Json?
+  errorMessage String?  @map("error_message")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("social_launches")
 }

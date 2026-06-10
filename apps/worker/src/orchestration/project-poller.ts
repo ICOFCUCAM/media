@@ -13,12 +13,13 @@
  * no public URL, and this needs no extra infrastructure. Low frequency is fine.
  */
 import { Queue } from "bullmq";
-import { QUEUES, type FilmJob, type VoiceLabJob } from "@cineforge/shared";
+import { QUEUES, type FilmJob, type VoiceLabJob, type SocialJob } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const filmQueue = new Queue<FilmJob>(QUEUES.film, { connection });
 const voiceLabQueue = new Queue<VoiceLabJob>(QUEUES.voiceLab, { connection });
+const socialQueue = new Queue<SocialJob>(QUEUES.social, { connection });
 
 export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_SEC ?? 5) * 1000): () => void {
   let busy = false;
@@ -133,6 +134,23 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
         if (claimed.count === 1) {
           await voiceLabQueue.add("speak", { kind: "speak", id: vo.id }, { jobId: `voiceover-${vo.id}`, attempts: 2, removeOnComplete: 100 });
           console.log(`[poller] enqueued voiceover ${vo.id}`);
+        }
+      }
+      // ── Social Launchpad: claim kit + launch requests ──────────────────
+      const pendingLaunches = await prisma.socialLaunch.findMany({ where: { status: "PENDING" }, select: { id: true }, take: 5 });
+      for (const l of pendingLaunches) {
+        const claimed = await prisma.socialLaunch.updateMany({ where: { id: l.id, status: "PENDING" }, data: { status: "KIT_BUILDING" } });
+        if (claimed.count === 1) {
+          await socialQueue.add("kit", { kind: "kit", id: l.id }, { jobId: `social-kit-${l.id}`, attempts: 2, removeOnComplete: 100 });
+          console.log(`[poller] enqueued social kit ${l.id}`);
+        }
+      }
+      const launchRequests = await prisma.socialLaunch.findMany({ where: { status: "LAUNCH_REQUESTED" }, select: { id: true }, take: 5 });
+      for (const l of launchRequests) {
+        const claimed = await prisma.socialLaunch.updateMany({ where: { id: l.id, status: "LAUNCH_REQUESTED" }, data: { status: "LAUNCHING" } });
+        if (claimed.count === 1) {
+          await socialQueue.add("launch", { kind: "launch", id: l.id }, { jobId: `social-launch-${l.id}-${Date.now()}`, attempts: 2, removeOnComplete: 100 });
+          console.log(`[poller] enqueued social launch ${l.id}`);
         }
       }
     } catch (e) {

@@ -183,11 +183,30 @@ export interface Database {
         Update: { name?: string; description?: string; category?: string; reference_urls?: string[] };
         Relationships: [];
       };
+      social_launches: {
+        Row: {
+          id: string;
+          user_id: string;
+          video_key: string;
+          brief: string;
+          status: string;
+          kit: Record<string, { title: string; description: string; hashtags: string[] }> | null;
+          results: Record<string, { status: string; url?: string; detail?: string }> | null;
+          error_message: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { user_id: string; video_key: string; brief?: string };
+        Update: { status?: string; brief?: string };
+        Relationships: [];
+      };
       voices: {
         Row: {
           id: string;
           user_id: string;
           name: string;
+          share_status: string;
+          share_terms: string | null;
           sample_key: string | null;
           provider: string | null;
           provider_voice_id: string | null;
@@ -197,7 +216,7 @@ export interface Database {
           updated_at: string;
         };
         Insert: { user_id: string; name: string; sample_key?: string | null };
-        Update: { name?: string; status?: string };
+        Update: { name?: string; status?: string; share_status?: string; share_terms?: string | null };
         Relationships: [];
       };
       voiceovers: {

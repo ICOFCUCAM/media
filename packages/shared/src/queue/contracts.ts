@@ -14,6 +14,7 @@ export const QUEUES = {
   localize: "localize-queue",
   publish: "publish-queue",
   voiceLab: "voice-lab-queue",
+  social: "social-queue",
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -49,6 +50,13 @@ export interface AudioJob {
 export interface VoiceLabJob {
   kind: "clone" | "speak";
   /** voices.id for clone, voiceovers.id for speak. */
+  id: string;
+}
+
+/** Social Launchpad (docs/31): generate the per-platform kit, then post. */
+export interface SocialJob {
+  kind: "kit" | "launch";
+  /** social_launches.id */
   id: string;
 }
 
@@ -89,4 +97,5 @@ export interface JobPayloads {
   [QUEUES.localize]: LocalizeJob;
   [QUEUES.publish]: PublishJob;
   [QUEUES.voiceLab]: VoiceLabJob;
+  [QUEUES.social]: SocialJob;
 }
