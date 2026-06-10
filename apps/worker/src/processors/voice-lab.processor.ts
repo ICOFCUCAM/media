@@ -135,6 +135,11 @@ export const voiceLabWorker = new Worker<VoiceLabJob>(
     const vo = await prisma.voiceover.findUniqueOrThrow({ where: { id }, include: { voice: true } });
     try {
       const voiceId = vo.voice?.providerVoiceId ?? STOCK_VOICE;
+      // Cost ceiling: ~20 pages per reading (env-tunable). Long books split
+      // into multiple readings rather than one unbounded fal bill.
+      const maxChars = Number(process.env.VOICEOVER_MAX_CHARS ?? 20_000);
+      if (vo.text.length > maxChars)
+        throw new Error(`text too long for one reading (${vo.text.length} > ${maxChars} chars) — split it into parts`);
       const chunks = chunkText(vo.text);
       if (chunks.length === 0) throw new Error("voiceover text is empty");
       const langBoost = vo.language && vo.language !== "en" ? languageName(vo.language) : undefined;
