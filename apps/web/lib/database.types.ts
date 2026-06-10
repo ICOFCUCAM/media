@@ -196,6 +196,18 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+      team_invites: {
+        Row: { id: string; owner_id: string; email: string; role: string; status: string; created_at: string };
+        Insert: { owner_id: string; email: string; role?: string };
+        Update: { status?: string; role?: string };
+        Relationships: [];
+      };
+      brand_kits: {
+        Row: { user_id: string; logo_key: string | null; primary_color: string; secondary_color: string; outro_text: string | null; updated_at: string };
+        Insert: { user_id: string; logo_key?: string | null; primary_color?: string; secondary_color?: string; outro_text?: string | null };
+        Update: { logo_key?: string | null; primary_color?: string; secondary_color?: string; outro_text?: string | null };
+        Relationships: [];
+      };
       usage_records: {
         Row: {
           id: string;
