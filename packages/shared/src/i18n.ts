@@ -23,6 +23,13 @@ export const LANGUAGES: Language[] = [
   { code: "ko", name: "Korean", native: "한국어" },
   { code: "ru", name: "Russian", native: "Русский" },
   { code: "yo", name: "Yoruba", native: "Yorùbá" },
+  { code: "no", name: "Norwegian", native: "Norsk" },
+  { code: "sv", name: "Swedish", native: "Svenska" },
+  { code: "ig", name: "Igbo", native: "Igbo" },
+  { code: "ln", name: "Lingala", native: "Lingála" },
+  { code: "lg", name: "Luganda", native: "Luganda" },
+  { code: "zu", name: "Zulu", native: "isiZulu" },
+  { code: "pcm", name: "Nigerian Pidgin", native: "Naijá" },
 ];
 
 const byCode = new Map(LANGUAGES.map((l) => [l.code, l]));

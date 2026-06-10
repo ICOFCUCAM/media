@@ -6,11 +6,12 @@
  * the duration and writes the Film row so the lifecycle completes.
  */
 import { Worker } from "bullmq";
-import { QUEUES, type RenderJob } from "@cineforge/shared";
+import { QUEUES, type RenderJob , parseLanguages } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
 import { RenderEngine, type SceneAssets } from "../ffmpeg/render-engine";
 import { S3Storage } from "../storage/storage";
 import { realtime } from "../realtime";
+import { enqueueLocalize } from "../orchestration/localize-queue";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
@@ -95,6 +96,16 @@ export const renderWorker = new Worker<RenderJob>(
 
       await realtime.emit("film.ready", { projectId, filmId: film.id, mp4Key, hlsKey });
       console.log(`[render] READY project=${projectId} film=${film.id} duration=${durationSec}s`);
+
+      // Multilingual export (docs/29): translate + subtitle + dub the finished
+      // film into the configured languages. Fire-and-forget — localization can
+      // never block or fail the film itself.
+      const langs = parseLanguages(process.env.LOCALIZATION_LANGUAGES, []);
+      if (langs.length) {
+        await enqueueLocalize(projectId, langs).catch((e) =>
+          console.warn(`[render] localize enqueue failed:`, e instanceof Error ? e.message : e),
+        );
+      }
       return { projectId, durationSec };
     } catch (err) {
       const message = err instanceof Error ? err.stack || err.message : String(err);

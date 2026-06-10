@@ -516,6 +516,8 @@ model Film {
   views        Int       @default(0)
   publishedAt  DateTime? @map("published_at") @db.Timestamptz(6)
   publications Json?
+  // Per-language variants (docs/29 dubbing): locales[lang] = { mp4, voice, subtitle }
+  locales      Json?
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("films")
