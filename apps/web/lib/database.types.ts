@@ -199,6 +199,7 @@ export interface Database {
           video_key: string | null;
           thumbnail_key: string | null;
           duration_sec: number;
+          gpu_ms: number | null;
           created_at: string;
           updated_at: string;
         };

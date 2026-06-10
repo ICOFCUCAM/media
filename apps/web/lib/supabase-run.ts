@@ -4,18 +4,24 @@
  * Supabase run — drives a create surface from the REAL pipeline without an API
  * server: inserts the project row (status=PLANNING, mode=auto), which the
  * worker's project poller claims and takes through Director → GPU → FFmpeg.
- * Status/progress round-trip back over Supabase Realtime (Postgres Changes),
- * and on READY the finished film's mp4 is resolved to a signed, playable URL.
  *
- * Mirrors LiveRun's shape (same DemoState output) so RunPanel works unchanged.
+ * Everything shown is real backend state, streamed over Supabase Realtime
+ * (Postgres Changes) on the projects/scenes/shots tables the worker writes:
+ *  - production timeline (timestamped events as they actually happen)
+ *  - per-scene / per-shot pipeline with GPU timings and real thumbnails
+ *  - queue position, measured per-shot average → live ETA
+ *  - worker/GPU activity, budget spend
+ * On READY the finished film's mp4 resolves to a signed, playable URL.
+ *
  * Throws from start() when Supabase/auth isn't available — the caller falls
- * back to the in-browser preview engine.
+ * back to the in-browser preview engine (which the UI labels loudly).
  */
-import { planScenes, planShotsPerScene, estimateMs, msToUsd } from "./system";
+import type { RealtimeChannel } from "@supabase/supabase-js";
+import { planScenes, planShotsPerScene, estimateMs, msToUsd, MODELS } from "./system";
 import { createProject, subscribeProject, type ProjectRow } from "./projects";
 import { getSupabase } from "./supabase";
 import { signedUrl } from "./storyboard";
-import type { DemoConfig, DemoShot, DemoState, ProjectStatus } from "./demo";
+import type { DemoConfig, DemoShot, DemoState, LiveProduction, LiveScene, LiveShot, ProjectStatus } from "./demo";
 
 const STATUS_MAP: Record<string, ProjectStatus> = {
   DRAFT: "PLANNING",
@@ -25,9 +31,14 @@ const STATUS_MAP: Record<string, ProjectStatus> = {
   READY: "READY",
 };
 
+const ts = () => new Date().toLocaleTimeString([], { hour12: false });
+
 export class SupabaseRun {
-  private channel: ReturnType<typeof subscribeProject> = null;
+  private channels: RealtimeChannel[] = [];
+  private timers: ReturnType<typeof setTimeout>[] = [];
   private cancelled = false;
+  private filmResolved = false;
+  private scenesLoaded = false;
 
   constructor(
     private readonly cfg: DemoConfig,
@@ -36,7 +47,12 @@ export class SupabaseRun {
 
   cancel() {
     this.cancelled = true;
-    this.channel?.unsubscribe();
+    this.channels.forEach((c) => void c.unsubscribe());
+    this.timers.forEach(clearTimeout);
+  }
+
+  private later(ms: number, fn: () => void) {
+    this.timers.push(setTimeout(() => !this.cancelled && fn(), ms));
   }
 
   async start() {
@@ -45,35 +61,76 @@ export class SupabaseRun {
     const { data: auth } = await sb.auth.getUser();
     if (!auth.user) throw new Error("Not signed in");
 
-    const scenes = planScenes(this.cfg.targetSeconds);
+    const sceneCount = planScenes(this.cfg.targetSeconds);
     const per = planShotsPerScene();
-    const shots: DemoShot[] = [];
-    for (let s = 0; s < scenes; s++)
-      for (let i = 0; i < per; i++)
-        shots.push({ sceneIndex: s, shotIndex: i, status: "pending", hue: (s * 47 + i * 13) % 360 });
-
+    const totalShots = sceneCount * per;
     const estMs = estimateMs(this.cfg.modelId, this.cfg.targetSeconds);
+    const perShotMs = MODELS.find((m) => m.id === this.cfg.modelId)?.msPer720Shot ?? 80_000;
+
+    // The legacy storyboard grid (used by the preview engine) stays in sync so
+    // older UI pieces keep working; the scene pipeline below is the real view.
+    const gridShots: DemoShot[] = [];
+    for (let s = 0; s < sceneCount; s++)
+      for (let i = 0; i < per; i++)
+        gridShots.push({ sceneIndex: s, shotIndex: i, status: "pending", hue: (s * 47 + i * 13) % 360 });
+
+    const production: LiveProduction = {
+      projectId: "",
+      startedAt: Date.now(),
+      queuedAhead: 0,
+      claimed: false,
+      gpuActive: false,
+      etaMs: totalShots * perShotMs,
+      spentMs: 0,
+      timeline: [],
+      scenes: [],
+    };
+
     const state: DemoState = {
       status: "PLANNING",
       progress: 0,
       estimateMs: estMs,
       estimateUsd: msToUsd(estMs),
       spentMs: 0,
-      scenes,
-      shots,
+      scenes: sceneCount,
+      shots: gridShots,
       characters: [],
       locations: [],
       renderProgress: 0,
       durationSec: this.cfg.targetSeconds,
+      live: true,
+      production,
       log: [],
     };
-    const emit = () => this.onUpdate({ ...state, shots: [...state.shots] });
+
+    const emit = () =>
+      this.onUpdate({
+        ...state,
+        shots: [...state.shots],
+        production: { ...production, timeline: [...production.timeline], scenes: production.scenes.map((sc) => ({ ...sc, shots: [...sc.shots] })) },
+      });
     const push = (l: string) => {
-      state.log = [...state.log, l].slice(-40);
+      state.log = [...state.log, `${ts()} · ${l}`].slice(-60);
       emit();
     };
+    const mark = (label: string) => {
+      production.timeline = [...production.timeline, { at: Date.now(), label }];
+      push(label);
+    };
 
-    push("▶ live: creating project");
+    // Real queue depth: auto-mode projects waiting or in production right now.
+    try {
+      const { count } = await sb
+        .from("projects")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["PLANNING", "GENERATING", "RENDERING"])
+        .eq("mode", "auto");
+      production.queuedAhead = Math.max(0, count ?? 0);
+    } catch {
+      /* queue depth is cosmetic */
+    }
+
+    mark("Project submitted to the production queue");
     const project = await createProject({
       title: this.cfg.prompt.slice(0, 60),
       prompt: this.cfg.prompt,
@@ -82,64 +139,218 @@ export class SupabaseRun {
       estimatedMs: estMs,
     });
     if (this.cancelled) return;
-    push(`◆ project ${project.id} — worker takes it from here`);
+    production.projectId = project.id;
+    mark(`Project ${project.id.slice(0, 8)} created — waiting for a worker`);
 
-    // Reflect shot progress from the project's progress (fraction of scenes
-    // ready); per-shot Realtime isn't needed for the storyboard glow.
+    // ── Live project row (status / progress / spend / errors) ─────────────
     const reflect = (row: ProjectRow) => {
       const mapped = STATUS_MAP[row.status];
+      const prev = state.status;
       if (mapped) state.status = mapped;
-      state.progress = row.progress ?? state.progress;
-      if (row.spent_ms != null) state.spentMs = row.spent_ms;
-      const readyCount = Math.round((row.progress ?? 0) * shots.length);
-      state.shots = state.shots.map((s, i) => ({
-        ...s,
-        status: i < readyCount ? "ready" : state.status === "GENERATING" && i < readyCount + per ? "generating" : s.status === "ready" ? "ready" : "pending",
-      }));
+      if (row.spent_ms != null) {
+        state.spentMs = row.spent_ms;
+        production.spentMs = row.spent_ms;
+      }
+      if (!production.claimed && (row.status === "GENERATING" || row.status === "PLANNING")) {
+        // The poller flips PLANNING→GENERATING on claim; the film processor
+        // briefly sets PLANNING again while the Director writes.
+        if (row.status === "GENERATING" || row.progress > 0) {
+          production.claimed = true;
+          mark("Worker claimed the project — Director is writing the screenplay");
+          this.loadScenes(project.id, state, production, mark, emit);
+        }
+      }
+      if (row.status === "RENDERING" && prev !== "RENDERING") mark("Final assembly started (FFmpeg)");
       if (row.status === "FAILED") {
         state.error = row.error_message ?? "generation failed";
-        push(`✕ failed: ${state.error}`);
+        mark(`Production failed: ${state.error}`);
       } else if (row.status === "PAUSED") {
         state.error = row.error_message ?? "paused (budget ceiling)";
-        push(`⏸ ${state.error}`);
+        mark(`Production paused: ${state.error}`);
       }
+      state.progress = Math.max(state.progress, row.progress ?? 0);
       emit();
+      if (row.status === "READY") void this.resolveFilm(project.id, state, production, mark);
     };
 
-    this.channel = subscribeProject(project.id, (row) => {
-      if (this.cancelled) return;
-      reflect(row);
-      if (row.status === "READY") void this.resolveFilm(project.id, state, push);
-    });
+    const ch = subscribeProject(project.id, (row) => !this.cancelled && reflect(row));
+    if (ch) this.channels.push(ch);
 
-    // Realtime only delivers future changes — poll once a minute as a safety
-    // net in case an update slipped past before the channel was live.
+    // Realtime only delivers future changes; one slow safety poll catches
+    // anything that slipped past before the channel connected.
     const tick = async () => {
       if (this.cancelled || state.status === "READY" || state.error) return;
       const { data } = await sb.from("projects").select().eq("id", project.id).single();
-      if (data) {
-        reflect(data);
-        if (data.status === "READY") void this.resolveFilm(project.id, state, push);
-        else setTimeout(tick, 60_000);
-      } else setTimeout(tick, 60_000);
+      if (data) reflect(data);
+      if (!this.scenesLoaded && production.claimed) this.loadScenes(project.id, state, production, mark, emit);
+      this.later(20_000, tick);
     };
-    setTimeout(tick, 60_000);
+    this.later(20_000, tick);
   }
 
-  private async resolveFilm(projectId: string, state: DemoState, push: (l: string) => void) {
+  /** Fetch the Director's scenes/shots once they exist, then track them live. */
+  private async loadScenes(
+    projectId: string,
+    state: DemoState,
+    production: LiveProduction,
+    mark: (l: string) => void,
+    emit: () => void,
+  ) {
+    if (this.scenesLoaded || this.cancelled) return;
+    const sb = getSupabase();
+    if (!sb) return;
+
+    const { data: scenes } = await sb
+      .from("scenes")
+      .select("id, index, heading, status")
+      .eq("project_id", projectId)
+      .order("index");
+    if (!scenes || scenes.length === 0) {
+      this.later(5_000, () => this.loadScenes(projectId, state, production, mark, emit));
+      return;
+    }
+    const sceneIds = scenes.map((s) => s.id);
+    const { data: shots } = await sb
+      .from("shots")
+      .select("id, scene_id, index, status, thumbnail_key, gpu_ms")
+      .in("scene_id", sceneIds)
+      .order("index");
+    if (!shots || shots.length === 0) {
+      this.later(5_000, () => this.loadScenes(projectId, state, production, mark, emit));
+      return;
+    }
+    this.scenesLoaded = true;
+
+    const byScene = new Map<string, LiveScene>();
+    production.scenes = scenes.map((sc) => {
+      const view: LiveScene = { id: sc.id, index: sc.index, heading: sc.heading, status: sc.status, shots: [] };
+      byScene.set(sc.id, view);
+      return view;
+    });
+    for (const sh of shots) {
+      const scene = byScene.get(sh.scene_id);
+      if (!scene) continue;
+      scene.shots.push({
+        id: sh.id,
+        sceneIndex: scene.index,
+        index: sh.index,
+        status: (sh.status as LiveShot["status"]) ?? "PENDING",
+        gpuMs: sh.gpu_ms ?? undefined,
+      });
+    }
+    state.scenes = scenes.length;
+    mark(`Screenplay ready — ${scenes.length} scene${scenes.length > 1 ? "s" : ""}, ${shots.length} shots planned`);
+    this.recompute(state, production, emit);
+
+    // Per-shot updates: GPU start/finish, thumbnails, timings.
+    const shotCh = sb
+      .channel(`shots:${projectId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "shots", filter: `scene_id=in.(${sceneIds.join(",")})` },
+        (payload) => {
+          if (this.cancelled) return;
+          const row = payload.new as { id: string; status: string; thumbnail_key: string | null; gpu_ms: number | null };
+          for (const scene of production.scenes) {
+            const shot = scene.shots.find((s) => s.id === row.id);
+            if (!shot) continue;
+            const was = shot.status;
+            shot.status = (row.status as LiveShot["status"]) ?? shot.status;
+            shot.gpuMs = row.gpu_ms ?? shot.gpuMs;
+            if (shot.status === "GENERATING" && was !== "GENERATING")
+              mark(`Shot ${scene.index + 1}.${shot.index + 1} — generating on GPU (Wan 2.1)`);
+            if (shot.status === "READY" && was !== "READY") {
+              mark(`Shot ${scene.index + 1}.${shot.index + 1} rendered${row.gpu_ms ? ` in ${Math.round(row.gpu_ms / 1000)}s GPU` : ""}`);
+              if (row.thumbnail_key)
+                void signedUrl(row.thumbnail_key).then((url) => {
+                  if (url && !this.cancelled) {
+                    shot.thumbUrl = url;
+                    emit();
+                  }
+                });
+            }
+            this.recompute(state, production, emit);
+            return;
+          }
+        },
+      )
+      .subscribe();
+    this.channels.push(shotCh);
+
+    // Per-scene updates (finalize).
+    const sceneCh = sb
+      .channel(`scenes:${projectId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "scenes", filter: `project_id=eq.${projectId}` },
+        (payload) => {
+          if (this.cancelled) return;
+          const row = payload.new as { id: string; status: string };
+          const scene = production.scenes.find((s) => s.id === row.id);
+          if (scene && scene.status !== row.status) {
+            scene.status = row.status;
+            if (row.status === "READY") mark(`Scene ${scene.index + 1} finalized`);
+            this.recompute(state, production, emit);
+          }
+        },
+      )
+      .subscribe();
+    this.channels.push(sceneCh);
+  }
+
+  /** Recompute progress / ETA / GPU activity from the real shot states. */
+  private recompute(state: DemoState, production: LiveProduction, emit: () => void) {
+    const all = production.scenes.flatMap((s) => s.shots);
+    if (all.length === 0) return emit();
+    const ready = all.filter((s) => s.status === "READY");
+    const generating = all.some((s) => s.status === "GENERATING");
+    production.gpuActive = generating;
+
+    // Measured per-shot average (falls back to the model's planning figure).
+    const timed = ready.filter((s) => (s.gpuMs ?? 0) > 0);
+    const avg =
+      timed.length > 0
+        ? timed.reduce((a, s) => a + (s.gpuMs ?? 0), 0) / timed.length
+        : (MODELS.find((m) => m.id === this.cfg.modelId)?.msPer720Shot ?? 80_000);
+    const remaining = all.length - ready.length;
+    production.etaMs = state.status === "READY" ? 0 : Math.round(remaining * avg + (state.status === "RENDERING" ? 0 : 30_000));
+
+    // Real progress from real shots (the project row only updates per scene).
+    state.progress = Math.max(state.progress, all.length ? (ready.length / all.length) * 0.9 : 0);
+
+    // Mirror into the legacy grid.
+    state.shots = state.shots.map((gs) => {
+      const real = production.scenes.find((sc) => sc.index === gs.sceneIndex)?.shots.find((sh) => sh.index === gs.shotIndex);
+      if (!real) return gs;
+      return { ...gs, status: real.status === "READY" ? "ready" : real.status === "GENERATING" ? "generating" : "pending" };
+    });
+    emit();
+  }
+
+  private async resolveFilm(
+    projectId: string,
+    state: DemoState,
+    production: LiveProduction,
+    mark: (l: string) => void,
+  ) {
+    if (this.filmResolved) return;
+    this.filmResolved = true;
     const sb = getSupabase();
     if (!sb) return;
     const { data: film } = await sb.from("films").select().eq("project_id", projectId).maybeSingle();
     state.status = "READY";
     state.progress = 1;
+    production.etaMs = 0;
+    production.gpuActive = false;
     state.shots = state.shots.map((s) => ({ ...s, status: "ready" }));
     if (film?.mp4_key) {
       const url = await signedUrl(film.mp4_key);
       if (url) {
         state.filmUrl = url;
-        push("◆ film ready — streaming from storage");
+        mark("Film packaged — streaming from storage");
+        return;
       }
     }
-    this.onUpdate({ ...state, shots: [...state.shots] });
+    mark("Film ready");
   }
 }

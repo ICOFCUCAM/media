@@ -31,7 +31,50 @@ export interface DemoState {
   filmUrl?: string;
   /** Set when the real pipeline failed or paused — shown as a banner. */
   error?: string;
+  /** True when a REAL run is driving this state (worker + GPU), not the preview engine. */
+  live?: boolean;
+  /** Live production telemetry — only present on real runs. */
+  production?: LiveProduction;
   log: string[];
+}
+
+/** One entry on the production timeline (real event, real timestamp). */
+export interface TimelineEvent {
+  at: number; // epoch ms
+  label: string;
+}
+
+export interface LiveShot {
+  id: string;
+  sceneIndex: number;
+  index: number;
+  status: "PENDING" | "GENERATING" | "READY" | "FAILED";
+  thumbUrl?: string;
+  gpuMs?: number;
+}
+
+export interface LiveScene {
+  id: string;
+  index: number;
+  heading: string | null;
+  status: string;
+  shots: LiveShot[];
+}
+
+export interface LiveProduction {
+  projectId: string;
+  startedAt: number;
+  /** Auto-mode projects waiting/working ahead of this one when it was queued. */
+  queuedAhead: number;
+  /** True once the worker has claimed the project (Director running). */
+  claimed: boolean;
+  /** True while any shot is on the GPU. */
+  gpuActive: boolean;
+  /** Estimated remaining ms (serialized GPU, measured per-shot average). */
+  etaMs?: number;
+  spentMs: number;
+  timeline: TimelineEvent[];
+  scenes: LiveScene[];
 }
 
 export interface DemoConfig {
