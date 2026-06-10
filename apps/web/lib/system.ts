@@ -23,8 +23,11 @@ export interface ModelInfo {
 }
 
 export const MODELS: ModelInfo[] = [
-  { id: "wan-2.1", name: "Wan 2.1", klass: "primary", tiers: ["FREE", "CREATOR", "STUDIO", "ENTERPRISE"], msPer720Shot: 12_000 },
-  { id: "hunyuan", name: "Hunyuan Video", klass: "premium", tiers: ["STUDIO", "ENTERPRISE"], msPer720Shot: 22_000 },
+  // msPer720Shot must track REAL inference time: the worker pauses a project
+  // when GPU spend exceeds estimate × 1.25, so a low-ball here strands films
+  // mid-generation. Measured on the A40: Wan 2.1 ≈ 40–80s per shot.
+  { id: "wan-2.1", name: "Wan 2.1", klass: "primary", tiers: ["FREE", "CREATOR", "STUDIO", "ENTERPRISE"], msPer720Shot: 80_000 },
+  { id: "hunyuan", name: "Hunyuan Video", klass: "premium", tiers: ["STUDIO", "ENTERPRISE"], msPer720Shot: 150_000 },
 ];
 
 export function modelAllowed(modelId: string, tier: Tier): boolean {

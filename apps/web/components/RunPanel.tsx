@@ -62,6 +62,12 @@ export function RunPanel({
         </div>
       )}
 
+      {state.error && (
+        <div className="rounded-xl border border-red-400/30 bg-red-400/[0.06] p-4 text-sm text-red-200">
+          ✕ {state.error}
+        </div>
+      )}
+
       {state.status === "READY" && <Result state={state} title={readyTitle} />}
 
       <div>
@@ -98,9 +104,16 @@ function Result({ state, title }: { state: DemoState; title: string }) {
           <p className="text-sm text-white/60">{fmtDuration(state.durationSec)} · {state.scenes} scenes</p>
         </div>
         <div className="flex gap-2">
-          {["▶ Play", "↓ Download", "↗ Publish"].map((t) => (
-            <span key={t} className="cursor-default rounded-lg border border-white/15 px-3 py-1.5 text-sm text-white/70">{t}</span>
-          ))}
+          {state.filmUrl ? (
+            <>
+              <a href={state.filmUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-400/40 px-3 py-1.5 text-sm text-emerald-200 hover:bg-emerald-400/10">▶ Play</a>
+              <a href={state.filmUrl} download className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5">↓ Download</a>
+            </>
+          ) : (
+            ["▶ Play", "↓ Download", "↗ Publish"].map((t) => (
+              <span key={t} className="cursor-default rounded-lg border border-white/15 px-3 py-1.5 text-sm text-white/70">{t}</span>
+            ))
+          )}
         </div>
       </div>
       {state.filmUrl ? (
