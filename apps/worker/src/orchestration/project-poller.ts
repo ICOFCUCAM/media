@@ -58,39 +58,55 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
 
       // ── Orphan recovery ────────────────────────────────────────────────
       // The job queue (Redis, no persistence) loses in-flight jobs on worker
-      // restarts/deploys, stranding claimed projects on GENERATING forever.
-      // Both classes are detected by silence:
+      // restarts/deploys, stranding claimed projects on GENERATING. Two classes:
       //  - never planned (no scenes): flip back to PLANNING — the normal claim
       //    path re-runs the Director (plan() is idempotent per scene index).
-      //  - planned but stalled (no shot/project touch for 15 min): enqueue a
-      //    "resume" film job — the flow re-fans out and completed shots
-      //    short-circuit at zero GPU cost.
-      const STALL_MS = 15 * 60_000;
+      //  - planned but stalled: enqueue a "resume" film job — the flow re-fans
+      //    out and completed shots short-circuit at zero GPU cost.
+      //
+      // "Stalled" is judged by real PROGRESS (last shot to reach READY), not by
+      // the last shot merely TOUCHED: a lost job leaves its shot flapping in
+      // GENERATING (updatedAt keeps moving) while no shot ever finishes, which
+      // a touch-based check would mistake for healthy activity. WAN_STALL_MIN
+      // raises the window for slow models (e.g. 14B/Hunyuan at minutes/shot).
+      const STALL_MS = Number(process.env.WAN_STALL_MIN ?? 15) * 60_000;
+      const now = Date.now();
+      // All in-flight auto projects (no updatedAt filter — that field is bumped
+      // by every shot's spend update, so it can't tell stalled from healthy).
       const candidates = await prisma.project.findMany({
-        where: { status: "GENERATING", mode: "auto", updatedAt: { lt: new Date(Date.now() - STALL_MS) } },
-        select: { id: true, updatedAt: true },
-        take: 10,
+        where: { status: "GENERATING", mode: "auto" },
+        select: { id: true, createdAt: true },
+        take: 20,
       });
       for (const c of candidates) {
-        const latestShot = await prisma.shot.findFirst({
-          where: { scene: { projectId: c.id } },
+        const firstScene = await prisma.scene.findFirst({
+          where: { projectId: c.id },
+          orderBy: { createdAt: "asc" },
+          select: { createdAt: true },
+        });
+        if (!firstScene) {
+          // Claimed but never planned. Only act once the claim is genuinely old,
+          // so a project mid-planning isn't yanked back.
+          if (now - c.createdAt.getTime() > STALL_MS) {
+            await prisma.project.updateMany({ where: { id: c.id, status: "GENERATING" }, data: { status: "PLANNING" } });
+            console.log(`[poller] recovered orphaned project ${c.id} (claimed but never planned)`);
+          }
+          continue;
+        }
+        // Reference = real progress: the last shot to reach READY, or — if none
+        // yet — when planning finished. Stalled if that's older than STALL_MS.
+        const lastReady = await prisma.shot.findFirst({
+          where: { scene: { projectId: c.id }, status: "READY" },
           orderBy: { updatedAt: "desc" },
           select: { updatedAt: true },
         });
-        if (latestShot && Date.now() - latestShot.updatedAt.getTime() < STALL_MS) continue; // shots are moving
-        if (!latestShot) {
-          await prisma.project.updateMany({
-            where: { id: c.id, status: "GENERATING" },
-            data: { status: "PLANNING" },
-          });
-          console.log(`[poller] recovered orphaned project ${c.id} (claimed but never planned)`);
-        } else {
-          // Touch the row first so the 15-min cooldown restarts (prevents a
-          // resume storm while the resumed flow spins up).
-          await prisma.project.update({ where: { id: c.id }, data: { status: "GENERATING" } });
-          await filmQueue.add("resume", { projectId: c.id }, { jobId: `film-resume-${c.id}-${Date.now()}`, attempts: 2, removeOnComplete: 100 });
-          console.log(`[poller] resumed stalled project ${c.id} (no activity for 15 min)`);
-        }
+        const reference = lastReady?.updatedAt.getTime() ?? firstScene.createdAt.getTime();
+        if (now - reference < STALL_MS) continue; // progressing (or still warming up)
+        // Its jobs were lost mid-flight. Touch the row (restarts the cooldown,
+        // prevents a resume storm) and re-fan-out; READY shots cost 0 GPU.
+        await prisma.project.update({ where: { id: c.id }, data: { status: "GENERATING" } });
+        await filmQueue.add("resume", { projectId: c.id }, { jobId: `film-resume-${c.id}-${now}`, attempts: 2, removeOnComplete: 100 });
+        console.log(`[poller] resumed stalled project ${c.id} (no shot completed in ${STALL_MS / 60000} min)`);
       }
     } catch (e) {
       console.error("[poller] tick failed:", e);
