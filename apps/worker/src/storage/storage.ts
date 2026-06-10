@@ -55,6 +55,12 @@ export class S3Storage implements Storage {
     return key;
   }
 
+  /** Read an object into memory (small assets: seed stills for data-URI handoff). */
+  async getBytes(key: string): Promise<Uint8Array> {
+    const res = await this.s3.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    return res.Body!.transformToByteArray();
+  }
+
   async uploadDir(dir: string, keyPrefix: string): Promise<void> {
     const entries = await readdir(dir, { withFileTypes: true, recursive: true } as { withFileTypes: true });
     await Promise.all(

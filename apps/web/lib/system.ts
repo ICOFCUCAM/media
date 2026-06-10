@@ -25,9 +25,10 @@ export interface ModelInfo {
 export const MODELS: ModelInfo[] = [
   // msPer720Shot must track REAL inference time: the worker pauses a project
   // when GPU spend exceeds estimate × 1.25, so a low-ball here strands films
-  // mid-generation. Measured on the A40: Wan 2.1 ≈ 40–80s per shot.
-  { id: "wan-2.1", name: "Wan 2.1", klass: "primary", tiers: ["FREE", "CREATOR", "STUDIO", "ENTERPRISE"], msPer720Shot: 80_000 },
-  { id: "hunyuan", name: "Hunyuan Video", klass: "premium", tiers: ["STUDIO", "ENTERPRISE"], msPer720Shot: 150_000 },
+  // mid-generation. Measured: Wan on the A40 ≈ 40–80s/shot (14B much more);
+  // Cinematic (fal.ai frontier models) ≈ 1–3 wall-minutes/shot, run in parallel.
+  { id: "wan-2.1", name: "Wan 2.1 · own GPU", klass: "primary", tiers: ["FREE", "CREATOR", "STUDIO", "ENTERPRISE"], msPer720Shot: 80_000 },
+  { id: "cinematic", name: "Kling 2.1 · fal.ai", klass: "premium", tiers: ["STUDIO", "ENTERPRISE"], msPer720Shot: 180_000 },
 ];
 
 export function modelAllowed(modelId: string, tier: Tier): boolean {

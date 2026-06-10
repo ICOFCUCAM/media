@@ -47,14 +47,26 @@ const registry = buildClusterRegistry(
     EXTERNAL_VIDEO_MODEL_ID: process.env.EXTERNAL_VIDEO_MODEL_ID,
     EXTERNAL_VIDEO_MODEL_NAME: process.env.EXTERNAL_VIDEO_MODEL_NAME,
     EXTERNAL_VIDEO_MAX_SEC: process.env.EXTERNAL_VIDEO_MAX_SEC,
+    FAL_KEY: process.env.FAL_KEY,
+    FAL_MODEL_ID: process.env.FAL_MODEL_ID,
+    FAL_T2V_MODEL: process.env.FAL_T2V_MODEL,
+    FAL_I2V_MODEL: process.env.FAL_I2V_MODEL,
   },
   {
-    // External providers fetch the seed frame / reference video by URL; resolve
-    // our (private) storage key to a public/CDN URL. Self-hosted workers read
-    // keys directly, so this only matters for the external adapter. Swap in a
-    // signed-URL resolver here if the bucket isn't fronted by a public CDN.
-    resolveImageUrl: assetBase ? async (key: string) => `${assetBase}/${key}` : undefined,
+    // External providers fetch the seed frame by URL. Without a public CDN in
+    // front of the bucket, hand the (small) still over as a base64 data URI —
+    // fal et al accept those. Self-hosted workers read storage keys directly.
+    resolveImageUrl: assetBase
+      ? async (key: string) => `${assetBase}/${key}`
+      : async (key: string) => {
+          const bytes = await storage.getBytes(key);
+          const ext = key.split(".").pop()?.toLowerCase();
+          const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "image/png";
+          return `data:${mime};base64,${Buffer.from(bytes).toString("base64")}`;
+        },
     resolveVideoUrl: assetBase ? async (key: string) => `${assetBase}/${key}` : undefined,
+    // Mirror finished external clips into our storage.
+    saveVideo: (key, bytes, contentType) => storage.putBytes(key, bytes, contentType),
   },
 );
 

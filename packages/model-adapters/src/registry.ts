@@ -3,6 +3,7 @@ import { RunpodClient } from "./runpod-client";
 import { WanAdapter } from "./wan/wan.adapter";
 import { HunyuanAdapter } from "./hunyuan/hunyuan.adapter";
 import { ExternalApiAdapter } from "./external/external.adapter";
+import { FalAdapter } from "./fal-adapter";
 
 /**
  * Central registry of video models. The API/worker resolve a model by `id`;
@@ -71,6 +72,11 @@ export interface BuildClusterEnv {
   EXTERNAL_VIDEO_MODEL_ID?: string;
   EXTERNAL_VIDEO_MODEL_NAME?: string;
   EXTERNAL_VIDEO_MAX_SEC?: string;
+  /** fal.ai premium tier ("cinematic"): one key, frontier models, parallel shots. */
+  FAL_KEY?: string;
+  FAL_MODEL_ID?: string;
+  FAL_T2V_MODEL?: string;
+  FAL_I2V_MODEL?: string;
 }
 
 /**
@@ -82,6 +88,8 @@ export interface ExternalHooks {
   resolveImageUrl?: (key: string) => Promise<string>;
   resolveVideoUrl?: (key: string) => Promise<string>;
   upload?: (videoUrl: string) => Promise<string>;
+  /** Persist raw clip bytes into our storage (fal mirrors results); returns the key. */
+  saveVideo?: (key: string, bytes: Uint8Array, contentType: string) => Promise<string>;
 }
 
 /**
@@ -107,6 +115,18 @@ export function buildClusterRegistry(env: BuildClusterEnv, hooks: ExternalHooks 
   if (hunyuanUrls.length) {
     registry.register(
       new HunyuanAdapter(new RunpodClient({ resolveBaseUrl: roundRobin(hunyuanUrls), apiKey: env.RUNPOD_API_KEY })),
+    );
+  }
+  if (env.FAL_KEY && hooks.saveVideo) {
+    registry.register(
+      new FalAdapter({
+        apiKey: env.FAL_KEY,
+        id: env.FAL_MODEL_ID,
+        t2vModel: env.FAL_T2V_MODEL,
+        i2vModel: env.FAL_I2V_MODEL,
+        resolveImageUrl: hooks.resolveImageUrl,
+        saveVideo: hooks.saveVideo,
+      }),
     );
   }
   if (env.EXTERNAL_VIDEO_API_URL) {

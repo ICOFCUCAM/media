@@ -8,6 +8,7 @@
 export const MODEL_VERSIONS: Record<string, string> = {
   "wan-2.1": "wan-2.1-1.0",
   hunyuan: "hunyuan-1.0",
+  cinematic: "fal-kling-2.1",
 };
 
 interface CostBase {
