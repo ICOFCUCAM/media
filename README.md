@@ -13,7 +13,31 @@ assembles the cut with FFmpeg, and streams the finished MP4.
 
 Cineforge is architected to compete with Runway, Kling, Pika, and Luma at a
 fraction of the operating cost by running open-source models on autoscaled,
-idle-shutdown GPU workers.
+idle-shutdown GPU workers — and to go where they don't: finished films, not clips.
+
+## What works today (live in production)
+
+- **Films from one sentence** — Claude writes the screenplay + continuity,
+  OpenAI paints per-scene stills, video engines animate them, FFmpeg
+  assembles the narrated cut. Two engines: self-hosted Wan (own RunPod A40,
+  auto start/stop) and **Cinematic** (frontier models via fal.ai, parallel shots).
+- **Narration + 20-language dubbing** — story voiceover per scene (TTS),
+  auto-translated/dubbed variants per film (`final_{lang}.mp4`), incl.
+  Igbo, Lingala, Luganda, Zulu, Nigerian Pidgin.
+- **Voice Lab** — clone a voice from a 30s sample (fal MiniMax), read
+  unlimited-length speeches in any registry language; community voice
+  marketplace with owner terms + admin approval.
+- **Talking avatars** — a portrait photo lip-synced to any reading.
+- **Social Launchpad** — upload a video (or pick a finished film), Claude
+  writes per-platform launch kits, one button posts to YouTube / TikTok /
+  Instagram / Facebook (real APIs, env-gated; X scaffold).
+- **Self-healing pipeline** — persistent queue, stalled-job reclaim, and a
+  progress-based watchdog that re-fans-out stalled films; failures land on
+  the row, never silently.
+- **Business layer** — five plans (docs/33) with Stripe checkout + webhook
+  fulfillment (Supabase Edge Functions), credit ledger enforced in the
+  worker, tier gates (engines, film length, seats), admin console
+  (roster, credit grants, moderation), brand-kit white-label outros.
 
 ---
 
