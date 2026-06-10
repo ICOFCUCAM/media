@@ -89,10 +89,12 @@ export const renderWorker = new Worker<RenderJob>(
       return { projectId, durationSec };
     } catch (err) {
       const message = err instanceof Error ? err.stack || err.message : String(err);
+      const short = err instanceof Error ? err.message : String(err);
       console.error(`[render] FAILED project=${projectId} job=${job.id}:`, message);
-      // Surface the failure instead of letting the project hang on GENERATING.
+      // Surface the failure instead of letting the project hang on GENERATING —
+      // persist the reason to error_message so it's visible without the logs.
       await prisma.project
-        .update({ where: { id: projectId }, data: { status: "FAILED" } })
+        .update({ where: { id: projectId }, data: { status: "FAILED", errorMessage: `render: ${short}`.slice(0, 500) } })
         .catch((e) => console.error(`[render] could not mark FAILED:`, e));
       await realtime
         .emit("error", { projectId, scope: "render", message: err instanceof Error ? err.message : String(err) })
