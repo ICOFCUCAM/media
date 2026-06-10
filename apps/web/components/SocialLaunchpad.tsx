@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { AuthCard } from "./AuthCard";
 import { getSupabase } from "../lib/supabase";
+import { SkeletonRows } from "./Skeleton";
 
 /**
  * Social Launchpad (docs/31) — upload any video, the AI writes a per-platform
@@ -167,7 +168,7 @@ export function SocialLaunchpad() {
           </form>
 
           {!launches ? (
-            <p className="text-sm text-white/40">Loading…</p>
+            <SkeletonRows rows={3} />
           ) : launches.length === 0 ? (
             <Note>No launches yet. Upload your first video above.</Note>
           ) : (

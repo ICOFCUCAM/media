@@ -5,6 +5,7 @@ import { useAuth } from "./AuthProvider";
 import { AuthCard } from "./AuthCard";
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
+import { SkeletonCards } from "./Skeleton";
 
 /**
  * Music & audio library — every track the pipeline produced for your
@@ -54,7 +55,7 @@ export function MusicLibrary() {
       ) : !user ? (
         <AuthCard title="Sign in to browse your audio" />
       ) : !tracks ? (
-        <p className="text-sm text-white/40">Loading tracks…</p>
+        <SkeletonCards cards={4} />
       ) : tracks.length === 0 ? (
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 text-sm text-white/55">
           No tracks yet — generate a film with narration, or create readings in the <a className="underline" href="/library/voices">Voice Lab</a>.

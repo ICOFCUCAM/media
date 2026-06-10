@@ -6,6 +6,7 @@ import { AuthCard } from "./AuthCard";
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
 import { HlsPlayer } from "./HlsPlayer";
+import { SkeletonCards } from "./Skeleton";
 
 /** Streaming — your channel: every finished film with adaptive playback
  *  (HLS ladder when rendered, MP4 fallback) and per-title stats. */
@@ -55,7 +56,7 @@ export function StreamingChannel() {
       ) : !user ? (
         <AuthCard title="Sign in to open your channel" />
       ) : !titles ? (
-        <p className="text-sm text-white/40">Loading titles…</p>
+        <SkeletonCards cards={4} />
       ) : titles.length === 0 ? (
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 text-sm text-white/55">
           No finished films yet — your channel fills itself as productions complete.
