@@ -107,8 +107,11 @@ export function muxArgs(
   args.push("-map", "0:v", "-map", "1:a");
   if (opts.subtitles) args.push("-map", "2", "-c:s", "mov_text");
   args.push(
-    "-c:v", "libx264", "-crf", "19", "-preset", "slow",
-    "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
+    // veryfast: the worker is a small instance and source quality is the
+    // bound anyway; -shortest: a narration bed longer than the cut must not
+    // extend the film with frozen video.
+    "-c:v", "libx264", "-crf", "19", "-preset", "veryfast",
+    "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart",
     output,
   );
   return args;

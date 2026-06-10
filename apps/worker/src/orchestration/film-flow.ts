@@ -50,6 +50,15 @@ export async function enqueueFilmFlow(projectId: string): Promise<number> {
           data: { projectId, sceneId: scene.id, kind: "music" },
           opts: { attempts: 2, priority },
         },
+        {
+          // Narration: OpenAI TTS reads the scene's dialogue (or summary) —
+          // the render engine stitches every scene's track into the film's
+          // voice bed. No-ops gracefully when TTS isn't configured.
+          name: "voice",
+          queueName: QUEUES.audio,
+          data: { projectId, sceneId: scene.id, kind: "voice" },
+          opts: { attempts: 2, priority },
+        },
       ],
     })),
   });

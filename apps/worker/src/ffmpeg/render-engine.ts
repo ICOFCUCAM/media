@@ -90,32 +90,47 @@ export class RenderEngine {
       await this.run(concatArgs(listPath, body));
       onProgress?.(0.7);
 
-      // 3) Mix audio (first scene that has any track drives the bed for the demo;
-      //    full impl places per-scene tracks on a timeline — docs/11).
-      //    Audio is an ENHANCEMENT: if any track fails to download or mix
-      //    (phantom key, transient storage error), ship the film without audio
-      //    rather than failing the whole assembly.
-      const audioScene = scenes.find((s) => s.musicKey || s.voiceKey || s.sfxKey);
+      // 3) Mix audio. Narration: EVERY scene's voice track, concatenated in
+      //    scene order, becomes the film's voice bed (roughly tracking scene
+      //    boundaries; precise timeline placement is docs/11). Music/SFX come
+      //    from the first scene that has one (single bed for now). Audio is an
+      //    ENHANCEMENT: if any track fails to download or mix, ship the film
+      //    without audio rather than failing the whole assembly.
       let finalVideo = body;
-      if (audioScene) {
-        try {
-          const dl = async (k?: string, name?: string) => {
-            if (!k) return undefined;
-            const p = join(work, name!);
-            await this.storage.download(k, p);
-            return p;
-          };
-          const music = await dl(audioScene.musicKey, "music.mp3");
-          const voice = await dl(audioScene.voiceKey, "voice.wav");
-          const sfx = await dl(audioScene.sfxKey, "sfx.wav");
+      try {
+        const dl = async (k: string, name: string) => {
+          const p = join(work, name);
+          await this.storage.download(k, p);
+          return p;
+        };
+        // Voice bed: ordered concat of per-scene narration.
+        let voice: string | undefined;
+        const voiceScenes = scenes.filter((s) => s.voiceKey);
+        if (voiceScenes.length === 1) {
+          voice = await dl(voiceScenes[0]!.voiceKey!, "voice_0.mp3");
+        } else if (voiceScenes.length > 1) {
+          const parts: string[] = [];
+          for (const s of voiceScenes) parts.push(await dl(s.voiceKey!, `voice_${s.index}.mp3`));
+          const vlist = join(work, "voices.txt");
+          await writeFile(vlist, concatListContent(parts));
+          voice = join(work, "voice_all.m4a");
+          console.log(`[render] narration bed: ${parts.length} scene tracks`);
+          await this.run(["-f", "concat", "-safe", "0", "-i", vlist, "-c:a", "aac", "-b:a", "160k", voice]);
+        }
+        const musicKey = scenes.find((s) => s.musicKey)?.musicKey;
+        const sfxKey = scenes.find((s) => s.sfxKey)?.sfxKey;
+        const music = musicKey ? await dl(musicKey, "music.mp3") : undefined;
+        const sfx = sfxKey ? await dl(sfxKey, "sfx.wav") : undefined;
+        if (voice || music || sfx) {
           const mix = join(work, "mix.m4a");
           await this.run(audioMixArgs({ music, voice, sfx }, mix));
           const muxed = join(work, "muxed.mp4");
+          console.log(`[render] mux audio bed (voice=${!!voice} music=${!!music} sfx=${!!sfx})`);
           await this.run(muxArgs(body, mix, muxed));
           finalVideo = muxed;
-        } catch (e) {
-          console.warn(`[render] audio mix failed, continuing without audio:`, e instanceof Error ? e.message : e);
         }
+      } catch (e) {
+        console.warn(`[render] audio mix failed, continuing without audio:`, e instanceof Error ? e.message : e);
       }
       onProgress?.(0.8);
 
