@@ -428,6 +428,14 @@ export class SupabaseRun {
     state.shots = state.shots.map((s) => ({ ...s, status: "ready" }));
     if (film?.mp4_key) {
       const url = await signedUrl(film.mp4_key);
+      // Dubbed variants (docs/29): one playable link per language.
+      const locales = (film.locales ?? {}) as Record<string, { mp4?: string }>;
+      const entries = await Promise.all(
+        Object.entries(locales)
+          .filter(([, v]) => v?.mp4)
+          .map(async ([lang, v]) => ({ lang, url: (await signedUrl(v.mp4!)) ?? "" })),
+      );
+      state.filmLocales = entries.filter((e) => e.url);
       if (url) {
         state.filmUrl = url;
         if (this.existing && film.published_at) {

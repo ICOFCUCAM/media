@@ -372,6 +372,7 @@ export interface Database {
           version: number;
           views: number;
           published_at: string | null;
+          locales: Record<string, { mp4?: string; voice?: string }> | null;
           created_at: string;
         };
         Insert: {

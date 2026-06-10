@@ -282,6 +282,22 @@ function Result({ state, title }: { state: DemoState; title: string }) {
       {state.filmUrl ? (
         <div className="mt-4">
           <HlsPlayer src={state.filmUrl} />
+          {(state.filmLocales?.length ?? 0) > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] uppercase tracking-wider text-white/40">Also in</span>
+              {state.filmLocales!.map((l) => (
+                <a
+                  key={l.lang}
+                  href={l.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-white/15 px-2.5 py-1 text-xs text-white/70 transition hover:border-emerald-300/50 hover:text-emerald-200"
+                >
+                  {l.lang.toUpperCase()} ▶
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <div className="mt-4 flex gap-1 overflow-hidden rounded-lg">

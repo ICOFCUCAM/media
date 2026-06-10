@@ -29,6 +29,8 @@ export interface DemoState {
   durationSec: number;
   /** Set in Live mode on film.ready — a playable HLS (.m3u8) or MP4 URL. */
   filmUrl?: string;
+  /** Dubbed variants: language code -> playable URL (docs/29). */
+  filmLocales?: { lang: string; url: string }[];
   /** Set when the real pipeline failed or paused — shown as a banner. */
   error?: string;
   /** True when a REAL run is driving this state (worker + GPU), not the preview engine. */
