@@ -71,15 +71,24 @@ class VideoPipeline:
         # DiffusionPipeline.from_pretrained resolves the right class (Wan / Hunyuan)
         # from the repo's model_index.json — robust across diffusers versions.
         pipe = DiffusionPipeline.from_pretrained(MODEL_IDS[self.model_name], torch_dtype=dtype)
-        # Model CPU offload keeps each component (esp. the large umt5-xxl text
-        # encoder) on CPU and streams it to the GPU only while it runs, so the
-        # 1.3B model fits a 24GB card. Crucially we do NOT also call
-        # pipe.to("cuda") — that pins everything in VRAM and defeats offload,
-        # causing an OOM on the first inference.
+        # Placement by GPU size:
+        #  - Big card (>=40GB VRAM, e.g. A40/L40/A6000): hold the whole model in
+        #    VRAM (fast, no system-RAM pressure).
+        #  - Small card (e.g. 24GB 4090): stream components from CPU via offload.
+        #    NB: offload then needs ample system RAM; a card this small may still
+        #    OOM on RAM for Wan's large umt5-xxl encoder — prefer a 40GB+ GPU.
+        total_vram_gb = 0.0
         try:
-            pipe.enable_model_cpu_offload()
+            total_vram_gb = torch.cuda.get_device_properties(0).total_memory / 1e9
         except Exception:
-            pipe.to("cuda")  # fallback for pipelines without offload support
+            pass
+        if total_vram_gb >= 40:
+            pipe.to("cuda")
+        else:
+            try:
+                pipe.enable_model_cpu_offload()
+            except Exception:
+                pipe.to("cuda")
         for opt in ("enable_vae_tiling", "enable_attention_slicing"):
             try:
                 getattr(pipe, opt)()
