@@ -422,6 +422,7 @@ export class SupabaseRun {
     if (!sb) return;
     const { data: film } = await sb.from("films").select().eq("project_id", projectId).maybeSingle();
     state.status = "READY";
+    state.projectId = projectId;
     state.progress = 1;
     production.etaMs = 0;
     production.gpuActive = false;

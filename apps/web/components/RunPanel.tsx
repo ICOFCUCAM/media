@@ -251,6 +251,15 @@ function StoryboardGrid({ state }: { state: DemoState }) {
   );
 }
 
+async function bumpViews(projectId: string) {
+  // Count plays so the Audience analytics have a real signal.
+  const { getSupabase } = await import("../lib/supabase");
+  const sb = getSupabase();
+  if (!sb) return;
+  const { data } = await sb.from("films").select("views").eq("project_id", projectId).maybeSingle();
+  if (data) await sb.from("films").update({ views: (data.views ?? 0) + 1 }).eq("project_id", projectId);
+}
+
 function Result({ state, title }: { state: DemoState; title: string }) {
   const strip = state.shots.filter((s) => s.status === "ready" || s.status === "cached").slice(0, 24);
   return (
@@ -265,7 +274,13 @@ function Result({ state, title }: { state: DemoState; title: string }) {
         <div className="flex gap-2">
           {state.filmUrl ? (
             <>
-              <a href={state.filmUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-400/40 px-3 py-1.5 text-sm text-emerald-200 hover:bg-emerald-400/10">
+              <a
+                href={state.filmUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => state.projectId && void bumpViews(state.projectId)}
+                className="rounded-lg border border-emerald-400/40 px-3 py-1.5 text-sm text-emerald-200 hover:bg-emerald-400/10"
+              >
                 ▶ Play
               </a>
               <a href={state.filmUrl} download className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5">
