@@ -21,6 +21,7 @@ export default function Home() {
         <IdeaToAudience />
         <Workflow />
         <VoiceAndAvatar />
+        <LanguageStrip />
         <PublishEverywhere />
         <MadeWith />
         <Marketplace />
@@ -337,6 +338,22 @@ function VoiceAndAvatar() {
         <Link href="/library/voices" className="rounded-lg border border-white/20 px-5 py-2.5 text-sm font-medium transition hover:bg-white/5">
           Open the Voice Lab →
         </Link>
+      </div>
+    </section>
+  );
+}
+
+function LanguageStrip() {
+  const langs = ["English", "Français", "Español", "Deutsch", "中文", "Русский", "العربية", "हिन्दी", "Kiswahili", "Yorùbá", "Igbo", "Lingála", "Luganda", "isiZulu", "Naijá Pidgin", "Norsk", "Svenska", "Português", "日本語", "한국어"];
+  return (
+    <section className="border-y border-white/5 bg-white/[0.015] py-8">
+      <p className="mb-4 text-center text-[11px] uppercase tracking-widest text-white/35">
+        Every film, every speech — in 20 languages, including the ones everyone else skips
+      </p>
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-5 gap-y-2 px-6 text-sm text-white/50">
+        {langs.map((l) => (
+          <span key={l} className="whitespace-nowrap">{l}</span>
+        ))}
       </div>
     </section>
   );
