@@ -1,35 +1,17 @@
 import { notFound } from "next/navigation";
-import { WorkspacePage } from "../../../../components/WorkspacePage";
+import { TeamsPage } from "../../../../components/enterprise/TeamsPage";
+import { BrandPage } from "../../../../components/enterprise/BrandPage";
+import { PermissionsPage } from "../../../../components/enterprise/PermissionsPage";
 
-const SECTIONS: Record<string, { title: string; subtitle: string; headline: string; hint: string }> = {
-  teams: {
-    title: "Teams",
-    subtitle: "Invite collaborators and organize them into production units.",
-    headline: "Just you so far.",
-    hint: "Add writers, directors and editors, and give each the right access to your productions.",
-  },
-  permissions: {
-    title: "Permissions",
-    subtitle: "Control who can create, edit, publish and spend.",
-    headline: "Default roles in effect.",
-    hint: "Fine-grained roles map to Supabase Auth — Creator, Studio Owner and Super Admin.",
-  },
-  brand: {
-    title: "Brand Assets",
-    subtitle: "Logos, intros, lower-thirds and color palettes applied across titles.",
-    headline: "No brand kit yet.",
-    hint: "Upload your brand kit and it'll be applied automatically to renders and publishing.",
-  },
-};
+const SECTIONS = ["teams", "permissions", "brand"] as const;
 
 export function generateStaticParams() {
-  return Object.keys(SECTIONS).map((section) => ({ section }));
+  return SECTIONS.map((section) => ({ section }));
 }
 
 export default function EnterpriseSectionPage({ params }: { params: { section: string } }) {
-  const cfg = SECTIONS[params.section];
-  if (!cfg) notFound();
-  return (
-    <WorkspacePage title={cfg.title} subtitle={cfg.subtitle} empty={{ headline: cfg.headline, hint: cfg.hint }} />
-  );
+  if (params.section === "teams") return <TeamsPage />;
+  if (params.section === "permissions") return <PermissionsPage />;
+  if (params.section === "brand") return <BrandPage />;
+  notFound();
 }
