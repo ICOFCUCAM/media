@@ -54,7 +54,7 @@ export interface Database {
           updated_at: string;
         };
         Insert: { id: string; email: string; display_name?: string | null };
-        Update: { display_name?: string | null; tier?: Database["public"]["Tables"]["users"]["Row"]["tier"] };
+        Update: { display_name?: string | null; tier?: Database["public"]["Tables"]["users"]["Row"]["tier"]; credits_ms?: number };
         Relationships: [];
       };
       projects: {
