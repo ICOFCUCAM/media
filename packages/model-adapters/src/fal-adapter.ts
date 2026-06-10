@@ -88,7 +88,13 @@ export class FalAdapter implements VideoModelAdapter {
       try {
         if (this.opts.getImageBytes) {
           const { bytes, contentType } = await this.opts.getImageBytes(seedKey);
-          imageUrl = await this.uploadToFalCdn(bytes, contentType, signal);
+          try {
+            imageUrl = await this.uploadToFalCdn(bytes, contentType, signal);
+          } catch {
+            // One retry — CDN initiate/PUT can hiccup under parallel shots.
+            await new Promise((r) => setTimeout(r, 2000));
+            imageUrl = await this.uploadToFalCdn(bytes, contentType, signal);
+          }
         } else if (this.opts.resolveImageUrl) {
           imageUrl = await this.opts.resolveImageUrl(seedKey);
         }
@@ -97,9 +103,11 @@ export class FalAdapter implements VideoModelAdapter {
       }
     }
     const useI2v = Boolean(imageUrl);
+    // NB: Kling v2.1 "standard" exists only as image-to-video on fal;
+    // text-to-video lives under v1.6 standard (v2.1 t2v is master-tier only).
     const model = useI2v
       ? (this.opts.i2vModel ?? "fal-ai/kling-video/v2.1/standard/image-to-video")
-      : (this.opts.t2vModel ?? "fal-ai/kling-video/v2.1/standard/text-to-video");
+      : (this.opts.t2vModel ?? "fal-ai/kling-video/v1.6/standard/text-to-video");
 
     const input: Record<string, unknown> = {
       prompt: req.prompt.slice(0, 2000),
