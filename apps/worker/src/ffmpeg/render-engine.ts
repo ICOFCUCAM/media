@@ -53,28 +53,34 @@ export class RenderEngine {
       const allShotKeys = scenes.flatMap((s) => s.shotKeys);
       if (allShotKeys.length === 0) throw new Error("no shot clips to render");
 
-      // 1) Download + (optionally) normalize every shot. Normalizing re-encodes
-      // each clip to 1080p — heavy, and OOMs a small (512MB) worker. Off by
-      // default: the GPU emits uniform clips, so concat stream-copies them as-is.
-      // Set RENDER_NORMALIZE=1 to force re-encode (needs a bigger worker).
+      // 1) Download + re-encode every shot to a byte-uniform stream so concat can
+      // stream-copy them. Default is a LIGHT pass (ultrafast, native resolution) —
+      // cheap enough for a 512MB worker, unlike the full 1080p normalize. Set
+      // RENDER_NORMALIZE=1 to force the high-quality 1080p re-encode (needs a
+      // bigger worker).
       const normalize = process.env.RENDER_NORMALIZE === "1";
       const clips: string[] = [];
       let done = 0;
       for (const key of allShotKeys) {
         const raw = join(work, `raw_${done}.mp4`);
+        const norm = join(work, `norm_${done}.mp4`);
         await this.storage.download(key, raw);
-        if (normalize) {
-          const norm = join(work, `norm_${done}.mp4`);
-          await this.run(normalizeArgs(raw, norm, this.fmt));
-          clips.push(norm);
-        } else {
-          clips.push(raw);
-        }
+        await this.run(
+          normalize
+            ? normalizeArgs(raw, norm, this.fmt)
+            : [
+                "-i", raw,
+                "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=16,format=yuv420p",
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an",
+                norm,
+              ],
+        );
+        clips.push(norm);
         done++;
         onProgress?.((done / allShotKeys.length) * 0.6);
       }
 
-      // 2) Concat into the video body (stream copy — light).
+      // 2) Concat into the video body (stream copy — light, clips are uniform).
       const listPath = join(work, "list.txt");
       await writeFile(listPath, concatListContent(clips));
       const body = join(work, "body.mp4");
