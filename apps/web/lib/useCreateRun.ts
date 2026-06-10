@@ -7,9 +7,6 @@ import { SupabaseRun } from "./supabase-run";
 import { IS_LIVE } from "./system";
 import { SUPABASE_ENABLED } from "./supabase";
 
-/** The real worker (apps/worker) owns the lifecycle — same gate FilmStudio uses. */
-const USE_REMOTE_WORKER = process.env.NEXT_PUBLIC_USE_REMOTE_WORKER === "true";
-
 export interface RunConfig {
   prompt: string;
   modelId: string;
@@ -45,7 +42,7 @@ export function useCreateRun() {
     // Real pipeline without an API server: insert the project in Supabase and
     // let the deployed worker drive it (Realtime carries status back). Falls
     // through to the preview engine when Supabase/auth isn't available.
-    if (USE_REMOTE_WORKER && SUPABASE_ENABLED) {
+    if (SUPABASE_ENABLED) {
       const sup = new SupabaseRun(cfg, onUpdate);
       runRef.current = sup;
       try {
