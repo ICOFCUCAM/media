@@ -12,6 +12,7 @@ export function SiteHeader() {
           <Link href="/create/film" className="transition hover:text-white">Studio</Link>
           <Link href="/marketplace" className="transition hover:text-white">Marketplace</Link>
           <Link href="/publish" className="transition hover:text-white">Publish</Link>
+          <Link href="/pricing" className="transition hover:text-white">Pricing</Link>
           <Link
             href="/create/film"
             className="rounded-lg bg-white px-3.5 py-1.5 font-medium text-black transition hover:bg-white/90"
