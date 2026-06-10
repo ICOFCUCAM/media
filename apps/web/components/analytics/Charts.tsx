@@ -20,6 +20,8 @@ export interface Bar {
 /** Simple vertical bar chart — CSS only, tooltips via title attr. */
 export function BarChart({ bars, unit }: { bars: Bar[]; unit?: string }) {
   const max = Math.max(1, ...bars.map((b) => b.value));
+  if (bars.every((b) => b.value === 0))
+    return <p className="flex h-36 items-center justify-center text-xs text-white/35">No activity in this window yet.</p>;
   return (
     <div className="flex h-36 items-end gap-1">
       {bars.map((b, i) => (
@@ -38,6 +40,8 @@ export function BarChart({ bars, unit }: { bars: Bar[]; unit?: string }) {
 /** Horizontal ranked list with proportional fills. */
 export function RankList({ rows, unit }: { rows: { label: string; value: number }[]; unit?: string }) {
   const max = Math.max(1, ...rows.map((r) => r.value));
+  if (rows.length === 0 || rows.every((r) => r.value === 0))
+    return <p className="py-6 text-center text-xs text-white/35">No data yet — it appears as soon as you create and publish.</p>;
   return (
     <div className="space-y-2">
       {rows.map((r) => (
