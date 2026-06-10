@@ -12,6 +12,7 @@ Deploy one image per model (MODEL_NAME env) so VRAM usage is predictable.
 from __future__ import annotations
 
 import os
+import threading
 import time
 import uuid
 
@@ -26,6 +27,11 @@ MODEL_NAME = os.environ.get("MODEL_NAME", "wan-2.1")  # "wan-2.1" | "hunyuan"
 app = FastAPI(title=f"cineforge-gpu-worker:{MODEL_NAME}")
 pipeline = VideoPipeline(MODEL_NAME)
 trainer = LoraTrainer()
+
+# One GPU, one model — serialize inference. The worker dispatches a scene's shots
+# concurrently, but running several diffusers inferences on the same pipeline at
+# once blows up VRAM and crashes the process; this lock runs them one at a time.
+_infer_lock = threading.Lock()
 
 
 class GenerateInput(BaseModel):
@@ -88,22 +94,24 @@ def generate(inp: GenerateInput) -> GenerateOutput:
     seed = inp.seed if inp.seed is not None else uuid.uuid4().int % (2**31)
     started = time.monotonic()
 
-    local_mp4, thumb = pipeline.generate(
-        prompt=inp.prompt,
-        negative_prompt=inp.negativePrompt,
-        seed=seed,
-        duration_sec=inp.durationSec,
-        width=inp.width,
-        height=inp.height,
-        fps=inp.fps,
-        reference_image_keys=inp.referenceImageKeys or [],
-        reference_video_keys=inp.referenceVideoKeys or [],
-        video_op=inp.videoOp,
-        motion_strength=inp.motionStrength,
-        lora_keys=inp.loraKeys or [],
-        camera=inp.camera or {},
-        extra=inp.extra or {},
-    )
+    # Serialize: only one inference runs on the GPU at a time (see _infer_lock).
+    with _infer_lock:
+        local_mp4, thumb = pipeline.generate(
+            prompt=inp.prompt,
+            negative_prompt=inp.negativePrompt,
+            seed=seed,
+            duration_sec=inp.durationSec,
+            width=inp.width,
+            height=inp.height,
+            fps=inp.fps,
+            reference_image_keys=inp.referenceImageKeys or [],
+            reference_video_keys=inp.referenceVideoKeys or [],
+            video_op=inp.videoOp,
+            motion_strength=inp.motionStrength,
+            lora_keys=inp.loraKeys or [],
+            camera=inp.camera or {},
+            extra=inp.extra or {},
+        )
 
     gpu_ms = int((time.monotonic() - started) * 1000)
 
