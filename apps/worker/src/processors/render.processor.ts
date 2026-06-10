@@ -34,14 +34,17 @@ export const renderWorker = new Worker<RenderJob>(
       });
       const durationSec = scenes.reduce((a, s) => a + s.durationSec, 0);
 
-      // Build per-scene asset lists from generated clips/audio.
+      // Build per-scene asset lists from generated clips/audio. Legacy "stub"
+      // audio rows recorded a key without uploading a file — downloading one
+      // kills the assembly ("Object not found"), so exclude them.
+      const real = (t: { meta: unknown }) => (t.meta as { generated?: string } | null)?.generated !== "stub";
       const assets: SceneAssets[] = scenes.map((s) => ({
         sceneId: s.id,
         index: s.index,
         shotKeys: s.shots.map((sh) => sh.videoKey).filter((k): k is string => !!k),
-        musicKey: s.audioTracks.find((t) => t.kind === "MUSIC")?.key,
-        voiceKey: s.audioTracks.find((t) => t.kind === "VOICE")?.key,
-        sfxKey: s.audioTracks.find((t) => t.kind === "SFX")?.key,
+        musicKey: s.audioTracks.filter(real).find((t) => t.kind === "MUSIC")?.key,
+        voiceKey: s.audioTracks.filter(real).find((t) => t.kind === "VOICE")?.key,
+        sfxKey: s.audioTracks.filter(real).find((t) => t.kind === "SFX")?.key,
       }));
 
       const totalClips = assets.reduce((a, s) => a + s.shotKeys.length, 0);

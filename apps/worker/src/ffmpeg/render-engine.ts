@@ -92,23 +92,30 @@ export class RenderEngine {
 
       // 3) Mix audio (first scene that has any track drives the bed for the demo;
       //    full impl places per-scene tracks on a timeline — docs/11).
+      //    Audio is an ENHANCEMENT: if any track fails to download or mix
+      //    (phantom key, transient storage error), ship the film without audio
+      //    rather than failing the whole assembly.
       const audioScene = scenes.find((s) => s.musicKey || s.voiceKey || s.sfxKey);
       let finalVideo = body;
       if (audioScene) {
-        const dl = async (k?: string, name?: string) => {
-          if (!k) return undefined;
-          const p = join(work, name!);
-          await this.storage.download(k, p);
-          return p;
-        };
-        const music = await dl(audioScene.musicKey, "music.mp3");
-        const voice = await dl(audioScene.voiceKey, "voice.wav");
-        const sfx = await dl(audioScene.sfxKey, "sfx.wav");
-        const mix = join(work, "mix.m4a");
-        await this.run(audioMixArgs({ music, voice, sfx }, mix));
-        const muxed = join(work, "muxed.mp4");
-        await this.run(muxArgs(body, mix, muxed));
-        finalVideo = muxed;
+        try {
+          const dl = async (k?: string, name?: string) => {
+            if (!k) return undefined;
+            const p = join(work, name!);
+            await this.storage.download(k, p);
+            return p;
+          };
+          const music = await dl(audioScene.musicKey, "music.mp3");
+          const voice = await dl(audioScene.voiceKey, "voice.wav");
+          const sfx = await dl(audioScene.sfxKey, "sfx.wav");
+          const mix = join(work, "mix.m4a");
+          await this.run(audioMixArgs({ music, voice, sfx }, mix));
+          const muxed = join(work, "muxed.mp4");
+          await this.run(muxArgs(body, mix, muxed));
+          finalVideo = muxed;
+        } catch (e) {
+          console.warn(`[render] audio mix failed, continuing without audio:`, e instanceof Error ? e.message : e);
+        }
       }
       onProgress?.(0.8);
 

@@ -50,12 +50,11 @@ export const audioWorker = new Worker<AudioJob>(
       }
     }
 
-    // ── Music / SFX (and unconfigured voice): stub track so the flow completes.
-    const key = `scenes/${sceneId}/audio/${kind}/${job.id}.mp3`;
-    await prisma.audioTrack.create({
-      data: { sceneId, kind: KIND[kind], key, meta: { generated: "stub" } },
-    });
-    return { sceneId, kind, key };
+    // ── Music / SFX (and unconfigured voice): no generator available. Do NOT
+    // write a phantom track row — the render engine downloads every recorded
+    // key, and a key with no object behind it fails the whole final assembly
+    // ("Object not found"). The film simply renders without this track.
+    return { sceneId, kind, skipped: "no provider configured" };
   },
   { connection, concurrency: 8 },
 );
