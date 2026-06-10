@@ -4,12 +4,6 @@ import { WorkspacePage } from "../../../../components/WorkspacePage";
 // Characters and Worlds have dedicated routes (real creators); this dynamic
 // route covers the remaining library sections.
 const SECTIONS: Record<string, { title: string; subtitle: string; headline: string; hint: string }> = {
-  music: {
-    title: "Music",
-    subtitle: "Original scores and cues generated for your projects.",
-    headline: "No tracks yet.",
-    hint: "Scores are composed to match each scene's mood and are reusable across your library.",
-  },
 };
 
 export function generateStaticParams() {

@@ -183,6 +183,19 @@ export interface Database {
         Update: { name?: string; description?: string; category?: string; reference_urls?: string[] };
         Relationships: [];
       };
+      audio_tracks: {
+        Row: {
+          id: string;
+          scene_id: string;
+          kind: "MUSIC" | "VOICE" | "SFX";
+          key: string;
+          meta: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: { scene_id: string; kind: "MUSIC" | "VOICE" | "SFX"; key: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       usage_records: {
         Row: {
           id: string;
