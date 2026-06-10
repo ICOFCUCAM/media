@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useEffect, useRef, type ReactNode } from "react";
 import { fmtDuration } from "../lib/system";
 import type { DemoState, LiveScene, LiveShot, ProjectStatus } from "../lib/demo";
@@ -269,6 +271,12 @@ function Result({ state, title }: { state: DemoState; title: string }) {
               <a href={state.filmUrl} download className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5">
                 ↓ Download
               </a>
+              <Link
+                href="/publish"
+                className="rounded-lg bg-emerald-400 px-3 py-1.5 text-sm font-semibold text-black transition hover:bg-emerald-300"
+              >
+                🚀 Launch
+              </Link>
             </>
           ) : (
             ["▶ Play", "↓ Download", "↗ Publish"].map((t) => (
