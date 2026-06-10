@@ -120,3 +120,12 @@ export const TOPUPS: TopUp[] = [
   { id: "pack-5k", credits: 5_000, price: 50 },
   { id: "pack-20k", credits: 20_000, price: 160 },
 ];
+
+/** Max film length per tier (seconds) — enforced in the create flow. */
+export const MAX_FILM_SEC: Record<Tier, number> = {
+  FREE: 30,
+  CREATOR: 180,
+  STUDIO: 600,
+  AGENCY: 1200,
+  ENTERPRISE: Number.MAX_SAFE_INTEGER,
+};

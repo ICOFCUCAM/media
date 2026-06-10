@@ -5,6 +5,7 @@ import { estimateMs, fmtDuration, MODELS, modelAllowed } from "../lib/system";
 import type { ProjectStatus } from "../lib/demo";
 import { useCreateRun } from "../lib/useCreateRun";
 import { useAuth } from "./AuthProvider";
+import { MAX_FILM_SEC } from "../lib/plans";
 import { RunPanel } from "./RunPanel";
 import type { ShortPlatform } from "../lib/products";
 
@@ -48,6 +49,7 @@ export function CreateStudio(props: CreateStudioProps) {
   // async, so default to the FREE allowance until it arrives.
   const tier = profile?.tier ?? "FREE";
   const isAdmin = profile?.role === "ADMIN";
+  const maxSec = isAdmin ? Number.MAX_SAFE_INTEGER : MAX_FILM_SEC[tier];
 
   const estMs = useMemo(() => estimateMs(modelId, seconds), [modelId, seconds]);
   // One serialized GPU: wall-clock ≈ total GPU time + assembly overhead.
@@ -91,11 +93,15 @@ export function CreateStudio(props: CreateStudioProps) {
 
           <Field label={props.kind === "series" ? "Total runtime" : "Length"}>
             <div className="flex flex-wrap gap-2">
-              {props.durations.map((d) => (
-                <Chip key={d.value} active={seconds === d.value} onClick={() => setSeconds(d.value)}>
-                  {d.label}
-                </Chip>
-              ))}
+              {props.durations.map((d) => {
+                const locked = d.value > maxSec;
+                return (
+                  <Chip key={d.value} active={seconds === d.value} onClick={() => !locked && setSeconds(d.value)} disabled={locked}>
+                    {d.label}
+                    {locked ? " 🔒" : ""}
+                  </Chip>
+                );
+              })}
             </div>
           </Field>
 
@@ -190,12 +196,18 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
     </div>
   );
 }
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+function Chip({ active, onClick, children, disabled }: { active: boolean; onClick: () => void; children: ReactNode; disabled?: boolean }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
+      title={disabled ? "Longer films need a higher plan — see Plans & Credits" : undefined}
       className={`rounded-full border px-3 py-1 text-xs transition ${
-        active ? "border-white/40 bg-white/10 text-white" : "border-white/10 text-white/60 hover:border-white/25"
+        disabled
+          ? "cursor-not-allowed border-white/5 text-white/25"
+          : active
+            ? "border-white/40 bg-white/10 text-white"
+            : "border-white/10 text-white/60 hover:border-white/25"
       }`}
     >
       {children}
