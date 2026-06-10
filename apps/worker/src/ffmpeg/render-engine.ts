@@ -53,22 +53,30 @@ export class RenderEngine {
       const allShotKeys = scenes.flatMap((s) => s.shotKeys);
       if (allShotKeys.length === 0) throw new Error("no shot clips to render");
 
-      // 1) Download + normalize every shot.
-      const normalized: string[] = [];
+      // 1) Download + (optionally) normalize every shot. Normalizing re-encodes
+      // each clip to 1080p — heavy, and OOMs a small (512MB) worker. Off by
+      // default: the GPU emits uniform clips, so concat stream-copies them as-is.
+      // Set RENDER_NORMALIZE=1 to force re-encode (needs a bigger worker).
+      const normalize = process.env.RENDER_NORMALIZE === "1";
+      const clips: string[] = [];
       let done = 0;
       for (const key of allShotKeys) {
         const raw = join(work, `raw_${done}.mp4`);
-        const norm = join(work, `norm_${done}.mp4`);
         await this.storage.download(key, raw);
-        await this.run(normalizeArgs(raw, norm, this.fmt));
-        normalized.push(norm);
+        if (normalize) {
+          const norm = join(work, `norm_${done}.mp4`);
+          await this.run(normalizeArgs(raw, norm, this.fmt));
+          clips.push(norm);
+        } else {
+          clips.push(raw);
+        }
         done++;
-        onProgress?.((done / allShotKeys.length) * 0.6); // normalize = 0..60%
+        onProgress?.((done / allShotKeys.length) * 0.6);
       }
 
-      // 2) Concat into the video body.
+      // 2) Concat into the video body (stream copy — light).
       const listPath = join(work, "list.txt");
-      await writeFile(listPath, concatListContent(normalized));
+      await writeFile(listPath, concatListContent(clips));
       const body = join(work, "body.mp4");
       await this.run(concatArgs(listPath, body));
       onProgress?.(0.7);
@@ -101,21 +109,26 @@ export class RenderEngine {
       const poster = join(work, "poster.jpg");
       await this.run(["-i", finalMp4, "-frames:v", "1", "-q:v", "2", poster]);
 
-      // 5) HLS ladder.
-      const hlsDir = join(work, "hls");
-      await mkdir(hlsDir, { recursive: true });
-      await this.run(hlsArgs(finalMp4, hlsDir), (p) => onProgress?.(0.8 + p * 0.15));
-
-      // 6) Upload.
+      // 5) Upload the MP4 + poster (the deliverable).
       const mp4Key = `projects/${projectId}/film/final.mp4`;
       const posterKey = `projects/${projectId}/film/poster.jpg`;
-      const hlsPrefix = `projects/${projectId}/film/hls`;
       await this.storage.upload(finalMp4, mp4Key, "video/mp4");
       await this.storage.upload(poster, posterKey, "image/jpeg");
-      await this.storage.uploadDir(hlsDir, hlsPrefix);
+
+      // 6) HLS ladder (optional — a full transcode, too heavy for a small worker;
+      //    off by default. Set RENDER_HLS=1 to generate the streaming ladder).
+      let hlsKey = mp4Key;
+      if (process.env.RENDER_HLS === "1") {
+        const hlsDir = join(work, "hls");
+        await mkdir(hlsDir, { recursive: true });
+        await this.run(hlsArgs(finalMp4, hlsDir), (p) => onProgress?.(0.8 + p * 0.15));
+        const hlsPrefix = `projects/${projectId}/film/hls`;
+        await this.storage.uploadDir(hlsDir, hlsPrefix);
+        hlsKey = `${hlsPrefix}/master.m3u8`;
+      }
       onProgress?.(1);
 
-      return { mp4Key, posterKey, hlsKey: `${hlsPrefix}/master.m3u8` };
+      return { mp4Key, posterKey, hlsKey };
     } finally {
       await rm(work, { recursive: true, force: true });
     }
