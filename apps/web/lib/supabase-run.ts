@@ -82,6 +82,7 @@ export class SupabaseRun {
       queuedAhead: 0,
       claimed: false,
       gpuActive: false,
+      engine: MODELS.find((m) => m.id === this.cfg.modelId)?.name ?? this.cfg.modelId,
       etaMs: totalShots * perShotMs,
       spentMs: 0,
       timeline: [],
@@ -340,7 +341,7 @@ export class SupabaseRun {
               });
             }
             if (shot.status === "GENERATING" && was !== "GENERATING")
-              mark(`Shot ${scene.index + 1}.${shot.index + 1} — generating on GPU (Wan 2.1)`);
+              mark(`Shot ${scene.index + 1}.${shot.index + 1} — generating (${MODELS.find((m) => m.id === this.cfg.modelId)?.name ?? this.cfg.modelId})`);
             if (shot.status === "READY" && was !== "READY") {
               mark(`Shot ${scene.index + 1}.${shot.index + 1} rendered${row.gpu_ms ? ` in ${Math.round(row.gpu_ms / 1000)}s GPU` : ""}`);
               if (row.thumbnail_key)

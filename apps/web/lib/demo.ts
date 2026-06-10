@@ -70,6 +70,8 @@ export interface LiveProduction {
   claimed: boolean;
   /** True while any shot is on the GPU. */
   gpuActive: boolean;
+  /** Display name of the video engine driving this production. */
+  engine?: string;
   /** Estimated remaining ms (serialized GPU, measured per-shot average). */
   etaMs?: number;
   spentMs: number;

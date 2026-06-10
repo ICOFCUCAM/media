@@ -70,7 +70,7 @@ export function RunPanel({
       {prod && (
         <div className="flex flex-wrap items-center gap-2">
           <InfraChip ok={prod.claimed} label={prod.claimed ? "Render worker online" : "Waiting for worker"} />
-          <InfraChip ok={prod.gpuActive} idle={!prod.gpuActive && state.status !== "READY"} label={prod.gpuActive ? "GPU active · Wan 2.1" : state.status === "READY" ? "GPU released" : "GPU idle"} />
+          <InfraChip ok={prod.gpuActive} idle={!prod.gpuActive && state.status !== "READY"} label={prod.gpuActive ? `Engine active · ${prod.engine ?? "GPU"}` : state.status === "READY" ? "Engine released" : "Engine idle"} />
           <InfraChip ok label={`Queue · ${prod.queuedAhead} project${prod.queuedAhead === 1 ? "" : "s"} in pipeline`} />
           {prod.spentMs > 0 && <InfraChip ok label={`GPU spend · ${(prod.spentMs / 60000).toFixed(1)} min`} />}
         </div>
