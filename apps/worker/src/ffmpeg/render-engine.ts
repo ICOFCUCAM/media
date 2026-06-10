@@ -64,7 +64,9 @@ export class RenderEngine {
       for (const key of allShotKeys) {
         const raw = join(work, `raw_${done}.mp4`);
         const norm = join(work, `norm_${done}.mp4`);
+        console.log(`[render] download clip ${done + 1}/${allShotKeys.length} key=${key}`);
         await this.storage.download(key, raw);
+        console.log(`[render] re-encode clip ${done + 1}/${allShotKeys.length}`);
         await this.run(
           normalize
             ? normalizeArgs(raw, norm, this.fmt)
@@ -84,6 +86,7 @@ export class RenderEngine {
       const listPath = join(work, "list.txt");
       await writeFile(listPath, concatListContent(clips));
       const body = join(work, "body.mp4");
+      console.log(`[render] concat ${clips.length} clips`);
       await this.run(concatArgs(listPath, body));
       onProgress?.(0.7);
 
@@ -118,6 +121,7 @@ export class RenderEngine {
       // 5) Upload the MP4 + poster (the deliverable).
       const mp4Key = `projects/${projectId}/film/final.mp4`;
       const posterKey = `projects/${projectId}/film/poster.jpg`;
+      console.log(`[render] upload final.mp4 + poster key=${mp4Key}`);
       await this.storage.upload(finalMp4, mp4Key, "video/mp4");
       await this.storage.upload(poster, posterKey, "image/jpeg");
 
