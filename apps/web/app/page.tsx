@@ -20,6 +20,7 @@ export default function Home() {
         <StudioShowcase />
         <IdeaToAudience />
         <Workflow />
+        <VoiceAndAvatar />
         <PublishEverywhere />
         <MadeWith />
         <Marketplace />
@@ -293,6 +294,54 @@ function Workflow() {
 }
 
 /* ── 7 · Publish everywhere ────────────────────────────────────────── */
+/* ── Voice & Avatar studio ─────────────────────────────────────────── */
+function VoiceAndAvatar() {
+  const cards = [
+    {
+      title: "Clone your voice",
+      body: "30 seconds of speech becomes a voice that reads anything — speeches, news, narration — with no length limit.",
+      chip: "Voice Lab",
+    },
+    {
+      title: "Speak 20 languages",
+      body: "Your voice in French, Swahili, Norwegian, Igbo, Lingala, Zulu, Pidgin and more — languages other platforms ignore.",
+      chip: "Dubbing",
+    },
+    {
+      title: "Put yourself on camera",
+      body: "Upload a photo and it delivers your speech on video, lip-synced — a personal news anchor in any language.",
+      chip: "Avatars",
+    },
+    {
+      title: "Offer your voice",
+      body: "List your cloned voice on the marketplace under your own terms — every use pays you 80%.",
+      chip: "Marketplace",
+    },
+  ];
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-16">
+      <h2 className="text-center text-2xl font-semibold sm:text-3xl">Your voice. Your face. Every language.</h2>
+      <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-white/50">
+        The Voice Lab turns a sample of your voice into an instrument — and your photo into a presenter.
+      </p>
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map((c) => (
+          <div key={c.title} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+            <span className="rounded-full bg-indigo-400/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-indigo-300">{c.chip}</span>
+            <h3 className="mt-3 font-semibold">{c.title}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-white/55">{c.body}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 text-center">
+        <Link href="/library/voices" className="rounded-lg border border-white/20 px-5 py-2.5 text-sm font-medium transition hover:bg-white/5">
+          Open the Voice Lab →
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function PublishEverywhere() {
   const row = [...SOCIAL_CHANNELS, ...SOCIAL_CHANNELS];
   return (
