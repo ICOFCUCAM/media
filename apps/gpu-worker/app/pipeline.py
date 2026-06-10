@@ -152,8 +152,14 @@ class VideoPipeline:
         from diffusers.utils import export_to_video, load_image  # noqa: PLC0415
 
         num_frames = max(1, int(duration_sec * fps))
+        # Cap the per-shot workload (all env-tunable) so a clip renders in a
+        # practical time on one GPU. The worker's ~80 frames x 30 steps takes many
+        # minutes per clip; these defaults bring it to ~1 min. Raise for quality.
+        width = min(width, int(os.environ.get("WAN_MAX_WIDTH", "832")))
+        height = min(height, int(os.environ.get("WAN_MAX_HEIGHT", "480")))
+        num_frames = min(num_frames, int(os.environ.get("WAN_MAX_FRAMES", "25")))
         gen = torch.Generator(device="cuda").manual_seed(int(seed))
-        steps = int((extra or {}).get("steps", 30))
+        steps = min(int((extra or {}).get("steps", 30)), int(os.environ.get("WAN_MAX_STEPS", "20")))
         guidance = float((extra or {}).get("guidance", 5.0))
 
         call = {

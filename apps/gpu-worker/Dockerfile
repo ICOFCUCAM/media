@@ -28,6 +28,8 @@ ENV HF_HOME=/root/.cache/huggingface
 # Use the classic HF download path: the newer Xet backend crashes mid-download
 # ("Internal Writer Error: Background writer channel closed") on first pull.
 ENV HF_HUB_DISABLE_XET=1
+# Unbuffered stdout/stderr so inference progress (tqdm) shows live in the logs.
+ENV PYTHONUNBUFFERED=1
 # Set CINEFORGE_PLACEHOLDER=1 to force the no-GPU placeholder path (debugging).
 EXPOSE 8000
 CMD ["uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "8000"]
