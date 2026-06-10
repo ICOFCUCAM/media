@@ -184,14 +184,15 @@ export function VoiceLab() {
     }
   }
 
-  async function offerVoice(id: string) {
+  const [offeringId, setOfferingId] = useState<string | null>(null);
+  const [offerTerms, setOfferTerms] = useState("");
+
+  async function submitOffer(id: string) {
     const sb = getSupabase();
     if (!sb) return;
-    const terms = window.prompt(
-      "Your terms for community use (e.g. 'Free for non-commercial', 'Credit me as …'):",
-    );
-    if (terms === null) return;
-    await sb.from("voices").update({ share_status: "PENDING_REVIEW", share_terms: terms }).eq("id", id);
+    await sb.from("voices").update({ share_status: "PENDING_REVIEW", share_terms: offerTerms }).eq("id", id);
+    setOfferingId(null);
+    setOfferTerms("");
     await refresh();
   }
 
@@ -265,9 +266,26 @@ export function VoiceLab() {
                         ) : v.share_status === "REJECTED" ? (
                           "sharing rejected"
                         ) : (
-                          <button type="button" onClick={() => offerVoice(v.id)} className="text-sky-300/80 hover:text-sky-200">
-                            Offer to community →
-                          </button>
+                          offeringId === v.id ? (
+                            <span className="mt-1 flex gap-1.5">
+                              <input
+                                value={offerTerms}
+                                onChange={(e) => setOfferTerms(e.target.value)}
+                                placeholder="Your terms (e.g. free non-commercial, credit me)"
+                                className="flex-1 rounded border border-white/15 bg-black/40 px-2 py-1 text-[11px] outline-none placeholder:text-white/25"
+                              />
+                              <button type="button" onClick={() => void submitOffer(v.id)} className="rounded bg-white px-2 py-1 text-[11px] font-medium text-black">
+                                Offer
+                              </button>
+                              <button type="button" onClick={() => setOfferingId(null)} className="rounded border border-white/15 px-2 py-1 text-[11px]">
+                                ✕
+                              </button>
+                            </span>
+                          ) : (
+                            <button type="button" onClick={() => setOfferingId(v.id)} className="text-sky-300/80 hover:text-sky-200">
+                              Offer to community →
+                            </button>
+                          )
                         )}
                       </div>
                     )}
