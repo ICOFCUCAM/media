@@ -155,11 +155,13 @@ export const IDEA_TO_AUDIENCE: string[] = [
 ];
 
 /** Pricing tiers (mirrors the `tier` enum). */
+// Mirrors lib/plans.ts / docs/33 — the REAL plans the checkout sells.
 export const PRICING: { tier: string; price: string; tagline: string; features: string[]; highlight?: boolean }[] = [
-  { tier: "Free", price: "$0", tagline: "Try the studio", features: ["Shorts & trailers", "Preview renders", "Watermarked exports", "Community marketplace"] },
-  { tier: "Creator", price: "$29/mo", tagline: "For solo creators", features: ["Films up to 30 min", "All entry modes", "Publish to every channel", "Sell in the marketplace"], highlight: true },
-  { tier: "Studio", price: "$99/mo", tagline: "For production teams", features: ["Feature-length films & series", "Premium models", "Teams & brand kit", "Priority GPU"] },
-  { tier: "Enterprise", price: "Custom", tagline: "For media companies", features: ["Unlimited runtime", "Dedicated GPUs", "Governance & SSO", "Custom models & SLAs"] },
+  { tier: "Free", price: "$0", tagline: "Taste the magic", features: ["200 trial credits", "Draft films up to 30s", "Speech reading (stock voice)", "Community voices"] },
+  { tier: "Creator", price: "$19/mo", tagline: "Finished films, not clips", features: ["2,500 credits/month", "Standard engine + narration", "Dubbing in 3 languages", "1 cloned voice", "10 social launches"] },
+  { tier: "Studio", price: "$59/mo", tagline: "Cinematic unlocked", features: ["9,000 credits/month", "Frontier video engine", "All 20 languages", "Talking avatars", "Sell voices (80/20)"], highlight: true },
+  { tier: "Agency", price: "$99/mo", tagline: "Produce for clients", features: ["18,000 credits/month", "8 seats + client workspaces", "White-label exports", "15 cloned voices"] },
+  { tier: "Enterprise", price: "from $499", tagline: "Your studio, your rules", features: ["Pooled credits + dedicated GPUs", "Character LoRA identity lock", "Custom languages & licensing", "SLA + onboarding"] },
 ];
 
 /** Left-nav information architecture. The `admin` section is gated by role. */

@@ -390,7 +390,7 @@ function Pricing() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
       <h2 className="text-center text-2xl font-semibold sm:text-3xl">Start free. Scale to a studio.</h2>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {PRICING.map((t) => (
           <div
             key={t.tier}
@@ -408,12 +408,12 @@ function Pricing() {
               ))}
             </ul>
             <Link
-              href="/create/film"
+              href="/pricing"
               className={`mt-6 block rounded-lg px-4 py-2.5 text-center text-sm font-medium transition ${
                 t.highlight ? "bg-white text-black hover:bg-white/90" : "border border-white/20 hover:bg-white/5"
               }`}
             >
-              {t.tier === "Enterprise" ? "Contact us" : "Get started"}
+              {t.tier === "Enterprise" ? "Talk to us" : "Get started"}
             </Link>
           </div>
         ))}
