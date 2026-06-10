@@ -27,6 +27,8 @@ const storage = new S3Storage();
 
 const CLONE_MODEL = process.env.FAL_VOICE_CLONE_MODEL ?? "fal-ai/minimax/voice-clone";
 const SPEECH_MODEL = process.env.FAL_SPEECH_MODEL ?? "fal-ai/minimax/speech-02-hd";
+/** Talking-avatar model: portrait image + speech audio -> lip-synced video. */
+const AVATAR_MODEL = process.env.FAL_AVATAR_MODEL ?? "fal-ai/kling-video/v1/standard/ai-avatar";
 /** Stock narrator when the user hasn't cloned a voice. */
 const STOCK_VOICE = process.env.FAL_STOCK_VOICE ?? "Deep_Voice_Man";
 const CHUNK_CHARS = 1800; // MiniMax per-call comfort zone
@@ -85,6 +87,34 @@ export const voiceLabWorker = new Worker<VoiceLabJob>(
       } catch (e) {
         const msg = (e instanceof Error ? e.message : String(e)).slice(0, 400);
         await prisma.voice.update({ where: { id }, data: { status: "FAILED", errorMessage: msg } });
+        throw e;
+      }
+    }
+
+    if (kind === "avatar") {
+      const av = await prisma.avatarVideo.findUniqueOrThrow({ where: { id } });
+      try {
+        const vo = av.voiceoverId ? await prisma.voiceover.findUnique({ where: { id: av.voiceoverId } }) : null;
+        if (!vo?.audioKey) throw new Error("pick a READY voiceover first (the avatar reads its audio)");
+        // Ship both assets to fal's CDN, then animate.
+        const img = await storage.getBytes(av.imageKey);
+        const imgExt = av.imageKey.split(".").pop()?.toLowerCase();
+        const imgUrl = await falUploadBytes(apiKey, img, imgExt === "png" ? "image/png" : "image/jpeg", `portrait.${imgExt ?? "jpg"}`);
+        const audio = await storage.getBytes(vo.audioKey);
+        const audioUrl = await falUploadBytes(apiKey, audio, "audio/mpeg", "speech.mp3");
+        const result = await falRunQueue(apiKey, AVATAR_MODEL, { image_url: imgUrl, audio_url: audioUrl }, { timeoutMs: 20 * 60_000 });
+        const url = falFindUrl(result);
+        if (!url) throw new Error(`avatar model returned no video (${JSON.stringify(result).slice(0, 200)})`);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`avatar video download ${res.status}`);
+        const videoKey = `avatars/${av.userId}/${av.id}.mp4`;
+        await storage.putBytes(videoKey, new Uint8Array(await res.arrayBuffer()), "video/mp4");
+        await prisma.avatarVideo.update({ where: { id }, data: { videoKey, status: "READY", errorMessage: null } });
+        console.log(`[voice-lab] avatar video ${id} ready`);
+        return { id, videoKey };
+      } catch (e) {
+        const msg = (e instanceof Error ? e.message : String(e)).slice(0, 400);
+        await prisma.avatarVideo.update({ where: { id }, data: { status: "FAILED", errorMessage: msg } });
         throw e;
       }
     }

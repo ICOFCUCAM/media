@@ -592,3 +592,19 @@ model SocialLaunch {
 
   @@map("social_launches")
 }
+
+// ── Phase 3 (docs/29): talking-avatar videos (photo + voiceover -> video) ──
+model AvatarVideo {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  voiceoverId  String?  @map("voiceover_id") @db.Uuid
+  title        String   @default("")
+  imageKey     String   @map("image_key")
+  status       String   @default("PENDING")
+  videoKey     String?  @map("video_key")
+  errorMessage String?  @map("error_message")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("avatar_videos")
+}

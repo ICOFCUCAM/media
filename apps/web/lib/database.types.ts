@@ -200,6 +200,23 @@ export interface Database {
         Update: { status?: string; brief?: string };
         Relationships: [];
       };
+      avatar_videos: {
+        Row: {
+          id: string;
+          user_id: string;
+          voiceover_id: string | null;
+          title: string;
+          image_key: string;
+          status: string;
+          video_key: string | null;
+          error_message: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { user_id: string; voiceover_id?: string | null; title?: string; image_key: string };
+        Update: { status?: string };
+        Relationships: [];
+      };
       voices: {
         Row: {
           id: string;

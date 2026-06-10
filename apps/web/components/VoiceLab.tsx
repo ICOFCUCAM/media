@@ -22,6 +22,14 @@ interface VoiceRow {
   share_terms?: string | null;
   error_message: string | null;
 }
+interface AvatarRow {
+  id: string;
+  title: string;
+  status: string;
+  video_key: string | null;
+  error_message: string | null;
+  created_at: string;
+}
 interface VoiceoverRow {
   id: string;
   title: string;
@@ -41,6 +49,12 @@ export function VoiceLab() {
   const [community, setCommunity] = useState<VoiceRow[] | null>(null);
   const [pendingReview, setPendingReview] = useState<VoiceRow[] | null>(null);
   const [voiceovers, setVoiceovers] = useState<VoiceoverRow[] | null>(null);
+  const [avatars, setAvatars] = useState<AvatarRow[] | null>(null);
+
+  // Avatar form
+  const portraitRef = useRef<HTMLInputElement>(null);
+  const [avatarVoiceoverId, setAvatarVoiceoverId] = useState("");
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   // New-voice form
   const [voiceName, setVoiceName] = useState("");
@@ -70,6 +84,12 @@ export function VoiceLab() {
         .order("created_at", { ascending: false })
         .limit(25),
     ]);
+    const av = await sb
+      .from("avatar_videos")
+      .select("id,title,status,video_key,error_message,created_at")
+      .order("created_at", { ascending: false })
+      .limit(12);
+    if (av.data) setAvatars(av.data as AvatarRow[]);
     const rows = (v.data ?? []) as VoiceRow[];
     setVoices(rows.filter((r) => r.user_id === user.id));
     setCommunity(rows.filter((r) => r.user_id !== user.id && r.share_status === "APPROVED" && r.status === "READY"));
@@ -131,6 +151,36 @@ export function VoiceLab() {
       setError(err instanceof Error ? err.message : "Failed to queue voiceover");
     } finally {
       setSpeakBusy(false);
+    }
+  }
+
+  async function onAvatar(e: React.FormEvent) {
+    e.preventDefault();
+    const sb = getSupabase();
+    const file = portraitRef.current?.files?.[0];
+    if (!sb || !user || !file || avatarBusy || !avatarVoiceoverId) return;
+    setAvatarBusy(true);
+    setError(null);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const key = `avatars/${user.id}/portrait-${crypto.randomUUID()}.${ext}`;
+      const up = await sb.storage.from(BUCKET).upload(key, file, { upsert: true });
+      if (up.error) throw new Error(up.error.message);
+      const vo = (voiceovers ?? []).find((v) => v.id === avatarVoiceoverId);
+      const ins = await sb.from("avatar_videos").insert({
+        user_id: user.id,
+        voiceover_id: avatarVoiceoverId,
+        title: vo?.title ?? "Avatar video",
+        image_key: key,
+      });
+      if (ins.error) throw new Error(ins.error.message);
+      if (portraitRef.current) portraitRef.current.value = "";
+      setAvatarVoiceoverId("");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Avatar failed");
+    } finally {
+      setAvatarBusy(false);
     }
   }
 
@@ -276,6 +326,43 @@ export function VoiceLab() {
               </button>
               {error && <p className="text-xs text-amber-300">{error}</p>}
             </form>
+
+            <form onSubmit={onAvatar} className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-5">
+              <h2 className="text-sm font-semibold">Talking avatar</h2>
+              <p className="text-xs text-white/45">
+                Upload your photo and pick a finished reading below — you get a video of the photo speaking it. Best
+                with clear front-facing portraits and speeches under ~1 minute.
+              </p>
+              <input
+                ref={portraitRef}
+                type="file"
+                accept="image/*"
+                required
+                className="w-full text-xs text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-xs file:text-white"
+              />
+              <select
+                value={avatarVoiceoverId}
+                onChange={(e) => setAvatarVoiceoverId(e.target.value)}
+                required
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-white/30"
+              >
+                <option value="">Pick a finished reading…</option>
+                {(voiceovers ?? [])
+                  .filter((v) => v.status === "READY")
+                  .map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.title} ({LANGUAGES.find((l) => l.code === v.language)?.name ?? v.language})
+                    </option>
+                  ))}
+              </select>
+              <button
+                type="submit"
+                disabled={avatarBusy || !avatarVoiceoverId}
+                className="w-full rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
+              >
+                {avatarBusy ? "Uploading…" : "Create avatar video"}
+              </button>
+            </form>
           </div>
 
           <div>
@@ -319,6 +406,17 @@ export function VoiceLab() {
               </div>
             )}
 
+            {(avatars?.length ?? 0) > 0 && (
+              <div className="mb-6">
+                <h2 className="mb-2 text-sm font-semibold text-white/70">Avatar videos</h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {avatars!.map((a) => (
+                    <AvatarCard key={a.id} row={a} />
+                  ))}
+                </div>
+              </div>
+            )}
+
             <h2 className="mb-3 text-sm font-semibold text-white/70">Your audio</h2>
             {!voiceovers ? (
               <p className="text-sm text-white/40">Loading…</p>
@@ -357,6 +455,23 @@ function VoiceoverCard({ row, voices }: { row: VoiceoverRow; voices: VoiceRow[] 
         <StatusChip status={row.status} error={row.error_message} />
       </div>
       {url && <audio controls src={url} className="mt-3 w-full" />}
+    </div>
+  );
+}
+
+function AvatarCard({ row }: { row: AvatarRow }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (row.status === "READY" && row.video_key) void signedUrl(row.video_key).then(setUrl);
+  }, [row.status, row.video_key]);
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="truncate text-sm font-medium">{row.title}</div>
+        <StatusChip status={row.status} error={row.error_message} />
+      </div>
+      {url && <video controls src={url} className="mt-2 w-full rounded-lg" />}
+      {row.error_message && <p className="mt-1 text-[11px] text-amber-300">{row.error_message}</p>}
     </div>
   );
 }

@@ -136,6 +136,15 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
           console.log(`[poller] enqueued voiceover ${vo.id}`);
         }
       }
+      const pendingAvatars = await prisma.avatarVideo.findMany({ where: { status: "PENDING" }, select: { id: true }, take: 5 });
+      for (const a of pendingAvatars) {
+        const claimed = await prisma.avatarVideo.updateMany({ where: { id: a.id, status: "PENDING" }, data: { status: "RENDERING" } });
+        if (claimed.count === 1) {
+          await voiceLabQueue.add("avatar", { kind: "avatar", id: a.id }, { jobId: `avatar-${a.id}`, attempts: 2, removeOnComplete: 100 });
+          console.log(`[poller] enqueued avatar video ${a.id}`);
+        }
+      }
+
       // ── Social Launchpad: claim kit + launch requests ──────────────────
       const pendingLaunches = await prisma.socialLaunch.findMany({ where: { status: "PENDING" }, select: { id: true }, take: 5 });
       for (const l of pendingLaunches) {

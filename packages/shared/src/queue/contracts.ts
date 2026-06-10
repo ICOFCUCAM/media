@@ -46,10 +46,11 @@ export interface AudioJob {
   refId?: string;
 }
 
-/** Voice Lab (docs/29): clone a voice from a sample, or speak a long text. */
+/** Voice Lab (docs/29): clone a voice, speak a long text, or animate a
+ *  portrait photo into a talking-avatar video. */
 export interface VoiceLabJob {
-  kind: "clone" | "speak";
-  /** voices.id for clone, voiceovers.id for speak. */
+  kind: "clone" | "speak" | "avatar";
+  /** voices.id for clone, voiceovers.id for speak, avatar_videos.id for avatar. */
   id: string;
 }
 
