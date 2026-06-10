@@ -132,6 +132,20 @@ export class SupabaseRun {
       /* queue depth is cosmetic */
     }
 
+    // Friendly credit check (the worker enforces the authoritative gate).
+    if (!this.existing) {
+      const { data: me } = await sb.from("users").select("credits_ms").eq("id", auth.user.id).single();
+      if (me) {
+        if (me.credits_ms <= 0) {
+          state.error = "Out of credits — ask for a top-up to keep creating.";
+          state.log = [`${ts()} · ✕ out of credits`];
+          this.onUpdate({ ...state });
+          return;
+        }
+        push(`Credits available: ${(me.credits_ms / 60000).toFixed(0)} GPU-min`);
+      }
+    }
+
     let projectId: string;
     if (this.existing) {
       // Command-center mode: attach to a project that already exists. The

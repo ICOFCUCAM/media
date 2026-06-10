@@ -29,10 +29,20 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
       // deliberate per-scene (handled elsewhere), so we only claim mode=auto.
       const pending = await prisma.project.findMany({
         where: { status: "PLANNING", mode: "auto" },
-        select: { id: true },
+        select: { id: true, user: { select: { creditsMs: true } } },
         take: 5,
       });
       for (const p of pending) {
+        // Hard credit gate — the authoritative check (the web shows a friendly
+        // version, but only this one can't be bypassed). No credits, no GPU.
+        if (p.user.creditsMs <= 0) {
+          await prisma.project.updateMany({
+            where: { id: p.id, status: "PLANNING" },
+            data: { status: "FAILED", errorMessage: "Out of credits — top up to keep creating" },
+          });
+          console.log(`[poller] rejected project ${p.id}: user out of credits`);
+          continue;
+        }
         // Atomic claim: only one worker flips PLANNING → GENERATING. The jobId
         // carries a timestamp so a re-claimed project (recovery below) isn't
         // silently deduped against a stale completed job in Redis.

@@ -314,7 +314,24 @@ export interface Database {
       };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      grant_credits: {
+        Args: { target_email: string; minutes: number };
+        Returns: number;
+      };
+      admin_list_users: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          email: string;
+          tier: string;
+          credits_ms: number;
+          role: string;
+          created_at: string;
+          projects: number;
+        }[];
+      };
+    };
     Enums: { project_status: ProjectStatus };
     CompositeTypes: { [_ in never]: never };
   };
