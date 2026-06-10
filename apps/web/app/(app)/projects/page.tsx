@@ -48,6 +48,14 @@ export default function ProjectsPage() {
     return () => void channel.unsubscribe();
   }, [user]);
 
+  async function onDelete(id: string, title: string) {
+    if (!window.confirm(`Delete "${title}"? The project and its scenes are removed (clips stay in storage).`)) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    await sb.from("projects").delete().eq("id", id);
+    setProjects((prev) => prev?.filter((p) => p.id !== id) ?? prev);
+  }
+
   const active = projects?.filter((p) => ACTIVE.has(p.status)).length ?? 0;
 
   return (
@@ -88,6 +96,7 @@ export default function ProjectsPage() {
                 <th className="px-4 py-2.5 font-medium">Status</th>
                 <th className="px-4 py-2.5 font-medium">Progress</th>
                 <th className="px-4 py-2.5 font-medium">Created</th>
+                <th className="px-4 py-2.5" />
               </tr>
             </thead>
             <tbody>
@@ -127,6 +136,20 @@ export default function ProjectsPage() {
                     </div>
                   </td>
                   <td className="px-4 py-2.5 text-white/40">{new Date(p.created_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    {!ACTIVE.has(p.status) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void onDelete(p.id, p.title);
+                        }}
+                        title="Delete project"
+                        className="rounded px-2 py-1 text-xs text-white/30 transition hover:bg-rose-500/10 hover:text-rose-300"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
