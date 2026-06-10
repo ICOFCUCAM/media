@@ -43,7 +43,12 @@ export const filmWorker = new Worker<FilmJob>(
         return { projectId, blocked: verdict.reason };
       }
 
-      await prisma.project.update({ where: { id: projectId }, data: { status: "PLANNING" } });
+      // NB: stay on GENERATING while the Director writes. Setting the status
+      // back to PLANNING here made the project claimable AGAIN by the poller
+      // every tick for the whole ~70s planning window — duplicate film jobs,
+      // duplicate Director runs, and flows enqueued against half-written
+      // scene lists (an empty children list makes the render root run
+      // immediately and record a phantom zero-duration film).
       await director.plan(projectId);
     }
 

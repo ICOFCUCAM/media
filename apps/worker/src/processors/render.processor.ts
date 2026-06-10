@@ -32,6 +32,12 @@ export const renderWorker = new Worker<RenderJob>(
         orderBy: { index: "asc" },
         include: { shots: { orderBy: { index: "asc" } }, audioTracks: true },
       });
+      // Guard: a flow enqueued against a not-yet-planned project has no
+      // children, so its root runs instantly. Never record a phantom film.
+      if (scenes.length === 0) {
+        console.warn(`[render] project=${projectId} has no scenes — skipping (premature flow)`);
+        return { projectId, skipped: "no scenes" };
+      }
       const durationSec = scenes.reduce((a, s) => a + s.durationSec, 0);
 
       // Build per-scene asset lists from generated clips/audio. Legacy "stub"
