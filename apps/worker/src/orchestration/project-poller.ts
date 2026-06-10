@@ -21,6 +21,8 @@ const filmQueue = new Queue<FilmJob>(QUEUES.film, { connection });
 
 export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_SEC ?? 5) * 1000): () => void {
   let busy = false;
+  // Per-project resume cooldown (see the storm guard below).
+  const resumedAt = new Map<string, number>();
   const tick = async () => {
     if (busy) return;
     busy = true;
@@ -102,10 +104,15 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
         });
         const reference = lastReady?.updatedAt.getTime() ?? firstScene.createdAt.getTime();
         if (now - reference < STALL_MS) continue; // progressing (or still warming up)
-        // Its jobs were lost mid-flight. Touch the row (restarts the cooldown,
-        // prevents a resume storm) and re-fan-out; READY shots cost 0 GPU.
-        await prisma.project.update({ where: { id: c.id }, data: { status: "GENERATING" } });
-        await filmQueue.add("resume", { projectId: c.id }, { jobId: `film-resume-${c.id}-${now}`, attempts: 2, removeOnComplete: 100 });
+        // Its jobs were lost mid-flight — re-fan-out (READY shots cost 0 GPU).
+        // Resume STORM guard, twice over: an in-memory cooldown per project,
+        // plus a jobId keyed to the 15-min window so BullMQ itself dedupes
+        // even across worker restarts. (A naive unique jobId here once queued
+        // a resume EVERY TICK and flooded the GPU with duplicate work.)
+        if (now - (resumedAt.get(c.id) ?? 0) < STALL_MS) continue;
+        resumedAt.set(c.id, now);
+        const windowId = Math.floor(now / STALL_MS);
+        await filmQueue.add("resume", { projectId: c.id }, { jobId: `film-resume-${c.id}-${windowId}`, attempts: 2, removeOnComplete: 100 });
         console.log(`[poller] resumed stalled project ${c.id} (no shot completed in ${STALL_MS / 60000} min)`);
       }
     } catch (e) {
