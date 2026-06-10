@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import { AuthCard } from "./AuthCard";
-import { createCharacter, listCharacters, type CharacterRow } from "../lib/library";
+import { createCharacter, listCharacters, type CharacterWithOrigin } from "../lib/library";
 
 /** Create and browse reusable characters — locked identity, reusable anywhere. */
 export function CharacterLibrary() {
   const { enabled, loading, user } = useAuth();
-  const [items, setItems] = useState<CharacterRow[] | null>(null);
+  const [items, setItems] = useState<CharacterWithOrigin[] | null>(null);
   const [name, setName] = useState("");
   const [appearance, setAppearance] = useState("");
   const [personality, setPersonality] = useState("");
@@ -27,7 +27,7 @@ export function CharacterLibrary() {
     setError(null);
     try {
       const row = await createCharacter({ name, appearance, personality });
-      setItems((prev) => [row, ...(prev ?? [])]);
+      setItems((prev) => [{ ...row, projects: { title: "Library" } }, ...(prev ?? [])]);
       setName("");
       setAppearance("");
       setPersonality("");
@@ -80,7 +80,14 @@ export function CharacterLibrary() {
                 {items.map((c) => (
                   <div key={c.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
                     <div className="mb-2 aspect-[3/2] rounded-lg bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/20" />
-                    <div className="font-medium">{c.name}</div>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="font-medium">{c.name}</div>
+                      {c.projects?.title && (
+                        <span className="truncate text-[10px] uppercase tracking-wider text-white/35">
+                          {c.projects.title === "Library" ? "Library" : `cast of "${c.projects.title}"`}
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-1 line-clamp-2 text-sm text-white/55">{c.appearance}</p>
                     <Link href="/create/film?mode=storyboard" className="mt-3 inline-block text-xs text-white/40 hover:text-white">
                       Use in a film →

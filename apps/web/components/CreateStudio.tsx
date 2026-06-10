@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
-import { estimateMs, fmtDuration, IS_LIVE } from "../lib/system";
-import { DemoRun, type DemoState, type ProjectStatus } from "../lib/demo";
-import { LiveRun } from "../lib/live";
-import { HlsPlayer } from "./HlsPlayer";
+import { useMemo, useState, type ReactNode } from "react";
+import { estimateMs, fmtDuration } from "../lib/system";
+import type { ProjectStatus } from "../lib/demo";
+import { useCreateRun } from "../lib/useCreateRun";
+import { RunPanel } from "./RunPanel";
 import type { ShortPlatform } from "../lib/products";
 
-const STAGES: ProjectStatus[] = ["PLANNING", "GENERATING", "RENDERING", "READY"];
 const STAGE_LABEL: Record<ProjectStatus, string> = {
   PLANNING: "Writing",
   GENERATING: "Filming",
@@ -32,50 +31,23 @@ export interface CreateStudioProps {
 /**
  * The creator's create-and-watch surface. One prompt becomes a finished cut.
  * The same component powers Film, Series, Trailer and Shorts — only the presets
- * and copy change. All engine internals stay out of the creator's view.
+ * and copy change. Runs through the shared runner (real worker pipeline when
+ * signed in, loudly-labelled preview otherwise) and renders the shared
+ * production console.
  */
 export function CreateStudio(props: CreateStudioProps) {
   const [prompt, setPrompt] = useState(props.defaultPrompt);
   const [seconds, setSeconds] = useState(props.defaultSeconds);
   const [platform, setPlatform] = useState(props.platforms?.[0]?.id ?? "");
-  const [state, setState] = useState<DemoState | null>(null);
-  const [running, setRunning] = useState(false);
-  const runRef = useRef<{ cancel: () => void } | null>(null);
+  const { state, running, run, reset } = useCreateRun();
 
-  // Trailers/shorts run on the fast model; film/series can use the premium one.
-  const modelId = props.kind === "film" || props.kind === "series" ? "wan-2.1" : "wan-2.1";
+  const modelId = "wan-2.1";
   const estMs = useMemo(() => estimateMs(modelId, seconds), [modelId, seconds]);
-  const readyEstimate = fmtDuration(Math.max(20, Math.round(estMs / 1000 / 12)));
+  // One serialized GPU: wall-clock ≈ total GPU time + assembly overhead.
+  const readyEstimate = fmtDuration(Math.round(estMs / 1000) + 60);
 
-  async function onCreate() {
-    if (running) return;
-    runRef.current?.cancel();
-    setRunning(true);
-    setState(null);
-    const onUpdate = (s: DemoState) => {
-      setState(s);
-      if (s.status === "READY") setRunning(false);
-    };
-    const cfg = { prompt, modelId, targetSeconds: seconds };
-    if (IS_LIVE) {
-      const live = new LiveRun(cfg, onUpdate);
-      runRef.current = live;
-      try {
-        await live.start();
-        return;
-      } catch {
-        live.cancel();
-      }
-    }
-    const run = new DemoRun(cfg, onUpdate);
-    runRef.current = run;
-    run.start();
-  }
-
-  function onReset() {
-    runRef.current?.cancel();
-    setRunning(false);
-    setState(null);
+  function onCreate() {
+    void run({ prompt, modelId, targetSeconds: seconds });
   }
 
   return (
@@ -134,120 +106,36 @@ export function CreateStudio(props: CreateStudioProps) {
             >
               {running ? "Creating…" : props.cta ?? "Create"}
             </button>
-            <button onClick={onReset} className="rounded-lg border border-white/15 px-4 py-2.5 text-sm hover:bg-white/5">
+            <button onClick={reset} className="rounded-lg border border-white/15 px-4 py-2.5 text-sm hover:bg-white/5">
               Reset
             </button>
           </div>
           <p className="text-center text-xs text-white/35">
-            {IS_LIVE ? "Connected to your studio." : "Preview mode — shows the real creative flow."}
+            {state?.live
+              ? "Live — your studio is doing the real work."
+              : "Sign in to run the real studio; otherwise this previews the flow."}
           </p>
         </aside>
 
         <section className="space-y-6">
-          <Stages status={state?.status ?? null} />
-          {state ? <Pipeline state={state} /> : <EmptyState kind={props.kind} />}
+          <RunPanel
+            state={state}
+            stageLabels={STAGE_LABEL}
+            readyTitle="Your cut is ready"
+            emptyHint={<EmptyState kind={props.kind} />}
+          />
+          {state && (state.characters.length > 0 || state.locations.length > 0) && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {state.characters.map((c) => (
+                <BibleCard key={c.name} kind="Cast" name={c.name} desc={c.appearance} />
+              ))}
+              {state.locations.map((l) => (
+                <BibleCard key={l.name} kind="Location" name={l.name} desc={l.description} />
+              ))}
+            </div>
+          )}
         </section>
       </div>
-    </div>
-  );
-}
-
-function Pipeline({ state }: { state: DemoState }) {
-  const ready = state.shots.filter((s) => s.status === "ready" || s.status === "cached");
-  const visible = state.shots.slice(0, 160);
-  return (
-    <>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Progress" value={`${Math.round(state.progress * 100)}%`} />
-        <Stat label="Scenes" value={`${state.scenes}`} />
-        <Stat
-          label="Status"
-          value={state.status === "READY" ? "Finished" : STAGE_LABEL[state.status]}
-          accent={state.status === "READY" ? "good" : undefined}
-        />
-      </div>
-
-      {(state.characters.length > 0 || state.locations.length > 0) && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {state.characters.map((c) => (
-            <BibleCard key={c.name} kind="Cast" name={c.name} desc={c.appearance} />
-          ))}
-          {state.locations.map((l) => (
-            <BibleCard key={l.name} kind="Location" name={l.name} desc={l.description} />
-          ))}
-        </div>
-      )}
-
-      {state.status === "RENDERING" && (
-        <div>
-          <Label>Final cut</Label>
-          <Bar value={state.renderProgress} />
-        </div>
-      )}
-
-      {state.status === "READY" && <Result state={state} />}
-
-      <div>
-        <Label>
-          Storyboard · {ready.length}/{state.shots.length} shots
-        </Label>
-        <div className="mt-2 grid grid-cols-8 gap-1.5 sm:grid-cols-12">
-          {visible.map((s, i) => (
-            <div
-              key={i}
-              title={`scene ${s.sceneIndex + 1} · shot ${s.shotIndex + 1}`}
-              className={`aspect-video rounded-sm transition-all duration-300 ${
-                s.status === "pending"
-                  ? "bg-white/5"
-                  : s.status === "generating"
-                    ? "animate-pulse bg-white/30"
-                    : ""
-              }`}
-              style={
-                s.status === "ready" || s.status === "cached"
-                  ? { background: `linear-gradient(135deg, hsl(${s.hue} 65% 45%), hsl(${(s.hue + 40) % 360} 60% 30%))` }
-                  : undefined
-              }
-            />
-          ))}
-        </div>
-      </div>
-    </>
-  );
-}
-
-function Result({ state }: { state: DemoState }) {
-  const strip = state.shots.filter((s) => s.status === "ready" || s.status === "cached").slice(0, 24);
-  return (
-    <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/[0.04] p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="font-semibold text-emerald-200">Your cut is ready</h3>
-          <p className="text-sm text-white/60">
-            {fmtDuration(state.durationSec)} · {state.scenes} scenes
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Pill>▶ Play</Pill>
-          <Pill>↓ Download</Pill>
-          <Pill>↗ Publish</Pill>
-        </div>
-      </div>
-      {state.filmUrl ? (
-        <div className="mt-4">
-          <HlsPlayer src={state.filmUrl} />
-        </div>
-      ) : (
-        <div className="mt-4 flex gap-1 overflow-hidden rounded-lg">
-          {strip.map((s, i) => (
-            <div
-              key={i}
-              className="h-16 flex-1"
-              style={{ background: `linear-gradient(135deg, hsl(${s.hue} 65% 45%), hsl(${(s.hue + 40) % 360} 60% 30%))` }}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -256,13 +144,10 @@ function Result({ state }: { state: DemoState }) {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <Label>{label}</Label>
+      <span className="text-xs uppercase tracking-wider text-white/40">{label}</span>
       <div className="mt-2">{children}</div>
     </div>
   );
-}
-function Label({ children }: { children: ReactNode }) {
-  return <span className="text-xs uppercase tracking-wider text-white/40">{children}</span>;
 }
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
@@ -284,42 +169,6 @@ function Row({ k, v }: { k: string; v: string }) {
     </div>
   );
 }
-function Stat({ label, value, accent }: { label: string; value: string; accent?: "good" }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-      <div className="text-xs uppercase tracking-wider text-white/40">{label}</div>
-      <div className={`mt-1 text-lg font-semibold ${accent === "good" ? "text-emerald-300" : ""}`}>{value}</div>
-    </div>
-  );
-}
-function Stages({ status }: { status: ProjectStatus | null }) {
-  const idx = status ? STAGES.indexOf(status) : -1;
-  return (
-    <div className="flex items-center gap-2">
-      {STAGES.map((s, i) => (
-        <div
-          key={s}
-          className={`flex-1 rounded-full px-3 py-1.5 text-center text-xs transition ${
-            i < idx
-              ? "bg-emerald-400/15 text-emerald-300"
-              : i === idx
-                ? "bg-white/15 text-white"
-                : "bg-white/5 text-white/40"
-          }`}
-        >
-          {STAGE_LABEL[s]}
-        </div>
-      ))}
-    </div>
-  );
-}
-function Bar({ value }: { value: number }) {
-  return (
-    <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-      <div className="h-full bg-white transition-all" style={{ width: `${Math.round(value * 100)}%` }} />
-    </div>
-  );
-}
 function BibleCard({ kind, name, desc }: { kind: string; name: string; desc: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
@@ -329,18 +178,13 @@ function BibleCard({ kind, name, desc }: { kind: string; name: string; desc: str
     </div>
   );
 }
-function Pill({ children }: { children: ReactNode }) {
-  return <span className="cursor-default rounded-lg border border-white/15 px-3 py-1.5 text-sm text-white/70">{children}</span>;
-}
 function EmptyState({ kind }: { kind: string }) {
   return (
-    <div className="flex h-80 items-center justify-center rounded-xl border border-dashed border-white/10 text-center text-white/40">
-      <div>
-        <p className="text-sm">
-          Describe your {kind} and press <span className="text-white/70">Create</span>.
-        </p>
-        <p className="mt-1 text-xs">Watch it get written, cast, filmed and cut — start to finish.</p>
-      </div>
+    <div>
+      <p className="text-sm">
+        Describe your {kind} and press <span className="text-white/70">Create</span>.
+      </p>
+      <p className="mt-1 text-xs">Watch it get written, cast, filmed and cut — start to finish.</p>
     </div>
   );
 }

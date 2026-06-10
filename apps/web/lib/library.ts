@@ -69,11 +69,17 @@ export async function createCharacter(input: {
   return data;
 }
 
-export async function listCharacters(): Promise<CharacterRow[]> {
+/** Character + the production it was created in ("Library" for manual ones). */
+export type CharacterWithOrigin = CharacterRow & { projects: { title: string } | null };
+
+export async function listCharacters(): Promise<CharacterWithOrigin[]> {
   const sb = getSupabase();
   if (!sb) return [];
-  const { data } = await sb.from("characters").select().order("created_at", { ascending: false });
-  return data ?? [];
+  const { data } = await sb
+    .from("characters")
+    .select("*, projects(title)")
+    .order("created_at", { ascending: false });
+  return (data as CharacterWithOrigin[] | null) ?? [];
 }
 
 /* ── Worlds / locations ─────────────────────────────────────── */
@@ -94,11 +100,16 @@ export async function createLocation(input: {
   return data;
 }
 
-export async function listLocations(): Promise<LocationRow[]> {
+export type LocationWithOrigin = LocationRow & { projects: { title: string } | null };
+
+export async function listLocations(): Promise<LocationWithOrigin[]> {
   const sb = getSupabase();
   if (!sb) return [];
-  const { data } = await sb.from("locations").select().order("created_at", { ascending: false });
-  return data ?? [];
+  const { data } = await sb
+    .from("locations")
+    .select("*, projects(title)")
+    .order("created_at", { ascending: false });
+  return (data as LocationWithOrigin[] | null) ?? [];
 }
 
 /* ── Visual assets (props, vehicles, creatures, logos, brands) ── */

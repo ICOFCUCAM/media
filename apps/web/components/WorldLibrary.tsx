@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import { AuthCard } from "./AuthCard";
-import { createLocation, listLocations, LOCATION_KINDS, type LocationRow } from "../lib/library";
+import { createLocation, listLocations, LOCATION_KINDS, type LocationWithOrigin } from "../lib/library";
 import type { LocationKind } from "../lib/database.types";
 
 /** Create and browse reusable worlds — locations, lore, consistent across films. */
 export function WorldLibrary() {
   const { enabled, loading, user } = useAuth();
-  const [items, setItems] = useState<LocationRow[] | null>(null);
+  const [items, setItems] = useState<LocationWithOrigin[] | null>(null);
   const [name, setName] = useState("");
   const [kind, setKind] = useState<LocationKind>("CITY");
   const [description, setDescription] = useState("");
@@ -28,7 +28,7 @@ export function WorldLibrary() {
     setError(null);
     try {
       const row = await createLocation({ name, kind, description });
-      setItems((prev) => [row, ...(prev ?? [])]);
+      setItems((prev) => [{ ...row, projects: { title: "Library" } }, ...(prev ?? [])]);
       setName("");
       setDescription("");
     } catch (err) {
@@ -109,6 +109,9 @@ export function WorldLibrary() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{l.name}</span>
                       <span className="rounded-full border border-white/15 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/45">{l.kind}</span>
+                      {l.projects?.title && l.projects.title !== "Library" && (
+                        <span className="ml-auto truncate text-[10px] uppercase tracking-wider text-white/35">from "{l.projects.title}"</span>
+                      )}
                     </div>
                     <p className="mt-1 line-clamp-2 text-sm text-white/55">{l.description}</p>
                     <Link href="/create/film?mode=storyboard" className="mt-3 inline-block text-xs text-white/40 hover:text-white">
