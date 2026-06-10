@@ -127,6 +127,7 @@ export class DirectorService {
           locationId: location.id,
           heading: beat.heading,
           summary: beat.summary,
+          narration: beat.narration,
           timeOfDay: beat.timeOfDay,
           characterRef: protagonist.name,
           locationNote: location.name,

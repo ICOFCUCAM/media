@@ -19,7 +19,8 @@ export type LocationKind = (typeof LOCATION_KINDS)[number];
 
 export interface SceneBeat {
   heading: string; // "EXT. THRONE ROOM - NIGHT"
-  summary: string;
+  summary: string; // VISUAL: what the camera sees this scene (drives the shot prompt)
+  narration: string; // SPOKEN: voiceover that tells the STORY this scene (drives TTS)
   timeOfDay: string; // "day" | "night" | ...
   // Continuity Engine (docs/28): the Director's own proposal for what this scene
   // changes + how it bridges to the next. Optional — falls back to autoContinuity.
@@ -60,7 +61,12 @@ function userPrompt(brief: string, sceneCount: number): string {
     'location { name (string), kind (one of CITY|KINGDOM|BUILDING|ROOM|LANDSCAPE|INTERIOR|EXTERIOR), description (string) },',
     "protagonist { name (string), age (number or null), gender (string or null), appearance (string), personality (string or null) },",
     `scenes (array of exactly ${sceneCount} objects), each:`,
-    '{ heading (e.g. "EXT. OLD LAGOS - NIGHT"), summary (string), timeOfDay (string),',
+    '{ heading (e.g. "EXT. OLD LAGOS - NIGHT"), summary (string), narration (string), timeOfDay (string),',
+    "  — summary is the VISUAL: what the camera sees, used to render the picture.",
+    "  — narration is the SPOKEN VOICEOVER that tells the STORY (what it MEANS, the stakes,",
+    "    the emotion), as a narrator would say it over the footage — NOT a description of the",
+    '    image. One or two vivid sentences. e.g. summary "a lone warrior on the palace steps at',
+    '    dawn" -> narration "They said the kingdom would fall by sunrise. They had not met its last daughter."',
     "  bridge { whatJustHappened, whatChanged, whatCarriesForward, nextSceneRequirements } (all strings),",
     "  state { emotion, health, wardrobe, season, locationStatus, goal } (strings; the protagonist's emotion,",
     '  health and wardrobe/look after this scene, the world season, this scene\'s location status e.g.',
@@ -179,10 +185,11 @@ const PLAN_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["heading", "summary", "timeOfDay"],
+        required: ["heading", "summary", "narration", "timeOfDay"],
         properties: {
           heading: { type: "string" },
           summary: { type: "string" },
+          narration: { type: "string" },
           timeOfDay: { type: "string" },
           bridge: bridgeProps,
           state: stateProps,
@@ -203,6 +210,7 @@ function coerceDraft(j: Record<string, unknown>, brief: string, sceneCount: numb
     return {
       heading: str(s.heading, `EXT. ${str(loc.name, "LOCATION").toUpperCase()} - ${tod.toUpperCase()}`),
       summary: str(s.summary, `Beat ${i + 1}.`),
+      narration: str(s.narration, ""),
       timeOfDay: tod,
       bridge: parseBridge(s.bridge),
       state: parseState(s.state),
@@ -279,6 +287,7 @@ function stubDraft(brief: string, sceneCount: number): FilmDraft {
     scenes: Array.from({ length: sceneCount }, (_, i) => ({
       heading: `EXT. THE KINGDOM - ${i % 2 ? "NIGHT" : "DAY"}`,
       summary: `Beat ${i + 1}: the conflict deepens toward independence.`,
+      narration: `And so the kingdom's struggle for freedom deepened.`,
       timeOfDay: i % 2 ? "night" : "day",
     })),
     raw: { brief },
