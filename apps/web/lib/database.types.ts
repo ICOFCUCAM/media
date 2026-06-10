@@ -48,7 +48,7 @@ export interface Database {
           email: string;
           display_name: string | null;
           role: "USER" | "ADMIN";
-          tier: "FREE" | "CREATOR" | "STUDIO" | "ENTERPRISE";
+          tier: "FREE" | "CREATOR" | "STUDIO" | "AGENCY" | "ENTERPRISE";
           credits_ms: number;
           created_at: string;
           updated_at: string;
@@ -181,6 +181,20 @@ export interface Database {
           reference_urls?: string[];
         };
         Update: { name?: string; description?: string; category?: string; reference_urls?: string[] };
+        Relationships: [];
+      };
+      usage_records: {
+        Row: {
+          id: string;
+          user_id: string;
+          project_id: string | null;
+          gpu_ms: number;
+          kind: string;
+          cost_usd: number | null;
+          created_at: string;
+        };
+        Insert: { user_id: string; gpu_ms: number; kind: string };
+        Update: Record<string, never>;
         Relationships: [];
       };
       social_launches: {
