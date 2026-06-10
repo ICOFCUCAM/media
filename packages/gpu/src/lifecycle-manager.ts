@@ -89,9 +89,17 @@ export class GpuLifecycleManager {
   async reconcile(): Promise<void> {
     const counts = await this.tracker.counts();
 
-    // Any work in flight (running OR queued, across all users) -> stay up.
+    // Any work in flight (running OR queued, across all users) -> stay up —
+    // and WAKE the GPU if it isn't serving (the start half of the thermostat:
+    // nothing else calls ensureRunning when films arrive while the pod sleeps).
+    // No-ops when the GPU is healthy (one cheap health probe per tick).
     if (counts.total > 0) {
       await this.redis.del(this.k.idleSince);
+      try {
+        await this.ensureRunning();
+      } catch (e) {
+        console.error(`[gpu:${this.cfg.pool}] wake failed:`, e instanceof Error ? e.message : e);
+      }
       return;
     }
 
