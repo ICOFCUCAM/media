@@ -315,3 +315,23 @@ export const videoWorker = new Worker<VideoJob>(
     limiter: { max: 100, duration: 1000 },
   },
 );
+
+// Surface terminal shot failures: when a job exhausts its retries the shot
+// otherwise sits on GENERATING forever and the project shows no reason. Mark
+// the shot FAILED and put the cause on the project (red banner in the UI).
+videoWorker.on("failed", (job, err) => {
+  void (async () => {
+    if (!job?.data?.shotId) return;
+    const attemptsAllowed = (job.opts.attempts ?? 1) as number;
+    if (job.attemptsMade < attemptsAllowed) return; // a retry is coming
+    const reason = (err instanceof Error ? err.message : String(err)).slice(0, 300);
+    console.error(`[video] shot ${job.data.shotId} failed terminally: ${reason}`);
+    await prisma.shot.update({ where: { id: job.data.shotId }, data: { status: "FAILED" } }).catch(() => {});
+    await prisma.project
+      .update({ where: { id: job.data.projectId }, data: { errorMessage: `shot: ${reason}`.slice(0, 500) } })
+      .catch(() => {});
+    await realtime
+      .emit("error", { projectId: job.data.projectId, scope: "video", id: job.data.shotId, message: reason })
+      .catch(() => {});
+  })();
+});
