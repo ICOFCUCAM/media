@@ -43,6 +43,8 @@ export class SupabaseRun {
   constructor(
     private readonly cfg: DemoConfig,
     private readonly onUpdate: (s: DemoState) => void,
+    /** Attach to an EXISTING project (command center) instead of creating one. */
+    private readonly existing?: { id: string; createdAt: string; status: string },
   ) {}
 
   cancel() {
@@ -130,17 +132,30 @@ export class SupabaseRun {
       /* queue depth is cosmetic */
     }
 
-    mark("Project submitted to the production queue");
-    const project = await createProject({
-      title: this.cfg.prompt.slice(0, 60),
-      prompt: this.cfg.prompt,
-      targetSeconds: this.cfg.targetSeconds,
-      modelId: this.cfg.modelId,
-      estimatedMs: estMs,
-    });
-    if (this.cancelled) return;
-    production.projectId = project.id;
-    mark(`Project ${project.id.slice(0, 8)} created — waiting for a worker`);
+    let projectId: string;
+    if (this.existing) {
+      // Command-center mode: attach to a project that already exists. The
+      // timeline back-fills from real DB timestamps in loadScenes.
+      projectId = this.existing.id;
+      production.timeline = [{ at: Date.parse(this.existing.createdAt), label: "Project created" }];
+      if (this.existing.status !== "PLANNING" && this.existing.status !== "DRAFT") {
+        production.claimed = true; // history — don't re-announce the claim
+        void this.loadScenes(projectId, state, production, mark, emit);
+      }
+    } else {
+      mark("Project submitted to the production queue");
+      const project = await createProject({
+        title: this.cfg.prompt.slice(0, 60),
+        prompt: this.cfg.prompt,
+        targetSeconds: this.cfg.targetSeconds,
+        modelId: this.cfg.modelId,
+        estimatedMs: estMs,
+      });
+      if (this.cancelled) return;
+      projectId = project.id;
+      mark(`Project ${project.id.slice(0, 8)} created — waiting for a worker`);
+    }
+    production.projectId = projectId;
 
     // ── Live project row (status / progress / spend / errors) ─────────────
     const reflect = (row: ProjectRow) => {
@@ -157,7 +172,7 @@ export class SupabaseRun {
         if (row.status === "GENERATING" || row.progress > 0) {
           production.claimed = true;
           mark("Worker claimed the project — Director is writing the screenplay");
-          this.loadScenes(project.id, state, production, mark, emit);
+          void this.loadScenes(projectId, state, production, mark, emit);
         }
       }
       if (row.status === "RENDERING" && prev !== "RENDERING") mark("Final assembly started (FFmpeg)");
@@ -170,19 +185,25 @@ export class SupabaseRun {
       }
       state.progress = Math.max(state.progress, row.progress ?? 0);
       emit();
-      if (row.status === "READY") void this.resolveFilm(project.id, state, production, mark);
+      if (row.status === "READY") void this.resolveFilm(projectId, state, production, mark);
     };
 
-    const ch = subscribeProject(project.id, (row) => !this.cancelled && reflect(row));
+    // Attach mode starts from the row's current (possibly terminal) state.
+    if (this.existing) {
+      const { data } = await sb.from("projects").select().eq("id", projectId).single();
+      if (data) reflect(data);
+    }
+
+    const ch = subscribeProject(projectId, (row) => !this.cancelled && reflect(row));
     if (ch) this.channels.push(ch);
 
     // Realtime only delivers future changes; one slow safety poll catches
     // anything that slipped past before the channel connected.
     const tick = async () => {
       if (this.cancelled || state.status === "READY" || state.error) return;
-      const { data } = await sb.from("projects").select().eq("id", project.id).single();
+      const { data } = await sb.from("projects").select().eq("id", projectId).single();
       if (data) reflect(data);
-      if (!this.scenesLoaded && production.claimed) this.loadScenes(project.id, state, production, mark, emit);
+      if (!this.scenesLoaded && production.claimed) void this.loadScenes(projectId, state, production, mark, emit);
       this.later(20_000, tick);
     };
     this.later(20_000, tick);
@@ -202,7 +223,7 @@ export class SupabaseRun {
 
     const { data: scenes } = await sb
       .from("scenes")
-      .select("id, index, heading, status")
+      .select("id, index, heading, status, created_at, updated_at")
       .eq("project_id", projectId)
       .order("index");
     if (!scenes || scenes.length === 0) {
@@ -212,7 +233,7 @@ export class SupabaseRun {
     const sceneIds = scenes.map((s) => s.id);
     const { data: shots } = await sb
       .from("shots")
-      .select("id, scene_id, index, status, thumbnail_key, gpu_ms")
+      .select("id, scene_id, index, status, thumbnail_key, gpu_ms, updated_at")
       .in("scene_id", sceneIds)
       .order("index");
     if (!shots || shots.length === 0) {
@@ -227,19 +248,48 @@ export class SupabaseRun {
       byScene.set(sc.id, view);
       return view;
     });
+    const backfill: { at: number; label: string }[] = [];
     for (const sh of shots) {
       const scene = byScene.get(sh.scene_id);
       if (!scene) continue;
-      scene.shots.push({
+      const view: LiveShot = {
         id: sh.id,
         sceneIndex: scene.index,
         index: sh.index,
         status: (sh.status as LiveShot["status"]) ?? "PENDING",
         gpuMs: sh.gpu_ms ?? undefined,
-      });
+      };
+      scene.shots.push(view);
+      // Back-fill history: shots that finished before we attached/loaded get
+      // their REAL completion timestamps and thumbnails.
+      if (view.status === "READY") {
+        backfill.push({
+          at: Date.parse(sh.updated_at),
+          label: `Shot ${scene.index + 1}.${view.index + 1} rendered${sh.gpu_ms ? ` in ${Math.round(sh.gpu_ms / 1000)}s GPU` : ""}`,
+        });
+        if (sh.thumbnail_key)
+          void signedUrl(sh.thumbnail_key).then((url) => {
+            if (url && !this.cancelled) {
+              view.thumbUrl = url;
+              emit();
+            }
+          });
+      }
     }
+    for (const sc of scenes)
+      if (sc.status === "READY") backfill.push({ at: Date.parse(sc.updated_at), label: `Scene ${sc.index + 1} finalized` });
+
     state.scenes = scenes.length;
-    mark(`Screenplay ready — ${scenes.length} scene${scenes.length > 1 ? "s" : ""}, ${shots.length} shots planned`);
+    const screenplayLabel = `Screenplay ready — ${scenes.length} scene${scenes.length > 1 ? "s" : ""}, ${shots.length} shots planned`;
+    if (this.existing) {
+      // Historical: stamp the screenplay at its real creation time.
+      backfill.push({ at: Date.parse(scenes[0].created_at), label: screenplayLabel });
+      production.timeline = [...production.timeline, ...backfill].sort((a, b) => a.at - b.at);
+      emit();
+    } else {
+      if (backfill.length > 0) production.timeline = [...production.timeline, ...backfill].sort((a, b) => a.at - b.at);
+      mark(screenplayLabel);
+    }
     this.recompute(state, production, emit);
 
     // Per-shot updates: GPU start/finish, thumbnails, timings.
@@ -347,7 +397,15 @@ export class SupabaseRun {
       const url = await signedUrl(film.mp4_key);
       if (url) {
         state.filmUrl = url;
-        mark("Film packaged — streaming from storage");
+        if (this.existing && film.published_at) {
+          // Historical: stamp packaging at its real time.
+          production.timeline = [...production.timeline, { at: Date.parse(film.published_at), label: "Film packaged — streaming from storage" }].sort(
+            (a, b) => a.at - b.at,
+          );
+          this.onUpdate({ ...state, production: { ...production } });
+        } else {
+          mark("Film packaged — streaming from storage");
+        }
         return;
       }
     }

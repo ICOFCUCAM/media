@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../../../components/AuthProvider";
 import { AuthCard } from "../../../components/AuthCard";
 import { listProjects, type ProjectRow } from "../../../lib/projects";
+import { getSupabase } from "../../../lib/supabase";
 import { fmtDuration } from "../../../lib/system";
 
 const STAGE_LABEL: Record<string, string> = {
   DRAFT: "Draft",
-  PLANNING: "Writing",
+  PLANNING: "Queued",
   GENERATING: "Filming",
   RENDERING: "Editing",
   READY: "Ready",
@@ -17,20 +19,46 @@ const STAGE_LABEL: Record<string, string> = {
   FAILED: "Failed",
 };
 
+const ACTIVE = new Set(["PLANNING", "GENERATING", "RENDERING"]);
+
 export default function ProjectsPage() {
   const { enabled, loading, user } = useAuth();
+  const router = useRouter();
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
 
   useEffect(() => {
-    if (user) listProjects(50).then(setProjects);
+    if (!user) return;
+    void listProjects(50).then(setProjects);
+
+    // Live board: any status/progress change to the user's projects updates the
+    // row in place (RLS scopes the stream to the signed-in owner).
+    const sb = getSupabase();
+    if (!sb) return;
+    const channel = sb
+      .channel("projects:board")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "projects" }, (payload) => {
+        const row = payload.new as ProjectRow;
+        setProjects((prev) => prev?.map((p) => (p.id === row.id ? row : p)) ?? prev);
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "projects" }, (payload) => {
+        const row = payload.new as ProjectRow;
+        setProjects((prev) => (prev && !prev.some((p) => p.id === row.id) ? [row, ...prev] : prev));
+      })
+      .subscribe();
+    return () => void channel.unsubscribe();
   }, [user]);
+
+  const active = projects?.filter((p) => ACTIVE.has(p.status)).length ?? 0;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Projects</h1>
-          <p className="mt-1 text-sm text-white/55">Every film, series, trailer and short you're working on.</p>
+          <p className="mt-1 text-sm text-white/55">
+            Every film, series, trailer and short you're working on.
+            {active > 0 && <span className="ml-2 text-emerald-300">{active} in production now</span>}
+          </p>
         </div>
         <Link
           href="/create/film"
@@ -64,23 +92,40 @@ export default function ProjectsPage() {
             </thead>
             <tbody>
               {projects.map((p) => (
-                <tr key={p.id} className="border-t border-white/5">
+                <tr
+                  key={p.id}
+                  onClick={() => router.push(`/projects/${p.id}`)}
+                  className="cursor-pointer border-t border-white/5 transition hover:bg-white/[0.04]"
+                >
                   <td className="max-w-xs truncate px-4 py-2.5 text-white/80">{p.title}</td>
                   <td className="px-4 py-2.5 text-white/55">{fmtDuration(p.target_seconds)}</td>
                   <td className="px-4 py-2.5">
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${
                         p.status === "READY"
                           ? "border-emerald-400/40 text-emerald-300"
                           : p.status === "FAILED"
                             ? "border-rose-400/40 text-rose-300"
-                            : "border-white/20 text-white/50"
+                            : ACTIVE.has(p.status)
+                              ? "border-white/30 text-white/80"
+                              : "border-white/20 text-white/50"
                       }`}
                     >
+                      {ACTIVE.has(p.status) && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />}
                       {STAGE_LABEL[p.status] ?? p.status}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-white/55">{Math.round(p.progress * 100)}%</td>
+                  <td className="px-4 py-2.5 text-white/55">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className={`h-full transition-all ${p.status === "FAILED" ? "bg-rose-400/70" : "bg-emerald-400/70"}`}
+                          style={{ width: `${Math.round(p.progress * 100)}%` }}
+                        />
+                      </div>
+                      {Math.round(p.progress * 100)}%
+                    </div>
+                  </td>
                   <td className="px-4 py-2.5 text-white/40">{new Date(p.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
