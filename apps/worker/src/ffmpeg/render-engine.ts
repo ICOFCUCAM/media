@@ -47,6 +47,7 @@ export class RenderEngine {
     projectId: string,
     scenes: SceneAssets[],
     onProgress?: (p: number) => void,
+    brand?: { logoKey?: string | null; primaryColor?: string },
   ): Promise<RenderResult> {
     const work = await mkdtemp(join(tmpdir(), `cineforge-${projectId}-`));
     try {
@@ -80,6 +81,42 @@ export class RenderEngine {
         clips.push(norm);
         done++;
         onProgress?.((done / allShotKeys.length) * 0.6);
+      }
+
+      // 1b) Branded outro (AGENCY+/docs/33): the studio's logo on a brand-color
+      // card, 2.5s, appended as one more clip. Font-free by design (logo image
+      // over lavfi color) so it renders on any container. Failure skips quietly.
+      if (brand && (brand.logoKey || brand.primaryColor)) {
+        try {
+          const color = (brand.primaryColor ?? "#6366f1").replace("#", "0x");
+          const outro = join(work, "outro.mp4");
+          if (brand.logoKey) {
+            const logo = join(work, "logo.png");
+            await this.storage.download(brand.logoKey, logo);
+            await this.run([
+              "-f", "lavfi", "-i", `color=c=${color}@0.25:s=1280x720:d=2.5:r=16`,
+              "-i", logo,
+              "-filter_complex", "[1]scale=320:-1[l];[0][l]overlay=(W-w)/2:(H-h)/2,format=yuv420p,fade=t=in:d=0.4,fade=t=out:st=2.1:d=0.4",
+              "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an", "-t", "2.5",
+              outro,
+            ]);
+          } else {
+            await this.run([
+              "-f", "lavfi", "-i", `color=c=${color}@0.3:s=1280x720:d=2:r=16`,
+              "-vf", "format=yuv420p,fade=t=in:d=0.4,fade=t=out:st=1.6:d=0.4",
+              "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an",
+              outro,
+            ]);
+          }
+          // Outro resolution may differ from body clips: re-encode pass keeps
+          // concat valid (same vf chain as the light normalize above).
+          const outroNorm = join(work, "outro_norm.mp4");
+          await this.run(["-i", outro, "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=16,format=yuv420p", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an", outroNorm]);
+          clips.push(outroNorm);
+          console.log(`[render] appended branded outro`);
+        } catch (e) {
+          console.warn(`[render] brand outro skipped:`, e instanceof Error ? e.message : e);
+        }
       }
 
       // 2) Concat into the video body (stream copy — light, clips are uniform).
