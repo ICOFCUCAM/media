@@ -13,6 +13,7 @@ import { Worker } from "bullmq";
 import { QUEUES, type FilmJob } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
 import { DirectorService } from "../director/director.service";
+import { moderatePrompt } from "../director/moderation";
 import { enqueueFilmFlow } from "../orchestration/film-flow";
 import { realtime } from "../realtime";
 
@@ -25,6 +26,23 @@ export const filmWorker = new Worker<FilmJob>(
     const { projectId } = job.data;
 
     if (job.name !== "resume") {
+      // Content gate — before planning, before any GPU spend.
+      const project = await prisma.project.findUniqueOrThrow({
+        where: { id: projectId },
+        select: { prompt: true },
+      });
+      const verdict = await moderatePrompt(project.prompt);
+      if (!verdict.allowed) {
+        const message = "Content policy: this prompt can't be produced.";
+        await prisma.project.update({
+          where: { id: projectId },
+          data: { status: "FAILED", errorMessage: message },
+        });
+        await realtime.emit("error", { projectId, scope: "moderation", message });
+        console.log(`[film] blocked project ${projectId} by content policy (${verdict.reason})`);
+        return { projectId, blocked: verdict.reason };
+      }
+
       await prisma.project.update({ where: { id: projectId }, data: { status: "PLANNING" } });
       await director.plan(projectId);
     }
