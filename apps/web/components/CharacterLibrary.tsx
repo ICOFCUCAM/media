@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import { AuthCard } from "./AuthCard";
 import { createCharacter, listCharacters, type CharacterWithOrigin } from "../lib/library";
+import { getSupabase } from "../lib/supabase";
+import { signedUrl } from "../lib/storyboard";
 
 /** Create and browse reusable characters — locked identity, reusable anywhere. */
 export function CharacterLibrary() {
@@ -16,8 +18,31 @@ export function CharacterLibrary() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [portraits, setPortraits] = useState<Record<string, string>>({});
+
   useEffect(() => {
-    if (user) listCharacters().then(setItems);
+    if (!user) return;
+    void listCharacters().then(async (rows) => {
+      setItems(rows);
+      // Portrait = the first painted still of the character's film.
+      const sb = getSupabase();
+      if (!sb) return;
+      const projectIds = [...new Set(rows.map((r) => r.project_id).filter(Boolean))] as string[];
+      if (!projectIds.length) return;
+      const { data: scenes } = await sb.from("scenes").select("id,project_id").in("project_id", projectIds).eq("index", 0);
+      const sceneByProject = new Map((scenes ?? []).map((s) => [s.project_id, s.id]));
+      const found: Record<string, string> = {};
+      for (const r of rows) {
+        const sceneId = r.project_id ? sceneByProject.get(r.project_id) : undefined;
+        if (!sceneId) continue;
+        const { data: shot } = await sb.from("shots").select("seed_image_key").eq("scene_id", sceneId).eq("index", 0).maybeSingle();
+        if (shot?.seed_image_key) {
+          const url = await signedUrl(shot.seed_image_key);
+          if (url) found[r.id] = url;
+        }
+      }
+      setPortraits(found);
+    });
   }, [user]);
 
   async function onCreate(e: React.FormEvent) {
@@ -79,7 +104,12 @@ export function CharacterLibrary() {
               <div className="grid gap-3 sm:grid-cols-2">
                 {items.map((c) => (
                   <div key={c.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-                    <div className="mb-2 aspect-[3/2] rounded-lg bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/20" />
+                    {portraits[c.id] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={portraits[c.id]} alt={c.name} className="mb-2 aspect-[3/2] w-full rounded-lg object-cover" />
+                    ) : (
+                      <div className="mb-2 aspect-[3/2] rounded-lg bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/20" />
+                    )}
                     <div className="flex items-baseline justify-between gap-2">
                       <div className="font-medium">{c.name}</div>
                       {c.projects?.title && (
