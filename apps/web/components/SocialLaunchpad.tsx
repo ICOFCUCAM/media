@@ -35,6 +35,8 @@ const BUCKET = "cineforge-assets";
 export function SocialLaunchpad() {
   const { enabled, loading, user } = useAuth();
   const [launches, setLaunches] = useState<LaunchRow[] | null>(null);
+  const [films, setFilms] = useState<{ projectId: string; title: string; mp4Key: string }[] | null>(null);
+  const [filmKey, setFilmKey] = useState("");
   const [brief, setBrief] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -49,6 +51,16 @@ export function SocialLaunchpad() {
       .order("created_at", { ascending: false })
       .limit(10);
     if (data) setLaunches(data as unknown as LaunchRow[]);
+    // Finished films are launchable without re-uploading.
+    const { data: own } = await sb.from("projects").select("id,title,status").eq("status", "READY").order("created_at", { ascending: false }).limit(20);
+    if (own) {
+      const ids = own.map((p) => p.id);
+      const { data: f } = await sb.from("films").select("project_id,mp4_key").in("project_id", ids);
+      if (f) {
+        const titles = new Map(own.map((p) => [p.id, p.title]));
+        setFilms(f.map((row) => ({ projectId: row.project_id, title: titles.get(row.project_id) ?? "Untitled film", mp4Key: row.mp4_key })));
+      }
+    }
   }, [user]);
 
   useEffect(() => {
@@ -62,17 +74,21 @@ export function SocialLaunchpad() {
     e.preventDefault();
     const sb = getSupabase();
     const file = fileRef.current?.files?.[0];
-    if (!sb || !user || !file || busy) return;
+    if (!sb || !user || busy || (!file && !filmKey)) return;
     setBusy(true);
     setError(null);
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() || "mp4";
-      const key = `launches/${user.id}/${crypto.randomUUID()}.${ext}`;
-      const up = await sb.storage.from(BUCKET).upload(key, file, { upsert: true });
-      if (up.error) throw new Error(up.error.message);
+      let key = filmKey;
+      if (file) {
+        const ext = file.name.split(".").pop()?.toLowerCase() || "mp4";
+        key = `launches/${user.id}/${crypto.randomUUID()}.${ext}`;
+        const up = await sb.storage.from(BUCKET).upload(key, file, { upsert: true });
+        if (up.error) throw new Error(up.error.message);
+      }
       const ins = await sb.from("social_launches").insert({ user_id: user.id, video_key: key, brief });
       if (ins.error) throw new Error(ins.error.message);
       setBrief("");
+      setFilmKey("");
       if (fileRef.current) fileRef.current.value = "";
       await refresh();
     } catch (err) {
@@ -109,11 +125,24 @@ export function SocialLaunchpad() {
         <div className="space-y-6">
           <form onSubmit={onCreate} className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-5">
             <h2 className="text-sm font-semibold">New launch</h2>
+            {(films?.length ?? 0) > 0 && (
+              <select
+                value={filmKey}
+                onChange={(e) => setFilmKey(e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-white/30"
+              >
+                <option value="">…or pick one of your finished films</option>
+                {films!.map((f) => (
+                  <option key={f.projectId} value={f.mp4Key}>
+                    🎬 {f.title}
+                  </option>
+                ))}
+              </select>
+            )}
             <input
               ref={fileRef}
               type="file"
               accept="video/*"
-              required
               className="w-full text-xs text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-xs file:text-white"
             />
             <textarea
@@ -126,7 +155,7 @@ export function SocialLaunchpad() {
             />
             <button
               type="submit"
-              disabled={busy || !brief.trim()}
+              disabled={busy || !brief.trim() || (!filmKey && !fileRef.current?.files?.length)}
               className="rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
             >
               {busy ? "Uploading…" : "Upload & build launch kit"}
