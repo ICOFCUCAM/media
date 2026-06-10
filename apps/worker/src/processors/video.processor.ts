@@ -233,7 +233,14 @@ export const videoWorker = new Worker<VideoJob>(
     await prisma.shot.update({ where: { id: shotId }, data: { status: "GENERATING" } });
 
     // image-to-video: use the uploaded seed, or generate one (OpenAI) first.
-    const seedKey = await resolveSeedKey(shot);
+    // The still is an enhancement — if the image provider fails, fall back to
+    // text-to-video rather than failing the shot (and stalling the film flow).
+    let seedKey: string | undefined;
+    try {
+      seedKey = await resolveSeedKey(shot);
+    } catch (e) {
+      console.warn(`[video] seed frame failed for shot ${shotId}, falling back to text-to-video:`, e instanceof Error ? e.message : e);
+    }
     // Continuity: inherit prior scenes into the prompt + reuse the same character
     // reference frames so identity is locked pixel-level (docs/28).
     const { preamble, referenceImageKeys, loraKeys } = await resolveContinuity(shot);
