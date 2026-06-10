@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV, ROLES, type Role } from "../lib/products";
 import { useRole } from "./RoleContext";
+import { useAuth } from "./AuthProvider";
+import { msToCredits } from "../lib/plans";
 
 /**
  * The studio's left navigation — outcomes, not engines. The
@@ -13,6 +15,7 @@ import { useRole } from "./RoleContext";
 export function Sidebar() {
   const pathname = usePathname();
   const { role, setRole } = useRole();
+  const { profile } = useAuth();
 
   const sections = NAV.filter((s) => !s.adminOnly || role === "admin");
 
@@ -50,6 +53,17 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
+
+      {/* Credits balance — the one number a creator always wants in view. */}
+      {profile && (
+        <Link
+          href="/pricing"
+          className="mx-3 mb-1 flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 transition hover:border-white/25"
+        >
+          <span className="text-[11px] text-white/50">Credits</span>
+          <span className="text-sm font-semibold">{msToCredits(profile.creditsMs).toLocaleString()}</span>
+        </Link>
+      )}
 
       {/* Role switcher — demonstrates Creator / Studio Owner / Super Admin views. */}
       <div className="border-t border-white/10 p-3">

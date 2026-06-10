@@ -204,6 +204,10 @@ export const NAV: NavSection[] = [
     ],
   },
   {
+    title: "Account",
+    items: [{ label: "Plans & Credits", href: "/pricing" }],
+  },
+  {
     title: "Analytics",
     items: [
       { label: "Revenue", href: "/analytics/revenue" },
