@@ -39,6 +39,7 @@ export function SocialLaunchpad() {
   const [filmKey, setFilmKey] = useState("");
   const [brief, setBrief] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const [hasFile, setHasFile] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,6 +91,7 @@ export function SocialLaunchpad() {
       setBrief("");
       setFilmKey("");
       if (fileRef.current) fileRef.current.value = "";
+      setHasFile(false);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
@@ -143,6 +145,7 @@ export function SocialLaunchpad() {
               ref={fileRef}
               type="file"
               accept="video/*"
+              onChange={(e) => setHasFile((e.target.files?.length ?? 0) > 0)}
               className="w-full text-xs text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-xs file:text-white"
             />
             <textarea
@@ -155,7 +158,7 @@ export function SocialLaunchpad() {
             />
             <button
               type="submit"
-              disabled={busy || !brief.trim() || (!filmKey && !fileRef.current?.files?.length)}
+              disabled={busy || !brief.trim() || (!filmKey && !hasFile)}
               className="rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
             >
               {busy ? "Uploading…" : "Upload & build launch kit"}
