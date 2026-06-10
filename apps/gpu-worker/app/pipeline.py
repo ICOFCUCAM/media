@@ -223,6 +223,8 @@ class VideoPipeline:
             "s3",
             endpoint_url=os.environ.get("S3_ENDPOINT") or None,
             region_name=os.environ.get("S3_REGION", "us-east-1"),
+            aws_access_key_id=os.environ.get("S3_ACCESS_KEY") or os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("S3_SECRET_KEY") or os.environ.get("AWS_SECRET_ACCESS_KEY"),
         )
         suffix = os.path.splitext(key)[1] or ".bin"
         path = tempfile.NamedTemporaryFile(suffix=suffix, delete=False).name
@@ -265,6 +267,8 @@ def upload_clip(local_mp4: str, key: str, local_thumb: str | None) -> str | None
         "s3",
         endpoint_url=os.environ.get("S3_ENDPOINT") or None,
         region_name=os.environ.get("S3_REGION", "us-east-1"),
+        aws_access_key_id=os.environ.get("S3_ACCESS_KEY") or os.environ.get("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.environ.get("S3_SECRET_KEY") or os.environ.get("AWS_SECRET_ACCESS_KEY"),
     )
     s3.upload_file(local_mp4, S3_BUCKET, key, ExtraArgs={"ContentType": "video/mp4"})
     thumb_key = None
