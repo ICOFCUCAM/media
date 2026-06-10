@@ -609,3 +609,15 @@ model AvatarVideo {
 
   @@map("avatar_videos")
 }
+
+// ── Brand kits (docs/33 AGENCY+): applied as a branded outro at render ──────
+model BrandKit {
+  userId         String   @id @map("user_id") @db.Uuid
+  logoKey        String?  @map("logo_key")
+  primaryColor   String   @default("#6366f1") @map("primary_color")
+  secondaryColor String   @default("#d946ef") @map("secondary_color")
+  outroText      String?  @map("outro_text")
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("brand_kits")
+}
