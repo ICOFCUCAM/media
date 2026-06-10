@@ -67,6 +67,13 @@ const registry = buildClusterRegistry(
     resolveVideoUrl: assetBase ? async (key: string) => `${assetBase}/${key}` : undefined,
     // Mirror finished external clips into our storage.
     saveVideo: (key, bytes, contentType) => storage.putBytes(key, bytes, contentType),
+    // fal uploads the seed still to its own CDN (our bucket is private).
+    getImageBytes: async (key: string) => {
+      const bytes = await storage.getBytes(key);
+      const ext = key.split(".").pop()?.toLowerCase();
+      const contentType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "image/png";
+      return { bytes, contentType };
+    },
   },
 );
 

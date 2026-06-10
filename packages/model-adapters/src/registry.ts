@@ -90,6 +90,8 @@ export interface ExternalHooks {
   upload?: (videoUrl: string) => Promise<string>;
   /** Persist raw clip bytes into our storage (fal mirrors results); returns the key. */
   saveVideo?: (key: string, bytes: Uint8Array, contentType: string) => Promise<string>;
+  /** Read a (small) asset's bytes — fal uploads the seed still to its own CDN. */
+  getImageBytes?: (key: string) => Promise<{ bytes: Uint8Array; contentType: string }>;
 }
 
 /**
@@ -124,6 +126,7 @@ export function buildClusterRegistry(env: BuildClusterEnv, hooks: ExternalHooks 
         id: env.FAL_MODEL_ID,
         t2vModel: env.FAL_T2V_MODEL,
         i2vModel: env.FAL_I2V_MODEL,
+        getImageBytes: hooks.getImageBytes,
         resolveImageUrl: hooks.resolveImageUrl,
         saveVideo: hooks.saveVideo,
       }),

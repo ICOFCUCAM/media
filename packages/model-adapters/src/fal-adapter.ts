@@ -22,7 +22,10 @@ export interface FalAdapterOptions {
   t2vModel?: string;
   i2vModel?: string;
   timeoutMs?: number;
-  /** Storage key of a seed still → something fal can fetch (URL or data URI). */
+  /** Seed still bytes — uploaded to fal's CDN so the model can always fetch it
+   *  (our bucket may be private). Preferred over resolveImageUrl. */
+  getImageBytes?: (key: string) => Promise<{ bytes: Uint8Array; contentType: string }>;
+  /** Fallback: a public/CDN URL for the seed still (used only if no getImageBytes). */
   resolveImageUrl?: (key: string) => Promise<string>;
   /** Persist the finished clip into our storage; returns the key. */
   saveVideo: (key: string, bytes: Uint8Array, contentType: string) => Promise<string>;
@@ -30,6 +33,7 @@ export interface FalAdapterOptions {
 }
 
 const QUEUE = "https://queue.fal.run";
+const STORAGE_INITIATE = "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3";
 
 export class FalAdapter implements VideoModelAdapter {
   readonly id: string;
@@ -74,8 +78,25 @@ export class FalAdapter implements VideoModelAdapter {
     const start = Date.now();
     const deadline = start + (this.opts.timeoutMs ?? 12 * 60_000);
 
+    // Resolve the seed still to a URL fal can definitely fetch. Preferred path
+    // uploads the bytes to fal's own CDN (our bucket may be private — a public
+    // bucket URL gives Kling a file_download_error). If we can't get a usable
+    // image, fall through to text-to-video rather than failing the shot.
     const seedKey = req.referenceImageKeys?.[0];
-    const useI2v = Boolean(seedKey && this.opts.resolveImageUrl);
+    let imageUrl: string | undefined;
+    if (seedKey) {
+      try {
+        if (this.opts.getImageBytes) {
+          const { bytes, contentType } = await this.opts.getImageBytes(seedKey);
+          imageUrl = await this.uploadToFalCdn(bytes, contentType, signal);
+        } else if (this.opts.resolveImageUrl) {
+          imageUrl = await this.opts.resolveImageUrl(seedKey);
+        }
+      } catch (e) {
+        console.warn(`[fal] seed image unusable, using text-to-video:`, e instanceof Error ? e.message : e);
+      }
+    }
+    const useI2v = Boolean(imageUrl);
     const model = useI2v
       ? (this.opts.i2vModel ?? "fal-ai/kling-video/v2.1/standard/image-to-video")
       : (this.opts.t2vModel ?? "fal-ai/kling-video/v2.1/standard/text-to-video");
@@ -86,7 +107,7 @@ export class FalAdapter implements VideoModelAdapter {
       negative_prompt: req.negativePrompt,
       aspect_ratio: req.height > req.width ? "9:16" : "16:9",
     };
-    if (useI2v) input.image_url = await this.opts.resolveImageUrl!(seedKey!);
+    if (useI2v) input.image_url = imageUrl;
 
     // 1) Submit to the queue.
     const submitted = (await this.api(`${QUEUE}/${model}`, { method: "POST", body: JSON.stringify(input) }, signal)) as {
@@ -129,6 +150,25 @@ export class FalAdapter implements VideoModelAdapter {
       height: req.height,
       durationSec: req.durationSec,
     };
+  }
+
+  /** Upload bytes to fal's CDN and return a fal-hosted URL the models can fetch. */
+  private async uploadToFalCdn(bytes: Uint8Array, contentType: string, signal?: AbortSignal): Promise<string> {
+    const ext = contentType.includes("jpeg") ? "jpg" : contentType.split("/")[1] ?? "png";
+    const init = (await this.api(
+      STORAGE_INITIATE,
+      { method: "POST", body: JSON.stringify({ content_type: contentType, file_name: `seed.${ext}` }) },
+      signal,
+    )) as { upload_url?: string; file_url?: string };
+    if (!init.upload_url || !init.file_url) throw new Error(`fal storage initiate returned no urls`);
+    const put = await this.fetch(init.upload_url, {
+      method: "PUT",
+      body: Buffer.from(bytes),
+      headers: { "content-type": contentType },
+      signal,
+    });
+    if (!put.ok) throw new Error(`fal storage upload ${put.status}`);
+    return init.file_url;
   }
 
   private async api(url: string, init: { method: string; body?: string }, signal?: AbortSignal): Promise<unknown> {
