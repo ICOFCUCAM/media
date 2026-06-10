@@ -71,8 +71,19 @@ export const renderWorker = new Worker<RenderJob>(
         // shows the final stage instead of an indefinite GENERATING.
         await prisma.project.update({ where: { id: projectId }, data: { status: "RENDERING" } });
         const engine = new RenderEngine(new S3Storage());
-        const out = await engine.renderFinal(projectId, assets, (p) =>
-          realtime.emit("render.progress", { projectId, renderJobId: job.id, progress: p }),
+        // White-label outro (docs/33): AGENCY+ (and admins) get their brand
+        // kit applied as a closing card.
+        const owner = await prisma.project.findUnique({
+          where: { id: projectId },
+          select: { userId: true, user: { select: { tier: true, role: true } } },
+        });
+        const branded = owner && (owner.user.role === "ADMIN" || owner.user.tier === "AGENCY" || owner.user.tier === "ENTERPRISE");
+        const kit = branded ? await prisma.brandKit.findUnique({ where: { userId: owner!.userId } }) : null;
+        const out = await engine.renderFinal(
+          projectId,
+          assets,
+          (p) => realtime.emit("render.progress", { projectId, renderJobId: job.id, progress: p }),
+          kit ? { logoKey: kit.logoKey, primaryColor: kit.primaryColor } : undefined,
         );
         mp4Key = out.mp4Key;
         hlsKey = out.hlsKey;
