@@ -32,13 +32,13 @@ export const PRODUCTS: Product[] = [
     tagline: "Feature-length stories from a single prompt — script, cast, score and cut.",
     href: "/create/film",
     durations: [
+      { label: "1 min", value: 60 },
+      { label: "2 min", value: 120 },
+      { label: "5 min", value: 300 },
       { label: "15 min", value: 900 },
       { label: "30 min", value: 1800 },
-      { label: "60 min", value: 3600 },
-      { label: "90 min", value: 5400 },
-      { label: "120 min", value: 7200 },
     ],
-    defaultSeconds: 1800,
+    defaultSeconds: 120,
     accent: "from-indigo-500 to-fuchsia-500",
   },
   {

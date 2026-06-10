@@ -233,7 +233,7 @@ export class SupabaseRun {
     const sceneIds = scenes.map((s) => s.id);
     const { data: shots } = await sb
       .from("shots")
-      .select("id, scene_id, index, status, thumbnail_key, gpu_ms, updated_at")
+      .select("id, scene_id, index, status, thumbnail_key, seed_image_key, gpu_ms, updated_at")
       .in("scene_id", sceneIds)
       .order("index");
     if (!shots || shots.length === 0) {
@@ -261,19 +261,21 @@ export class SupabaseRun {
       };
       scene.shots.push(view);
       // Back-fill history: shots that finished before we attached/loaded get
-      // their REAL completion timestamps and thumbnails.
+      // their REAL completion timestamps and thumbnails. A painted-but-not-yet-
+      // rendered shot shows its OpenAI scene still until the video lands.
+      const tileKey = view.status === "READY" && sh.thumbnail_key ? sh.thumbnail_key : (sh.thumbnail_key ?? sh.seed_image_key);
+      if (tileKey)
+        void signedUrl(tileKey).then((url) => {
+          if (url && !this.cancelled) {
+            view.thumbUrl = url;
+            emit();
+          }
+        });
       if (view.status === "READY") {
         backfill.push({
           at: Date.parse(sh.updated_at),
           label: `Shot ${scene.index + 1}.${view.index + 1} rendered${sh.gpu_ms ? ` in ${Math.round(sh.gpu_ms / 1000)}s GPU` : ""}`,
         });
-        if (sh.thumbnail_key)
-          void signedUrl(sh.thumbnail_key).then((url) => {
-            if (url && !this.cancelled) {
-              view.thumbUrl = url;
-              emit();
-            }
-          });
       }
     }
     for (const sc of scenes)
@@ -300,13 +302,29 @@ export class SupabaseRun {
         { event: "UPDATE", schema: "public", table: "shots", filter: `scene_id=in.(${sceneIds.join(",")})` },
         (payload) => {
           if (this.cancelled) return;
-          const row = payload.new as { id: string; status: string; thumbnail_key: string | null; gpu_ms: number | null };
+          const row = payload.new as {
+            id: string;
+            status: string;
+            thumbnail_key: string | null;
+            seed_image_key: string | null;
+            gpu_ms: number | null;
+          };
           for (const scene of production.scenes) {
             const shot = scene.shots.find((s) => s.id === row.id);
             if (!shot) continue;
             const was = shot.status;
             shot.status = (row.status as LiveShot["status"]) ?? shot.status;
             shot.gpuMs = row.gpu_ms ?? shot.gpuMs;
+            // OpenAI scene still lands before the video — show it immediately.
+            if (row.seed_image_key && !shot.thumbUrl && shot.status !== "READY") {
+              mark(`Shot ${scene.index + 1}.${shot.index + 1} — scene still painted (OpenAI)`);
+              void signedUrl(row.seed_image_key).then((url) => {
+                if (url && !this.cancelled && !shot.thumbUrl) {
+                  shot.thumbUrl = url;
+                  emit();
+                }
+              });
+            }
             if (shot.status === "GENERATING" && was !== "GENERATING")
               mark(`Shot ${scene.index + 1}.${shot.index + 1} — generating on GPU (Wan 2.1)`);
             if (shot.status === "READY" && was !== "READY") {
@@ -314,7 +332,7 @@ export class SupabaseRun {
               if (row.thumbnail_key)
                 void signedUrl(row.thumbnail_key).then((url) => {
                   if (url && !this.cancelled) {
-                    shot.thumbUrl = url;
+                    shot.thumbUrl = url; // video frame replaces the still
                     emit();
                   }
                 });

@@ -47,6 +47,12 @@ export class DirectorService {
     const shotsPerScene = planShotsPerScene();
     const [width, height] = project.aspectRatio === "9:16" ? [720, 1280] : [1280, 720];
     const modelVersion = MODEL_VERSIONS[project.modelId] ?? "unknown";
+    // Scene stills: when OpenAI is configured, every shot starts as an
+    // image — GPT-image-1 paints the still from the screenplay-derived prompt
+    // (video.processor resolveSeedKey), the still shows in the console
+    // immediately, and it conditions image-to-video when WAN_I2V_MODEL_ID is
+    // set on the GPU. Disable with DIRECTOR_SEED_FRAMES=0.
+    const seedFrames = process.env.DIRECTOR_SEED_FRAMES !== "0" && !!process.env.OPENAI_API_KEY;
 
     // Director writes the screenplay + bible (Claude, or deterministic fallback).
     const draft = await draftFilm(project.prompt, sceneCount);
@@ -152,6 +158,7 @@ export class DirectorService {
                 index: s,
                 prompt,
                 negativePrompt,
+                source: seedFrames ? "image" : "text",
                 durationSec: AVG_SHOT_SEC,
                 modelId: project.modelId,
                 modelVersion,
