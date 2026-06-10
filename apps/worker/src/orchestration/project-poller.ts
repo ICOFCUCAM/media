@@ -13,11 +13,12 @@
  * no public URL, and this needs no extra infrastructure. Low frequency is fine.
  */
 import { Queue } from "bullmq";
-import { QUEUES, type FilmJob } from "@cineforge/shared";
+import { QUEUES, type FilmJob, type VoiceLabJob } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const filmQueue = new Queue<FilmJob>(QUEUES.film, { connection });
+const voiceLabQueue = new Queue<VoiceLabJob>(QUEUES.voiceLab, { connection });
 
 export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_SEC ?? 5) * 1000): () => void {
   let busy = false;
@@ -114,6 +115,25 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
         const windowId = Math.floor(now / STALL_MS);
         await filmQueue.add("resume", { projectId: c.id }, { jobId: `film-resume-${c.id}-${windowId}`, attempts: 2, removeOnComplete: 100 });
         console.log(`[poller] resumed stalled project ${c.id} (no shot completed in ${STALL_MS / 60000} min)`);
+      }
+      // ── Voice Lab (docs/29): claim pending clones + voiceovers ─────────
+      // Same producer/consumer split as films: the web writes PENDING rows,
+      // we claim them atomically and enqueue. Stable jobIds dedupe re-claims.
+      const pendingVoices = await prisma.voice.findMany({ where: { status: "PENDING" }, select: { id: true }, take: 5 });
+      for (const v of pendingVoices) {
+        const claimed = await prisma.voice.updateMany({ where: { id: v.id, status: "PENDING" }, data: { status: "CLONING" } });
+        if (claimed.count === 1) {
+          await voiceLabQueue.add("clone", { kind: "clone", id: v.id }, { jobId: `voice-clone-${v.id}`, attempts: 2, removeOnComplete: 100 });
+          console.log(`[poller] enqueued voice clone ${v.id}`);
+        }
+      }
+      const pendingVoiceovers = await prisma.voiceover.findMany({ where: { status: "PENDING" }, select: { id: true }, take: 5 });
+      for (const vo of pendingVoiceovers) {
+        const claimed = await prisma.voiceover.updateMany({ where: { id: vo.id, status: "PENDING" }, data: { status: "SPEAKING" } });
+        if (claimed.count === 1) {
+          await voiceLabQueue.add("speak", { kind: "speak", id: vo.id }, { jobId: `voiceover-${vo.id}`, attempts: 2, removeOnComplete: 100 });
+          console.log(`[poller] enqueued voiceover ${vo.id}`);
+        }
       }
     } catch (e) {
       console.error("[poller] tick failed:", e);

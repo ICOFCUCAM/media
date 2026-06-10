@@ -15,6 +15,7 @@ import "./processors/audio.processor";
 import "./processors/render.processor";
 import "./processors/lora.processor";
 import "./processors/localize.processor";
+import "./processors/voice-lab.processor";
 import "./processors/publish.processor";
 import { startProjectPoller } from "./orchestration/project-poller";
 

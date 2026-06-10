@@ -202,3 +202,70 @@ function findVideoUrl(obj: unknown, depth = 0): string | undefined {
   }
   return undefined;
 }
+
+// ── Standalone fal helpers (Voice Lab and other non-video fal models) ───────
+
+async function falApi(apiKey: string, url: string, init: { method: string; body?: string }, signal?: AbortSignal): Promise<unknown> {
+  const res = await fetch(url, {
+    ...init,
+    signal,
+    headers: { "content-type": "application/json", authorization: `Key ${apiKey}` },
+  });
+  if (!res.ok) throw new Error(`fal ${init.method} ${url.split("?")[0]} ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  return res.json();
+}
+
+/** Upload bytes to fal's CDN; returns a URL any fal model can read. */
+export async function falUploadBytes(apiKey: string, bytes: Uint8Array, contentType: string, fileName = "upload.bin", signal?: AbortSignal): Promise<string> {
+  const init = (await falApi(
+    apiKey,
+    STORAGE_INITIATE,
+    { method: "POST", body: JSON.stringify({ content_type: contentType, file_name: fileName }) },
+    signal,
+  )) as { upload_url?: string; file_url?: string };
+  if (!init.upload_url || !init.file_url) throw new Error("fal storage initiate returned no urls");
+  const put = await fetch(init.upload_url, { method: "PUT", body: Buffer.from(bytes), headers: { "content-type": contentType }, signal });
+  if (!put.ok) throw new Error(`fal storage upload ${put.status}`);
+  return init.file_url;
+}
+
+/** Run a fal queue model to completion and return its result object. */
+export async function falRunQueue(
+  apiKey: string,
+  model: string,
+  input: Record<string, unknown>,
+  opts: { timeoutMs?: number; signal?: AbortSignal } = {},
+): Promise<Record<string, unknown>> {
+  const deadline = Date.now() + (opts.timeoutMs ?? 10 * 60_000);
+  const submitted = (await falApi(apiKey, `${QUEUE}/${model}`, { method: "POST", body: JSON.stringify(input) }, opts.signal)) as {
+    request_id?: string;
+    status_url?: string;
+    response_url?: string;
+  };
+  if (!submitted.request_id) throw new Error(`fal submit returned no request_id`);
+  const statusUrl = submitted.status_url ?? `${QUEUE}/${model}/requests/${submitted.request_id}/status`;
+  const responseUrl = submitted.response_url ?? `${QUEUE}/${model}/requests/${submitted.request_id}`;
+  for (;;) {
+    if (opts.signal?.aborted) throw new Error("fal aborted");
+    if (Date.now() > deadline) throw new Error(`fal timed out (${model})`);
+    const st = (await falApi(apiKey, statusUrl, { method: "GET" }, opts.signal)) as { status?: string; error?: unknown };
+    if (st.status === "COMPLETED") break;
+    if (st.status === "FAILED" || st.status === "CANCELLED")
+      throw new Error(`fal ${st.status}: ${JSON.stringify(st.error ?? "").slice(0, 300)}`);
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  return (await falApi(apiKey, responseUrl, { method: "GET" }, opts.signal)) as Record<string, unknown>;
+}
+
+/** Find the first URL-ish string in a fal result (audio/video/file outputs). */
+export function falFindUrl(obj: unknown, depth = 0): string | undefined {
+  if (!obj || typeof obj !== "object" || depth > 4) return undefined;
+  const rec = obj as Record<string, unknown>;
+  if (typeof rec.url === "string") return rec.url;
+  if (typeof rec.audio_url === "string") return rec.audio_url;
+  for (const v of Object.values(rec)) {
+    const found = falFindUrl(v, depth + 1);
+    if (found) return found;
+  }
+  return undefined;
+}

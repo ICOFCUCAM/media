@@ -540,3 +540,37 @@ model UsageRecord {
   @@index([userId, createdAt])
   @@map("usage_records")
 }
+
+// ── Voice Lab (docs/29 phase 2): cloned voices + long-form voiceovers ──────
+model Voice {
+  id              String      @id @default(uuid()) @db.Uuid
+  userId          String      @map("user_id") @db.Uuid
+  name            String
+  sampleKey       String?     @map("sample_key")
+  provider        String?
+  providerVoiceId String?     @map("provider_voice_id")
+  status          String      @default("PENDING")
+  errorMessage    String?     @map("error_message")
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  voiceovers      Voiceover[]
+
+  @@map("voices")
+}
+
+model Voiceover {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  voiceId      String?  @map("voice_id") @db.Uuid
+  voice        Voice?   @relation(fields: [voiceId], references: [id], onDelete: SetNull)
+  title        String
+  text         String
+  language     String   @default("en")
+  audioKey     String?  @map("audio_key")
+  status       String   @default("PENDING")
+  errorMessage String?  @map("error_message")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("voiceovers")
+}

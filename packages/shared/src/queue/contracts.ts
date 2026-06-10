@@ -13,6 +13,7 @@ export const QUEUES = {
   lora: "lora-queue",
   localize: "localize-queue",
   publish: "publish-queue",
+  voiceLab: "voice-lab-queue",
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -42,6 +43,13 @@ export interface AudioJob {
   kind: AudioKindJob;
   /** dialogue line id / music cue id / sfx cue id depending on kind. */
   refId?: string;
+}
+
+/** Voice Lab (docs/29): clone a voice from a sample, or speak a long text. */
+export interface VoiceLabJob {
+  kind: "clone" | "speak";
+  /** voices.id for clone, voiceovers.id for speak. */
+  id: string;
 }
 
 export interface RenderJob {
@@ -80,4 +88,5 @@ export interface JobPayloads {
   [QUEUES.lora]: LoraJob;
   [QUEUES.localize]: LocalizeJob;
   [QUEUES.publish]: PublishJob;
+  [QUEUES.voiceLab]: VoiceLabJob;
 }

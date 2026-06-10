@@ -183,6 +183,41 @@ export interface Database {
         Update: { name?: string; description?: string; category?: string; reference_urls?: string[] };
         Relationships: [];
       };
+      voices: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          sample_key: string | null;
+          provider: string | null;
+          provider_voice_id: string | null;
+          status: string;
+          error_message: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { user_id: string; name: string; sample_key?: string | null };
+        Update: { name?: string; status?: string };
+        Relationships: [];
+      };
+      voiceovers: {
+        Row: {
+          id: string;
+          user_id: string;
+          voice_id: string | null;
+          title: string;
+          text: string;
+          language: string;
+          audio_key: string | null;
+          status: string;
+          error_message: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { user_id: string; voice_id?: string | null; title: string; text: string; language?: string };
+        Update: { status?: string };
+        Relationships: [];
+      };
       shots: {
         Row: {
           id: string;

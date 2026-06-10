@@ -4,12 +4,6 @@ import { WorkspacePage } from "../../../../components/WorkspacePage";
 // Characters and Worlds have dedicated routes (real creators); this dynamic
 // route covers the remaining library sections.
 const SECTIONS: Record<string, { title: string; subtitle: string; headline: string; hint: string }> = {
-  voices: {
-    title: "Voices",
-    subtitle: "Cloned and designed voices for narration and dialogue.",
-    headline: "No voices yet.",
-    hint: "Design or clone a voice and assign it to any character for consistent delivery.",
-  },
   music: {
     title: "Music",
     subtitle: "Original scores and cues generated for your projects.",

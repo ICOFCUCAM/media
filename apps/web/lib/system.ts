@@ -95,3 +95,27 @@ export const SUBSYSTEMS: Subsystem[] = [
   { name: "FFmpeg Render Engine", status: "Implemented", blurb: "Normalize → concat → ducked mix → mux → HLS ladder → S3. Builders unit-tested.", doc: "docs/10-ffmpeg-render.md" },
   { name: "Realtime (Supabase / WebSocket)", status: "Implemented", blurb: "Postgres Changes to the browser; Redis pub/sub → Socket.IO room fan-out with ownership checks.", doc: "docs/04-api-spec.md" },
 ];
+
+/** Languages for multilingual export + Voice Lab (mirror of shared/i18n). */
+export const LANGUAGES = [
+  { code: "en", name: "English" },
+  { code: "es", name: "Spanish" },
+  { code: "fr", name: "French" },
+  { code: "pt", name: "Portuguese" },
+  { code: "de", name: "German" },
+  { code: "ar", name: "Arabic" },
+  { code: "sw", name: "Swahili" },
+  { code: "hi", name: "Hindi" },
+  { code: "zh", name: "Chinese" },
+  { code: "ja", name: "Japanese" },
+  { code: "ko", name: "Korean" },
+  { code: "ru", name: "Russian" },
+  { code: "yo", name: "Yoruba" },
+  { code: "no", name: "Norwegian" },
+  { code: "sv", name: "Swedish" },
+  { code: "ig", name: "Igbo" },
+  { code: "ln", name: "Lingala" },
+  { code: "lg", name: "Luganda" },
+  { code: "zu", name: "Zulu" },
+  { code: "pcm", name: "Nigerian Pidgin" },
+] as const;
