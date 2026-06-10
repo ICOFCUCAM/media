@@ -96,6 +96,18 @@ export const voiceLabWorker = new Worker<VoiceLabJob>(
       try {
         const vo = av.voiceoverId ? await prisma.voiceover.findUnique({ where: { id: av.voiceoverId } }) : null;
         if (!vo?.audioKey) throw new Error("pick a READY voiceover first (the avatar reads its audio)");
+        // Cost guardrail: avatar video is the priciest unit on the platform
+        // (fal bills per second of lip-synced video). Cap the speech length;
+        // ~15 chars/sec spoken -> 900 chars ≈ 60s. AVATAR_MAX_CHARS overrides.
+        const maxChars = Number(process.env.AVATAR_MAX_CHARS ?? 900);
+        if (vo.text.length > maxChars)
+          throw new Error(`speech too long for an avatar video (${vo.text.length} chars > ${maxChars} ≈ 60s) — split it or raise AVATAR_MAX_CHARS`);
+        // Daily volume guard per user (default 10/day) — a runaway client
+        // can't burn the fal balance.
+        const dayAgo = new Date(Date.now() - 24 * 3600_000);
+        const today = await prisma.avatarVideo.count({ where: { userId: av.userId, createdAt: { gte: dayAgo }, status: { in: ["READY", "RENDERING"] } } });
+        const maxPerDay = Number(process.env.AVATAR_MAX_PER_DAY ?? 10);
+        if (today > maxPerDay) throw new Error(`daily avatar limit reached (${maxPerDay}/day) — try again tomorrow or contact support`);
         // Ship both assets to fal's CDN, then animate.
         const img = await storage.getBytes(av.imageKey);
         const imgExt = av.imageKey.split(".").pop()?.toLowerCase();
