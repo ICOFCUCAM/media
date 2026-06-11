@@ -261,11 +261,12 @@ function BibleCard({ kind, name, desc }: { kind: string; name: string; desc: str
 }
 function EmptyState({ kind }: { kind: string }) {
   return (
-    <div>
+    <div className="flex flex-col items-center py-6 text-center">
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-indigo-500/20 to-fuchsia-500/10 text-xl">✦</div>
       <p className="text-sm">
-        Describe your {kind} and press <span className="text-white/70">Create</span>.
+        Describe your {kind} and press <span className="font-medium text-white/80">Create</span>.
       </p>
-      <p className="mt-1 text-xs">Watch it get written, cast, filmed and cut — start to finish.</p>
+      <p className="mt-1 text-xs text-white/40">Watch it get written, cast, filmed and cut — start to finish.</p>
     </div>
   );
 }
