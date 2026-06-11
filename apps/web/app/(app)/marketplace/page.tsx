@@ -5,11 +5,15 @@ export const metadata = { title: "Marketplace — Cineforge" };
 
 export default function MarketplacePage() {
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div className="relative isolate mx-auto max-w-6xl px-6 py-8">
+      <div className="cf-aurora pointer-events-none absolute right-0 top-0 -z-10 h-64 w-64 rounded-full bg-[radial-gradient(closest-side,rgba(217,70,239,0.10),transparent)] blur-3xl" />
+      <header className="mb-8 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Creator Marketplace</h1>
-          <p className="mt-1 text-sm text-white/55">
+          <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-fuchsia-300/80">
+            <span className="h-1 w-5 rounded-full bg-fuchsia-400/50" /> Marketplace
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">Earn from what you create</h1>
+          <p className="mt-1.5 text-sm text-white/55">
             Turn what you make into a catalog. Sell films, characters, worlds, voices and templates — set your own price.
           </p>
         </div>
