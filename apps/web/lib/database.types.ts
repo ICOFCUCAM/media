@@ -252,7 +252,7 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: { user_id: string; voiceover_id?: string | null; title?: string; image_key: string };
+        Insert: { user_id: string; voiceover_id?: string | null; title?: string; image_key: string; quality?: string };
         Update: { status?: string };
         Relationships: [];
       };
@@ -418,6 +418,7 @@ export interface Database {
           views: number;
           published_at: string | null;
           locales: Record<string, { mp4?: string; voice?: string }> | null;
+          mp4_4k_key: string | null;
           created_at: string;
         };
         Insert: {

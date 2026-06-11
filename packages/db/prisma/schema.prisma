@@ -519,6 +519,8 @@ model Film {
   publications Json?
   // Per-language variants (docs/29 dubbing): locales[lang] = { mp4, voice, subtitle }
   locales      Json?
+  /// 4K upscaled master (Studio+; fal upscaler) — docs/33.
+  mp44kKey     String?   @map("mp4_4k_key")
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("films")
@@ -601,6 +603,7 @@ model AvatarVideo {
   voiceoverId  String?  @map("voiceover_id") @db.Uuid
   title        String   @default("")
   imageKey     String   @map("image_key")
+  quality      String   @default("standard")
   status       String   @default("PENDING")
   videoKey     String?  @map("video_key")
   errorMessage String?  @map("error_message")

@@ -63,7 +63,7 @@ export interface SocialJob {
 
 export interface RenderJob {
   projectId: string;
-  kind: "preview" | "final" | "scene";
+  kind: "preview" | "final" | "scene" | "upscale";
   sceneId?: string;
 }
 

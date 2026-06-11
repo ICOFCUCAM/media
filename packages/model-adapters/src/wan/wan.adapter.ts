@@ -29,7 +29,7 @@ export class WanAdapter implements VideoModelAdapter {
         { width: 1280, height: 720 },
       ],
       supportsReferenceImage: true,
-      supportsReferenceVideo: true,
+      supportsReferenceVideo: false, // the pod's pipeline has no v2v path (500s) — fal handles it
       supportsLora: true,
       supportsSeed: true,
       tiers: ["FREE", "CREATOR", "STUDIO", "ENTERPRISE"],

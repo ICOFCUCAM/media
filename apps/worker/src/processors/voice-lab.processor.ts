@@ -27,8 +27,10 @@ const storage = new S3Storage();
 
 const CLONE_MODEL = process.env.FAL_VOICE_CLONE_MODEL ?? "fal-ai/minimax/voice-clone";
 const SPEECH_MODEL = process.env.FAL_SPEECH_MODEL ?? "fal-ai/minimax/speech-02-hd";
-/** Talking-avatar model: portrait image + speech audio -> lip-synced video. */
-const AVATAR_MODEL = process.env.FAL_AVATAR_MODEL ?? "fal-ai/kling-video/v1/standard/ai-avatar";
+/** Talking-avatar models: portrait image + speech audio -> lip-synced video.
+ *  standard = cheap (~20-40x less than Kling), premium = Kling AI Avatar. */
+const AVATAR_MODEL_STD = process.env.FAL_AVATAR_MODEL_STD ?? "fal-ai/sadtalker";
+const AVATAR_MODEL_PREMIUM = process.env.FAL_AVATAR_MODEL ?? "fal-ai/kling-video/v1/standard/ai-avatar";
 /** Stock narrator when the user hasn't cloned a voice. */
 const STOCK_VOICE = process.env.FAL_STOCK_VOICE ?? "Deep_Voice_Man";
 const CHUNK_CHARS = 1800; // MiniMax per-call comfort zone
@@ -114,7 +116,15 @@ export const voiceLabWorker = new Worker<VoiceLabJob>(
         const imgUrl = await falUploadBytes(apiKey, img, imgExt === "png" ? "image/png" : "image/jpeg", `portrait.${imgExt ?? "jpg"}`);
         const audio = await storage.getBytes(vo.audioKey);
         const audioUrl = await falUploadBytes(apiKey, audio, "audio/mpeg", "speech.mp3");
-        const result = await falRunQueue(apiKey, AVATAR_MODEL, { image_url: imgUrl, audio_url: audioUrl }, { timeoutMs: 20 * 60_000 });
+        const avatarModel = av.quality === "premium" ? AVATAR_MODEL_PREMIUM : AVATAR_MODEL_STD;
+        // SadTalker uses source_image_url/driven_audio_url; Kling uses image_url/audio_url.
+        // Send both spellings — fal models ignore unknown fields.
+        const result = await falRunQueue(
+          apiKey,
+          avatarModel,
+          { image_url: imgUrl, audio_url: audioUrl, source_image_url: imgUrl, driven_audio_url: audioUrl },
+          { timeoutMs: 20 * 60_000 },
+        );
         const url = falFindUrl(result);
         if (!url) throw new Error(`avatar model returned no video (${JSON.stringify(result).slice(0, 200)})`);
         const res = await fetch(url);

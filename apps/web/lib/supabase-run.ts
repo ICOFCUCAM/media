@@ -429,6 +429,11 @@ export class SupabaseRun {
     state.shots = state.shots.map((s) => ({ ...s, status: "ready" }));
     if (film?.mp4_key) {
       const url = await signedUrl(film.mp4_key);
+      // 4K master (docs/33): exposed as a downloadable pill when upscaled.
+      if (film.mp4_4k_key) {
+        const u4k = await signedUrl(film.mp4_4k_key);
+        if (u4k) state.filmLocales = [{ lang: "4K", url: u4k }, ...(state.filmLocales ?? [])];
+      }
       // Dubbed variants (docs/29): one playable link per language.
       const locales = (film.locales ?? {}) as Record<string, { mp4?: string }>;
       const entries = await Promise.all(
@@ -436,7 +441,7 @@ export class SupabaseRun {
           .filter(([, v]) => v?.mp4)
           .map(async ([lang, v]) => ({ lang, url: (await signedUrl(v.mp4!)) ?? "" })),
       );
-      state.filmLocales = entries.filter((e) => e.url);
+      state.filmLocales = [...(state.filmLocales ?? []), ...entries.filter((e) => e.url)];
       if (url) {
         state.filmUrl = url;
         if (this.existing && film.published_at) {

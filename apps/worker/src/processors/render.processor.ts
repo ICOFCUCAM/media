@@ -15,10 +15,43 @@ import { enqueueLocalize } from "../orchestration/localize-queue";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
+/** 4K upscale (docs/33): final.mp4 -> fal video upscaler -> final_4k.mp4. */
+async function upscaleFilm(projectId: string) {
+  const apiKey = process.env.FAL_KEY;
+  if (!apiKey) return { projectId, skipped: "no FAL_KEY" };
+  const film = await prisma.film.findUnique({ where: { projectId }, select: { mp4Key: true, mp44kKey: true } });
+  if (!film?.mp4Key) return { projectId, skipped: "no film" };
+  if (film.mp44kKey) return { projectId, skipped: "already upscaled" };
+  try {
+    const { falUploadBytes, falRunQueue, falFindUrl } = await import("@cineforge/model-adapters");
+    const storage = new S3Storage();
+    const bytes = await storage.getBytes(film.mp4Key);
+    const srcUrl = await falUploadBytes(apiKey, bytes, "video/mp4", "film.mp4");
+    const model = process.env.FAL_UPSCALE_MODEL ?? "fal-ai/topaz/upscale/video";
+    console.log(`[render] 4K upscale start project=${projectId} model=${model}`);
+    const result = await falRunQueue(apiKey, model, { video_url: srcUrl, upscale_factor: 2 }, { timeoutMs: 30 * 60_000 });
+    const url = falFindUrl(result);
+    if (!url) throw new Error(`upscaler returned no video (${JSON.stringify(result).slice(0, 200)})`);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`upscaled download ${res.status}`);
+    const key = `projects/${projectId}/film/final_4k.mp4`;
+    await storage.putBytes(key, new Uint8Array(await res.arrayBuffer()), "video/mp4");
+    await prisma.film.update({ where: { projectId }, data: { mp44kKey: key } });
+    await realtime.emit("film.ready", { projectId, upscaled: true } as never).catch(() => {});
+    console.log(`[render] 4K master ready project=${projectId}`);
+    return { projectId, mp44kKey: key };
+  } catch (e) {
+    // Enhancement only — log and move on; the 1080p film stands.
+    console.warn(`[render] 4K upscale failed project=${projectId}:`, e instanceof Error ? e.message : e);
+    return { projectId, failed: true };
+  }
+}
+
 export const renderWorker = new Worker<RenderJob>(
   QUEUES.render,
   async (job) => {
     const { projectId, kind } = job.data;
+    if (kind === "upscale") return upscaleFilm(projectId);
     if (kind !== "final") return { skipped: kind };
 
     // Loud, structured logging: this is the LAST step of the pipeline and the
@@ -119,6 +152,25 @@ export const renderWorker = new Worker<RenderJob>(
 
       await realtime.emit("film.ready", { projectId, filmId: film.id, mp4Key, hlsKey });
       console.log(`[render] READY project=${projectId} film=${film.id} duration=${durationSec}s`);
+
+      // 4K export (docs/33, Studio+): upscale the master via fal in the
+      // background. Owner-tier gated; needs FAL_KEY; failure never touches
+      // the finished film.
+      const owner4k = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { user: { select: { tier: true, role: true } } },
+      });
+      const eligible4k =
+        process.env.FAL_KEY &&
+        process.env.UPSCALE_4K !== "0" &&
+        owner4k &&
+        (owner4k.user.role === "ADMIN" || ["STUDIO", "AGENCY", "ENTERPRISE"].includes(owner4k.user.tier));
+      if (eligible4k && hasClips) {
+        const { Queue } = await import("bullmq");
+        const rq = new Queue(QUEUES.render, { connection });
+        await rq.add("upscale", { projectId, kind: "upscale" }, { jobId: `upscale-${projectId}`, attempts: 2, removeOnComplete: 50 });
+        console.log(`[render] queued 4K upscale for ${projectId}`);
+      }
 
       // Multilingual export (docs/29): translate + subtitle + dub the finished
       // film into the configured languages. Fire-and-forget — localization can

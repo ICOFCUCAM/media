@@ -29,7 +29,7 @@ export class HunyuanAdapter implements VideoModelAdapter {
         { width: 1920, height: 1080 },
       ],
       supportsReferenceImage: true,
-      supportsReferenceVideo: true,
+      supportsReferenceVideo: false, // the pod's pipeline has no v2v path (500s) — fal handles it
       supportsLora: true,
       supportsSeed: true,
       tiers: ["STUDIO", "ENTERPRISE"],

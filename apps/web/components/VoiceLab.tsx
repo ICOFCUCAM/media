@@ -54,6 +54,7 @@ export function VoiceLab() {
   // Avatar form
   const portraitRef = useRef<HTMLInputElement>(null);
   const [avatarVoiceoverId, setAvatarVoiceoverId] = useState("");
+  const [avatarQuality, setAvatarQuality] = useState<"standard" | "premium">("standard");
   const [avatarBusy, setAvatarBusy] = useState(false);
 
   // New-voice form
@@ -172,6 +173,7 @@ export function VoiceLab() {
         voiceover_id: avatarVoiceoverId,
         title: vo?.title ?? "Avatar video",
         image_key: key,
+        quality: avatarQuality,
       });
       if (ins.error) throw new Error(ins.error.message);
       if (portraitRef.current) portraitRef.current.value = "";
@@ -385,6 +387,24 @@ export function VoiceLab() {
                     </option>
                   ))}
               </select>
+              <div className="flex gap-2">
+                {(["standard", "premium"] as const).map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => setAvatarQuality(q)}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-xs transition ${
+                      avatarQuality === q
+                        ? q === "premium"
+                          ? "border-amber-400/50 bg-amber-400/10 text-amber-200"
+                          : "border-white/40 bg-white/10"
+                        : "border-white/10 text-white/50 hover:border-white/25"
+                    }`}
+                  >
+                    {q === "premium" ? "✦ Premium (Kling, ~$2-4)" : "Standard (~$0.15)"}
+                  </button>
+                ))}
+              </div>
               <button
                 type="submit"
                 disabled={avatarBusy || !avatarVoiceoverId}
