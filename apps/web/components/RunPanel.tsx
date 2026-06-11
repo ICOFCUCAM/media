@@ -250,15 +250,21 @@ function StoryboardGrid({ state }: { state: DemoState }) {
         {visible.map((s, i) => (
           <div
             key={i}
-            className={`aspect-video rounded-sm transition-all duration-300 ${
-              s.status === "pending" ? "bg-white/5" : s.status === "generating" ? "animate-pulse bg-white/30" : ""
+            className={`relative aspect-video overflow-hidden rounded-sm transition-all duration-300 ${
+              s.status === "pending"
+                ? "bg-white/5"
+                : s.status === "generating"
+                  ? "bg-gradient-to-br from-indigo-500/25 to-fuchsia-500/15"
+                  : "ring-1 ring-white/10"
             }`}
             style={
               s.status === "ready" || s.status === "cached"
                 ? { background: `linear-gradient(135deg, hsl(${s.hue} 65% 45%), hsl(${(s.hue + 40) % 360} 60% 30%))` }
                 : undefined
             }
-          />
+          >
+            {s.status === "generating" && <div className="cf-scan absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-cyan-300/50 to-transparent" />}
+          </div>
         ))}
       </div>
     </div>
