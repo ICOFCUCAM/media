@@ -15,8 +15,9 @@ export const metadata: Metadata = {
     description: "A sentence in, a cinematic film out. Films, 20-language dubbing, voice cloning, avatars, one-tap publishing.",
     type: "website",
   },
-  themeColor: "#0a0a0f",
 };
+
+export const viewport = { themeColor: "#0a0a0f" };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
