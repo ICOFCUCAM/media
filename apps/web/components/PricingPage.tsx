@@ -136,6 +136,47 @@ export function PricingPage() {
           auto-recovered, never double-billed.
         </p>
       </div>
+
+      <div className="mx-auto mt-14 max-w-3xl">
+        <h2 className="mb-4 text-center text-sm font-semibold text-white/70">Questions, answered</h2>
+        <div className="space-y-3">
+          {FAQ.map((f) => (
+            <details key={f.q} className="group rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
+              <summary className="cursor-pointer list-none text-sm font-medium text-white/80 transition group-open:text-white">
+                {f.q}
+              </summary>
+              <p className="mt-2 text-sm leading-relaxed text-white/55">{f.a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
+
+const FAQ = [
+  {
+    q: "What exactly is a credit?",
+    a: "One credit ≈ $0.01 of generation. Every action shows its credit price before you run it, and you're only charged for what actually completes — failed generations auto-recover at no extra cost.",
+  },
+  {
+    q: "What's the difference between Standard and Cinematic films?",
+    a: "Standard renders on our own GPUs with open-source models — great for drafts and budget runs. Cinematic routes every shot to frontier video models (Kling-class): noticeably better motion and detail, faster too, at a higher credit price.",
+  },
+  {
+    q: "Do unused credits expire?",
+    a: "On paid plans credits roll over for 90 days. Top-up packs follow the same rule. The free trial grant is one-time.",
+  },
+  {
+    q: "Can my films really speak Igbo, Lingala or Pidgin?",
+    a: "Yes — dubbing covers 20 languages including ones most platforms skip. Translation runs on a frontier language model; voice quality is strongest in the majors and steadily improving in the rest.",
+  },
+  {
+    q: "Who owns what I make?",
+    a: "You do. Films, voices and avatars you create are yours to publish and sell. Voices you offer to the community are licensed under the terms you set, and you keep 80% (85% on Agency).",
+  },
+  {
+    q: "Can I cancel anytime?",
+    a: "Yes. Cancelling stops future billing immediately; credits you've already received keep working until used or expired.",
+  },
+];
