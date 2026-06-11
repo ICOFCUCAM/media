@@ -248,10 +248,14 @@ function Row({ k, v }: { k: string; v: string }) {
 }
 function BibleCard({ kind, name, desc }: { kind: string; name: string; desc: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-      <div className="text-xs uppercase tracking-wider text-white/40">{kind}</div>
-      <div className="mt-1 font-semibold">{name}</div>
-      <div className="mt-1 text-sm text-white/55">{desc}</div>
+    <div className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/25">
+      <div className="pointer-events-none absolute -right-8 -top-8 h-20 w-20 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.25),transparent)] opacity-0 blur-lg transition group-hover:opacity-100" />
+      <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-white/40">
+        <span>{kind === "Cast" ? "🎭" : "🗺"}</span>
+        {kind}
+      </div>
+      <div className="mt-1.5 font-semibold">{name}</div>
+      <div className="mt-1 line-clamp-2 text-sm text-white/55">{desc}</div>
     </div>
   );
 }
