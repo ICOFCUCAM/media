@@ -164,7 +164,7 @@ function SceneCard({ scene }: { scene: LiveScene }) {
 function ShotTile({ shot }: { shot: LiveShot }) {
   if (shot.thumbUrl) {
     return (
-      <div className="relative aspect-video overflow-hidden rounded-md">
+      <div className="cf-materialize relative aspect-video overflow-hidden rounded-md ring-1 ring-white/10">
         {/* eslint-disable-next-line @next/next/no-img-element -- signed, short-lived storage URL */}
         <img src={shot.thumbUrl} alt={`Shot ${shot.index + 1}`} className="h-full w-full object-cover" />
         {shot.gpuMs ? (
@@ -173,19 +173,27 @@ function ShotTile({ shot }: { shot: LiveShot }) {
       </div>
     );
   }
+  const generating = shot.status === "GENERATING";
   return (
     <div
-      className={`aspect-video rounded-md ${
+      className={`relative aspect-video overflow-hidden rounded-md ${
         shot.status === "READY"
           ? "bg-emerald-400/30"
-          : shot.status === "GENERATING"
-            ? "animate-pulse bg-white/30"
+          : generating
+            ? "bg-gradient-to-br from-indigo-500/20 to-fuchsia-500/15"
             : shot.status === "FAILED"
               ? "bg-red-400/30"
               : "bg-white/5"
       }`}
       title={`Shot ${shot.sceneIndex + 1}.${shot.index + 1} — ${shot.status.toLowerCase()}`}
-    />
+    >
+      {generating && (
+        <>
+          <div className="cf-grain absolute inset-0 opacity-50" />
+          <div className="cf-scan absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-cyan-300/50 to-transparent" />
+        </>
+      )}
+    </div>
   );
 }
 
