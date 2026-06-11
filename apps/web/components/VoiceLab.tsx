@@ -206,10 +206,14 @@ export function VoiceLab() {
   const readyVoices = [...(voices ?? []).filter((v) => v.status === "READY"), ...(community ?? [])];
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Voices</h1>
-        <p className="mt-1 text-sm text-white/55">
+    <div className="relative isolate mx-auto max-w-6xl px-6 py-8">
+      <div className="cf-aurora pointer-events-none absolute right-0 top-0 -z-10 h-72 w-72 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.10),transparent)] blur-3xl" />
+      <header className="mb-8">
+        <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-indigo-300/80">
+          <span className="h-1 w-5 rounded-full bg-indigo-400/50" /> Voice Lab
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">Your voice, in 20 languages — and on camera</h1>
+        <p className="mt-1.5 text-sm text-white/55">
           Clone your voice from a short sample, then have it read speeches, news or narration — in any of{" "}
           {LANGUAGES.length} languages.
         </p>
