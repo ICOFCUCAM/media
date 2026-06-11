@@ -78,6 +78,7 @@ export const PLANS: Plan[] = [
       "Reference-video conditioning in storyboard",
       "5 cloned voices + talking avatars",
       "Public channel page · HLS adaptive streaming",
+      "4K upscaled master on every film",
       "Full analytics (revenue · audience · performance)",
       "Sell voices on the marketplace (80/20)",
       "Unlimited social launches + scheduling",
