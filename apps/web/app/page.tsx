@@ -489,14 +489,17 @@ function Marketplace() {
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {MARKETPLACE_ITEMS.map((m) => (
-            <div key={m.name} className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.02]">
-              <div className={`cf-pan aspect-square bg-gradient-to-br ${m.accent}`} />
+            <div key={m.name} className="group overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] transition hover:-translate-y-1 hover:border-white/30">
+              <div className="relative overflow-hidden">
+                <div className={`cf-pan aspect-square bg-gradient-to-br transition duration-500 group-hover:scale-110 ${m.accent}`} />
+                <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-emerald-300 backdrop-blur">keep 90%</span>
+              </div>
               <div className="p-3">
                 <div className="text-[10px] uppercase tracking-wider text-white/40">{m.kind}</div>
                 <div className="mt-0.5 truncate text-sm font-medium">{m.name}</div>
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-sm font-semibold">${m.price}</span>
-                  <span className="rounded-md bg-white px-2 py-1 text-[11px] font-medium text-black">Buy</span>
+                  <span className="rounded-md bg-white px-2 py-1 text-[11px] font-medium text-black transition group-hover:bg-indigo-200">Buy</span>
                 </div>
               </div>
             </div>
