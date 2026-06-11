@@ -84,9 +84,14 @@ export function RunPanel({
 
       {state.status === "RENDERING" && (
         <div>
-          <span className="text-xs uppercase tracking-wider text-white/40">Final cut</span>
+          <span className="text-xs uppercase tracking-wider text-white/40">Final cut · assembling</span>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full bg-white transition-all" style={{ width: `${Math.round((state.renderProgress || 0.4) * 100)}%` }} />
+            <div
+              className="relative h-full bg-gradient-to-r from-indigo-400 via-fuchsia-400 to-cyan-400 transition-all"
+              style={{ width: `${Math.round((state.renderProgress || 0.4) * 100)}%` }}
+            >
+              <div className="absolute inset-0 cf-shimmer bg-white/30" />
+            </div>
           </div>
         </div>
       )}
