@@ -16,6 +16,8 @@ import {
 export default function Home() {
   return (
     <>
+      {/* Top light bloom — sets the cinematic tone behind the glass header. */}
+      <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[60vh] bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.10),transparent_60%)]" aria-hidden />
       <SiteHeader />
       <main className="overflow-hidden">
         <Hero />
