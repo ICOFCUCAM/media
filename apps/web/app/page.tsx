@@ -549,17 +549,19 @@ function Pricing() {
 /* ── 11 · Final CTA ────────────────────────────────────────────────── */
 function FinalCta() {
   return (
-    <section className="relative mx-auto max-w-6xl px-6 py-24 text-center">
-      <div className="cf-pan pointer-events-none absolute left-1/2 top-1/2 -z-10 h-80 w-[48rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(124,45,143,0.4),transparent)] blur-2xl" />
+    <section className="relative isolate mx-auto max-w-6xl overflow-hidden px-6 py-28 text-center">
+      <EngineCore size={680} />
+      <Starfield count={30} />
+      <div className="cf-aurora pointer-events-none absolute left-1/2 top-1/2 -z-10 h-80 w-[48rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(124,45,143,0.4),transparent)] blur-2xl" />
       <h2 className="mx-auto max-w-3xl text-4xl font-semibold leading-tight sm:text-6xl">
-        Your studio is one prompt away.
+        Your studio is <span className="cf-sheen bg-[linear-gradient(110deg,#a5b4fc,40%,#f0abfc,60%,#67e8f9)] bg-clip-text text-transparent">one prompt</span> away.
       </h2>
       <p className="mx-auto mt-4 max-w-xl text-white/60">Write the idea. We'll handle the crew, the cameras and the distribution.</p>
-      <div className="mt-8 flex items-center justify-center gap-3">
-        <Link href="/create/film" className="rounded-lg bg-white px-7 py-3.5 text-sm font-semibold text-black transition hover:bg-white/90">
+      <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+        <Link href="/create/film" className="rounded-xl bg-white px-8 py-4 text-sm font-semibold text-black shadow-[0_0_50px_-10px_rgba(255,255,255,0.6)] transition hover:shadow-[0_0_70px_-10px_rgba(165,180,252,0.9)]">
           Create your first film →
         </Link>
-        <Link href="/create" className="rounded-lg border border-white/20 px-7 py-3.5 text-sm font-medium hover:bg-white/5">
+        <Link href="/create" className="rounded-xl border border-white/20 bg-white/[0.02] px-8 py-4 text-sm font-medium backdrop-blur transition hover:border-white/40 hover:bg-white/5">
           See all the ways to start
         </Link>
       </div>
