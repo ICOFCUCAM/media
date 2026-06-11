@@ -520,8 +520,10 @@ function Footer() {
         <span>© {new Date().getFullYear()} Cineforge</span>
         <div className="flex gap-5">
           <Link href="/create/film" className="hover:text-white/70">Studio</Link>
+          <Link href="/library/voices" className="hover:text-white/70">Voice Lab</Link>
           <Link href="/marketplace" className="hover:text-white/70">Marketplace</Link>
           <Link href="/publish" className="hover:text-white/70">Publish</Link>
+          <Link href="/pricing" className="hover:text-white/70">Pricing</Link>
           <a href="https://github.com/ICOFCUCAM/media" className="hover:text-white/70">Code</a>
         </div>
       </div>
