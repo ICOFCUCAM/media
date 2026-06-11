@@ -11,6 +11,21 @@ body {
   color: #f5f5f7;
 }
 
+/* Keyboard focus — a visible, on-brand ring (mouse clicks stay clean). */
+:focus-visible {
+  outline: 2px solid rgba(165, 180, 252, 0.8);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Smooth in-page anchored scrolling. */
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
 /* ── Homepage cinematic motion ─────────────────────────────── */
 @keyframes cf-pan {
   0% { background-position: 0% 50%; }
