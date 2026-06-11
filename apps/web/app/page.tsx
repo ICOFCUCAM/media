@@ -386,15 +386,23 @@ function VoiceAndAvatar() {
 
 function LanguageStrip() {
   const langs = ["English", "Français", "Español", "Deutsch", "中文", "Русский", "العربية", "हिन्दी", "Kiswahili", "Yorùbá", "Igbo", "Lingála", "Luganda", "isiZulu", "Naijá Pidgin", "Norsk", "Svenska", "Português", "日本語", "한국어"];
+  const row = [...langs, ...langs];
   return (
-    <section className="border-y border-white/5 bg-white/[0.015] py-8">
-      <p className="mb-4 text-center text-[11px] uppercase tracking-widest text-white/35">
+    <section className="border-y border-white/5 bg-white/[0.015] py-9">
+      <p className="mb-5 text-center text-[11px] uppercase tracking-widest text-white/35">
         Every film, every speech — in 20 languages, including the ones everyone else skips
       </p>
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-5 gap-y-2 px-6 text-sm text-white/50">
-        {langs.map((l) => (
-          <span key={l} className="whitespace-nowrap">{l}</span>
-        ))}
+      <div className="relative overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_6%,black_94%,transparent)]">
+        <div className="cf-marquee flex w-max gap-3">
+          {row.map((l, i) => (
+            <span
+              key={i}
+              className="whitespace-nowrap rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-sm text-white/60 transition hover:border-indigo-400/40 hover:text-white"
+            >
+              {l}
+            </span>
+          ))}
+        </div>
       </div>
     </section>
   );
