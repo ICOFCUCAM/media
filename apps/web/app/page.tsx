@@ -264,19 +264,27 @@ function StudioShowcase() {
               ))}
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="rounded-lg border border-white/10 bg-white/[0.02] p-2.5">
-                  <div className="mb-2 aspect-video overflow-hidden rounded">
-                    <div className="cf-pan h-full w-full" style={{ background: `linear-gradient(135deg, hsl(${(i * 53) % 360} 60% 42%), hsl(${(i * 53 + 60) % 360} 55% 28%))` }} />
+              {Array.from({ length: 6 }).map((_, i) => {
+                const generating = i === 4;
+                return (
+                  <div key={i} className="rounded-lg border border-white/10 bg-white/[0.02] p-2.5">
+                    <div className="relative mb-2 aspect-video overflow-hidden rounded">
+                      <div className="cf-pan h-full w-full" style={{ background: `linear-gradient(135deg, hsl(${(i * 53) % 360} 60% 42%), hsl(${(i * 53 + 60) % 360} 55% 28%))` }} />
+                      {generating && <div className="cf-scan absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-cyan-300/50 to-transparent" />}
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-white/70">Scene {i + 1}</span>
+                      <span
+                        className={`rounded-full border px-1.5 py-0.5 text-[9px] uppercase ${
+                          i < 4 ? "border-emerald-400/40 text-emerald-300" : generating ? "border-cyan-400/40 text-cyan-300" : "border-white/20 text-white/45"
+                        }`}
+                      >
+                        {i < 4 ? "Ready" : generating ? "◐ Filming" : "Draft"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-white/70">Scene {i + 1}</span>
-                    <span className={`rounded-full border px-1.5 py-0.5 text-[9px] uppercase ${i < 4 ? "border-emerald-400/40 text-emerald-300" : "border-white/20 text-white/45"}`}>
-                      {i < 4 ? "Ready" : "Draft"}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
