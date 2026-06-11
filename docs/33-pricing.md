@@ -118,8 +118,16 @@ Annual billing −20%. Credits roll over 90 days on paid plans.
 
 ## F. Implementation status
 
-Already enforced in code: tier gates on models, credit hard-gate in the
-poller, per-generation debits, budget ceiling pause, admin bypass. To ship
-billing: Stripe checkout for plans/top-ups (users.stripe_id column already
-exists), credit grant on invoice, monthly reset job, and the per-action
-credit prices above moved into shared/system config.
+LIVE: tier gates on models AND film length (web chips + authoritative
+worker clamp), credit hard-gate in the poller, per-generation debits,
+budget ceiling pause, admin bypass; /pricing page with checkout + top-ups;
+Stripe Edge Functions DEPLOYED (stripe-checkout JWT-gated, stripe-webhook
+signature-gated: fulfillment, renewals, cancellation→FREE) — activates
+when STRIPE_SECRET_KEY/STRIPE_WEBHOOK_SECRET are set; credits chip in the
+sidebar; admin console (/admin/users roster + grants, /admin/moderation);
+cost guardrails (avatar 60s + 10/day, voiceover 20k chars); seat limits on
+Teams by tier; brand-kit white-label outro applied at render for AGENCY+.
+
+REMAINING: Stripe keys (user action), monthly credit RESET job (today
+renewals are additive grants), per-action credit prices into shared
+config (today the ledger debits measured gpu-ms), marketplace payouts.
