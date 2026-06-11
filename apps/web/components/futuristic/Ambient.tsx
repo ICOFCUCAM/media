@@ -47,7 +47,7 @@ export function EngineCore({ size = 520 }: { size?: number }) {
   );
 }
 
-/** Sparse star/particle field. */
+/** Sparse star/particle field. Hidden on small screens to save paint cost. */
 export function Starfield({ count = 40 }: { count?: number }) {
   const stars = Array.from({ length: count }, (_, i) => ({
     left: (i * 53) % 100,
@@ -56,7 +56,7 @@ export function Starfield({ count = 40 }: { count?: number }) {
     size: (i % 3) + 1,
   }));
   return (
-    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
+    <div className="pointer-events-none absolute inset-0 -z-10 hidden overflow-hidden sm:block" aria-hidden>
       {stars.map((s, i) => (
         <span
           key={i}
