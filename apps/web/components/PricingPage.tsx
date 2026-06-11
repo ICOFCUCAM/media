@@ -48,10 +48,16 @@ export function PricingPage() {
   const credits = profile ? msToCredits(profile.creditsMs) : null;
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-10">
-      <header className="mb-8 text-center">
-        <h1 className="text-3xl font-semibold">Plans for every studio</h1>
-        <p className="mt-2 text-sm text-white/55">
+    <div className="relative isolate mx-auto max-w-7xl px-6 py-10">
+      <div className="cf-aurora pointer-events-none absolute left-1/2 top-0 -z-10 h-80 w-[50rem] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(217,70,239,0.12),transparent)] blur-3xl" />
+      <header className="mb-10 text-center">
+        <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-fuchsia-300/80">
+          <span className="h-1 w-5 rounded-full bg-fuchsia-400/50" /> Plans &amp; credits
+        </p>
+        <h1 className="text-4xl font-semibold tracking-tight">
+          Plans for <span className="cf-sheen bg-[linear-gradient(110deg,#a5b4fc,40%,#f0abfc,60%,#67e8f9)] bg-clip-text text-transparent">every studio</span>
+        </h1>
+        <p className="mt-3 text-sm text-white/55">
           One credit meter for everything — films, dubbing, voices, avatars, publishing.
         </p>
         {credits !== null && (
