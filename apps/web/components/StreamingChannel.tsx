@@ -64,7 +64,11 @@ export function StreamingChannel() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
           <div>
-            {current?.url && <HlsPlayer src={current.url} />}
+            {current?.url && (
+              <div className="overflow-hidden rounded-2xl border border-white/15 shadow-[0_0_80px_-30px_rgba(99,102,241,0.8)]">
+                <HlsPlayer src={current.url} />
+              </div>
+            )}
             <div className="mt-3 flex items-center justify-between">
               <div>
                 <h2 className="font-semibold">{current?.title}</h2>
