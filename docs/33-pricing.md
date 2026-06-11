@@ -73,12 +73,17 @@ Rules: prices shown before every run; failed generations auto-refund
 | Film engines | Draft only, watermark | Draft + Standard | + **Cinematic (Kling)** | + Cinematic | + custom models/LoRA |
 | Max film length | 30s | 3 min | 10 min | 20 min | unlimited |
 | Scene stills + narration | — | ✓ | ✓ | ✓ | ✓ |
-| Dubbing languages | — | 3 per film | all 20 | all 20 | all + custom |
+| Character/world library + continuity | 1 character | ✓ full | ✓ | ✓ | ✓ + LoRA identity lock |
+| Storyboard mode (seed images) | — | ✓ | ✓ + reference video | ✓ | ✓ |
+| Formats | film/trailer/short | + series | all | all | all |
+| Dubbing + subtitles | — | 3 languages | all 20 | all 20 | all + custom |
 | Voice cloning | — | 1 voice | 5 voices | 15 voices | unlimited |
 | Speech reading | stock voice, 1 page/day | ✓ | ✓ | ✓ | ✓ |
 | Talking avatars | — | self-hosted tier (when live) | ✓ incl. premium | ✓ + priority | ✓ |
 | Voice marketplace | use only | use + offer | + sell (80/20 split) | + sell (85/15 split) | custom licensing |
 | Social Launchpad | kit preview only | 10 launches/mo | unlimited + scheduling | + client workspaces | + team approvals |
+| Streaming channel | — | private + views | public page + HLS | ✓ | + custom domain |
+| Analytics | — | views | full dashboards | + per-client | + exports/API |
 | White-label exports | — | — | — | ✓ (no platform branding) | ✓ |
 | Concurrency / queue | 1, lowest priority | 2 | 4, priority | 6, priority | dedicated GPU pool |
 | Seats | 1 | 1 | 3 | 8 | custom (Teams exists in UI) |

@@ -158,8 +158,8 @@ export const IDEA_TO_AUDIENCE: string[] = [
 // Mirrors lib/plans.ts / docs/33 — the REAL plans the checkout sells.
 export const PRICING: { tier: string; price: string; tagline: string; features: string[]; highlight?: boolean }[] = [
   { tier: "Free", price: "$0", tagline: "Taste the magic", features: ["200 trial credits", "Draft films up to 30s", "Speech reading (stock voice)", "Community voices"] },
-  { tier: "Creator", price: "$19/mo", tagline: "Finished films, not clips", features: ["2,500 credits/month", "Standard engine + narration", "Dubbing in 3 languages", "1 cloned voice", "10 social launches"] },
-  { tier: "Studio", price: "$59/mo", tagline: "Cinematic unlocked", features: ["9,000 credits/month", "Frontier video engine", "All 20 languages", "Talking avatars", "Sell voices (80/20)"], highlight: true },
+  { tier: "Creator", price: "$19/mo", tagline: "Finished films, not clips", features: ["2,500 credits/month", "Standard engine + narration", "Consistent characters & worlds", "Storyboard control + dubbing", "Private streaming channel"] },
+  { tier: "Studio", price: "$59/mo", tagline: "Cinematic unlocked", features: ["9,000 credits/month", "Frontier video engine", "All 20 languages + subtitles", "Avatars + public channel", "Full analytics + marketplace"], highlight: true },
   { tier: "Agency", price: "$99/mo", tagline: "Produce for clients", features: ["18,000 credits/month", "8 seats + client workspaces", "White-label exports", "15 cloned voices"] },
   { tier: "Enterprise", price: "from $499", tagline: "Your studio, your rules", features: ["Pooled credits + dedicated GPUs", "Character LoRA identity lock", "Custom languages & licensing", "SLA + onboarding"] },
 ];
