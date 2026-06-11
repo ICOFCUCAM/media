@@ -56,21 +56,27 @@ export default function ProjectCommandCenter({ params }: { params: { id: string 
   }, [user, params.id]);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6">
-        <Link href="/projects" className="text-xs text-white/40 hover:text-white/70">
+    <div className="relative isolate mx-auto max-w-6xl px-6 py-8">
+      <div className="cf-aurora pointer-events-none absolute right-0 top-0 -z-10 h-72 w-72 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.10),transparent)] blur-3xl" />
+      <header className="mb-8">
+        <Link href="/projects" className="text-xs text-white/40 transition hover:text-white/70">
           ← All projects
         </Link>
         {project && project !== "missing" ? (
-          <div className="mt-2">
-            <h1 className="text-2xl font-semibold">{project.title}</h1>
-            <p className="mt-1 max-w-3xl text-sm text-white/55">{project.prompt}</p>
-            <p className="mt-1 text-xs text-white/35">
-              {fmtDuration(project.target_seconds)} target · {project.model_id} · created {new Date(project.created_at).toLocaleString()}
+          <div className="mt-3">
+            <p className="mb-1.5 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-indigo-300/80">
+              <span className="h-1 w-5 rounded-full bg-indigo-400/50" /> Production
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight">{project.title}</h1>
+            <p className="mt-2 max-w-3xl text-sm text-white/55">{project.prompt}</p>
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 text-xs text-white/35">
+              <span className="rounded-full border border-white/10 px-2 py-0.5">{fmtDuration(project.target_seconds)}</span>
+              <span className="rounded-full border border-white/10 px-2 py-0.5">{project.model_id === "cinematic" ? "✦ Cinematic" : project.model_id}</span>
+              <span>created {new Date(project.created_at).toLocaleString()}</span>
             </p>
           </div>
         ) : (
-          <h1 className="mt-2 text-2xl font-semibold">Project</h1>
+          <h1 className="mt-3 text-3xl font-semibold">Project</h1>
         )}
       </header>
 
