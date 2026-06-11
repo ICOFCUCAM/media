@@ -513,8 +513,13 @@ function Pricing() {
         {PRICING.map((t) => (
           <div
             key={t.tier}
-            className={`rounded-2xl border p-6 ${t.highlight ? "border-fuchsia-400/40 bg-fuchsia-400/[0.05]" : "border-white/10 bg-white/[0.02]"}`}
+            className={`relative rounded-2xl border p-6 transition hover:-translate-y-1 ${
+              t.highlight
+                ? "border-fuchsia-400/40 bg-fuchsia-400/[0.05] shadow-[0_0_60px_-20px_rgba(217,70,239,0.8)]"
+                : "border-white/10 bg-white/[0.02] hover:border-white/25"
+            }`}
           >
+            {t.highlight && <div className="pointer-events-none absolute -top-px left-1/2 h-px w-2/3 -translate-x-1/2 bg-gradient-to-r from-transparent via-fuchsia-400/70 to-transparent" />}
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">{t.tier}</h3>
               {t.highlight && <span className="rounded-full bg-fuchsia-400/20 px-2 py-0.5 text-[10px] uppercase tracking-wider text-fuchsia-200">Popular</span>}
