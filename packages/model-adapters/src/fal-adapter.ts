@@ -21,10 +21,14 @@ export interface FalAdapterOptions {
   /** fal queue model paths. */
   t2vModel?: string;
   i2vModel?: string;
+  /** Video-to-video (variations / restyle / remaster of an uploaded clip). */
+  v2vModel?: string;
   timeoutMs?: number;
   /** Seed still bytes — uploaded to fal's CDN so the model can always fetch it
    *  (our bucket may be private). Preferred over resolveImageUrl. */
   getImageBytes?: (key: string) => Promise<{ bytes: Uint8Array; contentType: string }>;
+  /** Reference-video bytes (video-to-video conditioning) — same CDN handoff. */
+  getVideoBytes?: (key: string) => Promise<{ bytes: Uint8Array; contentType: string }>;
   /** Fallback: a public/CDN URL for the seed still (used only if no getImageBytes). */
   resolveImageUrl?: (key: string) => Promise<string>;
   /** Persist the finished clip into our storage; returns the key. */
@@ -57,7 +61,7 @@ export class FalAdapter implements VideoModelAdapter {
         { width: 720, height: 1280 },
       ],
       supportsReferenceImage: true,
-      supportsReferenceVideo: false,
+      supportsReferenceVideo: true, // v2v via FAL_V2V_MODEL (Luma Ray-2 Modify default)
       supportsLora: false, // hosted providers can't load our private LoRA artifacts
       supportsSeed: true,
       tiers: ["STUDIO", "ENTERPRISE"],
@@ -82,7 +86,7 @@ export class FalAdapter implements VideoModelAdapter {
     // uploads the bytes to fal's own CDN (our bucket may be private — a public
     // bucket URL gives Kling a file_download_error). If we can't get a usable
     // image, fall through to text-to-video rather than failing the shot.
-    const seedKey = req.referenceImageKeys?.[0];
+    const seedKey = req.referenceVideoKeys?.length ? undefined : req.referenceImageKeys?.[0];
     let imageUrl: string | undefined;
     if (seedKey) {
       try {
@@ -102,19 +106,41 @@ export class FalAdapter implements VideoModelAdapter {
         console.warn(`[fal] seed image unusable, using text-to-video:`, e instanceof Error ? e.message : e);
       }
     }
-    const useI2v = Boolean(imageUrl);
+    // Video-to-video (docs/26 ops: variations/restyle/remaster of an uploaded
+    // clip): the reference video takes priority over everything else. The clip
+    // ships to fal's CDN and the v2v model re-renders it under the prompt.
+    let videoUrl2v: string | undefined;
+    const refVideoKey = req.referenceVideoKeys?.[0];
+    if (refVideoKey && this.opts.getVideoBytes) {
+      try {
+        const { bytes, contentType } = await this.opts.getVideoBytes(refVideoKey);
+        videoUrl2v = await this.uploadToFalCdn(bytes, contentType, signal);
+      } catch (e) {
+        // Without the source clip a "variation" is meaningless — fail loudly
+        // rather than silently producing an unrelated text-to-video.
+        throw new Error(`reference video unusable for video-to-video: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+
+    const useV2v = Boolean(videoUrl2v);
+    const useI2v = !useV2v && Boolean(imageUrl);
     // NB: Kling v2.1 "standard" exists only as image-to-video on fal;
     // text-to-video lives under v1.6 standard (v2.1 t2v is master-tier only).
-    const model = useI2v
-      ? (this.opts.i2vModel ?? "fal-ai/kling-video/v2.1/standard/image-to-video")
-      : (this.opts.t2vModel ?? "fal-ai/kling-video/v1.6/standard/text-to-video");
+    // V2V default: Luma Ray-2 Modify (restyle/variations of a source clip).
+    const model = useV2v
+      ? (this.opts.v2vModel ?? "fal-ai/luma-dream-machine/ray-2/modify")
+      : useI2v
+        ? (this.opts.i2vModel ?? "fal-ai/kling-video/v2.1/standard/image-to-video")
+        : (this.opts.t2vModel ?? "fal-ai/kling-video/v1.6/standard/text-to-video");
 
-    const input: Record<string, unknown> = {
-      prompt: req.prompt.slice(0, 2000),
-      duration: req.durationSec > 5 ? "10" : "5",
-      negative_prompt: req.negativePrompt,
-      aspect_ratio: req.height > req.width ? "9:16" : "16:9",
-    };
+    const input: Record<string, unknown> = useV2v
+      ? { prompt: req.prompt.slice(0, 2000), video_url: videoUrl2v }
+      : {
+          prompt: req.prompt.slice(0, 2000),
+          duration: req.durationSec > 5 ? "10" : "5",
+          negative_prompt: req.negativePrompt,
+          aspect_ratio: req.height > req.width ? "9:16" : "16:9",
+        };
     if (useI2v) input.image_url = imageUrl;
 
     // 1) Submit to the queue.

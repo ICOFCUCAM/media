@@ -190,17 +190,24 @@ export function AudioStudio() {
  */
 const VIDEO_OPS = ["Variations", "Extend", "Remaster", "Style transfer", "Sequel"];
 export function VideoStudio() {
-  const [name, setName] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [op, setOp] = useState(VIDEO_OPS[0]);
   const [scenes, setScenes] = useState<SceneDraft[] | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const name = file?.name ?? null;
 
   if (scenes) {
     return (
       <StoryboardStudio
         initialBrief={`${op} of ${name ?? "source clip"}`}
         initialScenes={scenes}
-        intro={<Banner tone="beta">{op} scaffolded into scenes. Tune each shot and generate. (Source-clip conditioning lands with the video-to-video adapter.)</Banner>}
+        sourceVideo={file}
+        intro={
+          <Banner tone="beta">
+            {op} scaffolded into scenes — your clip conditions every shot (video-to-video). Tune the prompts, then
+            generate.
+          </Banner>
+        }
       />
     );
   }
@@ -209,7 +216,7 @@ export function VideoStudio() {
     <div className="space-y-4">
       <Banner tone="beta">Video → Video is in beta. Upload a clip and generate variations, extensions, remasters, style transfers or a sequel.</Banner>
       <div className="rounded-xl border border-dashed border-white/15 p-8 text-center">
-        <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={(e) => setName(e.target.files?.[0]?.name ?? null)} />
+        <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         <p className="text-sm text-white/60">{name ? `Loaded: ${name}` : "Upload a source clip (MP4 / MOV)"}</p>
         <button onClick={() => fileRef.current?.click()} className="mt-3 rounded-lg border border-white/15 px-4 py-2 text-sm hover:bg-white/5">
           {name ? "Choose another" : "Upload video"}

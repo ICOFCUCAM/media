@@ -77,6 +77,7 @@ export interface BuildClusterEnv {
   FAL_MODEL_ID?: string;
   FAL_T2V_MODEL?: string;
   FAL_I2V_MODEL?: string;
+  FAL_V2V_MODEL?: string;
 }
 
 /**
@@ -92,6 +93,8 @@ export interface ExternalHooks {
   saveVideo?: (key: string, bytes: Uint8Array, contentType: string) => Promise<string>;
   /** Read a (small) asset's bytes — fal uploads the seed still to its own CDN. */
   getImageBytes?: (key: string) => Promise<{ bytes: Uint8Array; contentType: string }>;
+  /** Read a reference video's bytes for video-to-video conditioning. */
+  getVideoBytes?: (key: string) => Promise<{ bytes: Uint8Array; contentType: string }>;
 }
 
 /**
@@ -126,7 +129,9 @@ export function buildClusterRegistry(env: BuildClusterEnv, hooks: ExternalHooks 
         id: env.FAL_MODEL_ID,
         t2vModel: env.FAL_T2V_MODEL,
         i2vModel: env.FAL_I2V_MODEL,
+        v2vModel: env.FAL_V2V_MODEL,
         getImageBytes: hooks.getImageBytes,
+        getVideoBytes: hooks.getVideoBytes,
         resolveImageUrl: hooks.resolveImageUrl,
         saveVideo: hooks.saveVideo,
       }),

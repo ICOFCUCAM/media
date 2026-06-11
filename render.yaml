@@ -72,6 +72,9 @@ services:
         sync: false
       - key: FAL_AVATAR_MODEL
         sync: false
+      # Video-to-video (variations/restyle of an uploaded clip); default Luma Ray-2 Modify.
+      - key: FAL_V2V_MODEL
+        sync: false
       # Multilingual export (docs/29): e.g. "fr,sw,no" — unset disables dubbing.
       - key: LOCALIZATION_LANGUAGES
         sync: false

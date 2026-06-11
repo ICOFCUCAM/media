@@ -51,6 +51,7 @@ const registry = buildClusterRegistry(
     FAL_MODEL_ID: process.env.FAL_MODEL_ID,
     FAL_T2V_MODEL: process.env.FAL_T2V_MODEL,
     FAL_I2V_MODEL: process.env.FAL_I2V_MODEL,
+    FAL_V2V_MODEL: process.env.FAL_V2V_MODEL,
   },
   {
     // External providers fetch the seed frame by URL. Without a public CDN in
@@ -65,6 +66,8 @@ const registry = buildClusterRegistry(
           return `data:${mime};base64,${Buffer.from(bytes).toString("base64")}`;
         },
     resolveVideoUrl: assetBase ? async (key: string) => `${assetBase}/${key}` : undefined,
+    // Reference clip for video-to-video — fal needs it on its own CDN.
+    getVideoBytes: async (key: string) => ({ bytes: await storage.getBytes(key), contentType: "video/mp4" }),
     // Mirror finished external clips into our storage.
     saveVideo: (key, bytes, contentType) => storage.putBytes(key, bytes, contentType),
     // fal uploads the seed still to its own CDN (our bucket is private).
@@ -248,7 +251,23 @@ export const videoWorker = new Worker<VideoJob>(
     }
 
     // ── Generate ────────────────────────────────────────────────────────
-    const adapter = registry.get(modelId);
+    // Capability-aware routing: a shot conditioned on a reference VIDEO
+    // (variations/restyle of an uploaded clip) needs a v2v-capable engine.
+    // The self-hosted Wan path can't do that — route the shot to the first
+    // registered adapter that can (fal/cinematic), keeping the project's
+    // engine for everything else. No capable engine -> fail with the reason.
+    let adapter = registry.get(modelId);
+    const wantsV2v = Boolean(shot.referenceVideoKey && !PREVIEW_SEED.test(shot.referenceVideoKey));
+    if (wantsV2v && !adapter.capabilities().supportsReferenceVideo) {
+      const capable = registry.listCapabilities().find((c) => c.supportsReferenceVideo);
+      if (!capable) {
+        throw new UnrecoverableError(
+          "This shot needs video-to-video (reference clip), but no configured engine supports it — set FAL_KEY to enable the Cinematic engine.",
+        );
+      }
+      console.log(`[video] shot=${shotId} routed ${modelId} -> ${capable.id} (video-to-video)`);
+      adapter = registry.get(capable.id);
+    }
     await prisma.shot.update({ where: { id: shotId }, data: { status: "GENERATING" } });
 
     // image-to-video: use the uploaded seed, or generate one (OpenAI) first.

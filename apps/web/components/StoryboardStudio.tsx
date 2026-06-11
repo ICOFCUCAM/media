@@ -42,9 +42,12 @@ export interface StoryboardStudioProps {
   initialScenes?: SceneDraft[];
   defaultSource?: ShotSource;
   intro?: ReactNode;
+  /** Video→Video flows: a source clip that conditions EVERY scaffolded scene.
+   *  Uploaded once when the project is created; scenes get its storage key. */
+  sourceVideo?: File | null;
 }
 
-export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = "text", intro }: StoryboardStudioProps = {}) {
+export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = "text", intro, sourceVideo }: StoryboardStudioProps = {}) {
   const [brief, setBrief] = useState(
     initialBrief ?? "A neon-noir detective story set in a rain-soaked megacity where memories can be stolen.",
   );
@@ -115,10 +118,18 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
       const id = await createStoryboardProject({ title: brief, brief, totalSeconds: totalSeconds || 20 });
       setProjectId(id);
       attachRealtime(id);
+      // Video→Video: ship the source clip to storage ONCE and condition every
+      // scene that doesn't already carry its own reference video.
+      let sourceKey: string | null = null;
+      if (sourceVideo) {
+        const up = await uploadAsset(id, "source", sourceVideo, "refvideo");
+        sourceKey = up.key;
+      }
       const out: SceneDraft[] = [];
       for (const d of list) {
-        const { sceneId, shotId } = await persistScene(id, d);
-        out.push({ ...d, sceneId, shotId });
+        const draft = sourceKey && !d.refVideoKey ? { ...d, refVideoKey: sourceKey, refVideoName: sourceVideo?.name ?? "source clip" } : d;
+        const { sceneId, shotId } = await persistScene(id, draft);
+        out.push({ ...draft, sceneId, shotId });
       }
       setScenes(out);
       return { id, scenes: out };
