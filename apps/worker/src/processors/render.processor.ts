@@ -89,8 +89,20 @@ export const renderWorker = new Worker<RenderJob>(
         hlsKey = out.hlsKey;
         posterKey = out.posterKey;
         console.log(`[render] assembly done project=${projectId} mp4=${mp4Key}`);
+      } else if (process.env.S3_ENDPOINT) {
+        // PRODUCTION with storage configured but NO clips to assemble: the shots
+        // never produced video (e.g. the variations/video-to-video flow didn't
+        // generate). Recording a "ready" film here yields an UNPLAYABLE phantom
+        // (mp4 key with no file). Fail honestly so the user sees the real reason
+        // instead of a dead Play button.
+        const message = "No video was generated for this project's shots — nothing to assemble.";
+        console.error(`[render] project=${projectId} has ${scenes.length} scenes but 0 clips — marking FAILED`);
+        await prisma.project.update({ where: { id: projectId }, data: { status: "FAILED", errorMessage: message } });
+        await realtime.emit("error", { projectId, scope: "render", message });
+        return { projectId, failed: "no clips" };
       } else {
-        // No real clips/storage (e.g. local demo without GPU) — record metadata only.
+        // No storage at all (local demo without GPU) — record metadata only so
+        // the lifecycle completes in dev.
         await realtime.emit("render.progress", { projectId, renderJobId: job.id, progress: 1 });
       }
 
