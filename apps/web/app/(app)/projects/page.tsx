@@ -62,17 +62,25 @@ export default function ProjectsPage() {
     <div className="mx-auto max-w-6xl px-6 py-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Projects</h1>
-          <p className="mt-1 text-sm text-white/55">
+          <h1 className="text-3xl font-semibold tracking-tight">Projects</h1>
+          <p className="mt-1.5 flex items-center gap-2 text-sm text-white/55">
             Every film, series, trailer and short you're working on.
-            {active > 0 && <span className="ml-2 text-emerald-300">{active} in production now</span>}
+            {active > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/10 px-2 py-0.5 text-xs text-emerald-300">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="cf-pulse-ring absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                </span>
+                {active} in production now
+              </span>
+            )}
           </p>
         </div>
         <Link
           href="/create/film"
-          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-white/90"
+          className="rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-black shadow-[0_0_24px_-8px_rgba(255,255,255,0.6)] transition hover:shadow-[0_0_40px_-8px_rgba(165,180,252,0.8)]"
         >
-          New project
+          + New project
         </Link>
       </header>
 
