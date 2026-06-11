@@ -101,6 +101,11 @@ function Hero() {
           <span className="text-white/20">&rarr;</span>
           <span>Final cut</span>
         </div>
+        <div className="mt-10 flex justify-center">
+          <span className="cf-float flex h-9 w-5 items-start justify-center rounded-full border border-white/20 p-1" aria-hidden>
+            <span className="h-2 w-1 rounded-full bg-white/50" />
+          </span>
+        </div>
       </div>
     </section>
   );
