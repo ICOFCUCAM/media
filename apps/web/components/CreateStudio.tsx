@@ -126,20 +126,27 @@ export function CreateStudio(props: CreateStudioProps) {
                     type="button"
                     disabled={!allowed}
                     onClick={() => allowed && setModelId(m.id)}
-                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
+                    className={`relative flex w-full items-center justify-between overflow-hidden rounded-lg border px-3 py-2.5 text-left text-sm transition ${
                       modelId === m.id
-                        ? "border-white/40 bg-white/10"
+                        ? m.klass === "premium"
+                          ? "border-amber-400/50 bg-amber-400/[0.06] shadow-[0_0_30px_-12px_rgba(251,191,36,0.8)]"
+                          : "border-white/40 bg-white/10"
                         : allowed
                           ? "border-white/10 hover:border-white/25"
                           : "border-white/5 opacity-45"
                     }`}
                   >
-                    <span>
-                      <span className="font-medium">{label}</span>
-                      <span className="ml-2 text-xs text-white/45">{m.name}</span>
+                    <span className="flex items-center gap-2.5">
+                      <span className={`flex h-7 w-7 items-center justify-center rounded-md text-sm ${m.klass === "premium" ? "bg-gradient-to-br from-amber-400/30 to-rose-500/20" : "bg-white/10"}`}>
+                        {m.klass === "premium" ? "✦" : "◆"}
+                      </span>
+                      <span>
+                        <span className="font-medium">{label}</span>
+                        <span className="ml-2 text-xs text-white/45">{m.name}</span>
+                      </span>
                     </span>
                     {allowed ? (
-                      m.klass === "premium" && <span className="text-[10px] uppercase tracking-wider text-amber-300">Premium</span>
+                      m.klass === "premium" && <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">Premium</span>
                     ) : (
                       <span className="text-[10px] uppercase tracking-wider text-white/35">Studio tier</span>
                     )}
