@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "../components/SiteHeader";
+import { AuroraField, GridFloor, EngineCore, Starfield } from "../components/futuristic/Ambient";
+import { GenerativeFrame } from "../components/futuristic/GenerativeFrame";
 import {
   PRODUCTS,
   WORKFLOW,
@@ -36,43 +38,63 @@ export default function Home() {
 /* ── 1 · Hero — a film visibly becoming a film ─────────────────────── */
 function Hero() {
   return (
-    <section className="relative">
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="cf-pan absolute left-1/2 top-[-10%] h-[36rem] w-[60rem] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.35),rgba(217,70,239,0.18),transparent)] blur-2xl" />
-      </div>
-      <div className="mx-auto max-w-6xl px-6 pt-16 pb-10 text-center">
-        <p className="mb-4 inline-block rounded-full border border-white/15 px-3 py-1 text-xs uppercase tracking-widest text-white/60">
-          The AI Film Studio
+    <section className="relative isolate overflow-hidden">
+      <AuroraField />
+      <Starfield count={48} />
+      <GridFloor />
+
+      <div className="mx-auto max-w-6xl px-6 pt-20 pb-8 text-center">
+        <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-3 py-1 text-xs uppercase tracking-widest text-white/70 backdrop-blur">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="cf-pulse-ring absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          </span>
+          The 2030 AI Film Engine
         </p>
-        <h1 className="mx-auto max-w-4xl bg-gradient-to-b from-white to-white/55 bg-clip-text text-5xl font-semibold leading-[1.05] text-transparent sm:text-7xl">
-          Imagine it.<br />Watch it become a film.
+        <h1 className="mx-auto max-w-4xl text-5xl font-semibold leading-[1.03] tracking-tight sm:text-7xl">
+          <span className="bg-gradient-to-b from-white to-white/55 bg-clip-text text-transparent">A sentence in.</span>
+          <br />
+          <span className="cf-sheen bg-[linear-gradient(110deg,#a5b4fc,40%,#f0abfc,60%,#67e8f9)] bg-clip-text text-transparent">
+            A cinematic film out.
+          </span>
         </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-base text-white/55 sm:text-lg">
-          One sentence in — a narrated, scored, cinematic film out. Dub it into 20 languages,
-          give it your cloned voice, put your face on camera, and publish everywhere with one button.
+        <p className="mx-auto mt-6 max-w-2xl text-base text-white/60 sm:text-lg">
+          Watch your words resolve into shots, scored and narrated, dubbed into 20 languages,
+          in your own cloned voice and on your own face, then published everywhere with one tap.
         </p>
-        <div className="mt-7 flex items-center justify-center gap-3">
-          <Link href="/create/film" className="rounded-lg bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-white/90">
-            Create a Film →
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/create/film"
+            className="rounded-xl bg-white px-7 py-3.5 text-sm font-semibold text-black shadow-[0_0_40px_-8px_rgba(255,255,255,0.5)] transition hover:shadow-[0_0_60px_-8px_rgba(165,180,252,0.8)]"
+          >
+            Create a Film
           </Link>
-          <Link href="/create" className="rounded-lg border border-white/20 px-6 py-3 text-sm font-medium text-white transition hover:bg-white/5">
+          <Link href="/create" className="rounded-xl border border-white/20 bg-white/[0.02] px-7 py-3.5 text-sm font-medium text-white backdrop-blur transition hover:border-white/40 hover:bg-white/5">
             Explore the studio
           </Link>
         </div>
       </div>
 
-      {/* The massive visual: Prompt → Storyboard → Finished frame */}
-      <div className="mx-auto max-w-6xl px-6 pb-16">
-        <div className="grid items-stretch gap-3 lg:grid-cols-[1fr_auto_1.1fr_auto_1.4fr]">
-          <PromptPanel />
-          <Connector />
-          <StoryboardPanel />
-          <Connector />
-          <CinematicFrame label="Finished cinematic frame" big />
+      <div className="relative mx-auto max-w-6xl px-6 pb-20">
+        <div className="grid items-center gap-4 lg:grid-cols-[0.9fr_1.5fr]">
+          <div className="order-2 space-y-3 lg:order-1">
+            <PromptPanel />
+            <StoryboardPanel />
+          </div>
+          <div className="relative order-1 lg:order-2">
+            <EngineCore size={620} />
+            <div className="cf-float">
+              <GenerativeFrame />
+            </div>
+          </div>
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-3 text-center text-[11px] uppercase tracking-widest text-white/40">
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-center text-[11px] uppercase tracking-widest text-white/40">
           <span>Prompt</span>
+          <span className="text-white/20">&rarr;</span>
           <span>Storyboard</span>
+          <span className="text-white/20">&rarr;</span>
+          <span>Generation</span>
+          <span className="text-white/20">&rarr;</span>
           <span>Final cut</span>
         </div>
       </div>
