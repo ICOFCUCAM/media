@@ -81,9 +81,9 @@ export interface Subsystem {
 }
 
 export const SUBSYSTEMS: Subsystem[] = [
-  { name: "AI Director (Anthropic Claude)", status: "Stubbed", blurb: "Prompt → screenplay → scenes → shots with deterministic seeds, prompts & camera. Claude writes the structure; LLM call is the marked integration point.", doc: "docs/05-director-ai.md" },
-  { name: "Continuity Engine", status: "Design", blurb: "Per-scene canonical state (wardrobe, world, story flags) so characters & locations never drift.", doc: "docs/06-continuity-engine.md" },
-  { name: "Character & World Bible", status: "Stubbed", blurb: "Reusable, referenced (not inlined) character/location definitions with identity refs.", doc: "docs/07-character-bible.md" },
+  { name: "AI Director (Anthropic Claude)", status: "Implemented", blurb: "Prompt → screenplay (logline, synopsis, scenes with story narration) via Claude tool-use, plus content moderation and 20-language translation. Writes every film in production.", doc: "docs/05-director-ai.md" },
+  { name: "Continuity Engine", status: "Implemented", blurb: "Director-authored scene bridges + state patches fold into a per-shot state preamble and character reference frames — the same face, wardrobe and world, scene after scene. Unit-tested, runs on every shot.", doc: "docs/06-continuity-engine.md" },
+  { name: "Character & World Bible", status: "Implemented", blurb: "Canonical character/location rows per film with reference frames driving visual identity; per-character LoRA training auto-enqueues (trainer pod is the remaining integration).", doc: "docs/07-character-bible.md" },
   { name: "Video Models (Wan / Hunyuan / External)", status: "Implemented", blurb: "Pluggable VideoModelAdapter + registry; self-hosted Wan/Hunyuan plus a drop-in external provider. New models = one adapter.", doc: "docs/22-video-models.md" },
   { name: "OpenAI Images (GPT-image-1)", status: "Implemented", blurb: "Seed frames for image-to-video + standalone stills, in three orientations. Adapter unit-tested.", doc: "docs/22-video-models.md" },
   { name: "OpenAI Voice (TTS · onyx)", status: "Implemented", blurb: "Narration & dialogue via tts-1 (voice 'onyx'); bytes uploaded to storage. Adapter unit-tested.", doc: "docs/22-video-models.md" },
