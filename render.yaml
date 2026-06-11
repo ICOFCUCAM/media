@@ -58,6 +58,47 @@ services:
         sync: false
       - key: RUNPOD_API_KEY
         sync: false
+      # GPU auto start/stop (docs/23): pod sleeps when idle, wakes on work.
+      - key: RUNPOD_WAN_POD_ID
+        sync: false
+      - key: GPU_IDLE_GRACE_SEC
+        sync: false
+      # Cinematic tier (fal.ai): frontier video + voice clone + TTS + avatars.
+      - key: FAL_KEY
+        sync: false
+      - key: FAL_T2V_MODEL
+        sync: false
+      - key: FAL_I2V_MODEL
+        sync: false
+      - key: FAL_AVATAR_MODEL
+        sync: false
+      # Multilingual export (docs/29): e.g. "fr,sw,no" — unset disables dubbing.
+      - key: LOCALIZATION_LANGUAGES
+        sync: false
+      # Cost guardrails (docs/33): all optional, sane defaults in code.
+      - key: AVATAR_MAX_CHARS
+        sync: false
+      - key: AVATAR_MAX_PER_DAY
+        sync: false
+      - key: VOICEOVER_MAX_CHARS
+        sync: false
+      # Social publishing (docs/31): per-platform credentials, all optional.
+      - key: YOUTUBE_CLIENT_ID
+        sync: false
+      - key: YOUTUBE_CLIENT_SECRET
+        sync: false
+      - key: YOUTUBE_REFRESH_TOKEN
+        sync: false
+      - key: TIKTOK_ACCESS_TOKEN
+        sync: false
+      - key: IG_USER_ID
+        sync: false
+      - key: IG_ACCESS_TOKEN
+        sync: false
+      - key: FB_PAGE_ID
+        sync: false
+      - key: FB_PAGE_TOKEN
+        sync: false
       # Per-character LoRA trainer (optional — tightest identity lock).
       - key: LORA_TRAINER_URL
         sync: false
