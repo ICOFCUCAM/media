@@ -3,6 +3,7 @@ import { SiteHeader } from "../components/SiteHeader";
 import { AuroraField, GridFloor, EngineCore, Starfield } from "../components/futuristic/Ambient";
 import { GenerativeFrame } from "../components/futuristic/GenerativeFrame";
 import { SectionHeading } from "../components/futuristic/SectionHeading";
+import { Reveal } from "../components/futuristic/Reveal";
 import {
   PRODUCTS,
   WORKFLOW,
@@ -19,17 +20,17 @@ export default function Home() {
       <main className="overflow-hidden">
         <Hero />
         <Metrics />
-        <FeatureFilmStudio />
-        <StudioShowcase />
-        <IdeaToAudience />
-        <Workflow />
-        <VoiceAndAvatar />
+        <Reveal><FeatureFilmStudio /></Reveal>
+        <Reveal><StudioShowcase /></Reveal>
+        <Reveal><IdeaToAudience /></Reveal>
+        <Reveal><Workflow /></Reveal>
+        <Reveal><VoiceAndAvatar /></Reveal>
         <LanguageStrip />
-        <PublishEverywhere />
-        <MadeWith />
-        <Marketplace />
-        <Pricing />
-        <FinalCta />
+        <Reveal><PublishEverywhere /></Reveal>
+        <Reveal><MadeWith /></Reveal>
+        <Reveal><Marketplace /></Reveal>
+        <Reveal><Pricing /></Reveal>
+        <Reveal><FinalCta /></Reveal>
         <Footer />
       </main>
     </>
