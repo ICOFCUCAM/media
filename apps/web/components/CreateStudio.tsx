@@ -51,10 +51,10 @@ export function CreateStudio(props: CreateStudioProps) {
   const tier = profile?.tier ?? "FREE";
   const isAdmin = profile?.role === "ADMIN";
   const maxSec = isAdmin ? Number.MAX_SAFE_INTEGER : MAX_FILM_SEC[tier];
-  // Format: defaults to the tier's default once the profile loads (4K only
-  // defaults at AGENCY/ENTERPRISE — higher tiers may still pick anything
-  // down to 480p drafts).
-  const effectiveRes: Resolution = resolution ?? (isAdmin ? "4k" : DEFAULT_RES[tier]);
+  // Format: defaults to the tier's default once the profile loads. 4K is
+  // never a default anywhere — always an explicit choice (it's the priciest
+  // unit). Higher tiers may still pick anything down to 480p drafts.
+  const effectiveRes: Resolution = resolution ?? (isAdmin ? "1080p" : DEFAULT_RES[tier]);
   const resAllowed = (r: Resolution) => isAdmin || resolutionAllowed(r, tier);
 
   const estMs = useMemo(() => estimateMs(modelId, seconds), [modelId, seconds]);

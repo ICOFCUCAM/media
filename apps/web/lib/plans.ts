@@ -158,12 +158,14 @@ export const MAX_RES: Record<Tier, Resolution> = {
   AGENCY: "4k",
   ENTERPRISE: "4k",
 };
+/** 4K is NEVER the default on any plan — it's the priciest unit (fal Topaz
+ *  upscale per film), so it must always be a deliberate per-project choice. */
 export const DEFAULT_RES: Record<Tier, Resolution> = {
   FREE: "480p",
   CREATOR: "720p",
   STUDIO: "1080p",
-  AGENCY: "4k",
-  ENTERPRISE: "4k",
+  AGENCY: "1080p",
+  ENTERPRISE: "1080p",
 };
 export function resolutionAllowed(res: Resolution, tier: Tier): boolean {
   return RES_ORDER.indexOf(res) <= RES_ORDER.indexOf(MAX_RES[tier]);
