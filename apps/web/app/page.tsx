@@ -165,18 +165,20 @@ function Connector() {
 /* ── 2 · Metrics ───────────────────────────────────────────────────── */
 function Metrics() {
   const items = [
-    { v: "10", k: "ways to start" },
+    { v: "20", k: "languages dubbed" },
     { v: `${SOCIAL_CHANNELS.length}`, k: "publish channels" },
-    { v: "120 min", k: "max runtime" },
-    { v: "$0", k: "per-generation fees" },
+    { v: "~6 min", k: "to a cinematic cut" },
+    { v: "4K", k: "frontier-model output" },
   ];
   return (
-    <section className="border-y border-white/10 bg-white/[0.02]">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-6 py-8 sm:grid-cols-4">
+    <section className="relative border-y border-white/10 bg-white/[0.02]">
+      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-6 py-10 sm:grid-cols-4">
         {items.map((m) => (
-          <div key={m.k} className="text-center">
-            <div className="text-3xl font-semibold">{m.v}</div>
-            <div className="mt-1 text-xs uppercase tracking-widest text-white/40">{m.k}</div>
+          <div key={m.k} className="group text-center">
+            <div className="bg-gradient-to-b from-white to-white/50 bg-clip-text text-3xl font-semibold text-transparent transition group-hover:from-indigo-200 group-hover:to-fuchsia-300 sm:text-4xl">
+              {m.v}
+            </div>
+            <div className="mt-1.5 text-xs uppercase tracking-widest text-white/40">{m.k}</div>
           </div>
         ))}
       </div>
