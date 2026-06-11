@@ -137,32 +137,6 @@ function StoryboardPanel() {
   );
 }
 
-function CinematicFrame({ label, big }: { label: string; big?: boolean }) {
-  return (
-    <div className="relative flex flex-col rounded-xl border border-white/10 bg-white/[0.03] p-4">
-      <div className="text-[10px] uppercase tracking-widest text-white/40">{label}</div>
-      <div className={`relative mt-3 flex-1 overflow-hidden rounded-lg ${big ? "min-h-[14rem]" : "min-h-[8rem]"}`}>
-        <div className="cf-pan absolute inset-0 bg-[linear-gradient(115deg,#1b1033,#3b1d63,#7c2d8f,#b3582b,#d39b3a)]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
-        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-3">
-          <span className="rounded bg-black/40 px-2 py-1 text-[11px] text-white/80">Scene 07 · The Coronation</span>
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-black">▶</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Connector() {
-  return (
-    <div className="hidden items-center justify-center lg:flex">
-      <div className="relative h-px w-10 overflow-hidden bg-white/15">
-        <div className="cf-flow absolute top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-white" />
-      </div>
-    </div>
-  );
-}
-
 /* ── 2 · Metrics ───────────────────────────────────────────────────── */
 function Metrics() {
   const items = [
