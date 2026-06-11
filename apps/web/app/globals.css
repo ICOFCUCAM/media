@@ -103,6 +103,13 @@ body {
   .cf-pan, .cf-flow, .cf-shimmer, .cf-marquee,
   .cf-aurora, .cf-spin-slow, .cf-spin-rev, .cf-scan,
   .cf-materialize, .cf-float, .cf-float-slow, .cf-sheen, .cf-pulse-ring {
-    animation: none;
+    animation: none !important;
+  }
+  /* Belt-and-braces: kill ALL animation for motion-sensitive users, including
+     inline-styled keyframes the utility classes above don't cover. */
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }
