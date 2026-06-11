@@ -303,8 +303,15 @@ function IdeaToAudience() {
         <div className="mt-10 flex flex-wrap items-center justify-center gap-2">
           {IDEA_TO_AUDIENCE.map((step, i) => (
             <div key={step} className="flex items-center gap-2">
-              <span className="rounded-full border border-white/15 bg-white/[0.03] px-4 py-2 text-sm">{step}</span>
-              {i < IDEA_TO_AUDIENCE.length - 1 && <span className="text-white/30">→</span>}
+              <span className="group relative rounded-full border border-white/15 bg-white/[0.03] px-4 py-2 text-sm transition hover:border-indigo-400/50 hover:bg-indigo-400/[0.06]">
+                <span className="mr-1.5 font-mono text-[10px] text-indigo-300/60">{String(i + 1).padStart(2, "0")}</span>
+                {step}
+              </span>
+              {i < IDEA_TO_AUDIENCE.length - 1 && (
+                <span className="relative h-px w-5 overflow-hidden bg-white/15">
+                  <span className="cf-flow absolute top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-indigo-300" style={{ animationDelay: `${i * 0.3}s` }} />
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -320,7 +327,11 @@ function Workflow() {
       <h2 className="text-center text-sm font-semibold uppercase tracking-widest text-white/40">Create · Edit · Publish · Monetize</h2>
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {WORKFLOW.map((w) => (
-          <div key={w.step} className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
+          <div
+            key={w.step}
+            className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] p-5 transition hover:border-white/25 hover:bg-white/[0.04]"
+          >
+            <div className="pointer-events-none absolute -right-12 -top-12 h-24 w-24 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.25),transparent)] opacity-0 blur-xl transition group-hover:opacity-100" />
             <div className="text-xs text-white/30">{w.step}</div>
             <div className="mt-1 text-base font-semibold">{w.title}</div>
             <p className="mt-1 text-sm text-white/55">{w.blurb}</p>
