@@ -60,12 +60,22 @@ export function CreateStudio(props: CreateStudioProps) {
   }
 
   return (
-    <div className={props.embedded ? "" : "mx-auto max-w-6xl px-6 py-8"}>
+    <div className={props.embedded ? "" : "relative isolate mx-auto max-w-6xl px-6 py-8"}>
       {!props.embedded && (
-        <header className="mb-6">
-          <h1 className="text-2xl font-semibold">{props.heading}</h1>
-          <p className="mt-1 text-sm text-white/55">{props.blurb}</p>
-        </header>
+        <>
+          <div className="cf-aurora pointer-events-none absolute right-0 top-0 -z-10 h-72 w-72 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.12),transparent)] blur-3xl" />
+          <header className="mb-8">
+            <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-indigo-300/80">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="cf-pulse-ring absolute inline-flex h-full w-full rounded-full bg-indigo-400" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-indigo-400" />
+              </span>
+              AI Film Engine
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight">{props.heading}</h1>
+            <p className="mt-1.5 text-sm text-white/55">{props.blurb}</p>
+          </header>
+        </>
       )}
 
       <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
