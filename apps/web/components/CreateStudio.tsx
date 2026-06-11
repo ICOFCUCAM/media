@@ -156,7 +156,7 @@ export function CreateStudio(props: CreateStudioProps) {
             </div>
           </Field>
 
-          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm">
+          <div className="rounded-lg border border-white/10 bg-gradient-to-br from-white/[0.04] to-transparent p-3 text-sm">
             <Row k="Final runtime" v={fmtDuration(seconds)} />
             <Row k="Ready in" v={`~${readyEstimate}`} />
             {props.platforms && <Row k="Format" v={props.platforms.find((p) => p.id === platform)?.aspect ?? "16:9"} />}
@@ -166,11 +166,18 @@ export function CreateStudio(props: CreateStudioProps) {
             <button
               onClick={onCreate}
               disabled={running}
-              className="flex-1 rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
+              className="group relative flex-1 overflow-hidden rounded-xl bg-white px-4 py-3 text-sm font-semibold text-black shadow-[0_0_30px_-10px_rgba(255,255,255,0.6)] transition hover:shadow-[0_0_50px_-10px_rgba(165,180,252,0.9)] disabled:opacity-40 disabled:shadow-none"
             >
-              {running ? "Creating…" : props.cta ?? "Create"}
+              {running ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+                  Generating…
+                </span>
+              ) : (
+                <>✦ {props.cta ?? "Create"}</>
+              )}
             </button>
-            <button onClick={reset} className="rounded-lg border border-white/15 px-4 py-2.5 text-sm hover:bg-white/5">
+            <button onClick={reset} className="rounded-xl border border-white/15 px-4 py-3 text-sm transition hover:bg-white/5">
               Reset
             </button>
           </div>
