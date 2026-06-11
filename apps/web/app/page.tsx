@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SiteHeader } from "../components/SiteHeader";
 import { AuroraField, GridFloor, EngineCore, Starfield } from "../components/futuristic/Ambient";
 import { GenerativeFrame } from "../components/futuristic/GenerativeFrame";
+import { SectionHeading } from "../components/futuristic/SectionHeading";
 import {
   PRODUCTS,
   WORKFLOW,
@@ -232,9 +233,8 @@ function FeatureFilmStudio() {
 function StudioShowcase() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-12">
-      <div className="mb-6 text-center">
-        <h2 className="text-2xl font-semibold sm:text-3xl">A real production workspace</h2>
-        <p className="mx-auto mt-2 max-w-xl text-white/55">Plan scenes, drop in seed images, generate shot by shot, and watch it render — live.</p>
+      <div className="mb-8">
+        <SectionHeading eyebrow="The workspace" title="A real production workspace" subtitle="Plan scenes, drop in seed images, generate shot by shot, and watch it render — live." />
       </div>
       <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0c0c12] shadow-2xl">
         {/* window chrome */}
@@ -452,11 +452,8 @@ function MadeWith() {
   ];
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold sm:text-3xl">Made with Cineforge</h2>
-          <p className="mt-1 text-white/55">Films, animation, commercials, shorts and docs — from a single prompt.</p>
-        </div>
+      <div className="mb-8">
+        <SectionHeading center={false} eyebrow="Showreel" title="Made with Cineforge" subtitle="Films, animation, commercials, shorts and docs — from a single prompt." />
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {examples.map((e) => (
