@@ -4,6 +4,7 @@ import { AuroraField, GridFloor, EngineCore, Starfield } from "../components/fut
 import { GenerativeFrame } from "../components/futuristic/GenerativeFrame";
 import { SectionHeading } from "../components/futuristic/SectionHeading";
 import { Reveal } from "../components/futuristic/Reveal";
+import { RealShowreel } from "../components/futuristic/RealShowreel";
 import {
   PRODUCTS,
   WORKFLOW,
@@ -151,7 +152,7 @@ function Metrics() {
     { v: "20", k: "languages dubbed" },
     { v: `${SOCIAL_CHANNELS.length}`, k: "publish channels" },
     { v: "~6 min", k: "to a cinematic cut" },
-    { v: "4K", k: "frontier-model output" },
+    { v: "1080p", k: "adaptive HLS streaming" },
   ];
   return (
     <section className="relative border-y border-white/10 bg-white/[0.02]">
@@ -435,9 +436,10 @@ function MadeWith() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
       <div className="mb-8">
-        <SectionHeading center={false} eyebrow="Showreel" title="Made with Cineforge" subtitle="Films, animation, commercials, shorts and docs — from a single prompt." />
+        <SectionHeading center={false} eyebrow="Showreel" title="Made with Cineforge" subtitle="Real films generated on this platform — hover to play." />
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <RealShowreel />
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {examples.map((e) => (
           <div key={e.label} className="group relative overflow-hidden rounded-xl border border-white/10 transition hover:border-white/30 hover:shadow-[0_0_40px_-12px_rgba(99,102,241,0.7)]">
             <div className={`cf-pan transition duration-500 group-hover:scale-105 ${e.vertical ? "aspect-[3/4]" : "aspect-video"}`} style={{ background: `linear-gradient(135deg, hsl(${e.hue} 60% 42%), hsl(${(e.hue + 50) % 360} 55% 26%))` }} />

@@ -7,13 +7,16 @@ import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
 import { HlsPlayer } from "./HlsPlayer";
 import { SkeletonCards } from "./Skeleton";
+import { featureFilm } from "../lib/showcase";
 
 /** Streaming — your channel: every finished film with adaptive playback
  *  (HLS ladder when rendered, MP4 fallback) and per-title stats. */
 export function StreamingChannel() {
-  const { enabled, loading, user } = useAuth();
+  const { enabled, loading, user, profile } = useAuth();
+  const isAdmin = profile?.role === "ADMIN";
+  const [notice, setNotice] = useState<string | null>(null);
   const [titles, setTitles] = useState<
-    { projectId: string; title: string; duration: number; views: number; url: string | null; locales: string[] }[] | null
+    { projectId: string; title: string; duration: number; views: number; mp4Key: string; url: string | null; locales: string[] }[] | null
   >(null);
   const [active, setActive] = useState<string | null>(null);
 
@@ -32,6 +35,7 @@ export function StreamingChannel() {
           title: titleOf.get(f.project_id) ?? "Untitled",
           duration: f.duration_sec,
           views: f.views ?? 0,
+          mp4Key: f.mp4_key,
           url: (f.mp4_key ? await signedUrl(f.mp4_key) : null) ?? null,
           locales: Object.keys((f.locales as Record<string, unknown> | null) ?? {}),
         })),
@@ -41,6 +45,25 @@ export function StreamingChannel() {
   }, [user]);
 
   const current = titles?.find((t) => t.projectId === active) ?? titles?.[0];
+
+  async function onDelete(projectId: string, title: string) {
+    if (!window.confirm(`Delete "${title}"? The project and its film are removed from your channel.`)) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    await sb.from("projects").delete().eq("id", projectId);
+    setTitles((prev) => prev?.filter((t) => t.projectId !== projectId) ?? prev);
+    if (active === projectId) setActive(null);
+  }
+
+  async function onFeature(t: { projectId: string; title: string; mp4Key: string }) {
+    setNotice(null);
+    try {
+      await featureFilm(t.projectId, t.mp4Key, t.title);
+      setNotice(`"${t.title}" is now featured on the homepage ✓`);
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Feature failed");
+    }
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -69,7 +92,7 @@ export function StreamingChannel() {
                 <HlsPlayer src={current.url} />
               </div>
             )}
-            <div className="mt-3 flex items-center justify-between">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="font-semibold">{current?.title}</h2>
                 <p className="text-xs text-white/45">
@@ -77,7 +100,26 @@ export function StreamingChannel() {
                   {current?.locales.length ? ` · dubbed: ${current.locales.map((l) => l.toUpperCase()).join(", ")}` : ""}
                 </p>
               </div>
+              <div className="flex gap-2">
+                {isAdmin && current && (
+                  <button
+                    onClick={() => void onFeature(current)}
+                    className="rounded-lg border border-amber-400/40 px-3 py-1.5 text-xs text-amber-300 transition hover:bg-amber-400/10"
+                  >
+                    ★ Feature on homepage
+                  </button>
+                )}
+                {current && (
+                  <button
+                    onClick={() => void onDelete(current.projectId, current.title)}
+                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/50 transition hover:border-rose-400/40 hover:text-rose-300"
+                  >
+                    ✕ Delete
+                  </button>
+                )}
+              </div>
             </div>
+            {notice && <p className="mt-2 text-xs text-amber-200">{notice}</p>}
           </div>
           <div className="space-y-2">
             {titles.map((t) => (

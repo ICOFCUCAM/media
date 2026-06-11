@@ -256,6 +256,12 @@ export interface Database {
         Update: { status?: string };
         Relationships: [];
       };
+      showcase: {
+        Row: { id: string; project_id: string | null; title: string; tag: string; video_path: string; created_at: string };
+        Insert: { project_id?: string | null; title: string; tag?: string; video_path: string };
+        Update: { title?: string; tag?: string };
+        Relationships: [];
+      };
       voices: {
         Row: {
           id: string;

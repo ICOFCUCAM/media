@@ -196,6 +196,14 @@ export function VoiceLab() {
     await refresh();
   }
 
+  async function deleteRow(table: "avatar_videos" | "voiceovers", id: string) {
+    if (!window.confirm("Delete this? The file stays in storage but it disappears from your library.")) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    await sb.from(table).delete().eq("id", id);
+    await refresh();
+  }
+
   async function reviewVoice(id: string, approve: boolean) {
     const sb = getSupabase();
     if (!sb) return;
@@ -433,7 +441,7 @@ export function VoiceLab() {
                 <h2 className="mb-2 text-sm font-semibold text-white/70">Avatar videos</h2>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {avatars!.map((a) => (
-                    <AvatarCard key={a.id} row={a} />
+                    <AvatarCard key={a.id} row={a} onDelete={() => void deleteRow("avatar_videos", a.id)} />
                   ))}
                 </div>
               </div>
@@ -447,7 +455,7 @@ export function VoiceLab() {
             ) : (
               <div className="space-y-3">
                 {voiceovers.map((vo) => (
-                  <VoiceoverCard key={vo.id} row={vo} voices={voices ?? []} />
+                  <VoiceoverCard key={vo.id} row={vo} voices={voices ?? []} onDelete={() => void deleteRow("voiceovers", vo.id)} />
                 ))}
               </div>
             )}
@@ -458,7 +466,7 @@ export function VoiceLab() {
   );
 }
 
-function VoiceoverCard({ row, voices }: { row: VoiceoverRow; voices: VoiceRow[] }) {
+function VoiceoverCard({ row, voices, onDelete }: { row: VoiceoverRow; voices: VoiceRow[]; onDelete: () => void }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     if (row.status === "READY" && row.audio_key) void signedUrl(row.audio_key).then(setUrl);
@@ -474,14 +482,17 @@ function VoiceoverCard({ row, voices }: { row: VoiceoverRow; voices: VoiceRow[] 
             {voiceName} · {lang}
           </div>
         </div>
-        <StatusChip status={row.status} error={row.error_message} />
+        <span className="flex shrink-0 items-center gap-1">
+          <StatusChip status={row.status} error={row.error_message} />
+          <button onClick={onDelete} title="Delete" className="rounded px-1.5 py-0.5 text-xs text-white/30 transition hover:bg-rose-500/10 hover:text-rose-300">✕</button>
+        </span>
       </div>
       {url && <audio controls src={url} className="mt-3 w-full" />}
     </div>
   );
 }
 
-function AvatarCard({ row }: { row: AvatarRow }) {
+function AvatarCard({ row, onDelete }: { row: AvatarRow; onDelete: () => void }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     if (row.status === "READY" && row.video_key) void signedUrl(row.video_key).then(setUrl);
@@ -490,7 +501,10 @@ function AvatarCard({ row }: { row: AvatarRow }) {
     <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="truncate text-sm font-medium">{row.title}</div>
-        <StatusChip status={row.status} error={row.error_message} />
+        <span className="flex shrink-0 items-center gap-1">
+          <StatusChip status={row.status} error={row.error_message} />
+          <button onClick={onDelete} title="Delete" className="rounded px-1.5 py-0.5 text-xs text-white/30 transition hover:bg-rose-500/10 hover:text-rose-300">✕</button>
+        </span>
       </div>
       {url && <video controls src={url} className="mt-2 w-full rounded-lg" />}
       {row.error_message && <p className="mt-1 text-[11px] text-amber-300">{row.error_message}</p>}
