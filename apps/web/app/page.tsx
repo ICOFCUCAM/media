@@ -346,36 +346,29 @@ function Workflow() {
 /* ── Voice & Avatar studio ─────────────────────────────────────────── */
 function VoiceAndAvatar() {
   const cards = [
-    {
-      title: "Clone your voice",
-      body: "30 seconds of speech becomes a voice that reads anything — speeches, news, narration — with no length limit.",
-      chip: "Voice Lab",
-    },
-    {
-      title: "Speak 20 languages",
-      body: "Your voice in French, Swahili, Norwegian, Igbo, Lingala, Zulu, Pidgin and more — languages other platforms ignore.",
-      chip: "Dubbing",
-    },
-    {
-      title: "Put yourself on camera",
-      body: "Upload a photo and it delivers your speech on video, lip-synced — a personal news anchor in any language.",
-      chip: "Avatars",
-    },
-    {
-      title: "Offer your voice",
-      body: "List your cloned voice on the marketplace under your own terms — every use pays you 80%.",
-      chip: "Marketplace",
-    },
+    { title: "Clone your voice", body: "30 seconds of speech becomes a voice that reads anything — speeches, news, narration — with no length limit.", chip: "Voice Lab", icon: "🎙" },
+    { title: "Speak 20 languages", body: "Your voice in French, Swahili, Norwegian, Igbo, Lingala, Zulu, Pidgin and more — languages other platforms ignore.", chip: "Dubbing", icon: "🌍" },
+    { title: "Put yourself on camera", body: "Upload a photo and it delivers your speech on video, lip-synced — a personal news anchor in any language.", chip: "Avatars", icon: "🎭" },
+    { title: "Offer your voice", body: "List your cloned voice on the marketplace under your own terms — every use pays you 80%.", chip: "Marketplace", icon: "💎" },
   ];
   return (
-    <section className="mx-auto max-w-6xl px-6 py-16">
-      <h2 className="text-center text-2xl font-semibold sm:text-3xl">Your voice. Your face. Every language.</h2>
-      <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-white/50">
+    <section className="relative isolate mx-auto max-w-6xl overflow-hidden px-6 py-20">
+      <div className="cf-aurora pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[30rem] w-[50rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.12),transparent)] blur-3xl" />
+      <h2 className="text-center text-3xl font-semibold sm:text-4xl">
+        <span className="cf-sheen bg-[linear-gradient(110deg,#fff,40%,#a5b4fc,60%,#fff)] bg-clip-text text-transparent">Your voice. Your face. Every language.</span>
+      </h2>
+      <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-white/55">
         The Voice Lab turns a sample of your voice into an instrument — and your photo into a presenter.
       </p>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map((c) => (
-          <div key={c.title} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map((c, i) => (
+          <div
+            key={c.title}
+            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition hover:-translate-y-1 hover:border-indigo-400/40 hover:bg-white/[0.04]"
+            style={{ animation: `cf-float ${6 + (i % 3)}s ease-in-out ${i * 0.4}s infinite` }}
+          >
+            <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.3),transparent)] opacity-0 blur-xl transition group-hover:opacity-100" />
+            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-indigo-500/20 to-fuchsia-500/10 text-xl">{c.icon}</div>
             <span className="rounded-full bg-indigo-400/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-indigo-300">{c.chip}</span>
             <h3 className="mt-3 font-semibold">{c.title}</h3>
             <p className="mt-2 text-sm leading-relaxed text-white/55">{c.body}</p>
