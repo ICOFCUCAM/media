@@ -109,10 +109,14 @@ export function SocialLaunchpad() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Publish Everywhere</h1>
-        <p className="mt-1 text-sm text-white/55">
+    <div className="relative isolate mx-auto max-w-5xl px-6 py-8">
+      <div className="cf-aurora pointer-events-none absolute right-0 top-0 -z-10 h-64 w-64 rounded-full bg-[radial-gradient(closest-side,rgba(16,185,129,0.10),transparent)] blur-3xl" />
+      <header className="mb-8">
+        <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-emerald-300/80">
+          <span className="h-1 w-5 rounded-full bg-emerald-400/50" /> Launchpad
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">Publish everywhere, in one tap</h1>
+        <p className="mt-1.5 text-sm text-white/55">
           Upload a video and a one-line brief — the AI writes the launch kit for every platform, then one button posts
           it to every connected account.
         </p>
