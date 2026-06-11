@@ -224,7 +224,7 @@ function StudioShowcase() {
           <span className="h-3 w-3 rounded-full bg-rose-500/70" />
           <span className="h-3 w-3 rounded-full bg-amber-500/70" />
           <span className="h-3 w-3 rounded-full bg-emerald-500/70" />
-          <span className="ml-3 rounded bg-white/5 px-2 py-0.5 text-xs text-white/40">cineforge.app/create/film — Storyboard</span>
+          <span className="ml-3 rounded bg-white/5 px-2 py-0.5 text-xs text-white/40">cineforge.app/create/film · ✦ Cinematic</span>
         </div>
         <div className="grid grid-cols-[150px_1fr]">
           {/* sidebar */}
