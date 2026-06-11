@@ -141,14 +141,15 @@ function SceneCard({ scene }: { scene: LiveScene }) {
           {scene.index + 1}. {scene.heading ?? `Scene ${scene.index + 1}`}
         </span>
         <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${
+          className={`flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] ${
             scene.status === "READY"
               ? "bg-emerald-400/15 text-emerald-300"
               : active
-                ? "bg-white/15 text-white"
+                ? "bg-cyan-400/15 text-cyan-300"
                 : "bg-white/5 text-white/40"
           }`}
         >
+          {active && <PulseDot className="bg-cyan-300" />}
           {scene.status === "READY" ? "Completed" : active ? "Rendering on GPU" : `${ready}/${scene.shots.length} shots`}
         </span>
       </div>
