@@ -272,10 +272,14 @@ async function bumpViews(projectId: string) {
 function Result({ state, title }: { state: DemoState; title: string }) {
   const strip = state.shots.filter((s) => s.status === "ready" || s.status === "cached").slice(0, 24);
   return (
-    <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.04] p-5 backdrop-blur">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="cf-grain relative overflow-hidden rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.04] p-5 shadow-[0_0_60px_-24px_rgba(16,185,129,0.7)] backdrop-blur">
+      <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[radial-gradient(closest-side,rgba(16,185,129,0.25),transparent)] blur-2xl" />
+      <div className="relative flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="font-semibold text-emerald-200">{title}</h3>
+          <h3 className="flex items-center gap-2 font-semibold text-emerald-200">
+            <span className="cf-pulse-ring inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+            {title}
+          </h3>
           <p className="text-sm text-white/60">
             {fmtDuration(state.durationSec)} · {state.scenes} scenes
           </p>
