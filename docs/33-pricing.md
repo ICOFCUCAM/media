@@ -83,7 +83,7 @@ Rules: prices shown before every run; failed generations auto-refund
 | Voice marketplace | use only | use + offer | + sell (80/20 split) | + sell (85/15 split) | custom licensing |
 | Social Launchpad | kit preview only | 10 launches/mo | unlimited + scheduling | + client workspaces | + team approvals |
 | Streaming channel | — | private + views | public page + HLS | ✓ | + custom domain |
-| 4K upscaled master | — | — | ✓ (auto, per film) | ✓ | ✓ |
+| 4K UHD export | — | — | ✓ opt-in per project | ✓ opt-in | ✓ opt-in |
 | Analytics | — | views | full dashboards | + per-client | + exports/API |
 | White-label exports | — | — | — | ✓ (no platform branding) | ✓ |
 | Concurrency / queue | 1, lowest priority | 2 | 4, priority | 6, priority | dedicated GPU pool |
@@ -133,8 +133,9 @@ when STRIPE_SECRET_KEY/STRIPE_WEBHOOK_SECRET are set; credits chip in the
 sidebar; admin console (/admin/users roster + grants, /admin/moderation);
 cost guardrails (avatar 60s + 10/day, voiceover 20k chars); seat limits on
 Teams by tier; brand-kit white-label outro applied at render for AGENCY+; avatar quality
-tiers (standard SadTalker ~\$0.15 / premium Kling); background 4K upscale
-(fal Topaz) for STUDIO+ on every finished film (films.mp4_4k_key).
+tiers (standard SadTalker ~\$0.15 / premium Kling); opt-in 4K upscale
+(fal Topaz) for STUDIO+ — never a default, chosen per project at create
+time (projects.resolution, films.mp4_4k_key).
 
 REMAINING: Stripe keys (user action), monthly credit RESET job (today
 renewals are additive grants), per-action credit prices into shared
