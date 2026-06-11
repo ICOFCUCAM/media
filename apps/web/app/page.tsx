@@ -427,7 +427,10 @@ function PublishEverywhere() {
       <div className="relative mt-10 overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_8%,black_92%,transparent)]">
         <div className="cf-marquee flex w-max gap-3">
           {row.map((c, i) => (
-            <span key={i} className="whitespace-nowrap rounded-xl border border-white/10 bg-white/[0.03] px-6 py-4 text-lg font-medium text-white/80">
+            <span
+              key={i}
+              className="whitespace-nowrap rounded-xl border border-white/10 bg-white/[0.03] px-6 py-4 text-lg font-medium text-white/80 transition hover:border-emerald-400/40 hover:text-white"
+            >
               {c.name}
             </span>
           ))}
@@ -457,14 +460,14 @@ function MadeWith() {
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {examples.map((e) => (
-          <div key={e.label} className="group relative overflow-hidden rounded-xl border border-white/10">
-            <div className={`cf-pan ${e.vertical ? "aspect-[3/4]" : "aspect-video"}`} style={{ background: `linear-gradient(135deg, hsl(${e.hue} 60% 42%), hsl(${(e.hue + 50) % 360} 55% 26%))` }} />
+          <div key={e.label} className="group relative overflow-hidden rounded-xl border border-white/10 transition hover:border-white/30 hover:shadow-[0_0_40px_-12px_rgba(99,102,241,0.7)]">
+            <div className={`cf-pan transition duration-500 group-hover:scale-105 ${e.vertical ? "aspect-[3/4]" : "aspect-video"}`} style={{ background: `linear-gradient(135deg, hsl(${e.hue} 60% 42%), hsl(${(e.hue + 50) % 360} 55% 26%))` }} />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-3">
               <span className="text-sm font-medium">{e.label}</span>
               <span className="rounded bg-black/40 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/70">{e.tag}</span>
             </div>
-            <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-black opacity-0 transition group-hover:opacity-100">▶</span>
+            <span className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black opacity-0 shadow-lg transition group-hover:opacity-100">▶</span>
           </div>
         ))}
       </div>
