@@ -11,6 +11,8 @@ export interface RunConfig {
   prompt: string;
   modelId: string;
   targetSeconds: number;
+  /** Output format ("480p"…"4k") — plan-classified in the UI. */
+  resolution?: string;
 }
 
 /** Shared generation runner — drives the live API when configured, else the

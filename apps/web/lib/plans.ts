@@ -139,3 +139,32 @@ export const MAX_FILM_SEC: Record<Tier, number> = {
   AGENCY: 1200,
   ENTERPRISE: Number.MAX_SAFE_INTEGER,
 };
+
+/** Output formats (docs/33): what each tier may pick, and what it gets by
+ *  default. Higher tiers keep the FULL selection (down to 480p drafts) —
+ *  4K is the default only at AGENCY/ENTERPRISE. */
+export type Resolution = "480p" | "720p" | "1080p" | "4k";
+export const RESOLUTIONS: { id: Resolution; label: string; note: string }[] = [
+  { id: "480p", label: "480p", note: "draft · fastest" },
+  { id: "720p", label: "720p HD", note: "standard" },
+  { id: "1080p", label: "1080p FHD", note: "streaming master" },
+  { id: "4k", label: "4K UHD", note: "upscaled master" },
+];
+const RES_ORDER: Resolution[] = ["480p", "720p", "1080p", "4k"];
+export const MAX_RES: Record<Tier, Resolution> = {
+  FREE: "480p",
+  CREATOR: "720p",
+  STUDIO: "4k",
+  AGENCY: "4k",
+  ENTERPRISE: "4k",
+};
+export const DEFAULT_RES: Record<Tier, Resolution> = {
+  FREE: "480p",
+  CREATOR: "720p",
+  STUDIO: "1080p",
+  AGENCY: "4k",
+  ENTERPRISE: "4k",
+};
+export function resolutionAllowed(res: Resolution, tier: Tier): boolean {
+  return RES_ORDER.indexOf(res) <= RES_ORDER.indexOf(MAX_RES[tier]);
+}

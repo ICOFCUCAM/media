@@ -88,6 +88,8 @@ model Project {
   title         String
   prompt        String
   targetSeconds Int           @map("target_seconds")
+  /// Output format chosen at create time ("480p"|"720p"|"1080p"|"4k") — docs/33.
+  resolution    String   @default("720p")
   aspectRatio   String        @default("16:9") @map("aspect_ratio")
   modelId       String        @default("wan-2.1") @map("model_id")
   status        ProjectStatus @default(DRAFT)

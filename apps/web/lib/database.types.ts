@@ -64,6 +64,7 @@ export interface Database {
           title: string;
           prompt: string;
           target_seconds: number;
+          resolution: string;
           aspect_ratio: string;
           model_id: string;
           mode: ProjectMode;
@@ -82,6 +83,7 @@ export interface Database {
           prompt: string;
           target_seconds: number;
           aspect_ratio?: string;
+          resolution?: string;
           model_id?: string;
           mode?: ProjectMode;
           status?: ProjectStatus;

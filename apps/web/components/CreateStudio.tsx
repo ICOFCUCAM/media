@@ -5,7 +5,7 @@ import { estimateMs, fmtDuration, MODELS, modelAllowed } from "../lib/system";
 import type { ProjectStatus } from "../lib/demo";
 import { useCreateRun } from "../lib/useCreateRun";
 import { useAuth } from "./AuthProvider";
-import { MAX_FILM_SEC } from "../lib/plans";
+import { MAX_FILM_SEC, RESOLUTIONS, MAX_RES, DEFAULT_RES, resolutionAllowed, type Resolution } from "../lib/plans";
 import { RunPanel } from "./RunPanel";
 import type { ShortPlatform } from "../lib/products";
 
@@ -17,7 +17,7 @@ const STAGE_LABEL: Record<ProjectStatus, string> = {
 };
 
 export interface CreateStudioProps {
-  kind: "film" | "series" | "trailer" | "shorts";
+  kind: "film" | "series" | "trailer" | "shorts" | "advert";
   heading: string;
   blurb: string;
   durations: { label: string; value: number }[];
@@ -42,6 +42,7 @@ export function CreateStudio(props: CreateStudioProps) {
   const [seconds, setSeconds] = useState(props.defaultSeconds);
   const [platform, setPlatform] = useState(props.platforms?.[0]?.id ?? "");
   const [modelId, setModelId] = useState("wan-2.1");
+  const [resolution, setResolution] = useState<Resolution | null>(null);
   const { state, running, run, reset } = useCreateRun();
   const { profile } = useAuth();
 
@@ -50,13 +51,18 @@ export function CreateStudio(props: CreateStudioProps) {
   const tier = profile?.tier ?? "FREE";
   const isAdmin = profile?.role === "ADMIN";
   const maxSec = isAdmin ? Number.MAX_SAFE_INTEGER : MAX_FILM_SEC[tier];
+  // Format: defaults to the tier's default once the profile loads (4K only
+  // defaults at AGENCY/ENTERPRISE — higher tiers may still pick anything
+  // down to 480p drafts).
+  const effectiveRes: Resolution = resolution ?? (isAdmin ? "4k" : DEFAULT_RES[tier]);
+  const resAllowed = (r: Resolution) => isAdmin || resolutionAllowed(r, tier);
 
   const estMs = useMemo(() => estimateMs(modelId, seconds), [modelId, seconds]);
   // One serialized GPU: wall-clock ≈ total GPU time + assembly overhead.
   const readyEstimate = fmtDuration(Math.round(estMs / 1000) + 60);
 
   function onCreate() {
-    void run({ prompt, modelId, targetSeconds: seconds });
+    void run({ prompt, modelId, targetSeconds: seconds, resolution: effectiveRes });
   }
 
   return (
@@ -150,6 +156,37 @@ export function CreateStudio(props: CreateStudioProps) {
                     ) : (
                       <span className="text-[10px] uppercase tracking-wider text-white/35">Studio tier</span>
                     )}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+
+          <Field label="Format">
+            <div className="grid grid-cols-2 gap-2">
+              {RESOLUTIONS.map((r) => {
+                const locked = !resAllowed(r.id);
+                const active = effectiveRes === r.id;
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => setResolution(r.id)}
+                    title={locked ? `${r.label} needs a higher plan — see Plans & Credits` : r.note}
+                    className={`rounded-lg border px-3 py-2 text-left text-xs transition ${
+                      locked
+                        ? "cursor-not-allowed border-white/5 text-white/25"
+                        : active
+                          ? r.id === "4k"
+                            ? "border-cyan-400/50 bg-cyan-400/10 text-cyan-200"
+                            : "border-white/40 bg-white/10"
+                          : "border-white/10 text-white/60 hover:border-white/25"
+                    }`}
+                  >
+                    <span className="font-medium">{r.label}</span>
+                    {locked ? " 🔒" : ""}
+                    <span className="block text-[10px] text-white/35">{r.note}</span>
                   </button>
                 );
               })}

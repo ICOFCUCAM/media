@@ -153,17 +153,18 @@ export const renderWorker = new Worker<RenderJob>(
       await realtime.emit("film.ready", { projectId, filmId: film.id, mp4Key, hlsKey });
       console.log(`[render] READY project=${projectId} film=${film.id} duration=${durationSec}s`);
 
-      // 4K export (docs/33, Studio+): upscale the master via fal in the
-      // background. Owner-tier gated; needs FAL_KEY; failure never touches
-      // the finished film.
+      // 4K export (docs/33): CHOICE-driven — runs when the creator picked the
+      // 4K format at create time (the picker is plan-classified in the UI;
+      // the tier check below is the authoritative backstop). Background fal
+      // upscale; failure never touches the finished film.
       const owner4k = await prisma.project.findUnique({
         where: { id: projectId },
-        select: { user: { select: { tier: true, role: true } } },
+        select: { resolution: true, user: { select: { tier: true, role: true } } },
       });
       const eligible4k =
         process.env.FAL_KEY &&
         process.env.UPSCALE_4K !== "0" &&
-        owner4k &&
+        owner4k?.resolution === "4k" &&
         (owner4k.user.role === "ADMIN" || ["STUDIO", "AGENCY", "ENTERPRISE"].includes(owner4k.user.tier));
       if (eligible4k && hasClips) {
         const { Queue } = await import("bullmq");

@@ -184,6 +184,7 @@ export const NAV: NavSection[] = [
       { label: "Create Series", href: "/create/series" },
       { label: "Create Trailer", href: "/create/trailer" },
       { label: "Create Shorts", href: "/create/shorts" },
+      { label: "Create Advert", href: "/create/advert" },
     ],
   },
   {

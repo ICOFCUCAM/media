@@ -84,6 +84,7 @@ export interface LiveProduction {
 }
 
 export interface DemoConfig {
+  resolution?: string;
   prompt: string;
   modelId: string;
   targetSeconds: number;

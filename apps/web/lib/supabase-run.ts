@@ -165,6 +165,7 @@ export class SupabaseRun {
         targetSeconds: this.cfg.targetSeconds,
         modelId: this.cfg.modelId,
         estimatedMs: estMs,
+        resolution: this.cfg.resolution,
       });
       if (this.cancelled) return;
       projectId = project.id;
