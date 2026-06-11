@@ -191,11 +191,14 @@ function FeatureFilmStudio() {
   const secondary = PRODUCTS.filter((p) => p.id !== "film");
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">
-      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] p-8 sm:p-12">
-        <div className="cf-pan pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[radial-gradient(closest-side,rgba(124,45,143,0.5),transparent)] blur-2xl" />
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-center">
+      <div className="cf-grain relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-transparent p-8 shadow-[0_0_120px_-40px_rgba(124,45,143,0.8)] sm:p-12">
+        <div className="cf-aurora pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[radial-gradient(closest-side,rgba(124,45,143,0.5),transparent)] blur-2xl" />
+        <div className="cf-aurora pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-[radial-gradient(closest-side,rgba(34,211,238,0.3),transparent)] blur-2xl" style={{ animationDelay: "-10s" }} />
+        <div className="relative grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-center">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-fuchsia-300/80">Feature Film Studio</p>
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-fuchsia-300/80">
+              <span className="h-1 w-6 rounded-full bg-fuchsia-400/60" /> Feature Film Studio
+            </p>
             <h2 className="mt-3 text-3xl font-semibold leading-tight sm:text-4xl">
               The first AI production system that makes feature-length films.
             </h2>
@@ -204,7 +207,7 @@ function FeatureFilmStudio() {
               writes, casts, films and scores, from one idea to a streamable final cut.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Link href="/create/film" className="rounded-lg bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-white/90">
+              <Link href="/create/film" className="rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black shadow-[0_0_30px_-8px_rgba(255,255,255,0.6)] transition hover:shadow-[0_0_50px_-8px_rgba(240,171,252,0.8)]">
                 Create a Film →
               </Link>
               <div className="flex flex-wrap gap-2 text-sm text-white/55">
@@ -216,7 +219,9 @@ function FeatureFilmStudio() {
               </div>
             </div>
           </div>
-          <CinematicFrame label="Feature film · live render" big />
+          <div className="cf-float-slow">
+            <GenerativeFrame />
+          </div>
         </div>
       </div>
     </section>
