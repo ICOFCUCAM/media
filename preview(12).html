@@ -1,0 +1,2011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cineforge — The Film Production System</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --black: #080808;
+  --black-soft: #101010;
+  --white: #f4f2ed;
+  --muted: #9c9a94;
+  --line: rgba(244,242,237,.15);
+  --line-soft: rgba(244,242,237,.08);
+  --accent: #d8ff62;
+  --serif: Georgia, "Times New Roman", serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--black);
+  color: var(--white);
+  font-family: Inter, sans-serif;
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+}
+
+/* ------------------------------
+   GLOBAL
+------------------------------ */
+
+.section {
+  position: relative;
+  width: 100%;
+  padding: 150px 6vw;
+}
+
+.container {
+  width: min(1440px, 100%);
+  margin: auto;
+}
+
+.eyebrow {
+  font-family: "DM Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.rule {
+  height: 1px;
+  background: var(--line);
+  width: 100%;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(35px);
+  transition:
+    opacity 1s ease,
+    transform 1s cubic-bezier(.2,.7,.2,1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ------------------------------
+   NAVIGATION
+------------------------------ */
+
+.nav {
+  position: fixed;
+  z-index: 100;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 24px 5vw;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(
+    to bottom,
+    rgba(8,8,8,.92),
+    rgba(8,8,8,0)
+  );
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: Manrope, sans-serif;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  font-size: 18px;
+}
+
+.logo-mark {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--white);
+  transform: rotate(45deg);
+  position: relative;
+}
+
+.logo-mark::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  top: 6px;
+  left: 6px;
+}
+
+.nav-center {
+  display: flex;
+  gap: 32px;
+  font-size: 12px;
+  color: #c8c6c0;
+}
+
+.nav-center a {
+  transition: color .3s ease;
+}
+
+.nav-center a:hover {
+  color: var(--white);
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-login {
+  font-size: 12px;
+  color: #c8c6c0;
+}
+
+.nav-cta {
+  border: 1px solid var(--white);
+  padding: 10px 17px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  transition: .3s;
+}
+
+.nav-cta:hover {
+  background: var(--white);
+  color: var(--black);
+}
+
+/* ------------------------------
+   HERO
+------------------------------ */
+
+.hero {
+  min-height: 100vh;
+  padding: 0 5vw;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.hero-image {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0,0,0,.92) 0%,
+      rgba(0,0,0,.62) 45%,
+      rgba(0,0,0,.22) 100%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(0,0,0,.88) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 72% 38%,
+      #4a4638 0%,
+      #191816 30%,
+      #080808 68%
+    );
+}
+
+.hero-image::after {
+  content: "";
+  position: absolute;
+  inset: 12% 9% 10% 52%;
+  border: 1px solid rgba(244,242,237,.14);
+  background:
+    linear-gradient(
+      130deg,
+      rgba(255,255,255,.08),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 60% 45%,
+      rgba(216,255,98,.15),
+      transparent 38%
+    );
+  transform: perspective(1000px) rotateY(-8deg);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  width: min(1100px, 100%);
+  padding-bottom: 10vh;
+}
+
+.hero-kicker {
+  margin-bottom: 35px;
+}
+
+.hero-title {
+  font-family: Manrope, sans-serif;
+  font-size: clamp(72px, 11vw, 190px);
+  line-height: .83;
+  letter-spacing: -.075em;
+  font-weight: 700;
+  margin: 0;
+  max-width: 1050px;
+}
+
+.hero-title em {
+  font-family: var(--serif);
+  font-weight: 400;
+  letter-spacing: -.06em;
+}
+
+.hero-description {
+  max-width: 510px;
+  margin-top: 50px;
+  font-size: 16px;
+  line-height: 1.7;
+  color: #b9b7b1;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  margin-top: 35px;
+}
+
+.primary {
+  background: var(--white);
+  color: var(--black);
+  padding: 15px 23px;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  transition: .3s;
+}
+
+.primary:hover {
+  background: var(--accent);
+}
+
+.text-link {
+  font-size: 12px;
+  color: #b9b7b1;
+}
+
+.hero-bottom {
+  position: absolute;
+  bottom: 30px;
+  left: 5vw;
+  right: 5vw;
+  display: flex;
+  justify-content: space-between;
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+  color: #76746e;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------
+   MANIFESTO
+------------------------------ */
+
+.manifesto {
+  background: var(--white);
+  color: var(--black);
+}
+
+.manifesto .eyebrow {
+  color: #6d6b65;
+}
+
+.manifesto-grid {
+  display: grid;
+  grid-template-columns: 1fr 2.3fr;
+  gap: 70px;
+}
+
+.manifesto h2 {
+  font-family: Manrope, sans-serif;
+  font-size: clamp(45px, 6vw, 90px);
+  line-height: .95;
+  letter-spacing: -.06em;
+  margin: 0;
+  font-weight: 600;
+}
+
+.manifesto h2 em {
+  font-family: var(--serif);
+  font-weight: 400;
+}
+
+.manifesto-copy {
+  align-self: end;
+  max-width: 650px;
+}
+
+.manifesto-copy p {
+  font-size: clamp(20px, 2.1vw, 31px);
+  line-height: 1.25;
+  letter-spacing: -.025em;
+}
+
+.manifesto-copy span {
+  color: #77756e;
+}
+
+/* ------------------------------
+   CINEMATIC CHAPTER
+------------------------------ */
+
+.chapter {
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+}
+
+.chapter.dark {
+  background: var(--black);
+}
+
+.chapter-image {
+  min-height: 650px;
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(120deg, #1b1a18, #403a2d 45%, #121212);
+}
+
+.chapter-image::before {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border: 1px solid rgba(244,242,237,.17);
+}
+
+.chapter-image::after {
+  content: "CINEFORGE / FRAME 001";
+  position: absolute;
+  bottom: 25px;
+  left: 28px;
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+  color: #aaa69c;
+  letter-spacing: .12em;
+}
+
+.chapter-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8vw;
+  align-items: center;
+}
+
+.chapter-copy {
+  max-width: 560px;
+}
+
+.chapter-number {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: .15em;
+  margin-bottom: 35px;
+}
+
+.chapter h2 {
+  font-family: Manrope, sans-serif;
+  font-size: clamp(52px, 6.5vw, 105px);
+  line-height: .9;
+  letter-spacing: -.065em;
+  margin: 0;
+}
+
+.chapter h2 em {
+  font-family: var(--serif);
+  font-weight: 400;
+}
+
+.chapter p {
+  color: #999790;
+  font-size: 15px;
+  line-height: 1.8;
+  margin-top: 35px;
+  max-width: 480px;
+}
+
+/* ------------------------------
+   WORKSPACE
+------------------------------ */
+
+.workspace {
+  background: #0d0d0d;
+}
+
+.workspace-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 30px;
+  margin-bottom: 65px;
+}
+
+.workspace-head h2 {
+  font-size: clamp(50px, 6vw, 90px);
+  line-height: .9;
+  letter-spacing: -.065em;
+  margin: 0;
+  max-width: 800px;
+}
+
+.workspace-head p {
+  max-width: 330px;
+  color: var(--muted);
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.studio {
+  border: 1px solid var(--line);
+  background: #111;
+  min-height: 670px;
+  display: grid;
+  grid-template-columns: 220px 1fr 240px;
+  position: relative;
+  overflow: hidden;
+}
+
+.studio-sidebar {
+  border-right: 1px solid var(--line-soft);
+  padding: 25px;
+}
+
+.studio-sidebar h4 {
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .15em;
+  color: #66645f;
+  margin: 0 0 25px;
+}
+
+.studio-item {
+  padding: 11px 0;
+  font-size: 12px;
+  color: #77756f;
+}
+
+.studio-item.active {
+  color: var(--white);
+}
+
+.studio-main {
+  position: relative;
+  padding: 35px;
+}
+
+.scene {
+  height: 420px;
+  background:
+    radial-gradient(
+      circle at 70% 35%,
+      rgba(216,255,98,.17),
+      transparent 18%
+    ),
+    linear-gradient(
+      145deg,
+      #24221e,
+      #161616 65%
+    );
+  position: relative;
+  overflow: hidden;
+}
+
+.scene::before {
+  content: "";
+  position: absolute;
+  width: 260px;
+  height: 420px;
+  left: 42%;
+  bottom: -80px;
+  background:
+    radial-gradient(
+      ellipse at center,
+      rgba(230,220,190,.25),
+      transparent 62%
+    );
+  filter: blur(12px);
+}
+
+.scene-label {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+  color: #85827a;
+}
+
+.playhead {
+  position: absolute;
+  bottom: 35px;
+  left: 37%;
+  width: 1px;
+  height: 100px;
+  background: var(--accent);
+}
+
+.timeline {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 110px;
+  border-top: 1px solid var(--line);
+  background: rgba(0,0,0,.35);
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  gap: 5px;
+}
+
+.clip {
+  height: 45px;
+  flex: 1;
+  border: 1px solid rgba(244,242,237,.12);
+  background: #292825;
+}
+
+.clip:nth-child(2) {
+  background: #38352f;
+}
+
+.clip:nth-child(4) {
+  background: #222;
+}
+
+.studio-right {
+  border-left: 1px solid var(--line-soft);
+  padding: 25px;
+}
+
+.inspector {
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+  color: #66645f;
+  text-transform: uppercase;
+  letter-spacing: .13em;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 20px;
+}
+
+.parameter {
+  display: flex;
+  justify-content: space-between;
+  margin: 17px 0;
+  font-size: 11px;
+  color: #aaa69d;
+}
+
+.parameter span:last-child {
+  color: var(--white);
+}
+
+/* ------------------------------
+   CAPABILITIES
+------------------------------ */
+
+.capabilities {
+  background: var(--white);
+  color: var(--black);
+}
+
+.capabilities .eyebrow {
+  color: #74716b;
+}
+
+.capability {
+  border-top: 1px solid #cbc9c2;
+  padding: 55px 0;
+  display: grid;
+  grid-template-columns: 100px 1fr 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+.capability:last-child {
+  border-bottom: 1px solid #cbc9c2;
+}
+
+.capability-number {
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  color: #77746d;
+}
+
+.capability h3 {
+  font-size: clamp(35px, 4vw, 62px);
+  line-height: .95;
+  letter-spacing: -.055em;
+  margin: 0;
+}
+
+.capability p {
+  max-width: 430px;
+  color: #68655e;
+  line-height: 1.75;
+  font-size: 14px;
+}
+
+/* ------------------------------
+   LANGUAGE STRIP
+------------------------------ */
+
+.languages {
+  padding: 55px 0;
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.language-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 35s linear infinite;
+}
+
+.language {
+  font-family: Manrope, sans-serif;
+  font-size: clamp(32px, 4vw, 65px);
+  letter-spacing: -.05em;
+  margin-right: 60px;
+  color: #4e4d48;
+}
+
+.language:nth-child(4n) {
+  color: var(--white);
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* ------------------------------
+   SHOWREEL
+------------------------------ */
+
+.showreel {
+  background: var(--black);
+}
+
+.showreel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  margin-bottom: 50px;
+}
+
+.showreel h2 {
+  font-size: clamp(55px, 7vw, 110px);
+  line-height: .85;
+  letter-spacing: -.07em;
+  margin: 0;
+}
+
+.showreel h2 em {
+  font-family: var(--serif);
+  font-weight: 400;
+}
+
+.reel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+
+.reel {
+  aspect-ratio: 16/10;
+  background:
+    linear-gradient(
+      135deg,
+      #27231e,
+      #111
+    );
+  position: relative;
+  overflow: hidden;
+}
+
+.reel:nth-child(2) {
+  background:
+    linear-gradient(
+      135deg,
+      #303028,
+      #151515
+    );
+}
+
+.reel:nth-child(3) {
+  background:
+    linear-gradient(
+      135deg,
+      #1f2927,
+      #101010
+    );
+}
+
+.reel:nth-child(4) {
+  background:
+    linear-gradient(
+      135deg,
+      #32281f,
+      #111
+    );
+}
+
+.reel:nth-child(5) {
+  background:
+    linear-gradient(
+      135deg,
+      #29222f,
+      #101010
+    );
+}
+
+.reel:nth-child(6) {
+  background:
+    linear-gradient(
+      135deg,
+      #262a20,
+      #111
+    );
+}
+
+.reel-info {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
+  display: flex;
+  justify-content: space-between;
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: #c4c0b7;
+}
+
+/* ------------------------------
+   PUBLISH
+------------------------------ */
+
+.publish {
+  background: #eae8e1;
+  color: #101010;
+}
+
+.publish-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 10vw;
+  align-items: center;
+}
+
+.publish h2 {
+  font-size: clamp(55px, 7vw, 115px);
+  line-height: .87;
+  letter-spacing: -.07em;
+  margin: 0;
+}
+
+.publish h2 em {
+  font-family: var(--serif);
+  font-weight: 400;
+}
+
+.publish-copy p {
+  color: #67645e;
+  line-height: 1.75;
+  max-width: 420px;
+}
+
+.channel-list {
+  margin-top: 40px;
+  border-top: 1px solid #c7c4bb;
+}
+
+.channel {
+  padding: 15px 0;
+  border-bottom: 1px solid #c7c4bb;
+  display: flex;
+  justify-content: space-between;
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+
+/* ------------------------------
+   VOICE
+------------------------------ */
+
+.voice {
+  background:
+    radial-gradient(
+      circle at 75% 35%,
+      #38352c,
+      transparent 35%
+    ),
+    var(--black);
+}
+
+.voice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10vw;
+  align-items: center;
+}
+
+.voice h2 {
+  font-size: clamp(55px, 7vw, 110px);
+  line-height: .85;
+  letter-spacing: -.07em;
+  margin: 0;
+}
+
+.voice h2 em {
+  font-family: var(--serif);
+  font-weight: 400;
+}
+
+.voice-copy p {
+  max-width: 460px;
+  color: #99968e;
+  line-height: 1.8;
+}
+
+.voice-wave {
+  margin-top: 45px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.voice-wave span {
+  width: 2px;
+  background: #77746d;
+  height: 30%;
+  animation: wave 1.2s ease-in-out infinite alternate;
+}
+
+.voice-wave span:nth-child(2n) {
+  height: 65%;
+}
+
+.voice-wave span:nth-child(3n) {
+  height: 45%;
+}
+
+@keyframes wave {
+  from { transform: scaleY(.4); }
+  to { transform: scaleY(1); }
+}
+
+/* ------------------------------
+   PRICING
+------------------------------ */
+
+.pricing {
+  background: var(--white);
+  color: var(--black);
+}
+
+.pricing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  margin-bottom: 70px;
+}
+
+.pricing-header h2 {
+  font-size: clamp(50px, 6vw, 90px);
+  line-height: .9;
+  letter-spacing: -.065em;
+  margin: 0;
+}
+
+.pricing-header p {
+  max-width: 300px;
+  color: #68655e;
+  line-height: 1.6;
+  font-size: 13px;
+}
+
+.price-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr 1fr;
+  border-top: 1px solid #c7c4bb;
+}
+
+.price {
+  padding: 38px 25px;
+  border-right: 1px solid #c7c4bb;
+  min-height: 360px;
+}
+
+.price:first-child {
+  border-left: 1px solid #c7c4bb;
+}
+
+.price-name {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+
+.price-value {
+  font-size: 45px;
+  letter-spacing: -.05em;
+  margin: 35px 0 20px;
+}
+
+.price-description {
+  color: #77736b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.price ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 30px;
+}
+
+.price li {
+  font-size: 11px;
+  padding: 7px 0;
+  color: #5f5c55;
+}
+
+/* ------------------------------
+   FINAL CTA
+------------------------------ */
+
+.final {
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+  text-align: center;
+  background: var(--black);
+}
+
+.final h2 {
+  font-size: clamp(65px, 11vw, 180px);
+  line-height: .8;
+  letter-spacing: -.08em;
+  margin: 0;
+}
+
+.final h2 em {
+  font-family: var(--serif);
+  font-weight: 400;
+}
+
+.final p {
+  color: #99968e;
+  max-width: 500px;
+  margin: 45px auto;
+  line-height: 1.8;
+}
+
+.final .primary {
+  display: inline-block;
+}
+
+/* ------------------------------
+   FOOTER
+------------------------------ */
+
+footer {
+  padding: 35px 5vw;
+  border-top: 1px solid var(--line);
+  background: var(--black);
+  color: #77746e;
+  display: flex;
+  justify-content: space-between;
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+
+.footer-links {
+  display: flex;
+  gap: 25px;
+}
+
+/* ------------------------------
+   RESPONSIVE
+------------------------------ */
+
+@media (max-width: 900px) {
+
+  .nav-center {
+    display: none;
+  }
+
+  .hero {
+    min-height: 850px;
+  }
+
+  .hero-image::after {
+    inset: 25% 5% 20% 25%;
+  }
+
+  .manifesto-grid,
+  .chapter-grid,
+  .voice-grid,
+  .publish-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .studio {
+    grid-template-columns: 1fr;
+  }
+
+  .studio-sidebar,
+  .studio-right {
+    display: none;
+  }
+
+  .studio-main {
+    padding: 18px;
+  }
+
+  .capability {
+    grid-template-columns: 60px 1fr;
+  }
+
+  .capability p {
+    grid-column: 2;
+  }
+
+  .reel-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .price-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .price {
+    border-bottom: 1px solid #c7c4bb;
+  }
+
+  .pricing-header,
+  .workspace-head,
+  .showreel-header {
+    display: block;
+  }
+
+  .pricing-header p,
+  .workspace-head p {
+    margin-top: 30px;
+  }
+}
+
+@media (max-width: 600px) {
+
+  .section {
+    padding: 100px 6vw;
+  }
+
+  .hero {
+    padding: 0 6vw;
+  }
+
+  .hero-title {
+    font-size: 64px;
+  }
+
+  .hero-bottom {
+    display: none;
+  }
+
+  .reel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .price-row {
+    grid-template-columns: 1fr;
+  }
+
+  footer {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .footer-links {
+    flex-wrap: wrap;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ==========================================
+     NAVIGATION
+========================================== -->
+
+<nav class="nav">
+
+  <a href="#" class="logo">
+    <span class="logo-mark"></span>
+    CINEFORGE
+  </a>
+
+  <div class="nav-center">
+    <a href="#studio">Studio</a>
+    <a href="#capabilities">Capabilities</a>
+    <a href="#films">Films</a>
+    <a href="#pricing">Access</a>
+  </div>
+
+  <div class="nav-right">
+    <a href="#" class="nav-login">Sign in</a>
+    <a href="#studio" class="nav-cta">Enter Studio</a>
+  </div>
+
+</nav>
+
+
+<!-- ==========================================
+     HERO
+========================================== -->
+
+<section class="hero">
+
+  <div class="hero-image"></div>
+
+  <div class="hero-content">
+
+    <div class="eyebrow hero-kicker">
+      THE FILM PRODUCTION SYSTEM / 01
+    </div>
+
+    <h1 class="hero-title">
+      MAKE<br>
+      <em>worlds.</em>
+    </h1>
+
+    <p class="hero-description">
+      Cineforge is a complete production environment for creating
+      films, series, documentaries, commercials, shorts and music
+      videos — from the first idea to the finished release.
+    </p>
+
+    <div class="hero-actions">
+      <a href="#studio" class="primary">
+        Enter the Studio
+      </a>
+
+      <a href="#films" class="text-link">
+        Watch the work →
+      </a>
+    </div>
+
+  </div>
+
+  <div class="hero-bottom">
+    <span>Production / Direction / Sound / Picture / Distribution</span>
+    <span>© 2026 Cineforge</span>
+  </div>
+
+</section>
+
+
+<!-- ==========================================
+     MANIFESTO
+========================================== -->
+
+<section class="section manifesto">
+
+  <div class="container manifesto-grid reveal">
+
+    <div>
+      <div class="eyebrow">
+        A different kind of studio
+      </div>
+    </div>
+
+    <div class="manifesto-copy">
+
+      <h2>
+        Not another<br>
+        <em>AI tool.</em>
+      </h2>
+
+      <p>
+        A production system where the story, characters,
+        locations, scenes, voices, picture and release remain
+        connected from beginning to end.
+      </p>
+
+      <p>
+        <span>
+          One world. One production. One continuous creative space.
+        </span>
+      </p>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- ==========================================
+     CHAPTER 01
+========================================== -->
+
+<section class="section chapter dark">
+
+  <div class="container chapter-grid reveal">
+
+    <div class="chapter-image"></div>
+
+    <div class="chapter-copy">
+
+      <div class="chapter-number">
+        01 / WORLD
+      </div>
+
+      <h2>
+        Build the<br>
+        <em>world.</em>
+      </h2>
+
+      <p>
+        Start with an idea. Develop the story, establish the
+        characters, define the locations and preserve the visual
+        identity of the production as the film grows.
+      </p>
+
+      <a href="#studio" class="text-link">
+        Explore world building →
+      </a>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- ==========================================
+     CHAPTER 02 / WORKSPACE
+========================================== -->
+
+<section class="section workspace" id="studio">
+
+  <div class="container">
+
+    <div class="workspace-head reveal">
+
+      <div>
+        <div class="eyebrow">02 / PRODUCTION</div>
+
+        <h2>
+          A real<br>
+          <em>film workspace.</em>
+        </h2>
+      </div>
+
+      <p>
+        Plan scenes. Control shots. Work with characters,
+        environments and sound. Review the production while
+        it is being built.
+      </p>
+
+    </div>
+
+
+    <div class="studio reveal">
+
+      <aside class="studio-sidebar">
+
+        <h4>Production</h4>
+
+        <div class="studio-item active">Overview</div>
+        <div class="studio-item">Story</div>
+        <div class="studio-item">Characters</div>
+        <div class="studio-item">Worlds</div>
+        <div class="studio-item">Scenes</div>
+        <div class="studio-item">Shots</div>
+        <div class="studio-item">Sound</div>
+        <div class="studio-item">Final Cut</div>
+
+      </aside>
+
+
+      <main class="studio-main">
+
+        <div class="scene">
+
+          <div class="scene-label">
+            SCENE 07 / EXT. ASHÉRON-KOR / DAWN
+          </div>
+
+          <div class="playhead"></div>
+
+          <div class="timeline">
+
+            <div class="clip"></div>
+            <div class="clip"></div>
+            <div class="clip"></div>
+            <div class="clip"></div>
+            <div class="clip"></div>
+
+          </div>
+
+        </div>
+
+      </main>
+
+
+      <aside class="studio-right">
+
+        <div class="inspector">
+          Scene Inspector
+        </div>
+
+        <div class="parameter">
+          <span>Camera</span>
+          <span>35mm</span>
+        </div>
+
+        <div class="parameter">
+          <span>Lens</span>
+          <span>50mm</span>
+        </div>
+
+        <div class="parameter">
+          <span>Lighting</span>
+          <span>Dawn</span>
+        </div>
+
+        <div class="parameter">
+          <span>Character</span>
+          <span>Locked</span>
+        </div>
+
+        <div class="parameter">
+          <span>World</span>
+          <span>Locked</span>
+        </div>
+
+        <div class="parameter">
+          <span>Sound</span>
+          <span>Original</span>
+        </div>
+
+      </aside>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- ==========================================
+     CHAPTER 03
+========================================== -->
+
+<section class="section chapter dark">
+
+  <div class="container chapter-grid reveal">
+
+    <div class="chapter-copy">
+
+      <div class="chapter-number">
+        03 / STORY
+      </div>
+
+      <h2>
+        Every shot<br>
+        <em>belongs.</em>
+      </h2>
+
+      <p>
+        Characters remember who they are. Worlds remain coherent.
+        Scenes connect. The production evolves without losing the
+        identity of the story.
+      </p>
+
+      <a href="#capabilities" class="text-link">
+        See the production system →
+      </a>
+
+    </div>
+
+    <div class="chapter-image"></div>
+
+  </div>
+
+</section>
+
+
+<!-- ==========================================
+     CAPABILITIES
+========================================== -->
+
+<section class="section capabilities" id="capabilities">
+
+  <div class="container">
+
+    <div class="eyebrow reveal">
+      THE SYSTEM
+    </div>
+
+    <div style="height:55px;"></div>
+
+
+    <div class="capability reveal">
+
+      <div class="capability-number">01</div>
+
+      <h3>Create</h3>
+
+      <p>
+        Turn an idea into a production. Develop scripts,
+        characters, scenes, locations and shots inside the same
+        creative environment.
+      </p>
+
+    </div>
+
+
+    <div class="capability reveal">
+
+      <div class="capability-number">02</div>
+
+      <h3>Direct</h3>
+
+      <p>
+        Shape the visual language of the film. Review scenes,
+        adjust shots, replace material and guide the production
+        rather than simply generating isolated clips.
+      </p>
+
+    </div>
+
+
+    <div class="capability reveal">
+
+      <div class="capability-number">03</div>
+
+      <h3>Perform</h3>
+
+      <p>
+        Voices, narration, multilingual dialogue and presenters
+        become part of the production rather than separate tools.
+      </p>
+
+    </div>
+
+
+    <div class="capability reveal">
+
+      <div class="capability-number">04</div>
+
+      <h3>Finish</h3>
+
+      <p>
+        Bring picture, sound, narration and scenes together into
+        a finished cinematic cut ready for viewing.
+      </p>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- ==========================================
+     LANGUAGES
+========================================== -->
+
+<div class="languages">
+
+  <div class="language-track">
+
+    <span class="language">English</span>
+    <span class="language">Français</span>
+    <span class="language">Español</span>
+    <span class="language">Deutsch</span>
+    <span class="language">中文</span>
+    <span class="language">العربية</span>
+    <span class="language">Kiswahili</span>
+    <span class="language">Norsk</span>
+    <span class="language">Português</span>
+    <span class="language">日本語</span>
+
+    <span class="language">English</span>
+    <span class="language">Français</span>
+    <span class="language">Español</span>
+    <span class="language">Deutsch</span>
+    <span class="language">中文</span>
+    <span class="language">العربية</span>
+    <span class="language">Kiswahili</span>
+    <span class="language">Norsk</span>
+    <span class="language">Português</span>
+    <span class="language">日本語</span>
+
+  </div>
+
+</div>
+
+
+<!-- ==========================================
+     SHOWREEL
+========================================== -->
+
+<section class="section showreel" id="films">
+
+  <div class="container">
+
+    <div class="showreel-header reveal">
+
+      <div>
+        <div class="eyebrow">04 / THE WORK</div>
+        <h2>
+          Made<br>
+          <em>with Cineforge.</em>
+        </h2>
+      </div>
+
+      <a href="#" class="text-link">
+        View complete showreel →
+      </a>
+
+    </div>
+
+
+    <div class="reel-grid reveal">
+
+      <div class="reel">
+        <div class="reel-info">
+          <span>Feature Film</span>
+          <span>Drama</span>
+        </div>
+      </div>
+
+      <div class="reel">
+        <div class="reel-info">
+          <span>World</span>
+          <span>Fantasy</span>
+        </div>
+      </div>
+
+      <div class="reel">
+        <div class="reel-info">
+          <span>Documentary</span>
+          <span>Film</span>
+        </div>
+      </div>
+
+      <div class="reel">
+        <div class="reel-info">
+          <span>Commercial</span>
+          <span>Brand</span>
+        </div>
+      </div>
+
+      <div class="reel">
+        <div class="reel-info">
+          <span>Short</span>
+          <span>Vertical</span>
+        </div>
+      </div>
+
+      <div class="reel">
+        <div class="reel-info">
+          <span>Music Video</span>
+          <span>Performance</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- ==========================================
+     PUBLISH
+========================================== -->
+
+<section class="section publish">
+
+  <div class="container publish-grid reveal">
+
+    <div>
+
+      <div class="eyebrow">
+        05 / RELEASE
+      </div>
+
+      <div style="height:35px;"></div>
+
+      <h2>
+        One film.<br>
+        <em>Every screen.</em>
+      </h2>
+
+    </div>
+
+
+    <div class="publish-copy">
+
+      <p>
+        The production does not end at the final cut.
+        Prepare versions for different platforms and audiences
+        without rebuilding the work from scratch.
+      </p>
+
+      <div class="channel-list">
+
+        <div class="channel">
+          <span>YouTube</span>
+          <span>16:9</span>
+        </div>
+
+        <div class="channel">
+          <span>YouTube Shorts</span>
+          <span>9:16</span>
+        </div>
+
+        <div class="channel">
+          <span>TikTok</span>
+          <span>9:16</span>
+        </div>
+
+        <div class="channel">
+          <span>Instagram</span>
+          <span>Multiple</span>
+        </div>
+
+        <div class="channel">
+          <span>Facebook</span>
+          <span>Multiple</span>
+        </div>
+
+        <div class="channel">
+          <span>Private Channel</span>
+          <span>1080p</span>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- ==========================================
+     VOICE
+========================================== -->
+
+<section class="section voice">
+
+  <div class="container voice-grid reveal">
+
+    <div>
+
+      <div class="eyebrow">
+        06 / VOICE
+      </div>
+
+      <div style="height:35px;"></div>
+
+      <h2>
+        Give the<br>
+        story a<br>
+        <em>voice.</em>
+      </h2>
+
+    </div>
+
+
+    <div class="voice-copy">
+
+      <p>
+        Narration, dialogue, multilingual versions and presenter
+        experiences become part of the same production system.
+      </p>
+
+      <p>
+        One production can speak to audiences across languages
+        without losing the identity of the original work.
+      </p>
+
+      <div class="voice-wave">
+
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- ==========================================
+     PRICING
+========================================== -->
+
+<section class="section pricing" id="pricing">
+
+  <div class="container">
+
+    <div class="pricing-header reveal">
+
+      <div>
+        <div class="eyebrow">ACCESS</div>
+
+        <div style="height:25px;"></div>
+
+        <h2>
+          Enter the<br>
+          <em>studio.</em>
+        </h2>
+      </div>
+
+      <p>
+        Start with the tools you need. Expand into a complete
+        production environment as your work grows.
+      </p>
+
+    </div>
+
+
+    <div class="price-row reveal">
+
+      <div class="price">
+
+        <div class="price-name">Free</div>
+
+        <div class="price-value">$0</div>
+
+        <div class="price-description">
+          Explore the production environment.
+        </div>
+
+        <ul>
+          <li>200 trial credits</li>
+          <li>Draft productions</li>
+          <li>Stock voice</li>
+          <li>Basic workspace</li>
+        </ul>
+
+      </div>
+
+
+      <div class="price">
+
+        <div class="price-name">Creator</div>
+
+        <div class="price-value">$19</div>
+
+        <div class="price-description">
+          For independent creators.
+        </div>
+
+        <ul>
+          <li>2,500 credits</li>
+          <li>Production workspace</li>
+          <li>Consistent characters</li>
+          <li>Storyboard control</li>
+          <li>Dubbing</li>
+        </ul>
+
+      </div>
+
+
+      <div class="price">
+
+        <div class="price-name">Studio</div>
+
+        <div class="price-value">$59</div>
+
+        <div class="price-description">
+          For serious production.
+        </div>
+
+        <ul>
+          <li>9,000 credits</li>
+          <li>Advanced video engine</li>
+          <li>20 languages</li>
+          <li>Avatars</li>
+          <li>Analytics</li>
+        </ul>
+
+      </div>
+
+
+      <div class="price">
+
+        <div class="price-name">Enterprise</div>
+
+        <div class="price-value">Custom</div>
+
+        <div class="price-description">
+          A production environment built around your organization.
+        </div>
+
+        <ul>
+          <li>Dedicated infrastructure</li>
+          <li>Custom languages</li>
+          <li>Licensing</li>
+          <li>Service agreement</li>
+          <li>Dedicated support</li>
+        </ul>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- ==========================================
+     FINAL CTA
+========================================== -->
+
+<section class="section final">
+
+  <div class="container reveal">
+
+    <div class="eyebrow">
+      CINEFORGE / 2026
+    </div>
+
+    <div style="height:40px;"></div>
+
+    <h2>
+      YOUR STORY.<br>
+      <em>YOUR WORLD.</em>
+    </h2>
+
+    <p>
+      Enter the production system and build something
+      worth watching.
+    </p>
+
+    <a href="#studio" class="primary">
+      Enter Cineforge
+    </a>
+
+  </div>
+
+</section>
+
+
+<!-- ==========================================
+     FOOTER
+========================================== -->
+
+<footer>
+
+  <div>
+    © 2026 Cineforge
+  </div>
+
+  <div class="footer-links">
+    <a href="#">Studio</a>
+    <a href="#">Films</a>
+    <a href="#">Voice</a>
+    <a href="#">Publishing</a>
+    <a href="#">Pricing</a>
+    <a href="#">Contact</a>
+  </div>
+
+</footer>
+
+
+<script>
+
+/* ------------------------------------------
+   REVEAL ON SCROLL
+------------------------------------------ */
+
+const observer = new IntersectionObserver(
+  entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("visible");
+      }
+    });
+  },
+  {
+    threshold: .12
+  }
+);
+
+document.querySelectorAll(".reveal").forEach(el => {
+  observer.observe(el);
+});
+
+
+/* ------------------------------------------
+   MOUSE MOVEMENT — VERY SUBTLE
+------------------------------------------ */
+
+const heroImage = document.querySelector(".hero-image");
+
+window.addEventListener("mousemove", e => {
+
+  const x = (e.clientX / window.innerWidth - .5) * 8;
+  const y = (e.clientY / window.innerHeight - .5) * 5;
+
+  heroImage.style.transform =
+    `translate(${x}px, ${y}px) scale(1.02)`;
+
+});
+
+</script>
+
+</body>
+</html>
