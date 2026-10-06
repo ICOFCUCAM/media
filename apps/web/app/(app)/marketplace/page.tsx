@@ -1,55 +1,69 @@
+import Link from "next/link";
 import { MARKETPLACE_CATEGORIES } from "../../../lib/products";
 import { MarketplaceVoices } from "../../../components/MarketplaceVoices";
+import { PageHeader, Section, Status } from "../../../components/cf/primitives";
 
 export const metadata = { title: "Marketplace — Cineforge" };
 
+/**
+ * The Exchange (docs/design/exchange-marketplace.html). Today's live shelf is
+ * community voices — offered from the Voice Room, approved by an admin. Paid
+ * catalogues need listings, checkout and payouts, which have no backend yet;
+ * they are shown as not open rather than as a working store.
+ */
 export default function MarketplacePage() {
   return (
-    <div className="relative isolate mx-auto max-w-6xl px-6 py-8">
-      <div className="cf-aurora pointer-events-none absolute right-0 top-0 -z-10 h-64 w-64 rounded-full bg-[radial-gradient(closest-side,rgba(217,70,239,0.10),transparent)] blur-3xl" />
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-fuchsia-300/80">
-            <span className="h-1 w-5 rounded-full bg-fuchsia-400/50" /> Marketplace
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">Earn from what you create</h1>
-          <p className="mt-1.5 text-sm text-white/55">
-            Turn what you make into a catalog. Sell films, characters, worlds, voices and templates — set your own price.
-          </p>
-        </div>
-        <button className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-white/90">
-          List an asset
-        </button>
-      </header>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {MARKETPLACE_CATEGORIES.map((c) => (
-          <div
-            key={c.id}
-            className="group rounded-xl border border-white/10 bg-white/[0.02] p-5 transition hover:border-white/20"
-          >
-            <div className="mb-3 aspect-video rounded-lg bg-gradient-to-br from-white/10 to-white/[0.02]" />
-            <h3 className="font-medium">{c.name}</h3>
-            <p className="mt-1 text-sm text-white/55">{c.blurb}</p>
-            <div className="mt-3 text-xs text-white/35 group-hover:text-white/60">Browse →</div>
-          </div>
-        ))}
-      </div>
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="Publishing / The exchange"
+        title={<>The<br /><em>Exchange.</em></>}
+        copy={
+          <>
+            <p>Turn what you make into a catalogue others can build with — voices first, then characters, worlds, films and templates.</p>
+            <p><strong>Voices are exchanged today. Paid catalogues open when checkout and payouts are wired.</strong></p>
+          </>
+        }
+        status={{ tone: "live", label: "Voice exchange open" }}
+        aside={
+          <Link href="/library/voices" className="cf-btn-ink mt-7">
+            Offer a voice
+          </Link>
+        }
+      />
 
       <MarketplaceVoices />
 
-      <section className="mt-10 grid gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-6 sm:grid-cols-3">
-        {[
-          { k: "Keep 90%", v: "Industry-leading creator split on every sale." },
-          { k: "Licensing built in", v: "Personal, commercial and extended licenses, handled for you." },
-          { k: "Instant delivery", v: "Buyers get assets that drop straight into their own projects." },
-        ].map((x) => (
-          <div key={x.k}>
-            <div className="text-sm font-semibold">{x.k}</div>
-            <p className="mt-1 text-sm text-white/55">{x.v}</p>
-          </div>
-        ))}
-      </section>
+      <Section label="Catalogues" title="What the exchange will carry.">
+        <ol className="border-t border-cf-fg">
+          {MARKETPLACE_CATEGORIES.map((c, i) => {
+            const open = c.id === "voices";
+            return (
+              <li key={c.id} className="grid gap-3 border-b border-cf-line py-5 md:grid-cols-[44px_1fr_1.4fr_auto] md:items-center">
+                <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                <span className="font-serif text-[22px] tracking-[-0.02em]">{c.name}</span>
+                <span className="text-[13px] text-cf-muted">{c.blurb}</span>
+                <Status tone={open ? "live" : "idle"}>{open ? "Open · community" : "Not open yet"}</Status>
+              </li>
+            );
+          })}
+        </ol>
+      </Section>
+
+      <Section label="Terms" title="How the exchange will pay.">
+        <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-3">
+          {[
+            ["Creator split", "90% of every sale to the creator, once paid sales open."],
+            ["Licensing", "Personal, commercial and extended licences carried with each asset."],
+            ["Delivery", "Bought assets drop straight into the buyer's own productions."],
+          ].map(([k, v]) => (
+            <div key={k} className="min-h-[150px] bg-cf-bg p-6">
+              <div className="cf-label">{k}</div>
+              <p className="mt-8 font-serif text-[18px] leading-snug">{v}</p>
+            </div>
+          ))}
+        </div>
+        <p className="cf-label mt-4">Planned terms — no paid transactions run today.</p>
+      </Section>
     </div>
   );
 }
