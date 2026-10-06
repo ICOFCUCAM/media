@@ -17,7 +17,7 @@ describe("ffmpeg command builders", () => {
     const a = normalizeArgs("in.mp4", "out.mp4", { width: 1280, height: 720, fps: 24 });
     expect(a).toContain("libx264");
     expect(a.join(" ")).toContain("scale=1280:720:force_original_aspect_ratio=decrease");
-    expect(a.join(" ")).toContain("fps=24");
+    expect(a.join(" ")).toContain("fps=fps=24/1:round=near:eof_action=pass");
     expect(a).toContain("-an"); // drop audio at normalize stage
   });
 

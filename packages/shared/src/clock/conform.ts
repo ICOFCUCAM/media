@@ -8,7 +8,7 @@
  * frame) and the plan states exactly which source frame each target frame
  * shows, so a 16 → 24 fps conversion cannot drift.
  */
-import { ceilDiv, ClockError, floorDiv, framesDurationUs, type Us } from "./time";
+import { ceilDiv, ClockError, framesDurationUs, type Us } from "./time";
 import { formatFrameRate, sameRate, type FrameRate } from "./rational";
 
 export type ConformMethod = "none" | "duplicate" | "interpolate";
@@ -76,14 +76,15 @@ export function planConform(
     padUs: pad < 0n ? 0n : pad,
     ffmpegFilter:
       method === "duplicate"
-        ? `fps=fps=${rate}:round=down`
+        ? conformFilter(targetFps)
         : `minterpolate=fps=${rate}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir`,
   };
 }
 
 /**
- * The source frame shown by target frame `i` under "duplicate": the last
- * source frame that started at or before target frame i's start.
+ * The source frame shown by target frame `i` under "duplicate": the latest
+ * source frame j whose timestamp, rounded to the target grid, is ≤ i —
+ * i.e. j = ceil((2i+1)·sNum·tDen / (2·tNum·sDen)) − 1 (FFmpeg fps, round=near).
  */
 export function sourceFrameFor(plan: ConformPlan, i: number | bigint): bigint {
   const n = BigInt(i);
@@ -91,7 +92,13 @@ export function sourceFrameFor(plan: ConformPlan, i: number | bigint): bigint {
   if (plan.method === "none") return n;
   const s = plan.source.fps;
   const t = plan.target.fps;
-  return floorDiv(n * BigInt(t.den) * BigInt(s.num), BigInt(t.num) * BigInt(s.den));
+  const j = ceilDiv((2n * n + 1n) * BigInt(s.num) * BigInt(t.den), 2n * BigInt(t.num) * BigInt(s.den)) - 1n;
+  return j < plan.source.frameCount ? j : plan.source.frameCount - 1n;
+}
+
+/** The FFmpeg filter that performs a duplicate-method conform to `fps`. */
+export function conformFilter(fps: FrameRate): string {
+  return `fps=fps=${formatFrameRate(fps)}:round=near:eof_action=pass`;
 }
 
 export function conformRecord(plan: ConformPlan): ConformRecord {
