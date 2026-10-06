@@ -8,7 +8,7 @@ from app.gateway import ModelSpec, authz_digest, resolve_weights_digest
 from app.gateway.authz import TimingRequest, authz_document, canonical_json
 
 
-GOLDEN = "07d602c7d909cf6fdfa2ca4c84469320aee4d651d4e81ab0b752d957e8754084"
+GOLDEN_V2 = "93e92cbba5c7b7f203603ac53e249e2538bfd45e2ec825eef7d6c3faaa7775dc"
 
 
 def _digest(**over):
@@ -16,38 +16,44 @@ def _digest(**over):
         workflow="diffusers.wan-2.1.t2v@1",
         runtime="diffusers@0.33.1",
         models=[{"role": "t2v", "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers", "revision": "a" * 40, "weights": "f" * 64}],
-        loras=["projects/p1/identities/c1/v1/lora.safetensors"],
+        loras=[{"key": "projects/p1/identities/c1/v1/lora.safetensors", "sha256": "ab" * 32}],
         timing=TimingRequest(duration_us=5_000_000, fps=16, width=832, height=480),
     )
     kw.update(over)
     return authz_digest(**kw)
 
 
-def test_golden_vector_v1():
-    # Locks the canonical form. The TypeScript minter (docs/39 PR 2/4) must
-    # reproduce this exact string and digest; change only with a version bump.
+def test_golden_vector_v2():
+    # Locks the canonical form. The TypeScript minter
+    # (packages/model-adapters/src/gateway/authz.ts) must reproduce this exact
+    # string and digest; change only with a version bump.
     doc = authz_document(
         workflow="diffusers.wan-2.1.t2v@1",
         runtime="diffusers@0.33.1",
         models=[{"role": "t2v", "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers", "revision": "a" * 40, "weights": "f" * 64}],
-        loras=["projects/p1/identities/c1/v1/lora.safetensors"],
+        loras=[{"key": "projects/p1/identities/c1/v1/lora.safetensors", "sha256": "ab" * 32}],
         timing=TimingRequest(duration_us=5_000_000, fps=16, width=832, height=480),
     )
     assert canonical_json(doc) == (
-        '{"loras":["projects/p1/identities/c1/v1/lora.safetensors"],'
+        '{"loras":[{"key":"projects/p1/identities/c1/v1/lora.safetensors","sha256":"' + "ab" * 32 + '"}],'
         '"models":[{"id":"Wan-AI/Wan2.1-T2V-1.3B-Diffusers","revision":"' + "a" * 40 + '",'
         '"role":"t2v","weights":"' + "f" * 64 + '"}],'
         '"runtime":"diffusers@0.33.1",'
         '"timing":{"durationUs":5000000,"fps":16,"height":480,"width":832},'
-        '"v":1,"workflow":"diffusers.wan-2.1.t2v@1"}'
+        '"v":2,"workflow":"diffusers.wan-2.1.t2v@1"}'
     )
-    assert _digest() == GOLDEN
+    assert _digest() == GOLDEN_V2
 
 
 def test_lora_order_does_not_matter():
-    a = _digest(loras=["k1", "k2"])
-    b = _digest(loras=["k2", "k1"])
-    assert a == b
+    k1, k2 = {"key": "k1", "sha256": "1" * 64}, {"key": "k2", "sha256": "2" * 64}
+    assert _digest(loras=[k1, k2]) == _digest(loras=[k2, k1])
+
+
+def test_lora_content_hash_is_bound():
+    a = _digest(loras=[{"key": "k1", "sha256": "1" * 64}])
+    b = _digest(loras=[{"key": "k1", "sha256": "2" * 64}])
+    assert a != b
 
 
 def test_every_component_changes_the_digest():

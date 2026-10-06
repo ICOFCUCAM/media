@@ -55,6 +55,7 @@ export class HunyuanAdapter implements VideoModelAdapter {
         videoOp: req.videoOp,
         motionStrength: req.motionStrength,
         loraKeys: req.loraKeys,
+        loraSha256: req.loraSha256,
         camera: req.camera as unknown as Record<string, unknown>,
         extra: req.extra,
       },

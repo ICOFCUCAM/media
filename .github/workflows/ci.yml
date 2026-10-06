@@ -98,11 +98,13 @@ jobs:
       PGURL: postgresql://postgres:postgres@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
-      - name: Apply 0026 and run its validation
+      - name: Apply 0026 + 0027 and run their validation
         run: |
           psql "$PGURL" -v ON_ERROR_STOP=1 -q -f packages/db/supabase/tests/supabase-stubs.sql
           psql "$PGURL" -v ON_ERROR_STOP=1 -q -f packages/db/supabase/migrations/0026_runtime_gateway.sql
           psql "$PGURL" -v ON_ERROR_STOP=1 -f packages/db/supabase/tests/0026_runtime_gateway.test.sql
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f packages/db/supabase/migrations/0027_character_lora_sha256.sql
+          psql "$PGURL" -v ON_ERROR_STOP=1 -f packages/db/supabase/tests/0027_character_lora_sha256.test.sql
 
   # docs/38 §AW.11 regression test 1 with real FFmpeg and real media: narration
   # is never cut to the picture, and a short narration never cuts the picture.

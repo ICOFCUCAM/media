@@ -170,6 +170,8 @@ class VideoPipeline:
         lora_keys: list[str] | None = None,
         input_urls: dict[str, str] | None = None,
         legacy_fallback: bool = False,
+        lora_sha256: dict[str, str] | None = None,
+        strict_integrity: bool = False,
     ) -> tuple[str, str | None]:
         """Run inference and return (local_mp4_path, local_thumbnail_path).
 
@@ -182,13 +184,21 @@ class VideoPipeline:
         # Report mode only: if a presigned fetch fails, read the bucket directly
         # as before, so observing the gateway never breaks generation.
         self._legacy_fallback = legacy_fallback
+        # Authorized content hash per LoRA key (authz v2). Strict (enforce):
+        # a mismatching or unhashed LoRA stops the job; it is never skipped.
+        self._lora_sha256 = lora_sha256 or {}
+        self._strict_integrity = strict_integrity
         lora_keys = lora_keys or []
         if not self._real:
             # Placeholder mode still fetches every presigned input, so the
             # one-time I/O path is exercised end to end without a GPU.
             if input_urls is not None:
-                for key in [*reference_image_keys, *(reference_video_keys or []), *lora_keys]:
+                for key in [*reference_image_keys, *(reference_video_keys or [])]:
                     os.unlink(self._download(key))
+                for key in lora_keys:
+                    path = self._lora_or_skip(key)
+                    if path:
+                        os.unlink(path)
             return self._placeholder(prompt, width, height, duration_sec, fps, reference_image_keys, video_op, lora_keys)
 
         import torch  # noqa: PLC0415
@@ -226,8 +236,11 @@ class VideoPipeline:
         # Per-character LoRA — the tightest identity lock (docs/28).
         fused = False
         for key in lora_keys:
+            path = self._lora_or_skip(key)
+            if not path:
+                continue
             try:
-                pipe.load_lora_weights(self._download(key))
+                pipe.load_lora_weights(path)
                 fused = True
             except Exception as e:  # noqa: BLE001
                 print(f"[pipeline] lora load failed ({key}): {e}")
@@ -258,6 +271,33 @@ class VideoPipeline:
                     pass
 
     # ── helpers ──────────────────────────────────────────────
+    def _fetch_lora(self, key: str) -> str:
+        """Download a LoRA and verify its bytes against the authorized content hash."""
+        from .media_io import LoraIntegrityError, sha256_file  # noqa: PLC0415
+
+        expected = self._lora_sha256.get(key)
+        if not expected:
+            if self._strict_integrity:
+                raise LoraIntegrityError("LORA_UNHASHED", key)
+            return self._download(key)
+        path = self._download(key)
+        if sha256_file(path) != expected:
+            os.unlink(path)
+            raise LoraIntegrityError("LORA_HASH_MISMATCH", key)
+        return path
+
+    def _lora_or_skip(self, key: str) -> str | None:
+        """Strict: integrity failures propagate. Report mode: logged, LoRA skipped."""
+        from .media_io import LoraIntegrityError  # noqa: PLC0415
+
+        try:
+            return self._fetch_lora(key)
+        except LoraIntegrityError as e:
+            if self._strict_integrity:
+                raise
+            print(f'{{"event":"gateway.lora_integrity","decision":"would_reject","code":{e.code!r}}}')
+            return None
+
     def _download(self, key: str) -> str:
         """Download an input (reference frame / LoRA) to a temp file."""
         urls = getattr(self, "_input_urls", None)

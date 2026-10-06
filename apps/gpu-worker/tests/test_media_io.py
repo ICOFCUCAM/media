@@ -68,3 +68,54 @@ def test_plain_http_rejected_without_test_flag(monkeypatch, tmp_path):
 def test_storage_credentials_detection():
     assert media_io.storage_credentials_present({"S3_SECRET_KEY": "x", "OTHER": "y"}) == ["S3_SECRET_KEY"]
     assert media_io.storage_credentials_present({}) == []
+
+
+# ── authz v2: the worker verifies LoRA bytes against the authorized hash ──────
+
+def _pipeline(strict, expected):
+    from app.pipeline import VideoPipeline
+
+    p = VideoPipeline("wan-2.1")
+    p._input_urls = {"projects/p1/identities/c1/v1/lora.safetensors": None}
+    p._legacy_fallback = False
+    p._lora_sha256 = expected
+    p._strict_integrity = strict
+    return p
+
+
+def test_lora_bytes_must_match_the_authorized_hash(server):
+    import hashlib
+
+    from app.media_io import LoraIntegrityError
+
+    key = "projects/p1/identities/c1/v1/lora.safetensors"
+    _Handler.store["/lora"] = (b"real-adapter-weights", "")
+    good = hashlib.sha256(b"real-adapter-weights").hexdigest()
+
+    p = _pipeline(strict=True, expected={key: good})
+    p._input_urls = {key: f"{server}/lora"}
+    path = p._fetch_lora(key)
+    assert open(path, "rb").read() == b"real-adapter-weights"
+    os.unlink(path)
+
+    # Same key, different bytes in storage (tampered / swapped artifact).
+    _Handler.store["/lora"] = (b"swapped-weights", "")
+    with pytest.raises(LoraIntegrityError) as e:
+        p._fetch_lora(key)
+    assert e.value.code == "LORA_HASH_MISMATCH"
+
+
+def test_unhashed_lora_is_refused_when_strict_and_skipped_in_report(server):
+    from app.media_io import LoraIntegrityError
+
+    key = "projects/p1/identities/c1/v1/lora.safetensors"
+    _Handler.store["/lora"] = (b"weights", "")
+    strict = _pipeline(strict=True, expected={})
+    strict._input_urls = {key: f"{server}/lora"}
+    with pytest.raises(LoraIntegrityError) as e:
+        strict._lora_or_skip(key)
+    assert e.value.code == "LORA_UNHASHED"
+
+    report = _pipeline(strict=False, expected={key: "0" * 64})
+    report._input_urls = {key: f"{server}/lora"}
+    assert report._lora_or_skip(key) is None  # logged and skipped, never loaded

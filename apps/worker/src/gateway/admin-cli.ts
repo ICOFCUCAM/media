@@ -8,6 +8,7 @@
  *   pnpm --filter @cineforge/worker gateway:admin report   --id dep-wan-1 --reason "<why>"
  *   pnpm --filter @cineforge/worker gateway:admin status   --id dep-wan-1
  *   pnpm --filter @cineforge/worker gateway:admin keygen   [--kid k1]
+ *   pnpm --filter @cineforge/worker gateway:admin hash-loras        (record content hashes of existing LoRAs)
  *
  * Needs DATABASE_URL, GPU_JWT_SIGNING_KEY, RUNPOD_API_KEY and GATEWAY_OPERATOR.
  */
@@ -17,6 +18,8 @@ import { parseArgs } from "node:util";
 import { prisma } from "@cineforge/db";
 import { GatewayAdmin, parseSigningKey } from "@cineforge/model-adapters";
 
+import { S3Storage } from "../storage/storage";
+import { sha256OfObject } from "./artifact-hash";
 import { RunpodImageAttestor } from "./attestor";
 import { PrismaGatewayStore } from "./prisma-store";
 
@@ -29,6 +32,29 @@ async function main() {
       image: { type: "string" }, reason: { type: "string" }, kid: { type: "string" },
     },
   });
+
+  if (cmd === "hash-loras") {
+    // Content-address every LoRA that predates authz v2. Hashes come from the
+    // bytes in storage; a missing object is reported, never guessed.
+    const storage = new S3Storage();
+    const store = new PrismaGatewayStore();
+    const rows = await prisma.character.findMany({ where: { loraKey: { not: null }, loraSha256: null }, select: { id: true, loraKey: true } });
+    let hashed = 0;
+    for (const r of rows) {
+      try {
+        const loraSha256 = await sha256OfObject(storage, r.loraKey!);
+        await prisma.character.update({ where: { id: r.id }, data: { loraSha256 } });
+        await store.insertEvent({ type: "artifact.hashed", deploymentId: null, grantId: null, code: "lora", actor: `operator:${process.env.GATEWAY_OPERATOR ?? "unknown"}`,
+          detail: { characterId: r.id, key: r.loraKey, sha256: loraSha256 } });
+        hashed++;
+        console.log(`hashed ${r.loraKey} ${loraSha256}`);
+      } catch (e) {
+        console.error(`could not hash ${r.loraKey}: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+    console.log(JSON.stringify({ candidates: rows.length, hashed }));
+    return;
+  }
 
   if (cmd === "keygen") {
     // Private seed goes to the worker (Render secret); the public key to each GPU pod.
@@ -75,7 +101,7 @@ async function main() {
       out = await new PrismaGatewayStore().deploymentById(need("id"));
       break;
     default:
-      throw new Error("usage: gateway:admin register|approve|enforce|report|status|keygen …");
+      throw new Error("usage: gateway:admin register|approve|enforce|report|status|keygen|hash-loras …");
   }
   console.log(JSON.stringify(out, null, 2));
 }

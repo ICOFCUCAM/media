@@ -19,6 +19,7 @@ const SEED = Buffer.alloc(32, 7).toString("base64url");
 export function buildFixture() {
   const key = parseSigningKey(`kfix:${SEED}`);
   const authz = authzDigest({
+    version: 1,
     workflow: "diffusers.wan-2.1.t2v@1",
     runtime: "diffusers@0.33.1",
     models: [{ role: "t2v", id: "Wan-AI/Wan2.1-T2V-1.3B-Diffusers", revision: "a".repeat(40), weights: "f".repeat(64) }],
@@ -34,8 +35,21 @@ export function buildFixture() {
 }
 
 describe("cross-language gateway contract", () => {
-  it("authz golden vector matches Python", () => {
+  it("authz v1 golden vector (deployments still on v1)", () => {
     expect(buildFixture().authz).toBe("07d602c7d909cf6fdfa2ca4c84469320aee4d651d4e81ab0b752d957e8754084");
+  });
+
+  it("authz v2 golden vector matches Python (LoRA bound by content hash)", () => {
+    const v2 = authzDigest({
+      version: 2,
+      workflow: "diffusers.wan-2.1.t2v@1",
+      runtime: "diffusers@0.33.1",
+      models: [{ role: "t2v", id: "Wan-AI/Wan2.1-T2V-1.3B-Diffusers", revision: "a".repeat(40), weights: "f".repeat(64) }],
+      loras: [{ key: "projects/p1/identities/c1/v1/lora.safetensors", sha256: "ab".repeat(32) }],
+      timing: { durationUs: 5_000_000, fps: 16, width: 832, height: 480 },
+    });
+    // Same value asserted in apps/gpu-worker/tests/test_authz_manifest.py (GOLDEN_V2).
+    expect(v2).toBe("93e92cbba5c7b7f203603ac53e249e2538bfd45e2ec825eef7d6c3faaa7775dc");
   });
 
   it("minted token equals the committed fixture the Python verifier checks", () => {

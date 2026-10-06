@@ -41,6 +41,7 @@ export interface GpuGenerateInput {
   videoOp?: string;
   motionStrength?: number;
   loraKeys?: string[];
+  loraSha256?: Record<string, string>;
   camera?: Record<string, unknown>;
   extra?: Record<string, unknown>;
 }

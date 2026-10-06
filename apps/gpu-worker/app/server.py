@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 import time
 import uuid
@@ -42,12 +43,13 @@ from .gateway import (
 )
 from .gateway.authz import TimingRequest
 from .gateway.manifest import PLACEHOLDER
-from .media_io import put_file, storage_credentials_present
+from .media_io import LoraIntegrityError, put_file, storage_credentials_present
 from .pipeline import VideoPipeline, upload_clip
 
 MODEL_NAME = os.environ.get("MODEL_NAME", "wan-2.1")  # "wan-2.1" | "hunyuan"
 
 log = logging.getLogger("cineforge.gateway")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 class OutputTarget(BaseModel):
@@ -75,6 +77,8 @@ class GenerateInput(BaseModel):
     videoOp: str | None = None
     motionStrength: float | None = None
     loraKeys: list[str] | None = None
+    # Authorized content hash per LoRA key (authz v2; set from Cineforge's registry).
+    loraSha256: dict[str, str] | None = None
     camera: dict | None = None
     extra: dict | None = None
     # One-time presigned URLs: input key → GET URL, and the output targets.
@@ -143,7 +147,7 @@ class RuntimeIdentity:
             workflow=workflow,
             runtime=self.runtime(),
             models=[{"role": role, "id": spec.repo_id, "revision": spec.revision or "", "weights": weights or ""}],
-            loras=inp.loraKeys or [],
+            loras=[{"key": k, "sha256": (inp.loraSha256 or {}).get(k, "")} for k in (inp.loraKeys or [])],
             timing=TimingRequest(
                 duration_us=round(inp.durationSec * 1_000_000), fps=inp.fps, width=inp.width, height=inp.height
             ),
@@ -277,10 +281,17 @@ def create_app(
                     # Enforce mode: all I/O goes through the job's one-time URLs.
                     ("OUTPUT_TARGET_MISSING", inp.output is not None or not config.enforcing),
                     ("INPUT_URL_MISSING", not config.enforcing or set(inp.input_keys()) <= set((inp.inputUrls or {}).keys())),
+                    # Every LoRA must be content-addressed (authz v2).
+                    ("LORA_UNHASHED", not config.enforcing or all(
+                        _SHA256.match((inp.loraSha256 or {}).get(k, "")) for k in (inp.loraKeys or []))),
                 ],
             ),
         )
-        return await run_in_threadpool(_generate, inp)
+        try:
+            return await run_in_threadpool(_generate, inp)
+        except LoraIntegrityError as e:
+            log.warning('{"event":"gateway.lora_integrity","decision":"reject","code":%r,"sub":%r}', e.code, inp.jobId)
+            raise HTTPException(status_code=409, detail={"error": e.code}) from None
 
     def _generate(inp: GenerateInput) -> GenerateOutput:
         seed = inp.seed if inp.seed is not None else uuid.uuid4().int % (2**31)
@@ -305,6 +316,8 @@ def create_app(
                 extra=inp.extra or {},
                 input_urls=inp.inputUrls,
                 legacy_fallback=not config.enforcing,
+                lora_sha256=inp.loraSha256,
+                strict_integrity=config.enforcing,
             )
 
         gpu_ms = int((time.monotonic() - started) * 1000)
