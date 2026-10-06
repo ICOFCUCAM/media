@@ -2,7 +2,19 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { CinemaArt, type Scene } from "./CinemaArt";
 import { PROJECT_TYPES, CREATION_MODES, type CreationMode, type ProjectType } from "../../lib/creation";
+
+/** Which kind of frame each production type is pictured with. */
+const TYPE_SCENE: Record<string, Scene> = {
+  film: "kingdom",
+  series: "city",
+  trailer: "space",
+  commercial: "studio",
+  social: "figure",
+  music: "stage",
+  documentary: "savannah",
+};
 import { ActionBand, Section, SpecList } from "./primitives";
 
 /** Types that open inside the film studio and accept every entry mode. */
@@ -41,18 +53,28 @@ export function CreateGate() {
                 role="radio"
                 aria-checked={on}
                 onClick={() => setType(t)}
-                className={`flex min-h-[200px] flex-col p-6 text-left transition ${on ? "bg-cf-inverse text-cf-on-inverse" : "bg-cf-bg hover:bg-cf-soft"}`}
+                className={`group relative min-h-[220px] overflow-hidden text-left text-white outline-offset-[-3px] transition ${on ? "outline outline-[3px] outline-cf-accent" : ""}`}
               >
-                <span className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] opacity-60">{String(i + 1).padStart(2, "0")}</span>
-                  <span className={`h-2 w-2 rounded-full ${on ? "bg-cf-accent" : "border border-cf-line"}`} aria-hidden />
+                <span className="absolute inset-0 transition duration-500 group-hover:scale-[1.04]" aria-hidden>
+                  <CinemaArt seed={`${t.title} ${t.blurb}`} scene={TYPE_SCENE[t.id]} className="h-full w-full" />
                 </span>
-                <span className="mt-auto pt-10 font-display font-semibold text-[30px] leading-none tracking-[-0.04em]">{t.title}</span>
-                <span className="mt-3 text-[12px] leading-relaxed opacity-60">{t.blurb}</span>
+                <span className={`absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10 transition ${on ? "" : "group-hover:from-black/75"}`} aria-hidden />
+                <span className="relative flex h-full min-h-[220px] flex-col p-6">
+                  <span className="flex items-center justify-between">
+                    <span className="font-mono text-[11px] text-white/70">{String(i + 1).padStart(2, "0")}</span>
+                    <span className={`h-2.5 w-2.5 rounded-full ${on ? "bg-cf-accent" : "border border-white/50"}`} aria-hidden />
+                  </span>
+                  <span className="mt-auto pt-10 font-display font-semibold text-[30px] leading-none tracking-[-0.04em]">{t.title}</span>
+                  <span className="mt-3 text-[12px] leading-relaxed text-white/75">{t.blurb}</span>
+                </span>
               </button>
             );
           })}
-          {PROJECT_TYPES.length % 4 !== 0 && <div className="hidden bg-cf-bg xl:block" style={{ gridColumn: `span ${4 - (PROJECT_TYPES.length % 4)}` }} aria-hidden />}
+          {PROJECT_TYPES.length % 4 !== 0 && (
+            <div className="relative hidden overflow-hidden xl:block" style={{ gridColumn: `span ${4 - (PROJECT_TYPES.length % 4)}` }} aria-hidden>
+              <CinemaArt seed="Your next production" scene="studio" letterbox className="h-full w-full opacity-60" hud={{ tag: "Next in the archive" }} />
+            </div>
+          )}
         </div>
       </Section>
 
@@ -67,7 +89,7 @@ export function CreateGate() {
                 role="radio"
                 aria-checked={on}
                 onClick={() => setMode(m)}
-                className={`flex min-h-[170px] flex-col p-5 text-left transition ${on ? "bg-cf-inverse text-cf-on-inverse" : "bg-cf-bg hover:bg-cf-soft"}`}
+                className={`flex min-h-[170px] flex-col p-5 text-left outline-offset-[-3px] transition ${on ? "bg-cf-soft outline outline-[3px] outline-cf-accent" : "bg-cf-bg hover:bg-cf-soft"}`}
               >
                 <span className="flex items-center justify-between font-sans text-[11px] font-medium uppercase tracking-[0.06em]">
                   <span className="opacity-60">{String(i + 1).padStart(2, "0")}</span>

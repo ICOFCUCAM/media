@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CinemaArt } from "./CinemaArt";
+import { CinemaArt, SCENES, sceneFor } from "./CinemaArt";
 
 /*
  * Cineforge visual primitives — the editorial vocabulary shared by every
@@ -43,29 +43,56 @@ export function PageHeader({
   copy,
   status,
   aside,
+  art,
 }: {
   eyebrow: string;
   title: ReactNode;
   copy?: ReactNode;
   status?: { tone?: Tone; label: ReactNode };
   aside?: ReactNode;
+  /** Seed for the header's film strip; false hides it. Defaults to the page. */
+  art?: string | false;
 }) {
+  const reel = art === false ? null : (art ?? `${eyebrow} ${textOf(title)}`);
   return (
-    <header className="grid gap-10 border-b border-cf-line pb-14 xl:grid-cols-[1.35fr_0.65fr] xl:gap-[8vw]">
-      <div>
-        <div className="cf-eyebrow mb-6">{eyebrow}</div>
-        <h1 className="cf-display text-[clamp(44px,6.2vw,104px)] leading-[0.92] [&_em]:italic">{title}</h1>
+    <header className="border-b border-cf-line pb-14">
+      <div className="grid gap-10 xl:grid-cols-[1.35fr_0.65fr] xl:gap-[8vw]">
+        <div>
+          <div className="cf-eyebrow mb-6">{eyebrow}</div>
+          <h1 className="cf-display text-[clamp(44px,6.2vw,104px)] leading-[0.92] [&_em]:italic">{title}</h1>
+        </div>
+        <div className="max-w-[520px] self-end text-[15px] leading-[1.75] text-cf-muted [&_p+p]:mt-4 [&_strong]:font-normal [&_strong]:text-cf-fg">
+          {copy}
+          {status && (
+            <div className="mt-7">
+              <Status tone={status.tone}>{status.label}</Status>
+            </div>
+          )}
+          {aside}
+        </div>
       </div>
-      <div className="max-w-[520px] self-end text-[15px] leading-[1.75] text-cf-muted [&_p+p]:mt-4 [&_strong]:font-normal [&_strong]:text-cf-fg">
-        {copy}
-        {status && (
-          <div className="mt-7">
-            <Status tone={status.tone}>{status.label}</Status>
-          </div>
-        )}
-        {aside}
-      </div>
+      {reel && <ReelStrip seed={reel} />}
     </header>
+  );
+}
+
+/** Three drawn frames under a page title — the room reads as a film set. */
+function ReelStrip({ seed }: { seed: string }) {
+  const first = SCENES.indexOf(sceneFor(seed));
+  return (
+    <div className="mt-12 grid grid-cols-1 gap-2 sm:grid-cols-3" aria-hidden>
+      {[0, 1, 2].map((k) => (
+        <CinemaArt
+          key={k}
+          seed={`${seed} ${k}`}
+          scene={SCENES[(first + k * 3) % SCENES.length]}
+          letterbox
+          motion={k === 0}
+          className={`aspect-[21/9] rounded-md ${k > 0 ? "hidden sm:block" : ""}`}
+          hud={{ tag: `Shot ${String(k + 1).padStart(2, "0")}` }}
+        />
+      ))}
+    </div>
   );
 }
 

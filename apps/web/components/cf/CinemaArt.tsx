@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 
 export type Scene = "kingdom" | "city" | "sea" | "savannah" | "forest" | "stage" | "studio" | "space" | "interior" | "figure";
 
-const SCENES: Scene[] = ["kingdom", "city", "sea", "savannah", "forest", "stage", "studio", "space", "interior", "figure"];
+export const SCENES: Scene[] = ["kingdom", "city", "sea", "savannah", "forest", "stage", "studio", "space", "interior", "figure"];
 
 /** Words in a brief or title that call for a particular kind of frame. */
 const KEYWORDS: [RegExp, Scene][] = [
