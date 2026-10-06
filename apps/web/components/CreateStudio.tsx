@@ -26,6 +26,8 @@ export interface CreateStudioProps {
   /** Vertical platform presets — only the Shorts studio passes these. */
   platforms?: ShortPlatform[];
   cta?: string;
+  /** Production label for the specification (e.g. "Documentary"); defaults from kind. */
+  production?: string;
   /** Render without the outer container/header (when nested under a workspace). */
   embedded?: boolean;
 }

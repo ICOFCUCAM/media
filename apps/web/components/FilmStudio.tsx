@@ -6,7 +6,8 @@ import { AuthCard } from "./AuthCard";
 import { CreateStudio } from "./CreateStudio";
 import { StoryboardStudio } from "./StoryboardStudio";
 import { ScriptStudio, ImageStudio, AudioStudio, VideoStudio, HybridStudio } from "./EntrySurfaces";
-import { STUDIO_MODES, type StudioMode } from "../lib/creation";
+import { STUDIO_MODES, projectTypeById, type StudioMode } from "../lib/creation";
+import { PageHeader } from "./cf/primitives";
 import { productById } from "../lib/products";
 
 export function FilmStudio() {
@@ -24,7 +25,7 @@ const MODE_BLURB: Record<StudioMode, string> = {
 };
 
 /**
- * Mode-aware workspace: every creation entry point on one screen (Prompt ·
+ * The Director's Room (docs/design/create-film.html). Mode-aware workspace: every creation entry point on one screen (Prompt ·
  * Script · Scene-by-Scene · Image · Audio · Video), read from ?mode=. Auto mode
  * runs the shared production console — the REAL pipeline when signed in (the
  * worker owns the lifecycle; the page only reflects Realtime state), a loudly
@@ -32,88 +33,99 @@ const MODE_BLURB: Record<StudioMode, string> = {
  * it raced the real worker and wrote fake completions into live data.
  */
 function FilmWorkspace() {
-  const { enabled, user, signOut } = useAuth();
+  const { enabled, user } = useAuth();
   const live = enabled && !!user;
   const [mode, setMode] = useState<StudioMode>("prompt");
+  const [type, setType] = useState<string | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const p = productById("film")!;
 
-  // Read the requested mode from the URL (avoids useSearchParams' Suspense
-  // requirement on statically-rendered routes).
+  // Read the requested mode/type from the URL (avoids useSearchParams'
+  // Suspense requirement on statically-rendered routes).
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get("mode");
-    if (q && STUDIO_MODES.some((m) => m.id === q)) setMode(q as StudioMode);
+    const q = new URLSearchParams(window.location.search);
+    const m = q.get("mode");
+    if (m && STUDIO_MODES.some((x) => x.id === m)) setMode(m as StudioMode);
+    const t = projectTypeById(q.get("type"));
+    if (t && t.id !== "film") setType(t.title);
   }, []);
 
+  // Keep ?mode= in sync so a room can be linked, reloaded and shared.
+  function choose(m: StudioMode) {
+    setMode(m);
+    const url = new URL(window.location.href);
+    url.searchParams.set("mode", m);
+    window.history.replaceState(null, "", url.toString());
+  }
+
+  const production = type ?? "Film";
+
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            Create a Film
-            {live ? (
-              <span className="rounded-full border border-emerald-400/40 px-2 py-0.5 text-[10px] font-normal text-emerald-300">Live · Supabase</span>
-            ) : (
-              <span className="rounded-full border border-amber-400/40 px-2 py-0.5 text-[10px] font-normal text-amber-300">Preview</span>
-            )}
-          </h1>
-          <p className="mt-1 text-sm text-white/55">{MODE_BLURB[mode]}</p>
-        </div>
-        <div className="text-right text-xs text-white/45">
-          {live ? (
-            <>
-              <div>{user!.email}</div>
-              <button onClick={signOut} className="mt-1 underline hover:text-white">Sign out</button>
-            </>
-          ) : enabled ? (
-            <button onClick={() => setShowAuth((v) => !v)} className="underline hover:text-white">Sign in to save</button>
-          ) : (
-            <span title="Set NEXT_PUBLIC_SUPABASE_URL to persist your work">Preview — not saved</span>
-          )}
-        </div>
-      </header>
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow={`${production} production / 01`}
+        title={<>Direct<br />the <em>{type ? type.toLowerCase() : "film"}.</em></>}
+        copy={
+          <>
+            <p>From premise to final cut, Cineforge turns one creative direction into a complete production.</p>
+            <p>{MODE_BLURB[mode]}</p>
+            <p><strong>You direct. Cineforge carries the production.</strong></p>
+          </>
+        }
+        status={live ? { tone: "live", label: "Live studio · saved to your projects" } : { tone: "warn", label: enabled ? "Preview · sign in to save" : "Preview · not saved" }}
+        aside={
+          enabled && !live ? (
+            <button type="button" onClick={() => setShowAuth((v) => !v)} aria-expanded={showAuth} className="cf-link mt-5 block">
+              {showAuth ? "Hide sign in" : "Sign in to save →"}
+            </button>
+          ) : null
+        }
+      />
 
       {showAuth && !live && (
-        <div className="mb-6">
+        <div className="border-b border-cf-line py-10">
           <AuthCard />
         </div>
       )}
 
-      <div className="mb-6 flex flex-wrap gap-1 rounded-lg border border-white/10 bg-white/5 p-1 text-sm">
+      <nav className="mt-12 flex overflow-x-auto border-b border-t border-b-cf-line border-t-cf-fg" aria-label="Production mode">
         {STUDIO_MODES.map((m) => (
           <button
             key={m.id}
-            onClick={() => setMode(m.id)}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition ${
-              mode === m.id ? "bg-white text-black" : "text-white/60 hover:text-white"
+            type="button"
+            onClick={() => choose(m.id)}
+            aria-pressed={mode === m.id}
+            className={`flex min-w-[120px] shrink-0 items-center justify-center gap-2 border-r border-cf-line px-5 py-4 font-mono text-[9px] uppercase tracking-[0.08em] transition ${
+              mode === m.id ? "bg-cf-inverse text-cf-on-inverse" : "text-cf-muted hover:text-cf-fg"
             }`}
           >
             {m.label}
-            {m.status === "beta" && (
-              <span className={`rounded-full px-1.5 text-[9px] uppercase ${mode === m.id ? "bg-black/10 text-black/60" : "text-amber-300"}`}>beta</span>
-            )}
+            {m.status === "beta" && <span className={mode === m.id ? "text-cf-accent" : "text-cf-warn"}>beta</span>}
           </button>
         ))}
-      </div>
+      </nav>
 
-      {mode === "prompt" && (
-        <CreateStudio
-          kind="film"
-          embedded
-          heading=""
-          blurb=""
-          durations={p.durations}
-          defaultSeconds={p.defaultSeconds}
-          defaultPrompt="An epic about an African kingdom fighting for its independence, told over three generations."
-          cta="Create film"
-        />
-      )}
-      {mode === "hybrid" && <HybridStudio />}
-      {mode === "script" && <ScriptStudio />}
-      {mode === "storyboard" && <StoryboardStudio />}
-      {mode === "image" && <ImageStudio />}
-      {mode === "audio" && <AudioStudio />}
-      {mode === "video" && <VideoStudio />}
+      <div className="pt-10">
+        {mode === "prompt" && (
+          <CreateStudio
+            kind="film"
+            embedded
+            heading=""
+            blurb=""
+            production={production}
+            durations={p.durations}
+            defaultSeconds={p.defaultSeconds}
+            defaultPrompt="An epic about an African kingdom fighting for its independence, told over three generations."
+            cta={`Create ${production.toLowerCase()}`}
+          />
+        )}
+        {mode === "hybrid" && <HybridStudio />}
+        {mode === "script" && <ScriptStudio />}
+        {mode === "storyboard" && <StoryboardStudio />}
+        {mode === "image" && <ImageStudio />}
+        {mode === "audio" && <AudioStudio />}
+        {mode === "video" && <VideoStudio />}
+      </div>
     </div>
   );
 }
