@@ -231,6 +231,7 @@ export const NAV: NavSection[] = [
     items: [
       { label: "Creator", href: "/view/creator" },
       { label: "Studio", href: "/view/studio" },
+      { label: "Super", href: "/view/super" },
     ],
   },
   {

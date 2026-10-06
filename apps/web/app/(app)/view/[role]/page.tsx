@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { CreatorView } from "../../../../components/views/CreatorView";
 import { StudioView } from "../../../../components/views/StudioView";
+import { SuperView } from "../../../../components/views/SuperView";
 
 const VIEWS = ["creator", "studio", "super"] as const;
 
@@ -16,5 +17,6 @@ export function generateMetadata({ params }: { params: { role: string } }) {
 export default function ViewPage({ params }: { params: { role: string } }) {
   if (params.role === "creator") return <CreatorView />;
   if (params.role === "studio") return <StudioView />;
+  if (params.role === "super") return <SuperView />;
   notFound();
 }
