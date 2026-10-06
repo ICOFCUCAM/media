@@ -22,6 +22,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Typecheck and build need the generated Prisma client types.
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
       - name: Validate Prisma schema
         run: pnpm --filter @cineforge/db prisma validate
         env:
