@@ -286,112 +286,126 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
     }
   }
 
+  const ready = scenes.filter((x) => x.status === "READY").length;
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {intro}
-      {/* Brief / plan */}
-      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
-        <Label>Brief</Label>
-        <textarea
-          value={brief}
-          onChange={(e) => setBrief(e.target.value)}
-          rows={2}
-          className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm outline-none focus:border-white/30"
-        />
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <span className="text-xs text-white/40">Scenes</span>
-          <div className="flex gap-1.5">
-            {SCENE_COUNTS.map((c) => (
-              <Chip key={c} active={count === c} onClick={() => setCount(c)}>{c}</Chip>
-            ))}
-          </div>
-          <button
-            onClick={() => loadDrafts(draftScenesFromBrief(brief, count))}
-            disabled={busy}
-            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
-          >
-            {persisted ? "Re-draft scenes" : "Draft storyboard"}
-          </button>
-          <button onClick={onAddScene} disabled={busy} className="rounded-lg border border-white/15 px-4 py-2 text-sm hover:bg-white/5">
-            Add scene
-          </button>
-          {scenes.length > 0 && (
-            <button
-              onClick={onAutoContinuity}
-              disabled={busy}
-              title="Let the Director propose a Scene Bridge + state (emotion, injuries, season, destroyed locations, goals) for every scene from the script. Fills blanks only."
-              className="rounded-lg border border-white/15 px-4 py-2 text-sm hover:bg-white/5"
-            >
-              ✨ Auto-fill continuity
-            </button>
-          )}
-        </div>
-        {error && <p className="mt-3 text-xs text-amber-300">{error}</p>}
-      </div>
-
-      {scenes.length === 0 ? (
-        <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-white/10 text-center text-white/40">
-          <div>
-            <p className="text-sm">Draft a storyboard, then edit each scene.</p>
-            <p className="mt-1 text-xs">Write the script per scene and choose Text→Video or Image→Video.</p>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm text-white/55">
-              {scenes.length} scenes · {fmtDuration(totalSeconds)} ·{" "}
-              <span className="text-white/40">{scenes.filter((s) => s.status === "READY").length} ready</span>
-              {!live ? (
-                <span className="ml-1 text-amber-300/70">· preview — sign in to save</span>
-              ) : (
-                !persisted && <span className="ml-1 text-white/30">· not saved yet — generating saves it</span>
+      {/* The Director's Board is a dark room inside the paper studio. */}
+      <section className="cf-dark" aria-label="Director's board">
+        <div className="grid gap-px bg-cf-line lg:grid-cols-[1.35fr_0.65fr]">
+          <div className="bg-cf-bg p-6 sm:p-8">
+            <div className="flex items-center justify-between gap-4">
+              <span className="cf-label">Director&apos;s board</span>
+              <span className={`cf-label ${live ? "text-cf-accent" : "text-cf-warn"}`}>
+                {live ? (persisted ? "Live · saved" : "Live · saves on first generate") : "Preview · sign in to save"}
+              </span>
+            </div>
+            <label htmlFor="board-brief" className="mb-2.5 mt-8 block font-mono text-[9px] uppercase tracking-[0.1em]">
+              The brief
+            </label>
+            <textarea id="board-brief" value={brief} onChange={(e) => setBrief(e.target.value)} rows={3} className="cf-input resize-y p-5 leading-[1.7]" />
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              <span className="cf-label mr-2">Scenes</span>
+              {SCENE_COUNTS.map((c) => (
+                <Chip key={c} active={count === c} onClick={() => setCount(c)}>{c}</Chip>
+              ))}
+            </div>
+            <div className="mt-7 flex flex-wrap gap-2">
+              <button type="button" onClick={() => loadDrafts(draftScenesFromBrief(brief, count))} disabled={busy} className="cf-btn-ink">
+                {persisted ? "Re-draft scenes" : "Draft storyboard"}
+              </button>
+              <button type="button" onClick={onAddScene} disabled={busy} className="cf-btn-line">
+                Add scene
+              </button>
+              {scenes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={onAutoContinuity}
+                  disabled={busy}
+                  title="The Director proposes a Scene Bridge + state (emotion, injuries, season, destroyed locations, goals) for every scene from the script. Fills blanks only."
+                  className="cf-btn-line"
+                >
+                  Auto-fill continuity
+                </button>
               )}
             </div>
-            <div className="flex gap-2">
-              <button onClick={onGenerateAll} className="rounded-lg border border-white/15 px-4 py-2 text-sm hover:bg-white/5">
-                Generate all
-              </button>
-              <button
-                onClick={onAssemble}
-                disabled={!allReady || busy || assembled}
-                className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
-              >
-                {assembled ? "Assembled ✓" : "Assemble film"}
-              </button>
+            {error && (
+              <p role="alert" className="mt-5 border-l-2 border-cf-danger pl-3 text-[12px] text-cf-danger">
+                {error}
+              </p>
+            )}
+          </div>
+          <div className="bg-cf-bg p-6 sm:p-8">
+            <div className="cf-label">The cut</div>
+            <dl className="mt-8 border-t border-cf-line">
+              {[
+                ["Scenes", String(scenes.length)],
+                ["Runtime", fmtDuration(totalSeconds)],
+                ["Ready", `${ready} / ${scenes.length}`],
+                ["Continuity", scenes.length ? `${Math.round(continuity.perScene.reduce((t, c) => t + c.score, 0) / Math.max(1, continuity.perScene.length))}%` : "—"],
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between border-b border-cf-line py-4 text-[11px]">
+                  <dt className="text-cf-muted">{k}</dt>
+                  <dd className="font-mono text-[10px] uppercase">{v}</dd>
+                </div>
+              ))}
+            </dl>
+            {scenes.length > 0 && (
+              <div className="mt-7 flex flex-wrap gap-2">
+                <button type="button" onClick={onGenerateAll} className="cf-btn-line">
+                  Generate all
+                </button>
+                <button type="button" onClick={onAssemble} disabled={!allReady || busy || assembled} className="cf-btn-accent">
+                  {assembled ? "Assembled" : "Assemble film"}
+                </button>
+              </div>
+            )}
+            {scenes.length > 0 && !allReady && <p className="cf-label mt-3 leading-relaxed">Assembly opens once every scene is ready.</p>}
+          </div>
+        </div>
+
+        {assembled && (
+          <div className="border-t border-cf-line bg-cf-panel px-6 py-6 sm:px-8">
+            <span className="cf-label text-cf-ok">Final cut assembled</span>
+            <p className="cf-display mt-2 text-[28px] leading-none">
+              {fmtDuration(totalSeconds)} from {scenes.length} scenes
+            </p>
+            <p className="cf-label mt-2">{live ? "Saved to your studio — open it from Projects" : "Preview — nothing was rendered"}</p>
+          </div>
+        )}
+
+        {scenes.length === 0 ? (
+          <div className="flex min-h-[300px] items-center justify-center border-t border-cf-line px-6 text-center">
+            <div>
+              <p className="cf-display text-[clamp(32px,4vw,52px)] leading-none">Draft the board.</p>
+              <p className="cf-label mt-3">Write each scene, choose text or image as its source, then generate it alone.</p>
             </div>
           </div>
-
-          {assembled && (
-            <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/[0.04] p-5">
-              <h3 className="font-semibold text-emerald-200">Final cut assembled</h3>
-              <p className="text-sm text-white/60">{fmtDuration(totalSeconds)} from {scenes.length} scenes · saved to your studio.</p>
-            </div>
-          )}
-
-          <div className="space-y-3">
-            {scenes.map((s, i) => (
-              <SceneCard
-                key={s.key}
-                scene={s}
-                anchors={anchors}
-                cont={contByIndex.get(s.index)}
-                timeline={continuity.final.timeline}
-                isFirst={i === 0}
-                isLast={i === scenes.length - 1}
-                onPatch={(p) => patch(s.key, p)}
-                onSave={() => onSaveScene(s.key)}
-                onUpload={(f) => onUpload(s.key, f)}
-                onUploadVideo={(f) => onUploadVideo(s.key, f)}
-                onGenerateImage={() => onGenerateImage(s.key)}
-                onGenerate={() => onGenerate(s.key)}
-                onRemove={() => onRemove(s.key)}
-                onMove={(d) => move(s.key, d)}
-              />
+        ) : (
+          <ol className="border-t border-cf-line">
+            {scenes.map((sc, i) => (
+              <li key={sc.key} className="border-b border-cf-line">
+                <SceneCard
+                  scene={sc}
+                  anchors={anchors}
+                  cont={contByIndex.get(sc.index)}
+                  timeline={continuity.final.timeline}
+                  isFirst={i === 0}
+                  isLast={i === scenes.length - 1}
+                  onPatch={(p) => patch(sc.key, p)}
+                  onSave={() => onSaveScene(sc.key)}
+                  onUpload={(f) => onUpload(sc.key, f)}
+                  onUploadVideo={(f) => onUploadVideo(sc.key, f)}
+                  onGenerateImage={() => onGenerateImage(sc.key)}
+                  onGenerate={() => onGenerate(sc.key)}
+                  onRemove={() => onRemove(sc.key)}
+                  onMove={(d) => move(sc.key, d)}
+                />
+              </li>
             ))}
-          </div>
-        </>
-      )}
+          </ol>
+        )}
+      </section>
     </div>
   );
 }
