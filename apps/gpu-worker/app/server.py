@@ -47,6 +47,7 @@ from .code_digest import code_digest
 from .gateway.manifest import PLACEHOLDER
 from .media_io import LoraIntegrityError, put_file, storage_credentials_present
 from .pipeline import VideoPipeline, upload_clip
+from .timing import TimingProbeError, video_timing_report
 
 MODEL_NAME = os.environ.get("MODEL_NAME", "wan-2.1")
 # Digest of the code this process actually loaded (app/code_digest.py).
@@ -100,8 +101,11 @@ class GenerateOutput(BaseModel):
     gpuMs: int
     width: int
     height: int
+    # The requested duration (kept for compatibility). What was actually
+    # produced is in `timing`, measured from the file (docs/38 §AV.5).
     durationSec: float
     videoBytes: int | None = None
+    timing: dict | None = None
 
 
 class RuntimeIdentity:
@@ -176,6 +180,7 @@ def create_app(
     uploader=upload_clip,
     put=put_file,
     resolve_weights: Callable[[ModelSpec], str | None] = resolve_weights_digest,
+    measure: Callable[..., dict] = video_timing_report,
 ) -> FastAPI:
     config = config or GatewayConfig.from_env()
     pipeline = pipeline or VideoPipeline(MODEL_NAME)
@@ -326,6 +331,14 @@ def create_app(
 
         gpu_ms = int((time.monotonic() - started) * 1000)
 
+        # Measure what was produced. A missing report is Cineforge's to judge
+        # (TIMING_REPORT_MISSING), never papered over with the request values.
+        try:
+            timing = measure(local_mp4, requested_duration_sec=inp.durationSec, requested_fps=inp.fps)
+        except TimingProbeError as e:
+            log.warning('{"event":"runtime.timing_report","error":%r,"sub":%r}', str(e), inp.jobId)
+            timing = None
+
         if inp.output is not None:
             # Cineforge chose the keys; write only there, through one-time URLs.
             try:
@@ -354,6 +367,7 @@ def create_app(
                 height=inp.height,
                 durationSec=inp.durationSec,
                 videoBytes=size,
+                timing=timing,
             )
 
         key = f"_generated/{pipeline.model_name}/{uuid.uuid4().hex}.mp4"
@@ -367,6 +381,7 @@ def create_app(
             width=inp.width,
             height=inp.height,
             durationSec=inp.durationSec,
+            timing=timing,
         )
 
     # ── Per-character LoRA training (docs/28): disabled ───────────────────

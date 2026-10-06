@@ -129,7 +129,13 @@ class FakeStore:
         return None
 
 
-def build_client(signing_key, *, mode="enforce", pipeline=None, deployment=DEPLOYMENT, store=None):
+def no_timing(path, **kw):
+    from app.timing import TimingProbeError
+
+    raise TimingProbeError("fake clip")
+
+
+def build_client(signing_key, *, mode="enforce", pipeline=None, deployment=DEPLOYMENT, store=None, measure=no_timing):
     pipeline = pipeline or FakePipeline()
     store = store or FakeStore()
     app = create_app(
@@ -138,6 +144,7 @@ def build_client(signing_key, *, mode="enforce", pipeline=None, deployment=DEPLO
         uploader=store.legacy_upload,
         put=store.put,
         resolve_weights=fake_weights,
+        measure=measure,
     )
     app.state.fake_store = store
     return TestClient(app), pipeline, app

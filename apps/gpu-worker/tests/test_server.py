@@ -384,3 +384,30 @@ def test_lora_hash_mismatch_at_download_is_409(signing_key, mint):
         r = post(client, body, mint.token(body, authz=cineforge_authz(loras=((LORA, LORA_SHA),))))
     assert r.status_code == 409 and r.json()["detail"]["error"] == "LORA_HASH_MISMATCH"
     assert app.state.fake_store.puts == []
+
+
+# ── docs/38 §AV.5: the worker reports what it produced, measured ─────────────
+
+def test_generate_returns_measured_timing_report(signing_key, mint):
+    seen = {}
+
+    def measure(path, *, requested_duration_sec, requested_fps):
+        seen.update(path=path, requested=requested_duration_sec, fps=requested_fps)
+        return {"kind": "video", "requestedDurationUs": 5_000_000, "actualDurationUs": 1_562_500, "frameCount": 25}
+
+    client, _, _ = build_client(signing_key, measure=measure)
+    body = gen_body()
+    with client:
+        r = post(client, body, mint.token(body, authz=cineforge_authz()))
+    assert r.status_code == 200, r.text
+    assert r.json()["timing"]["actualDurationUs"] == 1_562_500
+    assert seen["path"] == "/tmp/fake.mp4"
+
+
+def test_unmeasurable_output_returns_no_timing_report(signing_key, mint):
+    client, _, _ = build_client(signing_key)
+    body = gen_body()
+    with client:
+        r = post(client, body, mint.token(body, authz=cineforge_authz()))
+    # Never echo the request as if it were a measurement.
+    assert r.status_code == 200 and r.json()["timing"] is None
