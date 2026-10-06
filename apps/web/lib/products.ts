@@ -241,6 +241,7 @@ export const NAV: NavSection[] = [
       { label: "Infrastructure", href: "/admin" },
       { label: "Users & Credits", href: "/admin/users" },
       { label: "Moderation", href: "/admin/moderation" },
+      { label: "GPU Gateway", href: "/admin/gateway" },
       { label: "GPU & Queues", href: "/admin#compute" },
       { label: "Models & Routing", href: "/admin#models" },
     ],

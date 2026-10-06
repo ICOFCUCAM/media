@@ -321,7 +321,7 @@ change to a deployment row, however it is made.
 
 | Step | Action | Production effect |
 |---|---|---|
-| 0 | Merge PR 2. Apply migration 0026 to the Supabase project (same as earlier migrations), regenerate `packages/db/supabase/types.ts`. | none — report mode; audit rows start appearing once keys are set |
+| 0 | Merge PR 2. Apply migration 0026 to the Supabase project (same as earlier migrations), regenerate `packages/db/supabase/types.ts`. **Done 2026-10-06** (live migration `runtime_gateway`; types regenerated; security advisors show no new findings). Migration 0027 (LoRA hashes) not yet applied. | none — report mode; audit rows start appearing once keys are set. Inspect them at `/admin/gateway` |
 | 1 | `pnpm --filter @cineforge/worker gateway:admin keygen` → set `GPU_JWT_SIGNING_KEY` on Render (secret) and `GPU_JWT_PUBLIC_KEYS` on the pod. Set `DEPLOYMENT_ID` on the pod. | calls become signed; pod (report mode) logs verification results |
 | 2 | Pin the pod image to the digest from the build summary (`<user>/cineforge-gpu@sha256:…`), set `WAN_MODEL_REVISION` (and I2V/Hunyuan revisions if used), restart. | pinned image, pinned weights |
 | 3 | `gateway:admin register --id … --model wan-2.1 --url … --pod …`, then `gateway:admin approve --id … --image <user>/cineforge-gpu@sha256:…` | deployment approved; still report |

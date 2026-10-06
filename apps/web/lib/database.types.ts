@@ -440,6 +440,65 @@ export interface Database {
         Update: { views?: number; published_at?: string | null };
         Relationships: [];
       };
+      // Media Runtime Gateway (migration 0026): admin read-only, written by the worker.
+      runtime_deployments: {
+        Row: {
+          id: string;
+          model_id: string;
+          base_url: string;
+          runpod_pod_id: string | null;
+          status: string;
+          enforcement: string;
+          manifest: Json | null;
+          approved_image: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { [_ in never]: never };
+        Update: { [_ in never]: never };
+        Relationships: [];
+      };
+      runtime_execution_grants: {
+        Row: {
+          id: string;
+          jti: string | null;
+          deployment_id: string | null;
+          shot_id: string | null;
+          project_id: string | null;
+          scope: string;
+          mode: string;
+          authz_digest: string | null;
+          body_sha256: string | null;
+          input_keys: string[];
+          output_keys: string[];
+          image_ref: string | null;
+          issued_at: string;
+          expires_at: string | null;
+          outcome: string;
+          error_code: string | null;
+          gpu_ms: number | null;
+          output_bytes: number | null;
+          completed_at: string | null;
+        };
+        Insert: { [_ in never]: never };
+        Update: { [_ in never]: never };
+        Relationships: [];
+      };
+      runtime_gateway_events: {
+        Row: {
+          id: string;
+          type: string;
+          deployment_id: string | null;
+          grant_id: string | null;
+          code: string | null;
+          detail: Json;
+          actor: string;
+          created_at: string;
+        };
+        Insert: { [_ in never]: never };
+        Update: { [_ in never]: never };
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {
