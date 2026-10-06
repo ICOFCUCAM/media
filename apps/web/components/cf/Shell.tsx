@@ -21,8 +21,11 @@ export function CineforgeShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
   const { role } = useRole();
   const [drawer, setDrawer] = useState(false);
+  // The rail only offers the admin family in the Super view, but a page is
+  // always located against the full NAV so an /admin URL keeps its breadcrumb
+  // and navigator (the page itself shows the restricted state).
   const sections = NAV.filter((s) => !s.adminOnly || role === "admin");
-  const here = locate(pathname, sections);
+  const here = locate(pathname, NAV);
   const room = roomFor(pathname);
 
   // Close the mobile index whenever the route changes.
