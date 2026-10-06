@@ -81,6 +81,7 @@ overview.
 | 28 | [docs/28-continuity-engine.md](docs/28-continuity-engine.md) | **Continuity Engine (implemented)** — memory graph, bridges, identity stack |
 | 35 | [docs/35-studio-design-system.md](docs/35-studio-design-system.md) | **Studio design system** — rooms, tokens, shell, primitives, rules |
 | 36 | [docs/36-site-review.md](docs/36-site-review.md) | **Site review** — critique, upgrade roadmap, responsive baseline |
+| 37 | [docs/37-homepage-frames-and-motion.md](docs/37-homepage-frames-and-motion.md) | **Homepage frames & motion** — real-frame slots, generator, motion inventory |
 | — | [docs/design/](docs/design/README.md) | Page designs and how each was implemented in the app |
 
 ## Code map
