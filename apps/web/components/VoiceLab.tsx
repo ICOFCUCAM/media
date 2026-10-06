@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { StudioGate } from "./cf/StudioGate";
-import { Control, EmptyState, PageHeader, Section } from "./cf/primitives";
+import { Control, EmptyState, PageHeader, Section, Status } from "./cf/primitives";
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
 import { LANGUAGES } from "../lib/system";
@@ -448,21 +448,19 @@ function VoiceoverCard({ row, voices, onDelete }: { row: VoiceoverRow; voices: V
   const voiceName = voices.find((v) => v.id === row.voice_id)?.name ?? "Narrator";
   const lang = LANGUAGES.find((l) => l.code === row.language)?.name ?? row.language;
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate font-medium">{row.title}</div>
-          <div className="text-xs text-white/45">
-            {voiceName} · {lang}
-          </div>
+    <li className="grid gap-3 border-b border-cf-line py-4 md:grid-cols-[1fr_1.2fr_auto] md:items-center">
+      <div className="min-w-0">
+        <div className="truncate font-serif text-[19px]">{row.title}</div>
+        <div className="cf-label mt-1">
+          {voiceName} · {lang}
         </div>
-        <span className="flex shrink-0 items-center gap-1">
-          <StatusChip status={row.status} error={row.error_message} />
-          <button onClick={onDelete} title="Delete" className="rounded px-1.5 py-0.5 text-xs text-white/30 transition hover:bg-rose-500/10 hover:text-rose-300">✕</button>
-        </span>
       </div>
-      {url && <audio controls src={url} className="mt-3 w-full" />}
-    </div>
+      <div>{url ? <audio controls src={url} className="h-9 w-full" aria-label={`Play ${row.title}`} /> : row.error_message && <p className="text-[11px] text-cf-danger">{row.error_message}</p>}</div>
+      <span className="flex items-center justify-end gap-3">
+        <StatusChip status={row.status} error={row.error_message} />
+        <DeleteBtn label={row.title} onDelete={onDelete} />
+      </span>
+    </li>
   );
 }
 
@@ -472,30 +470,45 @@ function AvatarCard({ row, onDelete }: { row: AvatarRow; onDelete: () => void })
     if (row.status === "READY" && row.video_key) void signedUrl(row.video_key).then(setUrl);
   }, [row.status, row.video_key]);
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="truncate text-sm font-medium">{row.title}</div>
-        <span className="flex shrink-0 items-center gap-1">
+    <div className="bg-cf-bg p-4">
+      {url ? (
+        <video controls src={url} className="aspect-video w-full bg-black" aria-label={`Avatar video: ${row.title}`} />
+      ) : (
+        <div className="flex aspect-video items-center justify-center border border-dashed border-cf-line">
+          <span className="cf-label">{row.status === "FAILED" ? "Failed" : "The worker is rendering"}</span>
+        </div>
+      )}
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <div className="truncate font-serif text-[17px]">{row.title}</div>
+        <span className="flex shrink-0 items-center gap-3">
           <StatusChip status={row.status} error={row.error_message} />
-          <button onClick={onDelete} title="Delete" className="rounded px-1.5 py-0.5 text-xs text-white/30 transition hover:bg-rose-500/10 hover:text-rose-300">✕</button>
+          <DeleteBtn label={row.title} onDelete={onDelete} />
         </span>
       </div>
-      {url && <video controls src={url} className="mt-2 w-full rounded-lg" />}
-      {row.error_message && <p className="mt-1 text-[11px] text-amber-300">{row.error_message}</p>}
+      {row.error_message && <p className="mt-2 text-[11px] text-cf-danger">{row.error_message}</p>}
     </div>
   );
 }
 
-function StatusChip({ status, error }: { status: string; error: string | null }) {
-  const cls =
-    status === "READY"
-      ? "bg-emerald-500/15 text-emerald-300"
-      : status === "FAILED"
-        ? "bg-red-500/15 text-red-300"
-        : "bg-amber-500/15 text-amber-300";
+function DeleteBtn({ label, onDelete }: { label: string; onDelete: () => void }) {
   return (
-    <span title={error ?? undefined} className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider ${cls}`}>
-      {status === "READY" ? "ready" : status === "FAILED" ? "failed" : "working…"}
+    <button
+      type="button"
+      onClick={onDelete}
+      title="Delete"
+      aria-label={`Delete ${label}`}
+      className="h-7 w-7 border border-transparent text-cf-dim transition hover:border-cf-danger hover:text-cf-danger"
+    >
+      ×
+    </button>
+  );
+}
+
+function StatusChip({ status, error }: { status: string; error: string | null }) {
+  const tone = status === "READY" ? "ok" : status === "FAILED" ? "danger" : "warn";
+  return (
+    <span title={error ?? undefined}>
+      <Status tone={tone}>{status === "READY" ? "Ready" : status === "FAILED" ? "Failed" : "Working"}</Status>
     </span>
   );
 }
