@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cineforge — The Screening Room</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --ink:#10110f;
+  --paper:#f3f1eb;
+  --paper-2:#e9e7e0;
+  --line:rgba(16,17,15,.14);
+  --muted:#777873;
+  --soft:#aaa9a2;
+  --green:#b8f36a;
+  --white:#faf9f5;
+  --red:#d85b50;
+}
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+html{
+  scroll-behavior:smooth;
+}
+
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter, sans-serif;
+  min-height:100vh;
+}
+
+button, input, select{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+.app{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:78px 1fr;
+}
+
+/* --------------------------------------------------
+   RAIL
+-------------------------------------------------- */
+
+.rail{
+  position:fixed;
+  left:0;
+  top:0;
+  bottom:0;
+  width:78px;
+  background:#11120f;
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  z-index:50;
+}
+
+.brand{
+  height:78px;
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-bottom:1px solid rgba(255,255,255,.1);
+}
+
+.brand-mark{
+  width:27px;
+  height:27px;
+  border:2px solid var(--green);
+  border-radius:50%;
+  position:relative;
+}
+
+.brand-mark:before{
+  content:"";
+  position:absolute;
+  width:9px;
+  height:9px;
+  background:var(--green);
+  border-radius:50%;
+  left:7px;
+  top:7px;
+}
+
+.rail-nav{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  padding-top:22px;
+}
+
+.rail-button{
+  width:42px;
+  height:42px;
+  border:1px solid transparent;
+  color:#85867f;
+  background:none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:.2s;
+}
+
+.rail-button:hover,
+.rail-button.active{
+  color:white;
+  border-color:rgba(255,255,255,.18);
+  background:rgba(255,255,255,.05);
+}
+
+.rail-icon{
+  width:17px;
+  height:17px;
+  border:1px solid currentColor;
+}
+
+.rail-bottom{
+  margin-top:auto;
+  padding-bottom:22px;
+}
+
+.avatar{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  background:#282a25;
+  color:#aaa;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:"DM Mono";
+  font-size:10px;
+}
+
+/* --------------------------------------------------
+   MAIN
+-------------------------------------------------- */
+
+.main{
+  grid-column:2;
+  min-width:0;
+}
+
+.topbar{
+  height:78px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 42px;
+}
+
+.crumb{
+  font-family:"DM Mono";
+  font-size:10px;
+  letter-spacing:.14em;
+  color:#777873;
+  text-transform:uppercase;
+}
+
+.crumb strong{
+  color:var(--ink);
+  font-weight:500;
+}
+
+.top-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.small-button{
+  height:34px;
+  border:1px solid var(--line);
+  background:transparent;
+  padding:0 14px;
+  font-size:11px;
+  letter-spacing:.04em;
+}
+
+.small-button:hover{
+  background:#e7e5de;
+}
+
+.small-button.dark{
+  background:var(--ink);
+  color:#fff;
+  border-color:var(--ink);
+}
+
+/* --------------------------------------------------
+   HERO
+-------------------------------------------------- */
+
+.hero{
+  padding:74px 42px 54px;
+  border-bottom:1px solid var(--line);
+  display:grid;
+  grid-template-columns:1.25fr .75fr;
+  gap:80px;
+}
+
+.eyebrow{
+  font-family:"DM Mono";
+  font-size:10px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:#777873;
+  margin-bottom:22px;
+}
+
+.hero h1{
+  font-family:Manrope,sans-serif;
+  font-weight:700;
+  font-size:clamp(56px,8vw,112px);
+  line-height:.88;
+  letter-spacing:-.075em;
+  max-width:850px;
+}
+
+.hero h1 em{
+  font-family:Georgia,serif;
+  font-weight:400;
+}
+
+.hero-copy{
+  align-self:end;
+  max-width:470px;
+  padding-bottom:4px;
+}
+
+.hero-copy p{
+  font-size:15px;
+  line-height:1.75;
+  color:#60615d;
+  max-width:430px;
+}
+
+.live-status{
+  margin-top:28px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-family:"DM Mono";
+  font-size:10px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.live-dot{
+  width:7px;
+  height:7px;
+  background:#91d74e;
+  border-radius:50%;
+  box-shadow:0 0 0 4px rgba(145,215,78,.12);
+}
+
+/* --------------------------------------------------
+   SCREENING STAGE
+-------------------------------------------------- */
+
+.screening{
+  padding:38px 42px 120px;
+}
+
+.screening-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  margin-bottom:22px;
+}
+
+.section-label{
+  font-family:"DM Mono";
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.15em;
+  color:#777873;
+}
+
+.section-title{
+  margin-top:8px;
+  font-family:Manrope;
+  font-size:28px;
+  letter-spacing:-.04em;
+}
+
+.stage{
+  background:#11120f;
+  color:white;
+  min-height:650px;
+  position:relative;
+  overflow:hidden;
+}
+
+.stage:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 63% 42%,rgba(175,230,110,.16),transparent 23%),
+    linear-gradient(125deg,#171916 0%,#080908 72%);
+}
+
+.stage-grid{
+  position:absolute;
+  inset:0;
+  opacity:.11;
+  background-image:
+    linear-gradient(rgba(255,255,255,.4) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.4) 1px,transparent 1px);
+  background-size:80px 80px;
+}
+
+.stage-content{
+  position:absolute;
+  inset:0;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  align-items:center;
+  padding:60px;
+}
+
+.film-frame{
+  position:relative;
+  aspect-ratio:16/9;
+  width:min(680px,100%);
+  background:
+    linear-gradient(140deg,rgba(185,243,106,.1),transparent 35%),
+    radial-gradient(circle at 70% 30%,#39402f,transparent 22%),
+    linear-gradient(135deg,#263024,#090a09 65%);
+  border:1px solid rgba(255,255,255,.17);
+  overflow:hidden;
+  box-shadow:0 30px 80px rgba(0,0,0,.5);
+}
+
+.film-frame:before{
+  content:"";
+  position:absolute;
+  inset:12px;
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.film-image{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.film-image:before{
+  content:"";
+  width:32%;
+  height:75%;
+  background:linear-gradient(150deg,#9da991,#30392e);
+  clip-path:polygon(45% 0,100% 100%,0 100%);
+  opacity:.48;
+}
+
+.play{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:72px;
+  height:72px;
+  border:1px solid rgba(255,255,255,.6);
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,.28);
+  backdrop-filter:blur(8px);
+  transition:.25s;
+}
+
+.play:hover{
+  background:var(--green);
+  color:#111;
+  border-color:var(--green);
+}
+
+.play span{
+  margin-left:4px;
+  font-size:17px;
+}
+
+.stage-meta{
+  padding-left:65px;
+  max-width:470px;
+}
+
+.stage-meta .eyebrow{
+  color:#878a83;
+}
+
+.stage-meta h2{
+  font-family:Manrope;
+  font-size:54px;
+  line-height:.94;
+  letter-spacing:-.06em;
+  margin-bottom:24px;
+}
+
+.stage-meta p{
+  color:#a4a59e;
+  font-size:14px;
+  line-height:1.7;
+  margin-bottom:28px;
+}
+
+.meta-row{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  border-top:1px solid rgba(255,255,255,.13);
+  border-bottom:1px solid rgba(255,255,255,.13);
+}
+
+.meta-item{
+  padding:15px 10px 15px 0;
+}
+
+.meta-item + .meta-item{
+  padding-left:16px;
+  border-left:1px solid rgba(255,255,255,.13);
+}
+
+.meta-label{
+  font-family:"DM Mono";
+  font-size:8px;
+  text-transform:uppercase;
+  color:#777a74;
+  letter-spacing:.13em;
+}
+
+.meta-value{
+  margin-top:7px;
+  font-size:12px;
+}
+
+.stage-footer{
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  height:58px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 22px;
+  background:rgba(0,0,0,.36);
+  border-top:1px solid rgba(255,255,255,.1);
+  font-family:"DM Mono";
+  font-size:9px;
+  color:#878982;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.progress{
+  width:240px;
+  height:2px;
+  background:#383a35;
+}
+
+.progress i{
+  display:block;
+  width:34%;
+  height:100%;
+  background:var(--green);
+}
+
+/* --------------------------------------------------
+   CHANNEL ARCHITECTURE
+-------------------------------------------------- */
+
+.channels{
+  margin-top:70px;
+  display:grid;
+  grid-template-columns:1fr 2fr;
+  border-top:1px solid var(--line);
+}
+
+.channels-intro{
+  padding:32px 30px 32px 0;
+}
+
+.channels-intro h3{
+  font-family:Manrope;
+  font-size:31px;
+  letter-spacing:-.05em;
+  margin-bottom:15px;
+}
+
+.channels-intro p{
+  color:#666762;
+  font-size:13px;
+  line-height:1.7;
+  max-width:320px;
+}
+
+.channel-list{
+  border-left:1px solid var(--line);
+}
+
+.channel{
+  min-height:104px;
+  border-bottom:1px solid var(--line);
+  display:grid;
+  grid-template-columns:52px 1fr auto;
+  gap:20px;
+  align-items:center;
+  padding:0 22px;
+  transition:.2s;
+}
+
+.channel:first-child{
+  border-top:1px solid var(--line);
+}
+
+.channel:hover{
+  background:#e9e7df;
+}
+
+.channel-number{
+  font-family:"DM Mono";
+  font-size:10px;
+  color:#989991;
+}
+
+.channel h4{
+  font-family:Manrope;
+  font-size:17px;
+  letter-spacing:-.025em;
+}
+
+.channel p{
+  margin-top:5px;
+  color:#7a7b76;
+  font-size:11px;
+}
+
+.channel-state{
+  font-family:"DM Mono";
+  font-size:9px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+.state-live{
+  color:#55932d;
+}
+
+.state-ready{
+  color:#75766f;
+}
+
+.state-private{
+  color:#9b6e36;
+}
+
+/* --------------------------------------------------
+   RELEASE / VIEWING
+-------------------------------------------------- */
+
+.release{
+  margin-top:70px;
+  border-top:1px solid var(--line);
+  padding-top:32px;
+}
+
+.release-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:start;
+  margin-bottom:25px;
+}
+
+.release-header h3{
+  font-family:Manrope;
+  font-size:31px;
+  letter-spacing:-.05em;
+}
+
+.release-header p{
+  color:#777873;
+  font-size:12px;
+  margin-top:8px;
+}
+
+.release-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  border-top:1px solid var(--line);
+  border-left:1px solid var(--line);
+}
+
+.release-cell{
+  min-height:170px;
+  padding:20px;
+  border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+}
+
+.release-cell .label{
+  font-family:"DM Mono";
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.13em;
+  color:#8b8c86;
+}
+
+.release-cell h4{
+  font-family:Manrope;
+  font-size:21px;
+  letter-spacing:-.04em;
+  margin-top:35px;
+}
+
+.release-cell p{
+  font-size:11px;
+  color:#73746e;
+  margin-top:7px;
+}
+
+.toggle{
+  margin-top:35px;
+  width:40px;
+  height:22px;
+  border-radius:20px;
+  background:#c8c7c0;
+  position:relative;
+}
+
+.toggle i{
+  position:absolute;
+  width:16px;
+  height:16px;
+  top:3px;
+  left:3px;
+  border-radius:50%;
+  background:#fff;
+  transition:.2s;
+}
+
+.toggle.on{
+  background:#161713;
+}
+
+.toggle.on i{
+  left:21px;
+}
+
+/* --------------------------------------------------
+   BOTTOM ACTION
+-------------------------------------------------- */
+
+.actionbar{
+  position:fixed;
+  left:78px;
+  right:0;
+  bottom:0;
+  height:72px;
+  background:rgba(244,242,236,.94);
+  backdrop-filter:blur(16px);
+  border-top:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 42px;
+  z-index:40;
+}
+
+.action-info{
+  display:flex;
+  gap:32px;
+  align-items:center;
+}
+
+.action-item{
+  font-family:"DM Mono";
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  color:#777873;
+}
+
+.action-item strong{
+  display:block;
+  color:var(--ink);
+  font-size:10px;
+  margin-top:5px;
+  font-weight:500;
+}
+
+.action-buttons{
+  display:flex;
+  gap:8px;
+}
+
+.action-button{
+  height:40px;
+  border:1px solid var(--ink);
+  background:transparent;
+  padding:0 20px;
+  font-size:11px;
+}
+
+.action-button.primary{
+  background:var(--ink);
+  color:white;
+}
+
+.action-button.primary:hover{
+  background:#292b25;
+}
+
+/* --------------------------------------------------
+   MODAL
+-------------------------------------------------- */
+
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(10,11,9,.66);
+  backdrop-filter:blur(8px);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:100;
+}
+
+.modal.open{
+  display:flex;
+}
+
+.modal-panel{
+  width:min(600px,calc(100% - 40px));
+  background:var(--paper);
+  padding:34px;
+  box-shadow:0 30px 100px rgba(0,0,0,.4);
+}
+
+.modal-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:start;
+  margin-bottom:30px;
+}
+
+.modal-head h3{
+  font-family:Manrope;
+  font-size:30px;
+  letter-spacing:-.05em;
+}
+
+.close{
+  border:0;
+  background:none;
+  font-size:20px;
+}
+
+.field{
+  margin-bottom:20px;
+}
+
+.field label{
+  display:block;
+  font-family:"DM Mono";
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.13em;
+  color:#777873;
+  margin-bottom:8px;
+}
+
+.field input,
+.field select{
+  width:100%;
+  height:45px;
+  border:1px solid var(--line);
+  background:#ebe9e2;
+  padding:0 12px;
+  outline:none;
+}
+
+.modal-footer{
+  margin-top:28px;
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+}
+
+/* --------------------------------------------------
+   RESPONSIVE
+-------------------------------------------------- */
+
+@media(max-width:1000px){
+  .hero{
+    grid-template-columns:1fr;
+    gap:35px;
+  }
+
+  .stage-content{
+    grid-template-columns:1fr;
+    padding:30px;
+  }
+
+  .stage{
+    min-height:820px;
+  }
+
+  .stage-meta{
+    padding-left:0;
+  }
+
+  .film-frame{
+    width:100%;
+  }
+
+  .channels{
+    grid-template-columns:1fr;
+  }
+
+  .channels-intro{
+    padding-right:0;
+    padding-bottom:25px;
+  }
+
+  .channel-list{
+    border-left:0;
+  }
+
+  .release-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+@media(max-width:700px){
+  .app{
+    grid-template-columns:0 1fr;
+  }
+
+  .rail{
+    display:none;
+  }
+
+  .main{
+    grid-column:2;
+  }
+
+  .topbar{
+    padding:0 20px;
+  }
+
+  .hero,
+  .screening{
+    padding-left:20px;
+    padding-right:20px;
+  }
+
+  .hero{
+    padding-top:48px;
+  }
+
+  .hero h1{
+    font-size:62px;
+  }
+
+  .stage-content{
+    padding:20px;
+  }
+
+  .stage{
+    min-height:710px;
+  }
+
+  .stage-meta h2{
+    font-size:39px;
+  }
+
+  .stage-footer{
+    display:none;
+  }
+
+  .actionbar{
+    left:0;
+    padding:0 15px;
+  }
+
+  .action-info{
+    display:none;
+  }
+
+  .action-buttons{
+    width:100%;
+  }
+
+  .action-button{
+    flex:1;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <!-- CINEFORGE RAIL -->
+  <aside class="rail">
+
+    <div class="brand">
+      <div class="brand-mark"></div>
+    </div>
+
+    <nav class="rail-nav">
+
+      <button class="rail-button" title="Create">
+        <span class="rail-icon"></span>
+      </button>
+
+      <button class="rail-button" title="Production">
+        <span class="rail-icon" style="border-radius:50%;"></span>
+      </button>
+
+      <button class="rail-button active" title="Streaming">
+        <span class="rail-icon" style="transform:rotate(45deg);"></span>
+      </button>
+
+      <button class="rail-button" title="Analytics">
+        <span class="rail-icon" style="border-radius:2px 9px 2px 9px;"></span>
+      </button>
+
+    </nav>
+
+    <div class="rail-bottom">
+      <div class="avatar">CM</div>
+    </div>
+
+  </aside>
+
+
+  <main class="main">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+
+      <div class="crumb">
+        CINEFORGE / PUBLISHING / <strong>STREAMING</strong>
+      </div>
+
+      <div class="top-actions">
+        <button class="small-button" id="previewBtn">
+          Preview
+        </button>
+
+        <button class="small-button dark" id="newChannelBtn">
+          + New channel
+        </button>
+      </div>
+
+    </header>
+
+
+    <!-- HERO -->
+    <section class="hero">
+
+      <div>
+        <div class="eyebrow">
+          PUBLISHING / SCREENING
+        </div>
+
+        <h1>
+          The<br>
+          <em>Screening</em><br>
+          Room.
+        </h1>
+      </div>
+
+      <div class="hero-copy">
+
+        <p>
+          Finished work deserves a place of its own.
+          Build viewing destinations around your productions,
+          control how they are presented, and let every film
+          arrive with the context it was made to carry.
+        </p>
+
+        <div class="live-status">
+          <span class="live-dot"></span>
+          Screening system operational
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- SCREENING -->
+    <section class="screening">
+
+      <div class="screening-header">
+
+        <div>
+          <div class="section-label">
+            FEATURED SCREENING
+          </div>
+
+          <div class="section-title">
+            The Kingdom
+          </div>
+        </div>
+
+        <div class="section-label">
+          MASTER / 01:42:18
+        </div>
+
+      </div>
+
+
+      <div class="stage">
+
+        <div class="stage-grid"></div>
+
+        <div class="stage-content">
+
+          <div class="film-frame">
+
+            <div class="film-image"></div>
+
+            <button class="play" id="playFilm">
+              <span>▶</span>
+            </button>
+
+          </div>
+
+
+          <div class="stage-meta">
+
+            <div class="eyebrow">
+              CINEFORGE PREMIERE
+            </div>
+
+            <h2>
+              The Kingdom
+            </h2>
+
+            <p>
+              A feature production prepared for cinematic
+              presentation. One master. Multiple viewing
+              environments. The presentation layer remains
+              connected to the original production.
+            </p>
+
+            <div class="meta-row">
+
+              <div class="meta-item">
+                <div class="meta-label">Runtime</div>
+                <div class="meta-value">01:42:18</div>
+              </div>
+
+              <div class="meta-item">
+                <div class="meta-label">Master</div>
+                <div class="meta-value">4K UHD</div>
+              </div>
+
+              <div class="meta-item">
+                <div class="meta-label">Status</div>
+                <div class="meta-value">Verified</div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="stage-footer">
+
+          <span>
+            Screening / Cineforge Original
+          </span>
+
+          <div class="progress">
+            <i></i>
+          </div>
+
+          <span>
+            00:00 / 01:42:18
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <!-- CHANNELS -->
+      <section class="channels">
+
+        <div class="channels-intro">
+
+          <div class="section-label">
+            VIEWING DESTINATIONS
+          </div>
+
+          <h3>
+            One production.<br>
+            Many rooms.
+          </h3>
+
+          <p>
+            Create controlled viewing environments without
+            losing the relationship between the finished work,
+            its audience and the production behind it.
+          </p>
+
+        </div>
+
+
+        <div class="channel-list">
+
+          <div class="channel">
+
+            <div class="channel-number">01</div>
+
+            <div>
+              <h4>Cineforge Premiere</h4>
+              <p>Public cinematic screening channel</p>
+            </div>
+
+            <div class="channel-state state-live">
+              Live
+            </div>
+
+          </div>
+
+
+          <div class="channel">
+
+            <div class="channel-number">02</div>
+
+            <div>
+              <h4>Studio Screen</h4>
+              <p>Private screenings for production teams</p>
+            </div>
+
+            <div class="channel-state state-private">
+              Private
+            </div>
+
+          </div>
+
+
+          <div class="channel">
+
+            <div class="channel-number">03</div>
+
+            <div>
+              <h4>Press Room</h4>
+              <p>Controlled access for press and partners</p>
+            </div>
+
+            <div class="channel-state state-ready">
+              Ready
+            </div>
+
+          </div>
+
+
+          <div class="channel">
+
+            <div class="channel-number">04</div>
+
+            <div>
+              <h4>Festival Screen</h4>
+              <p>Festival and event presentation environment</p>
+            </div>
+
+            <div class="channel-state state-ready">
+              Ready
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- RELEASE CONTROL -->
+      <section class="release">
+
+        <div class="release-header">
+
+          <div>
+            <div class="section-label">
+              SCREENING CONTROL
+            </div>
+
+            <h3>
+              Presentation, not distribution.
+            </h3>
+
+            <p>
+              Control how the finished work appears before it reaches an audience.
+            </p>
+          </div>
+
+        </div>
+
+
+        <div class="release-grid">
+
+          <div class="release-cell">
+
+            <div class="label">
+              Playback master
+            </div>
+
+            <h4>4K UHD</h4>
+
+            <p>
+              Cinematic master / verified
+            </p>
+
+          </div>
+
+
+          <div class="release-cell">
+
+            <div class="label">
+              Adaptive delivery
+            </div>
+
+            <h4>Enabled</h4>
+
+            <p>
+              Automatically prepares viewing renditions.
+            </p>
+
+            <div class="toggle on" data-toggle>
+              <i></i>
+            </div>
+
+          </div>
+
+
+          <div class="release-cell">
+
+            <div class="label">
+              Audience access
+            </div>
+
+            <h4>Controlled</h4>
+
+            <p>
+              Public, private or invitation-based.
+            </p>
+
+          </div>
+
+
+          <div class="release-cell">
+
+            <div class="label">
+              Captions
+            </div>
+
+            <h4>12 languages</h4>
+
+            <p>
+              Subtitle tracks attached to master.
+            </p>
+
+          </div>
+
+
+          <div class="release-cell">
+
+            <div class="label">
+              Playback protection
+            </div>
+
+            <h4>Standard</h4>
+
+            <p>
+              Delivery protection enabled.
+            </p>
+
+          </div>
+
+
+          <div class="release-cell">
+
+            <div class="label">
+              Analytics
+            </div>
+
+            <h4>Connected</h4>
+
+            <p>
+              Viewing intelligence available to production.
+            </p>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    </section>
+
+  </main>
+
+</div>
+
+
+<!-- STICKY ACTION BAR -->
+
+<div class="actionbar">
+
+  <div class="action-info">
+
+    <div class="action-item">
+      Channel
+      <strong>Cineforge Premiere</strong>
+    </div>
+
+    <div class="action-item">
+      Master
+      <strong>4K UHD</strong>
+    </div>
+
+    <div class="action-item">
+      Access
+      <strong>Public</strong>
+    </div>
+
+    <div class="action-item">
+      Status
+      <strong>Ready</strong>
+    </div>
+
+  </div>
+
+  <div class="action-buttons">
+
+    <button class="action-button" id="manageBtn">
+      Manage channel
+    </button>
+
+    <button class="action-button primary" id="publishBtn">
+      Publish screening →
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- NEW CHANNEL MODAL -->
+
+<div class="modal" id="channelModal">
+
+  <div class="modal-panel">
+
+    <div class="modal-head">
+
+      <div>
+        <div class="eyebrow">
+          NEW DESTINATION
+        </div>
+
+        <h3>
+          Create a channel.
+        </h3>
+      </div>
+
+      <button class="close" id="closeModal">
+        ×
+      </button>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>Channel name</label>
+
+      <input
+        id="channelName"
+        value="New Screening Room"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>Audience</label>
+
+      <select id="audience">
+
+        <option>Public</option>
+        <option>Private</option>
+        <option>Invitation only</option>
+        <option>Production team</option>
+
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>Presentation format</label>
+
+      <select>
+
+        <option>Cinematic 16:9</option>
+        <option>Vertical 9:16</option>
+        <option>Square 1:1</option>
+        <option>Adaptive</option>
+
+      </select>
+
+    </div>
+
+
+    <div class="modal-footer">
+
+      <button class="small-button" id="cancelModal">
+        Cancel
+      </button>
+
+      <button class="small-button dark" id="createChannel">
+        Create channel
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+/* --------------------------------------------------
+   VISUAL INTERACTIONS ONLY
+   Real Cineforge handlers will be connected after
+   the complete page redesign pass.
+-------------------------------------------------- */
+
+const modal = document.getElementById("channelModal");
+
+document.getElementById("newChannelBtn").onclick = () => {
+  modal.classList.add("open");
+};
+
+document.getElementById("closeModal").onclick = () => {
+  modal.classList.remove("open");
+};
+
+document.getElementById("cancelModal").onclick = () => {
+  modal.classList.remove("open");
+};
+
+modal.addEventListener("click", e => {
+  if(e.target === modal){
+    modal.classList.remove("open");
+  }
+});
+
+
+document.getElementById("createChannel").onclick = () => {
+
+  const name =
+    document.getElementById("channelName").value.trim()
+    || "New Screening Room";
+
+  modal.classList.remove("open");
+
+  alert(
+    "Visual prototype: channel '" +
+    name +
+    "' would now be created through the Cineforge production system."
+  );
+
+};
+
+
+document.getElementById("playFilm").onclick = () => {
+
+  alert(
+    "Visual prototype: the Cineforge screening player would open here."
+  );
+
+};
+
+
+document.getElementById("previewBtn").onclick = () => {
+
+  alert(
+    "Visual prototype: preview mode would open the selected screening."
+  );
+
+};
+
+
+document.getElementById("manageBtn").onclick = () => {
+
+  alert(
+    "Visual prototype: channel management would open here."
+  );
+
+};
+
+
+document.getElementById("publishBtn").onclick = () => {
+
+  alert(
+    "Visual prototype: the screening would be published using the real Cineforge publishing engine."
+  );
+
+};
+
+
+/* Toggle presentation controls */
+
+document.querySelectorAll("[data-toggle]").forEach(toggle => {
+
+  toggle.addEventListener("click", () => {
+    toggle.classList.toggle("on");
+  });
+
+});
+
+
+/* Rail state */
+
+document.querySelectorAll(".rail-button").forEach(button => {
+
+  button.addEventListener("click", () => {
+
+    document
+      .querySelectorAll(".rail-button")
+      .forEach(item => item.classList.remove("active"));
+
+    button.classList.add("active");
+
+  });
+
+});
+
+</script>
+
+</body>
+</html>

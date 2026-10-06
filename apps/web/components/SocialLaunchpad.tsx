@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
-import { AuthCard } from "./AuthCard";
+import { StudioGate } from "./cf/StudioGate";
+import { Cell, EmptyState, PageHeader, Section, SpecList, Split, Status } from "./cf/primitives";
 import { getSupabase } from "../lib/supabase";
 import { SkeletonRows } from "./Skeleton";
 
 /**
+ * The Distribution Desk (docs/design/distribution-desk-publish.html).
  * Social Launchpad (docs/31) — upload any video, the AI writes a per-platform
  * launch kit (title/description/hashtags tuned for each platform), then one
  * button posts it to every connected platform. Rows are written PENDING; the
@@ -34,7 +36,7 @@ interface LaunchRow {
 const BUCKET = "cineforge-assets";
 
 export function SocialLaunchpad() {
-  const { enabled, loading, user } = useAuth();
+  const { user } = useAuth();
   const [launches, setLaunches] = useState<LaunchRow[] | null>(null);
   const [films, setFilms] = useState<{ projectId: string; title: string; mp4Key: string }[] | null>(null);
   const [filmKey, setFilmKey] = useState("");
@@ -108,152 +110,135 @@ export function SocialLaunchpad() {
     await refresh();
   }
 
+  const fileCls =
+    "w-full text-[11px] text-cf-muted file:mr-3 file:border file:border-cf-line file:bg-transparent file:px-3 file:py-2 file:font-mono file:text-[11px] file:uppercase file:tracking-[0.1em] file:text-cf-fg hover:file:border-cf-fg";
   return (
-    <div className="relative isolate mx-auto max-w-5xl px-6 py-8">
-      <div className="cf-aurora pointer-events-none absolute right-0 top-0 -z-10 h-64 w-64 rounded-full bg-[radial-gradient(closest-side,rgba(16,185,129,0.10),transparent)] blur-3xl" />
-      <header className="mb-8">
-        <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-emerald-300/80">
-          <span className="h-1 w-5 rounded-full bg-emerald-400/50" /> Launchpad
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight">Publish everywhere, in one tap</h1>
-        <p className="mt-1.5 text-sm text-white/55">
-          Upload a video and a one-line brief — the AI writes the launch kit for every platform, then one button posts
-          it to every connected account.
-        </p>
-      </header>
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="Publishing / The distribution desk"
+        title={<>One film.<br /><em>Every screen.</em></>}
+        copy={
+          <>
+            <p>Bring a finished film or any video and a one-line brief. The desk writes the launch kit for every platform — title, description, hashtags — then one action posts it to every connected account.</p>
+            <p><strong>The production does not end at the final cut.</strong></p>
+          </>
+        }
+        status={{ tone: "live", label: `${Object.keys(PLATFORM_META).length} platforms` }}
+      />
+      <div className="pt-12">
+        <StudioGate signIn="Sign in to publish" what="Launches">
+          <Section label="01 — New launch" title="Prepare the master.">
+            <Split>
+              <Cell>
+                <form onSubmit={onCreate}>
+                  {(films?.length ?? 0) > 0 && (
+                    <>
+                      <label htmlFor="launch-film" className="cf-label mb-2 block text-cf-fg">A finished film</label>
+                      <select id="launch-film" value={filmKey} onChange={(e) => setFilmKey(e.target.value)} className="cf-input py-2.5">
+                        <option value="">Choose one of your finished films…</option>
+                        {films!.map((f) => (
+                          <option key={f.projectId} value={f.mp4Key}>
+                            {f.title}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="cf-label my-5 text-center">or</div>
+                    </>
+                  )}
+                  <label htmlFor="launch-file" className="cf-label mb-2 block text-cf-fg">Upload a video</label>
+                  <input id="launch-file" ref={fileRef} type="file" accept="video/*" onChange={(e) => setHasFile((e.target.files?.length ?? 0) > 0)} className={fileCls} />
+                  <label htmlFor="launch-brief" className="cf-label mb-2 mt-6 block text-cf-fg">The brief</label>
+                  <textarea
+                    id="launch-brief"
+                    value={brief}
+                    onChange={(e) => setBrief(e.target.value)}
+                    placeholder="What is this video? One or two sentences — the desk expands it into every platform's title, description and hashtags."
+                    required
+                    rows={3}
+                    className="cf-input resize-y"
+                  />
+                  <button type="submit" disabled={busy || !brief.trim() || (!filmKey && !hasFile)} className="cf-btn-ink mt-7">
+                    {busy ? "Uploading…" : "Build the launch kit"}
+                  </button>
+                  {error && <p role="alert" className="mt-4 border-l-2 border-cf-danger pl-3 text-[12px] text-cf-danger">{error}</p>}
+                </form>
+              </Cell>
+              <Cell>
+                <div className="cf-label">Destinations</div>
+                <SpecList className="mt-8" rows={Object.values(PLATFORM_META).map((m) => [m.label, m.hint])} />
+              </Cell>
+            </Split>
+          </Section>
 
-      {!enabled ? (
-        <Note>Connect Supabase to publish.</Note>
-      ) : loading ? (
-        <p className="text-sm text-white/40">Loading…</p>
-      ) : !user ? (
-        <AuthCard title="Sign in to publish" />
-      ) : (
-        <div className="space-y-6">
-          <form onSubmit={onCreate} className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-5">
-            <h2 className="text-sm font-semibold">New launch</h2>
-            {(films?.length ?? 0) > 0 && (
-              <select
-                value={filmKey}
-                onChange={(e) => setFilmKey(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-white/30"
-              >
-                <option value="">…or pick one of your finished films</option>
-                {films!.map((f) => (
-                  <option key={f.projectId} value={f.mp4Key}>
-                    🎬 {f.title}
-                  </option>
+          <Section label="02 — Launches" title="The release log.">
+            {!launches ? (
+              <SkeletonRows rows={3} />
+            ) : launches.length === 0 ? (
+              <EmptyState title={<>Nothing released <em>yet.</em></>} hint="Prepare your first master above." />
+            ) : (
+              <ol className="border-t border-cf-fg">
+                {launches.map((l) => (
+                  <LaunchCard key={l.id} row={l} onLaunch={() => onLaunch(l.id)} />
                 ))}
-              </select>
+              </ol>
             )}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="video/*"
-              onChange={(e) => setHasFile((e.target.files?.length ?? 0) > 0)}
-              className="w-full text-xs text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-xs file:text-white"
-            />
-            <textarea
-              value={brief}
-              onChange={(e) => setBrief(e.target.value)}
-              placeholder="What is this video? One or two sentences — the AI expands it into every platform's title, description and hashtags…"
-              required
-              rows={2}
-              className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none placeholder:text-white/30 focus:border-white/30"
-            />
-            <button
-              type="submit"
-              disabled={busy || !brief.trim() || (!filmKey && !hasFile)}
-              className="rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
-            >
-              {busy ? "Uploading…" : "Upload & build launch kit"}
-            </button>
-            {error && <p className="text-xs text-amber-300">{error}</p>}
-          </form>
-
-          {!launches ? (
-            <SkeletonRows rows={3} />
-          ) : launches.length === 0 ? (
-            <Note>No launches yet. Upload your first video above.</Note>
-          ) : (
-            launches.map((l) => <LaunchCard key={l.id} row={l} onLaunch={() => onLaunch(l.id)} />)
-          )}
-        </div>
-      )}
+          </Section>
+        </StudioGate>
+      </div>
     </div>
   );
 }
 
 function LaunchCard({ row, onLaunch }: { row: LaunchRow; onLaunch: () => void }) {
   const kitReady = row.status === "KIT_READY" || row.status === "LAUNCHED" || row.status === "LAUNCHING" || row.status === "LAUNCH_REQUESTED";
+  const tone = row.status === "LAUNCHED" ? "ok" : row.status === "FAILED" ? "danger" : row.status === "KIT_READY" ? "live" : "warn";
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
-      <div className="flex items-center justify-between gap-3">
+    <li className="border-b border-cf-line py-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium">{row.brief || "Untitled launch"}</div>
-          <div className="text-xs text-white/40">{new Date(row.created_at).toLocaleString()}</div>
+          <div className="truncate font-display font-semibold text-[22px] tracking-[-0.02em]">{row.brief || "Untitled launch"}</div>
+          <div className="cf-label mt-1">{new Date(row.created_at).toLocaleString()}</div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/60">
-            {row.status.replace(/_/g, " ").toLowerCase()}
-          </span>
+        <div className="flex items-center gap-4">
+          <Status tone={tone}>{row.status.replace(/_/g, " ").toLowerCase()}</Status>
           {row.status === "KIT_READY" && (
-            <button
-              onClick={onLaunch}
-              className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-semibold text-black transition hover:bg-emerald-300"
-            >
-              🚀 Launch everywhere
+            <button type="button" onClick={onLaunch} className="cf-btn-accent">
+              Launch everywhere →
             </button>
           )}
         </div>
       </div>
 
-      {row.error_message && <p className="mt-2 text-xs text-amber-300">{row.error_message}</p>}
+      {row.error_message && <p className="mt-3 border-l-2 border-cf-danger pl-3 text-[12px] text-cf-danger">{row.error_message}</p>}
 
       {kitReady && row.kit && (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-5 grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 lg:grid-cols-3">
           {Object.entries(row.kit).map(([platform, k]) => {
             const meta = PLATFORM_META[platform] ?? { label: platform, hint: "" };
             const result = row.results?.[platform];
             return (
-              <div key={platform} className="rounded-lg border border-white/10 bg-black/20 p-3">
+              <div key={platform} className="bg-cf-bg p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold">{meta.label}</span>
-                  {result && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${
-                        result.status === "published"
-                          ? "bg-emerald-500/15 text-emerald-300"
-                          : result.status === "skipped"
-                            ? "bg-white/10 text-white/45"
-                            : "bg-red-500/15 text-red-300"
-                      }`}
-                    >
-                      {result.status}
-                    </span>
-                  )}
+                  <span className="cf-label text-cf-fg">{meta.label}</span>
+                  {result && <Status tone={result.status === "published" ? "ok" : result.status === "skipped" ? "idle" : "danger"}>{result.status}</Status>}
                 </div>
-                <div className="mt-1 truncate text-xs text-white/80" title={k.title}>
+                <div className="mt-3 truncate font-display font-semibold text-[16px]" title={k.title}>
                   {k.title}
                 </div>
-                <p className="mt-1 line-clamp-3 text-[11px] leading-relaxed text-white/50">{k.description}</p>
-                <p className="mt-1 truncate text-[11px] text-sky-300/70">{k.hashtags?.map((h) => `#${h.replace(/^#/, "")}`).join(" ")}</p>
+                <p className="mt-1 line-clamp-3 text-[11px] leading-relaxed text-cf-muted">{k.description}</p>
+                <p className="mt-2 truncate font-mono text-[12px] text-cf-muted">{k.hashtags?.map((h) => `#${h.replace(/^#/, "")}`).join(" ")}</p>
                 {result?.url && (
-                  <a href={result.url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[11px] text-emerald-300 underline">
-                    View post →
+                  <a href={result.url} target="_blank" rel="noreferrer" className="cf-link mt-3 inline-block">
+                    View post ↗
                   </a>
                 )}
-                {result?.detail && <p className="mt-1 text-[10px] text-white/40">{result.detail}</p>}
-                {!result && <p className="mt-1 text-[10px] text-white/35">{meta.hint}</p>}
+                {result?.detail && <p className="mt-2 text-[12px] text-cf-muted">{result.detail}</p>}
+                {!result && <p className="cf-label mt-3 leading-relaxed">{meta.hint}</p>}
               </div>
             );
           })}
         </div>
       )}
-    </div>
+    </li>
   );
-}
-
-function Note({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 text-sm text-white/55">{children}</div>;
 }

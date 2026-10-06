@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
-import { AuthCard } from "./AuthCard";
+import { StudioGate } from "./cf/StudioGate";
+import { CinemaArt } from "./cf/CinemaArt";
+import { Control, EmptyState, PageHeader, Section, Status } from "./cf/primitives";
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
 import { LANGUAGES } from "../lib/system";
@@ -43,7 +45,7 @@ interface VoiceoverRow {
 const BUCKET = "cineforge-assets";
 
 export function VoiceLab() {
-  const { enabled, loading, user, profile } = useAuth();
+  const { user, profile } = useAuth();
   const isAdmin = profile?.role === "ADMIN";
   const [voices, setVoices] = useState<VoiceRow[] | null>(null);
   const [community, setCommunity] = useState<VoiceRow[] | null>(null);
@@ -215,239 +217,181 @@ export function VoiceLab() {
 
   const readyVoices = [...(voices ?? []).filter((v) => v.status === "READY"), ...(community ?? [])];
 
+  const fileCls =
+    "w-full text-[11px] text-cf-muted file:mr-3 file:border file:border-cf-line file:bg-transparent file:px-3 file:py-2 file:font-mono file:text-[11px] file:uppercase file:tracking-[0.1em] file:text-cf-fg hover:file:border-cf-fg";
   return (
-    <div className="relative isolate mx-auto max-w-6xl px-6 py-8">
-      <div className="cf-aurora pointer-events-none absolute right-0 top-0 -z-10 h-72 w-72 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.10),transparent)] blur-3xl" />
-      <header className="mb-8">
-        <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-indigo-300/80">
-          <span className="h-1 w-5 rounded-full bg-indigo-400/50" /> Voice Lab
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight">Your voice, in 20 languages — and on camera</h1>
-        <p className="mt-1.5 text-sm text-white/55">
-          Clone your voice from a short sample, then have it read speeches, news or narration — in any of{" "}
-          {LANGUAGES.length} languages.
-        </p>
-      </header>
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="Production / The voice room"
+        title={<>Give the story<br />a <em>voice.</em></>}
+        copy={
+          <>
+            <p>Clone a voice from a short sample, then have it read speeches, news or narration in any of {LANGUAGES.length} languages — and put it on camera.</p>
+            <p><strong>Every recording is written by the worker and appears here when it is ready.</strong></p>
+          </>
+        }
+        status={{ tone: "live", label: `${LANGUAGES.length} languages` }}
+      />
 
-      {!enabled ? (
-        <Note>Connect Supabase to use the Voice Lab.</Note>
-      ) : loading ? (
-        <p className="text-sm text-white/40">Loading…</p>
-      ) : !user ? (
-        <AuthCard title="Sign in to clone voices" />
-      ) : (
-        <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
-          <div className="space-y-6">
-            <form onSubmit={onClone} className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-5">
-              <h2 className="text-sm font-semibold">Clone a voice</h2>
-              <p className="text-xs text-white/45">
-                Upload 10–60 seconds of clear speech (mp3/wav/m4a). The clone appears below in ~1 minute.
+      <div className="pt-12">
+        <StudioGate signIn="Sign in to clone voices" what="Voices">
+          <Section label="01 — Departments" title="Record, read, perform.">
+            {error && (
+              <p role="alert" className="mb-5 border-l-2 border-cf-danger pl-3 text-[12px] text-cf-danger">
+                {error}
               </p>
-              <input
-                value={voiceName}
-                onChange={(e) => setVoiceName(e.target.value)}
-                placeholder="Voice name (e.g. My voice)"
-                required
-                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none placeholder:text-white/30 focus:border-white/30"
-              />
-              <input
-                ref={fileRef}
-                type="file"
-                accept="audio/*"
-                required
-                className="w-full text-xs text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-xs file:text-white"
-              />
-              <button
-                type="submit"
-                disabled={cloneBusy || !voiceName}
-                className="w-full rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
-              >
-                {cloneBusy ? "Uploading…" : "Clone voice"}
-              </button>
-              <div className="space-y-1.5">
-                {(voices ?? []).map((v) => (
-                  <div key={v.id} className="rounded-lg border border-white/10 px-3 py-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="truncate">{v.name}</span>
-                      <StatusChip status={v.status} error={v.error_message} />
-                    </div>
-                    {v.status === "READY" && (
-                      <div className="mt-1 text-[11px] text-white/40">
-                        {v.share_status === "APPROVED" ? (
-                          "✓ shared with the community"
-                        ) : v.share_status === "PENDING_REVIEW" ? (
-                          "awaiting admin approval"
-                        ) : v.share_status === "REJECTED" ? (
-                          "sharing rejected"
-                        ) : (
-                          offeringId === v.id ? (
+            )}
+            <div className="grid gap-px border border-cf-line bg-cf-line lg:grid-cols-3">
+              {/* Clone */}
+              <form onSubmit={onClone} className="bg-cf-bg p-6">
+                <Dept n="01" title="Clone a voice" copy="Upload 10–60 seconds of clear speech (mp3 / wav / m4a). The clone is ready in about a minute." />
+                <label htmlFor="voice-name" className="cf-label mb-2 mt-7 block text-cf-fg">Voice name</label>
+                <input id="voice-name" value={voiceName} onChange={(e) => setVoiceName(e.target.value)} placeholder="My voice" required className="cf-input" />
+                <label htmlFor="voice-sample" className="cf-label mb-2 mt-5 block text-cf-fg">Sample</label>
+                <input id="voice-sample" ref={fileRef} type="file" accept="audio/*" required className={fileCls} />
+                <button type="submit" disabled={cloneBusy || !voiceName} className="cf-btn-ink mt-7 w-full">
+                  {cloneBusy ? "Uploading…" : "Clone voice"}
+                </button>
+
+                <ul className="mt-7 border-t border-cf-line">
+                  {(voices ?? []).map((v) => (
+                    <li key={v.id} className="border-b border-cf-line py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="truncate font-display font-semibold text-[17px]">{v.name}</span>
+                        <StatusChip status={v.status} error={v.error_message} />
+                      </div>
+                      {v.status === "READY" && (
+                        <div className="mt-2 text-[11px] text-cf-muted">
+                          {v.share_status === "APPROVED" ? (
+                            "Shared with the community"
+                          ) : v.share_status === "PENDING_REVIEW" ? (
+                            "Awaiting admin approval"
+                          ) : v.share_status === "REJECTED" ? (
+                            "Sharing rejected"
+                          ) : offeringId === v.id ? (
                             <span className="mt-1 flex gap-1.5">
                               <input
                                 value={offerTerms}
                                 onChange={(e) => setOfferTerms(e.target.value)}
-                                placeholder="Your terms (e.g. free non-commercial, credit me)"
-                                className="flex-1 rounded border border-white/15 bg-black/40 px-2 py-1 text-[11px] outline-none placeholder:text-white/25"
+                                placeholder="Your terms — e.g. free non-commercial, credit me"
+                                aria-label={`Sharing terms for ${v.name}`}
+                                className="cf-input flex-1 px-2 py-1.5 text-[11px]"
                               />
-                              <button type="button" onClick={() => void submitOffer(v.id)} className="rounded bg-white px-2 py-1 text-[11px] font-medium text-black">
+                              <button type="button" onClick={() => void submitOffer(v.id)} className="cf-btn-ink px-3 py-1.5">
                                 Offer
                               </button>
-                              <button type="button" onClick={() => setOfferingId(null)} className="rounded border border-white/15 px-2 py-1 text-[11px]">
-                                ✕
+                              <button type="button" onClick={() => setOfferingId(null)} aria-label="Cancel offer" className="cf-btn-line px-3 py-1.5">
+                                ×
                               </button>
                             </span>
                           ) : (
-                            <button type="button" onClick={() => setOfferingId(v.id)} className="text-sky-300/80 hover:text-sky-200">
-                              Offer to community →
+                            <button type="button" onClick={() => setOfferingId(v.id)} className="cf-link text-cf-muted hover:text-cf-fg">
+                              Offer to the community →
                             </button>
-                          )
-                        )}
-                      </div>
-                    )}
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </form>
+
+              {/* Read */}
+              <form onSubmit={onSpeak} className="bg-cf-bg p-6">
+                <Dept n="02" title="Read a speech" copy="Any length — speeches, news scripts, narration — in your clone, a community voice or the stock narrator." />
+                <label htmlFor="vo-title" className="cf-label mb-2 mt-7 block text-cf-fg">Title</label>
+                <input id="vo-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Independence Day address" className="cf-input" />
+                <div className="mt-5 grid grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="cf-label mb-2 block text-cf-fg">Voice</span>
+                    <select value={voiceId} onChange={(e) => setVoiceId(e.target.value)} className="cf-input py-2.5">
+                      <option value="">Narrator (stock)</option>
+                      {readyVoices.map((v) => (
+                        <option key={v.id} value={v.id}>{v.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="cf-label mb-2 block text-cf-fg">Language</span>
+                    <select value={language} onChange={(e) => setLanguage(e.target.value)} className="cf-input py-2.5">
+                      {LANGUAGES.map((l) => (
+                        <option key={l.code} value={l.code}>{l.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <label htmlFor="vo-text" className="cf-label mb-2 mt-5 block text-cf-fg">Text</label>
+                <textarea id="vo-text" value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste the speech, news script or any long text…" required rows={7} className="cf-input resize-y" />
+                <button type="submit" disabled={speakBusy || !text.trim()} className="cf-btn-ink mt-7 w-full">
+                  {speakBusy ? "Queuing…" : "Generate audio"}
+                </button>
+              </form>
+
+              {/* Perform */}
+              <form onSubmit={onAvatar} className="bg-cf-bg p-6">
+                <Dept n="03" title="Talking avatar" copy="Upload a front-facing portrait and pick a finished reading — the photo speaks it on video. Best under a minute." />
+                <label htmlFor="avatar-portrait" className="cf-label mb-2 mt-7 block text-cf-fg">Portrait</label>
+                <input id="avatar-portrait" ref={portraitRef} type="file" accept="image/*" required className={fileCls} />
+                <label htmlFor="avatar-reading" className="cf-label mb-2 mt-5 block text-cf-fg">Reading</label>
+                <select id="avatar-reading" value={avatarVoiceoverId} onChange={(e) => setAvatarVoiceoverId(e.target.value)} required className="cf-input py-2.5">
+                  <option value="">Pick a finished reading…</option>
+                  {(voiceovers ?? [])
+                    .filter((v) => v.status === "READY")
+                    .map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.title} ({LANGUAGES.find((l) => l.code === v.language)?.name ?? v.language})
+                      </option>
+                    ))}
+                </select>
+                <Control name="Quality" value={avatarQuality}>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(["standard", "premium"] as const).map((q) => (
+                      <button key={q} type="button" onClick={() => setAvatarQuality(q)} aria-pressed={avatarQuality === q} className="cf-option">
+                        {q === "premium" ? "Premium · Kling · ~$2–4" : "Standard · ~$0.15"}
+                      </button>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </form>
+                </Control>
+                <button type="submit" disabled={avatarBusy || !avatarVoiceoverId} className="cf-btn-ink mt-7 w-full">
+                  {avatarBusy ? "Uploading…" : "Create avatar video"}
+                </button>
+              </form>
+            </div>
+          </Section>
 
-            <form onSubmit={onSpeak} className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-5">
-              <h2 className="text-sm font-semibold">Read a speech</h2>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Title (e.g. Independence Day address)"
-                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none placeholder:text-white/30 focus:border-white/30"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <select
-                  value={voiceId}
-                  onChange={(e) => setVoiceId(e.target.value)}
-                  className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-white/30"
-                >
-                  <option value="">Narrator (stock)</option>
-                  {readyVoices.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-white/30"
-                >
-                  {LANGUAGES.map((l) => (
-                    <option key={l.code} value={l.code}>
-                      {l.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Paste the speech, news script or any long text…"
-                required
-                rows={7}
-                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none placeholder:text-white/30 focus:border-white/30"
-              />
-              <button
-                type="submit"
-                disabled={speakBusy || !text.trim()}
-                className="w-full rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
-              >
-                {speakBusy ? "Queuing…" : "Generate audio"}
-              </button>
-              {error && <p className="text-xs text-amber-300">{error}</p>}
-            </form>
-
-            <form onSubmit={onAvatar} className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-5">
-              <h2 className="text-sm font-semibold">Talking avatar</h2>
-              <p className="text-xs text-white/45">
-                Upload your photo and pick a finished reading below — you get a video of the photo speaking it. Best
-                with clear front-facing portraits and speeches under ~1 minute.
-              </p>
-              <input
-                ref={portraitRef}
-                type="file"
-                accept="image/*"
-                required
-                className="w-full text-xs text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-xs file:text-white"
-              />
-              <select
-                value={avatarVoiceoverId}
-                onChange={(e) => setAvatarVoiceoverId(e.target.value)}
-                required
-                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-white/30"
-              >
-                <option value="">Pick a finished reading…</option>
-                {(voiceovers ?? [])
-                  .filter((v) => v.status === "READY")
-                  .map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.title} ({LANGUAGES.find((l) => l.code === v.language)?.name ?? v.language})
-                    </option>
-                  ))}
-              </select>
-              <div className="flex gap-2">
-                {(["standard", "premium"] as const).map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setAvatarQuality(q)}
-                    className={`flex-1 rounded-lg border px-3 py-2 text-xs transition ${
-                      avatarQuality === q
-                        ? q === "premium"
-                          ? "border-amber-400/50 bg-amber-400/10 text-amber-200"
-                          : "border-white/40 bg-white/10"
-                        : "border-white/10 text-white/50 hover:border-white/25"
-                    }`}
-                  >
-                    {q === "premium" ? "✦ Premium (Kling, ~$2-4)" : "Standard (~$0.15)"}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="submit"
-                disabled={avatarBusy || !avatarVoiceoverId}
-                className="w-full rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
-              >
-                {avatarBusy ? "Uploading…" : "Create avatar video"}
-              </button>
-            </form>
-          </div>
-
-          <div>
+          <Section label="02 — Recordings" title="The voice archive.">
             {isAdmin && (pendingReview?.length ?? 0) > 0 && (
-              <div className="mb-6 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
-                <h2 className="mb-2 text-sm font-semibold text-amber-200">Voice submissions awaiting review</h2>
-                <div className="space-y-2">
+              <div className="mb-10 border-l-2 border-cf-warn pl-5">
+                <div className="cf-label text-cf-warn">Voice submissions awaiting review · admin</div>
+                <ul className="mt-3 border-t border-cf-line">
                   {pendingReview!.map((v) => (
-                    <div key={v.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 px-3 py-2 text-sm">
+                    <li key={v.id} className="flex items-center justify-between gap-3 border-b border-cf-line py-3">
                       <div className="min-w-0">
-                        <div className="truncate">{v.name}</div>
-                        <div className="truncate text-[11px] text-white/45">Terms: {v.share_terms || "—"}</div>
+                        <div className="truncate font-display font-semibold text-[17px]">{v.name}</div>
+                        <div className="truncate text-[11px] text-cf-muted">Terms: {v.share_terms || "—"}</div>
                       </div>
                       <div className="flex shrink-0 gap-2">
-                        <button onClick={() => reviewVoice(v.id, true)} className="rounded-lg bg-emerald-400 px-3 py-1 text-xs font-semibold text-black">
+                        <button type="button" onClick={() => reviewVoice(v.id, true)} className="cf-btn-accent px-3 py-2">
                           Approve
                         </button>
-                        <button onClick={() => reviewVoice(v.id, false)} className="rounded-lg border border-white/20 px-3 py-1 text-xs">
+                        <button type="button" onClick={() => reviewVoice(v.id, false)} className="cf-btn-line px-3 py-2">
                           Reject
                         </button>
                       </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             )}
 
             {(community?.length ?? 0) > 0 && (
-              <div className="mb-6">
-                <h2 className="mb-2 text-sm font-semibold text-white/70">Community voices</h2>
-                <div className="grid gap-2 sm:grid-cols-2">
+              <div className="mb-10">
+                <div className="cf-label mb-3">Community voices</div>
+                <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 lg:grid-cols-3">
                   {community!.map((v) => (
-                    <div key={v.id} className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm">
-                      <div className="truncate">{v.name}</div>
-                      <div className="truncate text-[11px] text-white/40" title={v.share_terms ?? undefined}>
+                    <div key={v.id} className="bg-cf-bg px-4 py-3">
+                      <div className="truncate font-display font-semibold text-[17px]">{v.name}</div>
+                      <div className="truncate text-[11px] text-cf-muted" title={v.share_terms ?? undefined}>
                         {v.share_terms || "No terms specified"}
                       </div>
                     </div>
@@ -457,31 +401,42 @@ export function VoiceLab() {
             )}
 
             {(avatars?.length ?? 0) > 0 && (
-              <div className="mb-6">
-                <h2 className="mb-2 text-sm font-semibold text-white/70">Avatar videos</h2>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {avatars!.map((a) => (
-                    <AvatarCard key={a.id} row={a} onDelete={() => void deleteRow("avatar_videos", a.id)} />
+              <div className="mb-10">
+                <div className="cf-label mb-3">Avatar videos</div>
+                <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 lg:grid-cols-3">
+                  {avatars!.map((av) => (
+                    <AvatarCard key={av.id} row={av} onDelete={() => void deleteRow("avatar_videos", av.id)} />
                   ))}
                 </div>
               </div>
             )}
 
-            <h2 className="mb-3 text-sm font-semibold text-white/70">Your audio</h2>
+            <div className="cf-label mb-3">Your audio</div>
             {!voiceovers ? (
-              <p className="text-sm text-white/40">Loading…</p>
+              <p className="cf-label">Loading recordings…</p>
             ) : voiceovers.length === 0 ? (
-              <Note>Nothing yet. Clone a voice (or use the stock narrator) and generate your first reading on the left.</Note>
+              <EmptyState title={<>Nothing recorded <em>yet.</em></>} hint="Clone a voice (or use the stock narrator) and generate your first reading above." />
             ) : (
-              <div className="space-y-3">
+              <ul className="border-t border-cf-fg">
                 {voiceovers.map((vo) => (
                   <VoiceoverCard key={vo.id} row={vo} voices={voices ?? []} onDelete={() => void deleteRow("voiceovers", vo.id)} />
                 ))}
-              </div>
+              </ul>
             )}
-          </div>
-        </div>
-      )}
+          </Section>
+        </StudioGate>
+      </div>
+    </div>
+  );
+}
+
+/** A department heading inside the voice room. */
+function Dept({ n, title, copy }: { n: string; title: string; copy: string }) {
+  return (
+    <div>
+      <span className="font-mono text-[11px] text-cf-muted">{n}</span>
+      <h3 className="cf-display mt-4 text-[30px] leading-none">{title}</h3>
+      <p className="mt-2 text-[12px] leading-relaxed text-cf-muted">{copy}</p>
     </div>
   );
 }
@@ -494,21 +449,19 @@ function VoiceoverCard({ row, voices, onDelete }: { row: VoiceoverRow; voices: V
   const voiceName = voices.find((v) => v.id === row.voice_id)?.name ?? "Narrator";
   const lang = LANGUAGES.find((l) => l.code === row.language)?.name ?? row.language;
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate font-medium">{row.title}</div>
-          <div className="text-xs text-white/45">
-            {voiceName} · {lang}
-          </div>
+    <li className="grid gap-3 border-b border-cf-line py-4 md:grid-cols-[1fr_1.2fr_auto] md:items-center">
+      <div className="min-w-0">
+        <div className="truncate font-display font-semibold text-[19px]">{row.title}</div>
+        <div className="cf-label mt-1">
+          {voiceName} · {lang}
         </div>
-        <span className="flex shrink-0 items-center gap-1">
-          <StatusChip status={row.status} error={row.error_message} />
-          <button onClick={onDelete} title="Delete" className="rounded px-1.5 py-0.5 text-xs text-white/30 transition hover:bg-rose-500/10 hover:text-rose-300">✕</button>
-        </span>
       </div>
-      {url && <audio controls src={url} className="mt-3 w-full" />}
-    </div>
+      <div>{url ? <audio controls src={url} className="h-9 w-full" aria-label={`Play ${row.title}`} /> : row.error_message && <p className="text-[11px] text-cf-danger">{row.error_message}</p>}</div>
+      <span className="flex items-center justify-end gap-3">
+        <StatusChip status={row.status} error={row.error_message} />
+        <DeleteBtn label={row.title} onDelete={onDelete} />
+      </span>
+    </li>
   );
 }
 
@@ -518,34 +471,43 @@ function AvatarCard({ row, onDelete }: { row: AvatarRow; onDelete: () => void })
     if (row.status === "READY" && row.video_key) void signedUrl(row.video_key).then(setUrl);
   }, [row.status, row.video_key]);
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="truncate text-sm font-medium">{row.title}</div>
-        <span className="flex shrink-0 items-center gap-1">
+    <div className="bg-cf-bg p-4">
+      {url ? (
+        <video controls src={url} className="aspect-video w-full bg-black" aria-label={`Avatar video: ${row.title}`} />
+      ) : (
+        <CinemaArt seed={row.title} scene="figure" className="aspect-video w-full rounded-md" hud={{ tag: row.status === "FAILED" ? "Failed" : "The worker is rendering" }} />
+      )}
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <div className="truncate font-display font-semibold text-[17px]">{row.title}</div>
+        <span className="flex shrink-0 items-center gap-3">
           <StatusChip status={row.status} error={row.error_message} />
-          <button onClick={onDelete} title="Delete" className="rounded px-1.5 py-0.5 text-xs text-white/30 transition hover:bg-rose-500/10 hover:text-rose-300">✕</button>
+          <DeleteBtn label={row.title} onDelete={onDelete} />
         </span>
       </div>
-      {url && <video controls src={url} className="mt-2 w-full rounded-lg" />}
-      {row.error_message && <p className="mt-1 text-[11px] text-amber-300">{row.error_message}</p>}
+      {row.error_message && <p className="mt-2 text-[11px] text-cf-danger">{row.error_message}</p>}
     </div>
   );
 }
 
-function StatusChip({ status, error }: { status: string; error: string | null }) {
-  const cls =
-    status === "READY"
-      ? "bg-emerald-500/15 text-emerald-300"
-      : status === "FAILED"
-        ? "bg-red-500/15 text-red-300"
-        : "bg-amber-500/15 text-amber-300";
+function DeleteBtn({ label, onDelete }: { label: string; onDelete: () => void }) {
   return (
-    <span title={error ?? undefined} className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider ${cls}`}>
-      {status === "READY" ? "ready" : status === "FAILED" ? "failed" : "working…"}
-    </span>
+    <button
+      type="button"
+      onClick={onDelete}
+      title="Delete"
+      aria-label={`Delete ${label}`}
+      className="h-7 w-7 border border-transparent text-cf-dim transition hover:border-cf-danger hover:text-cf-danger"
+    >
+      ×
+    </button>
   );
 }
 
-function Note({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 text-sm text-white/55">{children}</div>;
+function StatusChip({ status, error }: { status: string; error: string | null }) {
+  const tone = status === "READY" ? "ok" : status === "FAILED" ? "danger" : "warn";
+  return (
+    <span title={error ?? undefined}>
+      <Status tone={tone}>{status === "READY" ? "Ready" : status === "FAILED" ? "Failed" : "Working"}</Status>
+    </span>
+  );
 }

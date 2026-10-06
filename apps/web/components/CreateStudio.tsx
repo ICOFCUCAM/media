@@ -5,9 +5,11 @@ import { estimateMs, fmtDuration, MODELS, modelAllowed } from "../lib/system";
 import type { ProjectStatus } from "../lib/demo";
 import { useCreateRun } from "../lib/useCreateRun";
 import { useAuth } from "./AuthProvider";
-import { MAX_FILM_SEC, RESOLUTIONS, MAX_RES, DEFAULT_RES, resolutionAllowed, type Resolution } from "../lib/plans";
+import { MAX_FILM_SEC, RESOLUTIONS, DEFAULT_RES, resolutionAllowed, type Resolution } from "../lib/plans";
 import { RunPanel } from "./RunPanel";
 import type { ShortPlatform } from "../lib/products";
+import { Pipeline, type PipelineStep } from "./cf/Pipeline";
+import { ActionBand, Cell, Control, PageHeader, SpecList, Split } from "./cf/primitives";
 
 const STAGE_LABEL: Record<ProjectStatus, string> = {
   PLANNING: "Writing",
@@ -18,7 +20,7 @@ const STAGE_LABEL: Record<ProjectStatus, string> = {
 
 export interface CreateStudioProps {
   kind: "film" | "series" | "trailer" | "shorts" | "advert";
-  heading: string;
+  heading: ReactNode;
   blurb: string;
   durations: { label: string; value: number }[];
   defaultSeconds: number;
@@ -26,16 +28,38 @@ export interface CreateStudioProps {
   /** Vertical platform presets — only the Shorts studio passes these. */
   platforms?: ShortPlatform[];
   cta?: string;
+  /** Production label for the specification (e.g. "Documentary"); defaults from kind. */
+  production?: string;
+  /** Replaces the default page header when the studio is not embedded. */
+  header?: ReactNode;
   /** Render without the outer container/header (when nested under a workspace). */
   embedded?: boolean;
 }
 
+/** The six departments every run passes through, and the run status that owns each. */
+const PIPELINE: PipelineStep[] = [
+  { name: "Screenplay", at: "PLANNING" },
+  { name: "Characters", at: "PLANNING" },
+  { name: "Worlds & locations", at: "PLANNING" },
+  { name: "Scene generation", at: "GENERATING" },
+  { name: "Sound & score", at: "RENDERING" },
+  { name: "Final cut", at: "RENDERING" },
+];
+
+const KIND_LABEL: Record<CreateStudioProps["kind"], string> = {
+  film: "Film",
+  series: "Series",
+  trailer: "Trailer",
+  shorts: "Shorts",
+  advert: "Advert",
+};
+
 /**
- * The creator's create-and-watch surface. One prompt becomes a finished cut.
- * The same component powers Film, Series, Trailer and Shorts — only the presets
- * and copy change. Runs through the shared runner (real worker pipeline when
- * signed in, loudly-labelled preview otherwise) and renders the shared
- * production console.
+ * The creator's create-and-watch surface (docs/design/create-film.html: the
+ * production grid). One brief becomes a finished cut. The same component
+ * powers Film, Series, Trailer, Shorts and Advert — only the presets and copy
+ * change. Runs through the shared runner (real worker pipeline when signed
+ * in, loudly-labelled preview otherwise) and renders the shared console.
  */
 export function CreateStudio(props: CreateStudioProps) {
   const [prompt, setPrompt] = useState(props.defaultPrompt);
@@ -57,183 +81,167 @@ export function CreateStudio(props: CreateStudioProps) {
   const effectiveRes: Resolution = resolution ?? (isAdmin ? "1080p" : DEFAULT_RES[tier]);
   const resAllowed = (r: Resolution) => isAdmin || resolutionAllowed(r, tier);
 
-  const estMs = useMemo(() => estimateMs(modelId, seconds), [modelId, seconds]);
+  // Never offer or run more than the plan allows (the worker clamps anyway).
+  // When the ceiling sits below every preset (Free on Create Film), the
+  // ceiling itself becomes the option.
+  const durations =
+    maxSec < Math.min(...props.durations.map((d) => d.value))
+      ? [{ label: `${fmtDuration(maxSec)} · plan max`, value: maxSec }, ...props.durations]
+      : props.durations;
+  const allowedMax = Math.max(...durations.filter((d) => d.value <= maxSec).map((d) => d.value));
+  const effSeconds = seconds <= maxSec ? seconds : allowedMax;
+
+  const estMs = useMemo(() => estimateMs(modelId, effSeconds), [modelId, effSeconds]);
   // One serialized GPU: wall-clock ≈ total GPU time + assembly overhead.
   const readyEstimate = fmtDuration(Math.round(estMs / 1000) + 60);
+  const model = MODELS.find((m) => m.id === modelId);
+  const quality = model?.klass === "premium" ? "Cinematic" : "Standard";
+  const production = props.production ?? KIND_LABEL[props.kind];
+  const noun = production.toLowerCase();
 
   function onCreate() {
-    void run({ prompt, modelId, targetSeconds: seconds, resolution: effectiveRes });
+    void run({ prompt, modelId, targetSeconds: effSeconds, resolution: effectiveRes });
   }
 
-  return (
-    <div className={props.embedded ? "" : "relative isolate mx-auto max-w-6xl px-6 py-8"}>
-      {!props.embedded && (
-        <>
-          <div className="cf-aurora pointer-events-none absolute right-0 top-0 -z-10 h-72 w-72 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.12),transparent)] blur-3xl" />
-          <header className="mb-8">
-            <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-indigo-300/80">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="cf-pulse-ring absolute inline-flex h-full w-full rounded-full bg-indigo-400" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-indigo-400" />
-              </span>
-              AI Film Engine
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight">{props.heading}</h1>
-            <p className="mt-1.5 text-sm text-white/55">{props.blurb}</p>
-          </header>
-        </>
-      )}
-
-      <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
-        <aside className="space-y-5">
-          <Field label="What do you want to make?">
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              rows={4}
-              className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm outline-none focus:border-white/30"
-            />
-          </Field>
-
-          {props.platforms && (
-            <Field label="Platform">
-              <div className="flex flex-wrap gap-2">
-                {props.platforms.map((p) => (
-                  <Chip key={p.id} active={platform === p.id} onClick={() => setPlatform(p.id)}>
-                    {p.name}
-                  </Chip>
-                ))}
-              </div>
-            </Field>
-          )}
-
-          <Field label={props.kind === "series" ? "Total runtime" : "Length"}>
-            <div className="flex flex-wrap gap-2">
-              {props.durations.map((d) => {
-                const locked = d.value > maxSec;
-                return (
-                  <Chip key={d.value} active={seconds === d.value} onClick={() => !locked && setSeconds(d.value)} disabled={locked}>
-                    {d.label}
-                    {locked ? " 🔒" : ""}
-                  </Chip>
-                );
-              })}
-            </div>
-          </Field>
-
-          <Field label="Quality">
-            <div className="space-y-2">
-              {MODELS.map((m) => {
-                const allowed = isAdmin || modelAllowed(m.id, tier);
-                const label = m.klass === "premium" ? "Cinematic" : "Standard";
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    disabled={!allowed}
-                    onClick={() => allowed && setModelId(m.id)}
-                    className={`relative flex w-full items-center justify-between overflow-hidden rounded-lg border px-3 py-2.5 text-left text-sm transition ${
-                      modelId === m.id
-                        ? m.klass === "premium"
-                          ? "border-amber-400/50 bg-amber-400/[0.06] shadow-[0_0_30px_-12px_rgba(251,191,36,0.8)]"
-                          : "border-white/40 bg-white/10"
-                        : allowed
-                          ? "border-white/10 hover:border-white/25"
-                          : "border-white/5 opacity-45"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <span className={`flex h-7 w-7 items-center justify-center rounded-md text-sm ${m.klass === "premium" ? "bg-gradient-to-br from-amber-400/30 to-rose-500/20" : "bg-white/10"}`}>
-                        {m.klass === "premium" ? "✦" : "◆"}
-                      </span>
-                      <span>
-                        <span className="font-medium">{label}</span>
-                        <span className="ml-2 text-xs text-white/45">{m.name}</span>
-                      </span>
-                    </span>
-                    {allowed ? (
-                      m.klass === "premium" && <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">Premium</span>
-                    ) : (
-                      <span className="text-[10px] uppercase tracking-wider text-white/35">Studio tier</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
-
-          <Field label="Format">
-            <div className="grid grid-cols-2 gap-2">
-              {RESOLUTIONS.map((r) => {
-                const locked = !resAllowed(r.id);
-                const active = effectiveRes === r.id;
-                return (
-                  <button
-                    key={r.id}
-                    type="button"
-                    disabled={locked}
-                    onClick={() => setResolution(r.id)}
-                    title={locked ? `${r.label} needs a higher plan — see Plans & Credits` : r.note}
-                    className={`rounded-lg border px-3 py-2 text-left text-xs transition ${
-                      locked
-                        ? "cursor-not-allowed border-white/5 text-white/25"
-                        : active
-                          ? r.id === "4k"
-                            ? "border-cyan-400/50 bg-cyan-400/10 text-cyan-200"
-                            : "border-white/40 bg-white/10"
-                          : "border-white/10 text-white/60 hover:border-white/25"
-                    }`}
-                  >
-                    <span className="font-medium">{r.label}</span>
-                    {locked ? " 🔒" : ""}
-                    <span className="block text-[10px] text-white/35">{r.note}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
-
-          <div className="rounded-lg border border-white/10 bg-gradient-to-br from-white/[0.04] to-transparent p-3 text-sm">
-            <Row k="Final runtime" v={fmtDuration(seconds)} />
-            <Row k="Ready in" v={`~${readyEstimate}`} />
-            {props.platforms && <Row k="Format" v={props.platforms.find((p) => p.id === platform)?.aspect ?? "16:9"} />}
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={onCreate}
-              disabled={running}
-              className="group relative flex-1 overflow-hidden rounded-xl bg-white px-4 py-3 text-sm font-semibold text-black shadow-[0_0_30px_-10px_rgba(255,255,255,0.6)] transition hover:shadow-[0_0_50px_-10px_rgba(165,180,252,0.9)] disabled:opacity-40 disabled:shadow-none"
-            >
-              {running ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-black/30 border-t-black" />
-                  Generating…
-                </span>
-              ) : (
-                <>✦ {props.cta ?? "Create"}</>
-              )}
-            </button>
-            <button onClick={reset} className="rounded-xl border border-white/15 px-4 py-3 text-sm transition hover:bg-white/5">
-              Reset
-            </button>
-          </div>
-          <p className="text-center text-xs text-white/35">
-            {state?.live
-              ? "Live — your studio is doing the real work."
-              : "Sign in to run the real studio; otherwise this previews the flow."}
+  const body = (
+    <>
+      <Split>
+        <Cell className="lg:min-h-[600px]">
+          <div className="cf-label">Creative direction</div>
+          <h2 className="cf-display mt-9 text-[clamp(32px,3.4vw,45px)] leading-none">Start with the story.</h2>
+          <p className="mt-3 max-w-[600px] text-[13px] leading-[1.7] text-cf-muted">
+            Describe the {noun} you want to make. Cineforge translates the direction into screenplay, cast,
+            locations, scenes, score and the final cut.
           </p>
-        </aside>
 
-        <section className="space-y-6">
-          <RunPanel
-            state={state}
-            stageLabels={STAGE_LABEL}
-            readyTitle="Your cut is ready"
-            emptyHint={<EmptyState kind={props.kind} />}
+          <label htmlFor={`brief-${props.kind}`} className="mb-2.5 mt-11 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">
+            What do you want to make?
+          </label>
+          <textarea
+            id={`brief-${props.kind}`}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            rows={6}
+            className="cf-input min-h-[170px] resize-y p-5 leading-[1.7]"
           />
-          {state && (state.characters.length > 0 || state.locations.length > 0) && (
-            <div className="grid gap-3 sm:grid-cols-2">
+
+          <div className="mt-8">
+            {props.platforms && (
+              <Control name="Placement" value={props.platforms.find((p) => p.id === platform)?.aspect}>
+                <div className="flex flex-wrap gap-1.5">
+                  {props.platforms.map((p) => (
+                    <button key={p.id} type="button" className="cf-option" aria-pressed={platform === p.id} onClick={() => setPlatform(p.id)}>
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </Control>
+            )}
+
+            <Control name={props.kind === "series" ? "Total runtime" : "Length"} value={fmtDuration(effSeconds)}>
+              <div className="flex flex-wrap gap-1.5">
+                {durations.map((d) => {
+                  const locked = d.value > maxSec;
+                  return (
+                    <button
+                      key={d.value}
+                      type="button"
+                      className="cf-option"
+                      aria-pressed={effSeconds === d.value}
+                      disabled={locked}
+                      title={locked ? "Longer productions need a higher plan — see Plans & Credits" : undefined}
+                      onClick={() => setSeconds(d.value)}
+                    >
+                      {d.label}
+                      {locked && <span className="sr-only"> (needs a higher plan)</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              {maxSec < Math.max(...durations.map((d) => d.value)) && (
+                <p className="cf-label mt-2.5 leading-relaxed">
+                  Your {isAdmin ? "" : tier.toLowerCase() + " "}plan runs up to {fmtDuration(maxSec)} — longer lengths open on higher plans.
+                </p>
+              )}
+            </Control>
+
+            <Control name="Quality" value={quality}>
+              <div className="flex flex-wrap gap-1.5">
+                {MODELS.map((m) => {
+                  const allowed = isAdmin || modelAllowed(m.id, tier);
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className="cf-option"
+                      aria-pressed={modelId === m.id}
+                      disabled={!allowed}
+                      title={allowed ? undefined : "The cinematic engine is part of the Studio plan"}
+                      onClick={() => setModelId(m.id)}
+                    >
+                      {m.klass === "premium" ? "Cinematic" : "Standard"} · {m.name}
+                      {!allowed && <span className="ml-1.5 opacity-70">— Studio</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </Control>
+
+            <Control name="Master format" value={RESOLUTIONS.find((r) => r.id === effectiveRes)?.label}>
+              <div className="flex flex-wrap gap-1.5">
+                {RESOLUTIONS.map((r) => {
+                  const locked = !resAllowed(r.id);
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      className="cf-option"
+                      aria-pressed={effectiveRes === r.id}
+                      disabled={locked}
+                      title={locked ? `${r.label} needs a higher plan — see Plans & Credits` : r.note}
+                      onClick={() => setResolution(r.id)}
+                    >
+                      {r.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Control>
+          </div>
+        </Cell>
+
+        <Cell className="lg:min-h-[600px]">
+          <div className="cf-label">Production specification</div>
+          <h2 className="cf-display mb-6 mt-9 text-[30px] leading-none">The production plan.</h2>
+          <SpecList
+            rows={[
+              ["Production", production],
+              ["Runtime", fmtDuration(effSeconds)],
+              ["Quality", `${quality} · ${model?.name ?? modelId}`],
+              ["Format", effectiveRes],
+              ...(props.platforms ? ([["Aspect", props.platforms.find((p) => p.id === platform)?.aspect ?? "16:9"]] as [string, string][]) : []),
+              ["Ready in", `~${readyEstimate}`],
+              ["Plan", isAdmin ? "Admin" : tier],
+            ]}
+          />
+          <div className="mt-10">
+            <Pipeline steps={PIPELINE} status={state?.status} />
+          </div>
+        </Cell>
+      </Split>
+
+      <section className="mt-14 border-t border-cf-fg" aria-label="Production preview">
+        <div className="flex items-center justify-between border-b border-cf-line py-4">
+          <span className="cf-label text-cf-fg">Production preview</span>
+          <span className="cf-label">{state ? (state.live ? "Live production" : "Preview simulation") : "Waiting for direction"}</span>
+        </div>
+        <div className={state ? "pt-8" : ""}>
+          <RunPanel state={state} stageLabels={STAGE_LABEL} readyTitle="Your cut is ready" artSeed={prompt} emptyHint={<EmptyHint noun={noun} />} />
+        </div>
+        {state && (state.characters.length > 0 || state.locations.length > 0) && (
+          <div className="mt-10">
+            <div className="cf-label mb-3">Production bible</div>
+            <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2">
               {state.characters.map((c) => (
                 <BibleCard key={c.name} kind="Cast" name={c.name} desc={c.appearance} />
               ))}
@@ -241,69 +249,56 @@ export function CreateStudio(props: CreateStudioProps) {
                 <BibleCard key={l.name} kind="Location" name={l.name} desc={l.description} />
               ))}
             </div>
-          )}
-        </section>
+          </div>
+        )}
+      </section>
+
+      <div className="mt-14">
+        <ActionBand
+          title={<>Ready to make the <em>{noun}?</em></>}
+          copy={
+            state?.live
+              ? "Live — the studio is doing the real work. Progress is saved to Projects."
+              : "Your direction becomes the production brief. Sign in to run the real studio; otherwise this previews the flow."
+          }
+        >
+          <button type="button" onClick={reset} className="cf-btn-line">
+            Reset
+          </button>
+          <button type="button" onClick={onCreate} disabled={running || !prompt.trim()} className="cf-btn-accent">
+            {running ? "In production…" : props.cta ?? "Create"}
+          </button>
+        </ActionBand>
       </div>
+    </>
+  );
+
+  if (props.embedded) return body;
+  return (
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      {props.header ?? (
+        <PageHeader eyebrow={`${production} production / 01`} title={props.heading} copy={<p>{props.blurb}</p>} status={{ label: `${production} studio ready` }} />
+      )}
+      <div className="pt-12">{body}</div>
     </div>
   );
 }
 
 /* ── small UI bits ──────────────────────────────────────────── */
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <span className="text-xs uppercase tracking-wider text-white/40">{label}</span>
-      <div className="mt-2">{children}</div>
-    </div>
-  );
-}
-function Chip({ active, onClick, children, disabled }: { active: boolean; onClick: () => void; children: ReactNode; disabled?: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={disabled ? "Longer films need a higher plan — see Plans & Credits" : undefined}
-      className={`rounded-full border px-3 py-1 text-xs transition ${
-        disabled
-          ? "cursor-not-allowed border-white/5 text-white/25"
-          : active
-            ? "border-white/40 bg-white/10 text-white"
-            : "border-white/10 text-white/60 hover:border-white/25"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="flex items-center justify-between py-0.5">
-      <span className="text-white/50">{k}</span>
-      <span className="font-medium">{v}</span>
-    </div>
-  );
-}
 function BibleCard({ kind, name, desc }: { kind: string; name: string; desc: string }) {
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/25">
-      <div className="pointer-events-none absolute -right-8 -top-8 h-20 w-20 rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.25),transparent)] opacity-0 blur-lg transition group-hover:opacity-100" />
-      <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-white/40">
-        <span>{kind === "Cast" ? "🎭" : "🗺"}</span>
-        {kind}
-      </div>
-      <div className="mt-1.5 font-semibold">{name}</div>
-      <div className="mt-1 line-clamp-2 text-sm text-white/55">{desc}</div>
+    <div className="bg-cf-bg p-5">
+      <div className="cf-label">{kind}</div>
+      <div className="mt-3 font-display font-semibold text-[20px] leading-tight">{name}</div>
+      <div className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-cf-muted">{desc}</div>
     </div>
   );
 }
-function EmptyState({ kind }: { kind: string }) {
+function EmptyHint({ noun }: { noun: string }) {
   return (
-    <div className="flex flex-col items-center py-6 text-center">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-indigo-500/20 to-fuchsia-500/10 text-xl">✦</div>
-      <p className="text-sm">
-        Describe your {kind} and press <span className="font-medium text-white/80">Create</span>.
-      </p>
-      <p className="mt-1 text-xs text-white/40">Watch it get written, cast, filmed and cut — start to finish.</p>
+    <div>
+      <p className="cf-display text-[clamp(38px,5vw,62px)] leading-none">Your {noun} begins here.</p>
+      <p className="cf-label mt-3">Describe it above · then enter production</p>
     </div>
   );
 }

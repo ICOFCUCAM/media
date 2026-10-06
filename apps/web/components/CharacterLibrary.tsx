@@ -3,14 +3,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
-import { AuthCard } from "./AuthCard";
+import { StudioGate } from "./cf/StudioGate";
+import { CinemaArt } from "./cf/CinemaArt";
+import { Cell, EmptyState, PageHeader, Section, SpecList, Split } from "./cf/primitives";
 import { createCharacter, listCharacters, type CharacterWithOrigin } from "../lib/library";
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
 
-/** Create and browse reusable characters — locked identity, reusable anywhere. */
+/** The Casting Room (docs/design/casting-room-characters.html, dark room).
+ *  Create and browse reusable characters — locked identity, reusable anywhere. */
 export function CharacterLibrary() {
-  const { enabled, loading, user } = useAuth();
+  const { user } = useAuth();
   const [items, setItems] = useState<CharacterWithOrigin[] | null>(null);
   const [name, setName] = useState("");
   const [appearance, setAppearance] = useState("");
@@ -64,102 +67,100 @@ export function CharacterLibrary() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Characters</h1>
-        <p className="mt-1 text-sm text-white/55">
-          Design a cast once — locked identity, look and personality — then reuse them across any project.
-        </p>
-      </header>
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="Production / Casting room"
+        title={<>Cast the<br /><em>story.</em></>}
+        copy={
+          <>
+            <p>Design a cast once — locked identity, look and personality — then reuse them in any production.</p>
+            <p><strong>Every scene that names a character inherits who they are.</strong></p>
+          </>
+        }
+        status={{ tone: items?.length ? "live" : "idle", label: items ? `${items.length} in the cast` : "Casting room" }}
+      />
+      <div className="pt-12">
+        <StudioGate signIn="Sign in to build your cast" what="Characters">
+          <Split>
+            <Cell>
+              <form onSubmit={onCreate}>
+                <div className="cf-label">New character</div>
+                <h2 className="cf-display mt-8 text-[clamp(30px,3vw,42px)] leading-none">Open a casting call.</h2>
+                <Field id="char-name" label="Name">
+                  <input id="char-name" value={name} required onChange={(e) => setName(e.target.value)} placeholder="Amara" className="cf-input font-display font-semibold text-[18px]" />
+                </Field>
+                <Field id="char-look" label="Appearance">
+                  <textarea id="char-look" value={appearance} required rows={3} onChange={(e) => setAppearance(e.target.value)} placeholder="Age, build, features, wardrobe…" className="cf-input resize-y" />
+                </Field>
+                <Field id="char-arc" label="Personality & arc · optional">
+                  <textarea id="char-arc" value={personality} rows={3} onChange={(e) => setPersonality(e.target.value)} placeholder="Who they are and where they are going" className="cf-input resize-y" />
+                </Field>
+                <button type="submit" disabled={busy || !name || !appearance} className="cf-btn-accent mt-8">
+                  {busy ? "Casting…" : "Create character"}
+                </button>
+                {error && <p role="alert" className="mt-4 border-l-2 border-cf-danger pl-3 text-[12px] text-cf-danger">{error}</p>}
+              </form>
+            </Cell>
+            <Cell>
+              <div className="cf-label">How casting works</div>
+              <SpecList
+                className="mt-8"
+                rows={[
+                  ["Identity", "Locked"],
+                  ["Reuse", "Every production"],
+                  ["Anchor", "Scene-by-scene board"],
+                  ["Portrait", "First painted still"],
+                ]}
+              />
+            </Cell>
+          </Split>
 
-      {!enabled ? (
-        <Note>Connect Supabase to save characters.</Note>
-      ) : loading ? (
-        <p className="text-sm text-white/40">Loading…</p>
-      ) : !user ? (
-        <AuthCard title="Sign in to build your cast" />
-      ) : (
-        <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
-          <form onSubmit={onCreate} className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-5">
-            <h2 className="text-sm font-semibold">New character</h2>
-            <Input value={name} onChange={setName} placeholder="Name (e.g. Amara)" required />
-            <Textarea value={appearance} onChange={setAppearance} placeholder="Appearance — age, build, features, wardrobe…" required />
-            <Textarea value={personality} onChange={setPersonality} placeholder="Personality & arc (optional)" />
-            <button
-              type="submit"
-              disabled={busy || !name || !appearance}
-              className="w-full rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
-            >
-              {busy ? "Saving…" : "Create character"}
-            </button>
-            {error && <p className="text-xs text-amber-300">{error}</p>}
-          </form>
-
-          <div>
+          <Section label="The cast" title={items ? `${String(items.length).padStart(2, "0")} characters` : "The cast"}>
             {!items ? (
-              <p className="text-sm text-white/40">Loading characters…</p>
+              <p className="cf-label">Loading the cast…</p>
             ) : items.length === 0 ? (
-              <Note>No characters yet. Create your first on the left — it becomes reusable everywhere.</Note>
+              <EmptyState title={<>No one is <em>cast yet.</em></>} hint="Create your first character above — it becomes reusable everywhere." />
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {items.map((c) => (
-                  <div key={c.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-                    {portraits[c.id] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={portraits[c.id]} alt={c.name} className="mb-2 aspect-[3/2] w-full rounded-lg object-cover" />
-                    ) : (
-                      <div className="mb-2 aspect-[3/2] rounded-lg bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/20" />
-                    )}
-                    <div className="flex items-baseline justify-between gap-2">
-                      <div className="font-medium">{c.name}</div>
-                      {c.projects?.title && (
-                        <span className="truncate text-[10px] uppercase tracking-wider text-white/35">
-                          {c.projects.title === "Library" ? "Library" : `cast of "${c.projects.title}"`}
-                        </span>
+              <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 xl:grid-cols-3">
+                {items.map((c, i) => (
+                  <article key={c.id} className="flex flex-col bg-cf-bg">
+                    <div className="relative aspect-[4/5] overflow-hidden bg-cf-panel">
+                      {portraits[c.id] ? (
+                        /* Plain <img>: a signed, short-lived storage URL. */
+                        <img src={portraits[c.id]} alt={`Portrait of ${c.name}`} className="h-full w-full object-cover" />
+                      ) : (
+                        <CinemaArt seed={`${c.name} ${c.appearance ?? ""}`} scene="figure" className="h-full w-full" hud={{ tag: "Portrait renders on first use" }} />
                       )}
+                      <span className="absolute left-4 top-4 font-mono text-[11px] text-white/80">{String(i + 1).padStart(2, "0")}</span>
                     </div>
-                    <p className="mt-1 line-clamp-2 text-sm text-white/55">{c.appearance}</p>
-                    <Link href="/create/film?mode=storyboard" className="mt-3 inline-block text-xs text-white/40 hover:text-white">
-                      Use in a film →
-                    </Link>
-                  </div>
+                    <div className="flex flex-1 flex-col p-5">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <h3 className="font-display font-semibold text-[26px] leading-none tracking-[-0.03em]">{c.name}</h3>
+                        <span className="cf-label truncate">{c.projects?.title === "Library" || !c.projects ? "Library" : c.projects.title}</span>
+                      </div>
+                      <p className="mt-3 line-clamp-3 text-[12px] leading-relaxed text-cf-muted">{c.appearance}</p>
+                      <Link href="/create/film?mode=storyboard" className="cf-link mt-auto pt-5 text-cf-muted hover:text-cf-fg">
+                        Cast in a film →
+                      </Link>
+                    </div>
+                  </article>
                 ))}
               </div>
             )}
-          </div>
-        </div>
-      )}
+          </Section>
+        </StudioGate>
+      </div>
     </div>
   );
 }
 
-function Input({ value, onChange, placeholder, required }: { value: string; onChange: (v: string) => void; placeholder: string; required?: boolean }) {
+function Field({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
   return (
-    <input
-      value={value}
-      required={required}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm outline-none focus:border-white/30"
-    />
-  );
-}
-function Textarea({ value, onChange, placeholder, required }: { value: string; onChange: (v: string) => void; placeholder: string; required?: boolean }) {
-  return (
-    <textarea
-      value={value}
-      required={required}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      rows={3}
-      className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm outline-none focus:border-white/30"
-    />
-  );
-}
-function Note({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-white/10 text-center text-sm text-white/50">
-      <p className="max-w-sm">{children}</p>
+    <div className="mt-6">
+      <label htmlFor={id} className="mb-2 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">
+        {label}
+      </label>
+      {children}
     </div>
   );
 }

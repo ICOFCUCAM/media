@@ -4,6 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { StoryboardStudio } from "./StoryboardStudio";
 import { newDraft, draftScenesFromBrief, type SceneDraft } from "../lib/storyboard";
 import type { ShotSource } from "../lib/database.types";
+import { Cell, Control, Split } from "./cf/primitives";
 
 /* ─── Hybrid → auto-plan, then refine in the storyboard ───────
  * Auto generates a screenplay/scene plan, then opens the Storyboard editor so
@@ -27,27 +28,25 @@ export function HybridStudio() {
   }
 
   return (
-    <div className="space-y-4">
-      <Banner>Hybrid: we draft the screenplay, world, characters and scenes, then drop you into the Storyboard editor to refine before rendering.</Banner>
-      <textarea
-        value={brief}
-        onChange={(e) => setBrief(e.target.value)}
-        rows={3}
-        className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm outline-none focus:border-white/30"
-      />
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-xs text-white/40">Scenes</span>
-        {[4, 5, 6, 8].map((c) => (
-          <Pill key={c} active={count === c} onClick={() => setCount(c)}>{c}</Pill>
-        ))}
-        <button
-          onClick={() => setScenes(draftScenesFromBrief(brief, count))}
-          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-white/90"
-        >
-          Generate plan & open Storyboard →
-        </button>
-      </div>
-    </div>
+    <Intake
+      label="Hybrid direction"
+      title="Draft it, then direct it."
+      copy="We draft the screenplay, world, characters and scenes, then open the Director's Board so you refine every scene before rendering."
+      next={["Scene plan drafted from your brief", "Opens in the Director's Board", "Refine cast, frames, camera and dialogue", "Generate scene by scene"]}
+    >
+      <label htmlFor="hybrid-brief" className="cf-label mb-2.5 block text-cf-fg">The brief</label>
+      <textarea id="hybrid-brief" value={brief} onChange={(e) => setBrief(e.target.value)} rows={5} className="cf-input resize-y p-5 leading-[1.7]" />
+      <Control name="Scenes" value={`${count} scenes`}>
+        <div className="flex flex-wrap gap-1.5">
+          {[4, 5, 6, 8].map((c) => (
+            <Pill key={c} active={count === c} onClick={() => setCount(c)}>{c}</Pill>
+          ))}
+        </div>
+      </Control>
+      <button type="button" onClick={() => setScenes(draftScenesFromBrief(brief, count))} disabled={!brief.trim()} className="cf-btn-ink mt-9">
+        Draft plan &amp; open the board →
+      </button>
+    </Intake>
   );
 }
 
@@ -75,29 +74,31 @@ export function ScriptStudio() {
   }
 
   return (
-    <div className="space-y-4">
-      <Banner>Bring your own screenplay. We turn it into a shot list and scenes — you keep creative control.</Banner>
+    <Intake
+      label="Screenplay"
+      title="Bring the script."
+      copy="Paste or upload a screenplay. We break it into scenes on its sluglines (or paragraphs) — you keep creative control of every one."
+      next={["Split on INT. / EXT. sluglines", "Up to 24 scenes", "Opens in the Director's Board", "Generate scene by scene"]}
+    >
+      <label htmlFor="script-text" className="cf-label mb-2.5 block text-cf-fg">Screenplay</label>
       <textarea
+        id="script-text"
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={14}
         placeholder={"INT. THRONE ROOM - NIGHT\n\nThe king studies a map by candlelight...\n\nEXT. CITY GATES - DAWN\n\nSoldiers gather in the mist."}
-        className="w-full resize-y rounded-xl border border-white/10 bg-white/[0.03] p-4 font-mono text-sm outline-none focus:border-white/30"
+        className="cf-input resize-y p-5 font-mono text-[13px] leading-[1.7]"
       />
-      <div className="flex flex-wrap gap-2">
+      <div className="mt-6 flex flex-wrap gap-2">
         <input ref={fileRef} type="file" accept=".txt,.md,.fountain,.fdx,text/*" className="hidden" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
-        <button onClick={() => fileRef.current?.click()} className="rounded-lg border border-white/15 px-4 py-2 text-sm hover:bg-white/5">
+        <button type="button" onClick={() => fileRef.current?.click()} className="cf-btn-line">
           Upload script
         </button>
-        <button
-          onClick={() => setScenes(parseScreenplay(text))}
-          disabled={!text.trim()}
-          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
-        >
-          Parse into scenes →
+        <button type="button" onClick={() => setScenes(parseScreenplay(text))} disabled={!text.trim()} className="cf-btn-ink">
+          Break into scenes →
         </button>
       </div>
-    </div>
+    </Intake>
   );
 }
 
@@ -160,28 +161,29 @@ export function AudioStudio() {
   }
 
   return (
-    <div className="space-y-4">
-      <Banner tone="beta">Audio → Film is in beta. Upload a voice recording, or generate AI narration; we scaffold visuals beat-by-beat.</Banner>
-      <div className="rounded-xl border border-dashed border-white/15 p-8 text-center">
-        <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={(e) => setName(e.target.files?.[0]?.name ?? null)} />
-        <p className="text-sm text-white/60">{name ? `Loaded: ${name}` : "Upload narration (MP3 / WAV / M4A)"}</p>
-        <button onClick={() => fileRef.current?.click()} className="mt-3 rounded-lg border border-white/15 px-4 py-2 text-sm hover:bg-white/5">
-          {name ? "Choose another" : "Upload audio"}
-        </button>
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-xs text-white/40">Scenes</span>
-        {[3, 4, 6, 8].map((c) => (
-          <Pill key={c} active={count === c} onClick={() => setCount(c)}>{c}</Pill>
-        ))}
-        <button
-          onClick={() => setScenes(Array.from({ length: count }, (_, i) => newDraft(i, `Beat ${i + 1}`, `Visualize beat ${i + 1} of the narration.`)))}
-          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-white/90"
-        >
-          Build scene plan →
-        </button>
-      </div>
-    </div>
+    <Intake
+      beta
+      label="Narration"
+      title="Start from the voice."
+      copy="Upload a voice recording; we scaffold the visuals beat by beat around it. Audio-to-picture sync arrives with the alignment worker — today the plan is built from your beat count."
+      next={["One scene per narration beat", "Opens in the Director's Board", "Describe each beat's picture", "Generate scene by scene"]}
+    >
+      <Drop accept="audio/*" inputRef={fileRef} onPick={(f) => setName(f?.name ?? null)} name={name} empty="Upload narration — MP3 / WAV / M4A" />
+      <Control name="Beats" value={`${count} scenes`}>
+        <div className="flex flex-wrap gap-1.5">
+          {[3, 4, 6, 8].map((c) => (
+            <Pill key={c} active={count === c} onClick={() => setCount(c)}>{c}</Pill>
+          ))}
+        </div>
+      </Control>
+      <button
+        type="button"
+        onClick={() => setScenes(Array.from({ length: count }, (_, i) => newDraft(i, `Beat ${i + 1}`, `Visualize beat ${i + 1} of the narration.`)))}
+        className="cf-btn-ink mt-9"
+      >
+        Build the scene plan →
+      </button>
+    </Intake>
   );
 }
 
@@ -213,54 +215,117 @@ export function VideoStudio() {
   }
 
   return (
-    <div className="space-y-4">
-      <Banner tone="beta">Video → Video is in beta. Upload a clip and generate variations, extensions, remasters, style transfers or a sequel.</Banner>
-      <div className="rounded-xl border border-dashed border-white/15 p-8 text-center">
-        <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-        <p className="text-sm text-white/60">{name ? `Loaded: ${name}` : "Upload a source clip (MP4 / MOV)"}</p>
-        <button onClick={() => fileRef.current?.click()} className="mt-3 rounded-lg border border-white/15 px-4 py-2 text-sm hover:bg-white/5">
-          {name ? "Choose another" : "Upload video"}
-        </button>
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-xs text-white/40">Operation</span>
-        {VIDEO_OPS.map((o) => (
-          <Pill key={o} active={op === o} onClick={() => setOp(o)}>{o}</Pill>
-        ))}
-        <button
-          onClick={() => setScenes([newDraft(0, op, `${op} of the source clip.`), newDraft(1, "Continuation", "Carry the look and motion forward.")])}
-          disabled={!name}
-          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
-        >
-          Scaffold scenes →
-        </button>
-      </div>
-    </div>
+    <Intake
+      beta
+      label="Source footage"
+      title="Start from a clip."
+      copy="Upload a clip and generate variations, extensions, remasters, style transfers or a sequel — your footage conditions every shot (video-to-video)."
+      next={["Source clip uploaded with the run", "Two scenes scaffolded", "Opens in the Director's Board", "Generate scene by scene"]}
+    >
+      <Drop accept="video/*" inputRef={fileRef} onPick={(f) => setFile(f)} name={name} empty="Upload a source clip — MP4 / MOV" />
+      <Control name="Operation" value={op}>
+        <div className="flex flex-wrap gap-1.5">
+          {VIDEO_OPS.map((o) => (
+            <Pill key={o} active={op === o} onClick={() => setOp(o)}>{o}</Pill>
+          ))}
+        </div>
+      </Control>
+      <button
+        type="button"
+        onClick={() => setScenes([newDraft(0, op, `${op} of the source clip.`), newDraft(1, "Continuation", "Carry the look and motion forward.")])}
+        disabled={!name}
+        className="cf-btn-ink mt-9"
+      >
+        Scaffold scenes →
+      </button>
+    </Intake>
   );
 }
 
 /* ── shared bits ─────────────────────────────────────────────── */
+
+/** The intake layout every entry mode shares: material | what happens next. */
+function Intake({
+  label,
+  title,
+  copy,
+  next,
+  beta,
+  children,
+}: {
+  label: string;
+  title: string;
+  copy: string;
+  next: string[];
+  beta?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Split>
+      <Cell className="lg:min-h-[520px]">
+        <div className="flex items-center gap-3">
+          <span className="cf-label">{label}</span>
+          {beta && <span className="cf-label text-cf-warn">Beta</span>}
+        </div>
+        <h2 className="cf-display mt-9 text-[clamp(32px,3.4vw,45px)] leading-none">{title}</h2>
+        <p className="mb-10 mt-3 max-w-[600px] text-[13px] leading-[1.7] text-cf-muted">{copy}</p>
+        {children}
+      </Cell>
+      <Cell>
+        <div className="cf-label">What happens next</div>
+        <ol className="mt-9 border-t border-cf-line">
+          {next.map((n, i) => (
+            <li key={n} className="grid min-h-[60px] grid-cols-[40px_1fr] items-center gap-3 border-b border-cf-line">
+              <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+              <span className="font-display font-semibold text-[17px] leading-snug">{n}</span>
+            </li>
+          ))}
+        </ol>
+      </Cell>
+    </Split>
+  );
+}
+
+/** Banner shown above the Director's Board once an intake hands over its scenes. */
 function Banner({ children, tone }: { children: ReactNode; tone?: "beta" }) {
   return (
-    <div
-      className={`rounded-xl border p-4 text-sm ${
-        tone === "beta" ? "border-amber-400/30 bg-amber-400/[0.04] text-amber-100/80" : "border-white/10 bg-white/[0.02] text-white/70"
-      }`}
-    >
-      {tone === "beta" && <span className="mr-2 rounded-full border border-amber-400/40 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">Beta</span>}
+    <div className={`border-l-2 bg-cf-soft px-5 py-4 text-[12px] leading-relaxed ${tone === "beta" ? "border-cf-warn" : "border-cf-accent"}`}>
+      {tone === "beta" && <span className="cf-label mr-2 text-cf-warn">Beta</span>}
       {children}
     </div>
   );
 }
+
 function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-xs transition ${
-        active ? "border-white/40 bg-white/10 text-white" : "border-white/10 text-white/60 hover:border-white/25"
-      }`}
-    >
+    <button type="button" onClick={onClick} aria-pressed={active} className="cf-option min-w-[44px] text-center">
       {children}
     </button>
+  );
+}
+
+/** A file well for audio / video sources. */
+function Drop({
+  accept,
+  inputRef,
+  onPick,
+  name,
+  empty,
+}: {
+  accept: string;
+  inputRef: React.RefObject<HTMLInputElement>;
+  onPick: (f: File | null) => void;
+  name: string | null;
+  empty: string;
+}) {
+  return (
+    <div className="border border-dashed border-cf-line px-6 py-10 text-center">
+      <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={(e) => onPick(e.target.files?.[0] ?? null)} />
+      <p className="font-display font-semibold text-[22px] leading-tight">{name ?? empty}</p>
+      {name && <p className="cf-label mt-2">Loaded</p>}
+      <button type="button" onClick={() => inputRef.current?.click()} className="cf-btn-line mt-5">
+        {name ? "Choose another" : "Choose file"}
+      </button>
+    </div>
   );
 }

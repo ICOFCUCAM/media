@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { getSupabase } from "../lib/supabase";
 import { PLANS, TOPUPS, msToCredits } from "../lib/plans";
+import { PageHeader, Section } from "./cf/primitives";
 
 /**
- * Pricing (docs/33) — plan grid + credit top-ups, wired to the
+ * Access (docs/design/access-pricing.html). Pricing (docs/33) — plan grid + credit top-ups, wired to the
  * stripe-checkout edge function. Until Stripe keys are configured the
  * function answers 503 and we surface "billing isn't enabled yet" honestly.
  */
@@ -48,114 +49,133 @@ export function PricingPage() {
   const credits = profile ? msToCredits(profile.creditsMs) : null;
 
   return (
-    <div className="relative isolate mx-auto max-w-7xl px-6 py-10">
-      <div className="cf-aurora pointer-events-none absolute left-1/2 top-0 -z-10 h-80 w-[50rem] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(217,70,239,0.12),transparent)] blur-3xl" />
-      <header className="mb-10 text-center">
-        <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-fuchsia-300/80">
-          <span className="h-1 w-5 rounded-full bg-fuchsia-400/50" /> Plans &amp; credits
-        </p>
-        <h1 className="text-4xl font-semibold tracking-tight">
-          Plans for <span className="cf-sheen bg-[linear-gradient(110deg,#a5b4fc,40%,#f0abfc,60%,#67e8f9)] bg-clip-text text-transparent">every studio</span>
-        </h1>
-        <p className="mt-3 text-sm text-white/55">
-          One credit meter for everything — films, dubbing, voices, avatars, publishing.
-        </p>
-        {credits !== null && (
-          <p className="mt-2 text-xs text-white/45">
-            Your balance: <span className="font-semibold text-white">{credits.toLocaleString()} credits</span>
-            {profile && <> · current plan: <span className="font-semibold text-white">{profile.tier}</span></>}
-          </p>
-        )}
-        {notice && <p className="mx-auto mt-3 max-w-md rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">{notice}</p>}
-      </header>
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="Account / Access"
+        title={<>Enter the<br /><em>studio.</em></>}
+        copy={
+          <>
+            <p>One credit meter for everything — films, dubbing, voices, avatars and publishing.</p>
+            <p><strong>Start with what you need. Expand into the complete production environment as the work grows.</strong></p>
+          </>
+        }
+        status={profile ? { tone: "live", label: `${profile.tier} plan · ${credits?.toLocaleString()} credits` } : { tone: "idle", label: "Sign in to see your standing" }}
+      />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {PLANS.map((p) => {
-          const current = profile?.tier === p.tier;
-          return (
-            <div
-              key={p.tier}
-              className={`flex flex-col rounded-2xl border p-5 ${
-                p.highlight ? "border-white/40 bg-white/[0.06]" : "border-white/10 bg-white/[0.02]"
-              }`}
-            >
-              {p.highlight && (
-                <div className="mb-2 self-start rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black">
-                  Most popular
-                </div>
-              )}
-              <h2 className="text-lg font-semibold">{p.name}</h2>
-              <p className="text-xs text-white/50">{p.blurb}</p>
-              <div className="mt-3">
-                <span className="text-3xl font-bold">${p.priceMonthly}</span>
-                <span className="text-sm text-white/45">/mo</span>
+      {notice && (
+        <p role="status" className="mt-10 border-l-2 border-cf-warn bg-cf-soft px-5 py-4 text-[13px]">
+          <span className="cf-label mr-2 text-cf-warn">Billing</span>
+          {notice}
+        </p>
+      )}
+
+      {profile && (
+        <Section label="Your standing" title="The account.">
+          <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-3">
+            {[
+              ["Plan", profile.tier.charAt(0) + profile.tier.slice(1).toLowerCase()],
+              ["Credits", credits!.toLocaleString()],
+              ["Role", profile.role === "ADMIN" ? "Administrator" : "Creator"],
+            ].map(([k, v]) => (
+              <div key={k} className="bg-cf-bg p-6">
+                <div className="cf-label">{k}</div>
+                <div className="cf-display mt-6 text-[44px] leading-none">{v}</div>
               </div>
-              <ul className="mt-4 flex-1 space-y-1.5 text-xs text-white/65">
-                {p.features.map((f) => (
-                  <li key={f} className="flex gap-1.5">
-                    <span className="text-emerald-300">✓</span>
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-              {current ? (
-                <div className="mt-4 rounded-lg border border-emerald-400/40 px-4 py-2.5 text-center text-sm font-medium text-emerald-300">
-                  Your plan
-                </div>
-              ) : p.tier === "FREE" ? (
-                <div className="mt-4 rounded-lg border border-white/15 px-4 py-2.5 text-center text-sm text-white/50">
-                  Included at signup
-                </div>
-              ) : (
-                <button
-                  onClick={() => checkout({ plan: p.tier })}
-                  disabled={busy !== null}
-                  className={`mt-4 rounded-lg px-4 py-2.5 text-sm font-medium transition disabled:opacity-40 ${
-                    p.highlight ? "bg-white text-black hover:bg-white/90" : "border border-white/20 hover:bg-white/5"
-                  }`}
-                >
-                  {busy === p.tier ? "Opening checkout…" : p.cta}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
-      <div className="mt-10">
-        <h2 className="mb-3 text-center text-sm font-semibold text-white/70">Need more? Top up any plan.</h2>
-        <div className="mx-auto grid max-w-2xl gap-3 sm:grid-cols-3">
+      <Section label="Plans" title="Choose the room.">
+        <div className="grid border-l border-t border-cf-line md:grid-cols-2 xl:grid-cols-5">
+          {PLANS.map((p, i) => {
+            const current = profile?.tier === p.tier;
+            // An odd final plan fills the row in the two-column layout instead of sitting alone.
+            const orphan = PLANS.length % 2 === 1 && i === PLANS.length - 1;
+            return (
+              <article
+                key={p.tier}
+                className={`flex min-h-[520px] flex-col border-b border-r border-cf-line p-6 ${orphan ? "md:col-span-2 xl:col-span-1" : ""} ${p.highlight ? "bg-cf-inverse text-cf-on-inverse" : "bg-cf-bg"}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-sans text-[12px] font-medium uppercase tracking-[0.06em]">{p.name}</h2>
+                  {current ? (
+                    <span className="font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-ok">Your plan</span>
+                  ) : (
+                    p.highlight && <span className="font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-accent">Most chosen</span>
+                  )}
+                </div>
+                <div className="mt-9 font-display font-semibold text-[46px] leading-none tracking-[-0.05em]">
+                  ${p.priceMonthly}
+                  <span className="ml-1 font-sans text-[12px] tracking-normal opacity-50">/mo</span>
+                </div>
+                <p className="mt-4 text-[13px] opacity-60">{p.blurb}</p>
+                <ul className="mt-7 flex-1 space-y-2.5">
+                  {p.features.map((f) => (
+                    <li key={f} className="text-[11px] leading-snug opacity-75">
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                {current ? (
+                  <div className="cf-btn mt-8 border border-current opacity-60">Current plan</div>
+                ) : p.tier === "FREE" ? (
+                  <div className="cf-btn mt-8 border border-current opacity-50">Included at signup</div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => checkout({ plan: p.tier })}
+                    disabled={busy !== null}
+                    className={`mt-8 ${p.highlight ? "cf-btn-accent" : "cf-btn border border-cf-fg hover:bg-cf-inverse hover:text-cf-on-inverse"}`}
+                  >
+                    {busy === p.tier ? "Opening checkout…" : p.cta}
+                  </button>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section label="Top-ups" title="Need more? Top up any plan.">
+        <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-3">
           {TOPUPS.map((t) => (
             <button
               key={t.id}
+              type="button"
               onClick={() => checkout({ topup: t.id })}
               disabled={busy !== null}
-              className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center transition hover:border-white/30 disabled:opacity-40"
+              className="group flex min-h-[150px] flex-col bg-cf-bg p-6 text-left transition hover:bg-cf-soft disabled:opacity-40"
             >
-              <div className="text-lg font-semibold">{t.credits.toLocaleString()} cr</div>
-              <div className="text-sm text-white/50">${t.price}</div>
+              <span className="cf-label">{busy === t.id ? "Opening checkout…" : "Credit pack"}</span>
+              <span className="cf-display mt-auto text-[40px] leading-none">{t.credits.toLocaleString()}</span>
+              <span className="mt-2 flex justify-between font-sans text-[12px] font-medium uppercase tracking-[0.06em]">
+                <span className="text-cf-muted">credits</span>
+                <span>${t.price}</span>
+              </span>
             </button>
           ))}
         </div>
-        <p className="mt-6 text-center text-[11px] text-white/35">
-          Annual billing −20% (contact us) · credits roll over 90 days on paid plans · failed generations are
-          auto-recovered, never double-billed.
+        <p className="cf-label mt-4 leading-relaxed">
+          Annual billing −20% (contact us) · credits roll over 90 days on paid plans · failed generations are auto-recovered, never double-billed.
         </p>
-      </div>
+      </Section>
 
-      <div className="mx-auto mt-14 max-w-3xl">
-        <h2 className="mb-4 text-center text-sm font-semibold text-white/70">Questions, answered</h2>
-        <div className="space-y-3">
-          {FAQ.map((f) => (
-            <details key={f.q} className="group rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
-              <summary className="cursor-pointer list-none text-sm font-medium text-white/80 transition group-open:text-white">
-                {f.q}
+      <Section label="Questions" title="Answered.">
+        <div className="border-t border-cf-fg">
+          {FAQ.map((f, i) => (
+            <details key={f.q} className="group border-b border-cf-line">
+              <summary className="grid cursor-pointer list-none grid-cols-[44px_1fr_auto] items-center gap-4 py-5">
+                <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                <span className="font-display font-semibold text-[20px] tracking-[-0.02em]">{f.q}</span>
+                <span className="cf-label group-open:hidden">+</span>
+                <span className="cf-label hidden group-open:inline">−</span>
               </summary>
-              <p className="mt-2 text-sm leading-relaxed text-white/55">{f.a}</p>
+              <p className="max-w-3xl pb-6 pl-[60px] text-[13px] leading-relaxed text-cf-muted">{f.a}</p>
             </details>
           ))}
         </div>
-      </div>
+      </Section>
     </div>
   );
 }

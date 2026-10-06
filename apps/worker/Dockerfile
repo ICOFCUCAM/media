@@ -5,9 +5,10 @@
 # Build from the repo ROOT:  docker build -f apps/worker/Dockerfile -t cineforge-worker .
 FROM node:20-bookworm-slim
 
-# ffmpeg → render engine; openssl/ca-certificates → Prisma engine + HTTPS.
+# ffmpeg → render engine; fonts-dejavu-core → the brand outro line (drawtext);
+# openssl/ca-certificates → Prisma engine + HTTPS.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ffmpeg openssl ca-certificates && \
+      ffmpeg fonts-dejavu-core openssl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate

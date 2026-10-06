@@ -61,12 +61,15 @@ export interface AudioInputs {
  * Mix music + voice + sfx into one track, ducking music under dialogue with
  * sidechaincompress, then loudness-normalize (EBU R128).
  */
-export function audioMixArgs(inputs: AudioInputs, output: string): string[] {
+export function audioMixArgs(inputs: AudioInputs, output: string, opts: { musicLoopSec?: number } = {}): string[] {
   const args: string[] = [];
   const labels: Record<string, number> = {};
   let idx = 0;
   for (const key of ["music", "voice", "sfx"] as const) {
     if (inputs[key]) {
+      // The film score is one clip; loop it under the whole cut, bounded to the
+      // film's length so the mix (amix = longest input) always terminates.
+      if (key === "music" && opts.musicLoopSec && opts.musicLoopSec > 0) args.push("-stream_loop", "-1", "-t", String(Math.ceil(opts.musicLoopSec)));
       args.push("-i", inputs[key]!);
       labels[key] = idx++;
     }
@@ -131,5 +134,24 @@ export function hlsArgs(input: string, outDir: string): string[] {
     "-master_pl_name", "master.m3u8",
     "-var_stream_map", "v:0,a:0 v:1,a:0 v:2,a:0",
     `${outDir}/stream_%v.m3u8`,
+  ];
+}
+
+/** Where the brand outro looks for a font (fonts-dejavu-core in the worker image). */
+export const OUTRO_FONT = process.env.OUTRO_FONT_FILE ?? "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
+
+/**
+ * Lay the brand kit's outro line over the outro card. The text is read from a
+ * file (textfile=) so a studio's words never need filter escaping, and
+ * expansion=none keeps "%" literal (drawtext would otherwise expand it).
+ */
+export function outroTextArgs(input: string, output: string, textFile: string, fontFile: string = OUTRO_FONT): string[] {
+  return [
+    "-i", input,
+    "-vf",
+    `drawtext=fontfile=${fontFile}:textfile=${textFile}:expansion=none:fontcolor=white:fontsize=34:` +
+      "x=(w-text_w)/2:y=h-(h/5):alpha='if(lt(t,0.4),t/0.4,1)',format=yuv420p",
+    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an",
+    output,
   ];
 }

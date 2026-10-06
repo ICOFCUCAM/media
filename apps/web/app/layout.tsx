@@ -1,28 +1,36 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { DM_Mono, Inter, Manrope } from "next/font/google";
 import "./globals.css";
+
+// Self-hosted at build time by next/font: no runtime request to Google, no
+// render-blocking third-party stylesheet, and no failure when it is blocked.
+const inter = Inter({ subsets: ["latin"], weight: ["300", "400", "500", "600"], variable: "--font-inter", display: "swap" });
+const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-manrope", display: "swap" });
+const dmMono = DM_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-dm-mono", display: "swap" });
 
 export const metadata: Metadata = {
   title: {
-    default: "Cineforge — The 2030 AI Film Engine",
-    template: "%s · Cineforge",
+    default: "Cineforge — The Film Production System",
+    // Studio pages already name themselves "<Room> — Cineforge".
+    template: "%s",
   },
   description:
-    "A sentence in, a cinematic film out. Generate narrated films, dub them into 20 languages, clone your voice, put your face on camera, and publish everywhere — one studio in your browser.",
-  keywords: ["AI film generation", "text to video", "AI dubbing", "voice cloning", "talking avatar", "Cineforge"],
+    "A complete production environment for films, series, trailers, adverts, shorts and music videos — from the first idea to the finished release, dubbed into 20 languages and published everywhere.",
+  keywords: ["film production", "AI film", "series", "dubbing", "voice cloning", "Cineforge"],
   openGraph: {
-    title: "Cineforge — The 2030 AI Film Engine",
-    description: "A sentence in, a cinematic film out. Films, 20-language dubbing, voice cloning, avatars, one-tap publishing.",
+    title: "Cineforge — The Film Production System",
+    description: "From the first idea to the finished release: one continuous production system for films, series, trailers and shorts.",
     type: "website",
   },
 };
 
-export const viewport = { themeColor: "#0a0a0f" };
+export const viewport = { themeColor: "#080808" };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body className="antialiased selection:bg-fuchsia-400/30 selection:text-white">{children}</body>
+    <html lang="en" className={`${inter.variable} ${manrope.variable} ${dmMono.variable}`}>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

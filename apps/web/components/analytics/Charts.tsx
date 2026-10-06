@@ -1,15 +1,20 @@
 "use client";
 
-/** Dependency-free analytics primitives shared by the analytics sections. */
+/** Dependency-free analytics primitives shared by the analytics desks. */
 
 export function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-      <div className="text-[11px] uppercase tracking-wider text-white/40">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
-      {sub && <div className="mt-0.5 text-xs text-white/45">{sub}</div>}
+    <div className="bg-cf-bg p-6">
+      <div className="cf-label">{label}</div>
+      <div className="cf-display mt-7 text-[clamp(30px,3.2vw,48px)] leading-none">{value}</div>
+      {sub && <div className="mt-2 text-[11px] text-cf-muted">{sub}</div>}
     </div>
   );
+}
+
+/** A ruled row of measures. */
+export function Measures({ children, cols = 3 }: { children: React.ReactNode; cols?: 3 | 4 }) {
+  return <div className={`grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 ${cols === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>{children}</div>;
 }
 
 export interface Bar {
@@ -17,56 +22,73 @@ export interface Bar {
   value: number;
 }
 
-/** Simple vertical bar chart — CSS only, tooltips via title attr. */
+/** Vertical bar chart — CSS only, hairline baseline, values in the title + an sr-only table. */
 export function BarChart({ bars, unit }: { bars: Bar[]; unit?: string }) {
   const max = Math.max(1, ...bars.map((b) => b.value));
-  if (bars.every((b) => b.value === 0))
-    return <p className="flex h-36 items-center justify-center text-xs text-white/35">No activity in this window yet.</p>;
+  if (bars.every((b) => b.value === 0)) return <p className="cf-label flex h-44 items-center justify-center">No activity in this window yet.</p>;
   return (
-    <div className="flex h-36 items-end gap-1">
-      {bars.map((b, i) => (
-        <div key={i} className="group flex flex-1 flex-col items-center gap-1" title={`${b.label}: ${b.value.toLocaleString()}${unit ? ` ${unit}` : ""}`}>
-          <div
-            className="w-full rounded-t bg-indigo-400/50 transition group-hover:bg-indigo-300"
-            style={{ height: `${Math.max(2, Math.round((b.value / max) * 100))}%` }}
-          />
-          <span className="hidden text-[9px] text-white/30 sm:block">{b.label}</span>
-        </div>
-      ))}
-    </div>
+    <figure>
+      <div className="flex h-44 items-end gap-1 border-b border-cf-fg" aria-hidden>
+        {bars.map((b, i) => (
+          <div key={i} className="group flex h-full flex-1 items-end" title={`${b.label}: ${b.value.toLocaleString()}${unit ? ` ${unit}` : ""}`}>
+            <div className="w-full bg-cf-fg/80 transition group-hover:bg-cf-accent" style={{ height: `${Math.max(1, Math.round((b.value / max) * 100))}%` }} />
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 hidden gap-1 sm:flex" aria-hidden>
+        {bars.map((b, i) => (
+          <span key={i} className="flex-1 text-center font-mono text-[10px] text-cf-muted">
+            {b.label}
+          </span>
+        ))}
+      </div>
+      <table className="sr-only">
+        <tbody>
+          {bars.map((b) => (
+            <tr key={b.label}>
+              <th>{b.label}</th>
+              <td>
+                {b.value} {unit}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </figure>
   );
 }
 
-/** Horizontal ranked list with proportional fills. */
+/** Ranked rows with proportional hairline fills. */
 export function RankList({ rows, unit }: { rows: { label: string; value: number }[]; unit?: string }) {
   const max = Math.max(1, ...rows.map((r) => r.value));
   if (rows.length === 0 || rows.every((r) => r.value === 0))
-    return <p className="py-6 text-center text-xs text-white/35">No data yet — it appears as soon as you create and publish.</p>;
+    return <p className="cf-label py-8 text-center">No data yet — it appears as soon as you create and publish.</p>;
   return (
-    <div className="space-y-2">
-      {rows.map((r) => (
-        <div key={r.label}>
-          <div className="mb-0.5 flex justify-between text-xs">
-            <span className="truncate text-white/70">{r.label}</span>
-            <span className="text-white/45">
-              {r.value.toLocaleString()}
-              {unit ? ` ${unit}` : ""}
+    <ol className="border-t border-cf-line">
+      {rows.map((r, i) => (
+        <li key={r.label} className="grid grid-cols-[36px_1fr_auto] items-center gap-3 border-b border-cf-line py-3">
+          <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+          <span className="min-w-0">
+            <span className="block truncate font-display font-semibold text-[16px]">{r.label}</span>
+            <span className="mt-1.5 block h-[2px] bg-cf-line">
+              <span className="block h-full bg-cf-fg" style={{ width: `${(r.value / max) * 100}%` }} />
             </span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
-            <div className="h-full rounded-full bg-emerald-400/60" style={{ width: `${(r.value / max) * 100}%` }} />
-          </div>
-        </div>
+          </span>
+          <span className="font-mono text-[12px]">
+            {r.value.toLocaleString()}
+            {unit ? ` ${unit}` : ""}
+          </span>
+        </li>
       ))}
-    </div>
+    </ol>
   );
 }
 
 export function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
-      <h2 className="mb-4 text-sm font-semibold text-white/70">{title}</h2>
+    <section className="border-t border-cf-fg pt-5">
+      <h2 className="cf-label mb-6 text-cf-fg">{title}</h2>
       {children}
-    </div>
+    </section>
   );
 }

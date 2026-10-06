@@ -48,7 +48,7 @@ export function HlsPlayer({ src, poster }: { src: string; poster?: string }) {
       controls
       playsInline
       poster={poster}
-      className="aspect-video w-full rounded-lg bg-black"
+      className="aspect-video w-full bg-black"
     />
   );
 }

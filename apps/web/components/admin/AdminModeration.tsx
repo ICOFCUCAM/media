@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../AuthProvider";
 import { getSupabase } from "../../lib/supabase";
+import { EmptyState, PageHeader, Section } from "../cf/primitives";
 
 /** Admin · Moderation — voice-share submissions to review + the platform's
  *  recent failures (projects/voiceovers/launches) in one operational view. */
@@ -40,55 +41,70 @@ export function AdminModeration() {
     await refresh();
   }
 
-  if (!user || profile?.role !== "ADMIN") return <p className="px-6 py-8 text-sm text-white/45">Admins only.</p>;
+  const header = (
+    <PageHeader
+      eyebrow="System administration / Moderation"
+      title={<>The review<br /><em>desk.</em></>}
+      copy={<p>Voice-share submissions awaiting a decision, and the platform&apos;s most recent failures across films, readings and launches.</p>}
+      status={{ tone: pending?.length ? "warn" : "ok", label: pending ? `${pending.length} awaiting review` : "Review desk" }}
+    />
+  );
+
+  if (!user || profile?.role !== "ADMIN")
+    return (
+      <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+        {header}
+        <EmptyState className="mt-12" title={<>Administrators <em>only.</em></>} hint="Sign in with an account that carries the ADMIN role." />
+      </div>
+    );
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 px-6 py-8">
-      <header>
-        <h1 className="text-2xl font-semibold">Moderation</h1>
-        <p className="mt-1 text-sm text-white/55">Review queue + recent platform failures.</p>
-      </header>
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      {header}
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-white/70">Voice submissions ({pending?.length ?? "…"})</h2>
+      <Section label="Voice submissions" title={pending ? `${String(pending.length).padStart(2, "0")} in the queue` : "Queue"}>
         {pending?.length === 0 ? (
-          <p className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm text-white/45">Queue is clear.</p>
+          <EmptyState title="The queue is clear." />
         ) : (
-          <div className="space-y-2">
+          <ol className="border-t border-cf-fg">
             {(pending ?? []).map((v) => (
-              <div key={v.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+              <li key={v.id} className="flex flex-wrap items-center justify-between gap-4 border-b border-cf-line py-4">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{v.name}</div>
-                  <div className="truncate text-xs text-white/45">Terms: {v.share_terms || "—"}</div>
+                  <div className="truncate font-display font-semibold text-[19px]">{v.name}</div>
+                  <div className="cf-label mt-1 truncate">Terms: {v.share_terms || "—"}</div>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <button onClick={() => void review(v.id, true)} className="rounded-lg bg-emerald-400 px-3 py-1.5 text-xs font-semibold text-black">Approve</button>
-                  <button onClick={() => void review(v.id, false)} className="rounded-lg border border-white/20 px-3 py-1.5 text-xs">Reject</button>
+                  <button type="button" onClick={() => void review(v.id, true)} className="cf-btn-accent px-4 py-2.5">
+                    Approve
+                  </button>
+                  <button type="button" onClick={() => void review(v.id, false)} className="cf-btn-line px-4 py-2.5">
+                    Reject
+                  </button>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
         )}
-      </section>
+      </Section>
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-white/70">Recent failures</h2>
+      <Section label="Recent failures" title="What stopped.">
         {failures?.length === 0 ? (
-          <p className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm text-white/45">Nothing failing. Enjoy it.</p>
+          <EmptyState title={<>Nothing is <em>failing.</em></>} />
         ) : (
-          <div className="space-y-2">
+          <ol className="border-t border-cf-fg">
             {(failures ?? []).map((f, i) => (
-              <div key={i} className="rounded-xl border border-rose-400/20 bg-rose-400/[0.03] px-4 py-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm">{f.title || "Untitled"}</span>
-                  <span className="shrink-0 rounded-full border border-rose-400/30 px-2 py-0.5 text-[10px] uppercase text-rose-300">{f.kind}</span>
-                </div>
-                <p className="mt-1 line-clamp-2 text-xs text-white/45">{f.error}</p>
-              </div>
+              <li key={i} className="grid gap-2 border-b border-cf-line py-4 md:grid-cols-[1fr_1.4fr_auto] md:items-start md:gap-6">
+                <span className="truncate font-display font-semibold text-[18px]">{f.title || "Untitled"}</span>
+                <p className="line-clamp-2 text-[12px] text-cf-danger">{f.error}</p>
+                <span className="flex items-center gap-4">
+                  <span className="cf-label">{f.kind}</span>
+                  <span className="cf-label text-cf-dim">{new Date(f.at).toLocaleDateString()}</span>
+                </span>
+              </li>
             ))}
-          </div>
+          </ol>
         )}
-      </section>
+      </Section>
     </div>
   );
 }

@@ -24,7 +24,7 @@ export const PROJECT_TYPES: ProjectType[] = [
   { id: "film", title: "Film", blurb: "Feature-length, single story.", href: "/create/film", defaultSeconds: 1800 },
   { id: "series", title: "Series", blurb: "Multi-episode show with continuity.", href: "/create/series", defaultSeconds: 3600 },
   { id: "trailer", title: "Trailer", blurb: "Teasers and festival cuts.", href: "/create/trailer", defaultSeconds: 30 },
-  { id: "commercial", title: "Commercial", blurb: "Brand spots and product films.", href: "/create/film?type=commercial", defaultSeconds: 30 },
+  { id: "commercial", title: "Commercial", blurb: "Brand spots and product films.", href: "/create/advert", defaultSeconds: 30 },
   { id: "social", title: "Social Campaign", blurb: "Vertical clips for every feed.", href: "/create/shorts", defaultSeconds: 15 },
   { id: "music", title: "Music Video", blurb: "Visuals cut to a track.", href: "/create/film?type=music", defaultSeconds: 180 },
   { id: "documentary", title: "Documentary", blurb: "Narration-led, archival feel.", href: "/create/film?type=documentary", defaultSeconds: 1800 },

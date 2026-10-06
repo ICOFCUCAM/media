@@ -5,6 +5,8 @@ import { useCreateRun } from "../lib/useCreateRun";
 import { RunPanel } from "./RunPanel";
 import { SHORT_PLATFORMS } from "../lib/products";
 import type { ProjectStatus } from "../lib/demo";
+import { ActionBand, Cell, Control, PageHeader, Section, SpecList, Split } from "./cf/primitives";
+import { Pipeline, type PipelineStep } from "./cf/Pipeline";
 
 const STAGE_LABELS: Record<ProjectStatus, string> = {
   PLANNING: "Hook & script",
@@ -13,7 +15,8 @@ const STAGE_LABELS: Record<ProjectStatus, string> = {
   READY: "Ready to post",
 };
 
-/** Short-form studio — platform-first, with a hook line, caption and hashtags. */
+/** The Short-Form Cutting Room (docs/design/create-shorts.html) — platform-first,
+ *  with a hook line, caption and hashtags. Runs through the shared useCreateRun. */
 export function ShortsStudio() {
   const [platformId, setPlatformId] = useState(SHORT_PLATFORMS[0]!.id);
   const platform = SHORT_PLATFORMS.find((p) => p.id === platformId)!;
@@ -38,119 +41,133 @@ export function ShortsStudio() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Short-Form Studio</h1>
-        <p className="mt-1 text-sm text-white/55">Vertical, scroll-stopping clips sized for each feed — hook, caption and hashtags included.</p>
-      </header>
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="Short form / Editorial system"
+        title={<>Make it<br /><em>move.</em></>}
+        copy={
+          <>
+            <p>Build short-form films around a single idea, a decisive opening and a rhythm designed for the screen.</p>
+            <p><strong>One story. One vertical composition. No wasted frame.</strong></p>
+          </>
+        }
+        status={{ tone: state?.live ? "live" : "idle", label: state ? (state.live ? "Live production" : "Preview simulation") : "Short-form room open" }}
+      />
 
-      {/* Platform picker — the defining choice for shorts. */}
-      <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        {SHORT_PLATFORMS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => pickPlatform(p.id)}
-            className={`rounded-xl border px-3 py-3 text-left transition ${
-              platformId === p.id ? "border-white/40 bg-white/[0.07]" : "border-white/10 bg-white/[0.02] hover:border-white/25"
-            }`}
-          >
-            <div className="text-sm font-medium">{p.name}</div>
-            <div className="text-[10px] uppercase tracking-wider text-white/40">{p.aspect}</div>
+      <Section label="01 — Destination" title="Where will it play?">
+        <div className="grid grid-cols-2 gap-px border border-cf-line bg-cf-line sm:grid-cols-3 lg:grid-cols-6" role="radiogroup" aria-label="Platform">
+          {SHORT_PLATFORMS.map((p, i) => {
+            const on = platformId === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => pickPlatform(p.id)}
+                className={`flex min-h-[120px] flex-col p-4 text-left transition ${on ? "bg-cf-inverse text-cf-on-inverse" : "bg-cf-bg hover:bg-cf-soft"}`}
+              >
+                <span className="font-mono text-[11px] opacity-60">{String(i + 1).padStart(2, "0")}</span>
+                <span className="mt-auto font-display font-semibold text-[19px] leading-tight">{p.name}</span>
+                <span className="mt-1 font-mono text-[11px] uppercase opacity-60">
+                  {p.aspect} · up to {Math.max(...p.durations)}s
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section label="02 — Short architecture" title="Define the piece.">
+        <Split>
+          <Cell>
+            <label htmlFor="short-hook" className="flex justify-between font-sans text-[11px] font-medium uppercase tracking-[0.06em]">
+              <span>The opening hook</span>
+              <span className="text-cf-muted">First 2 seconds</span>
+            </label>
+            <input id="short-hook" value={hook} onChange={(e) => setHook(e.target.value)} className="cf-input mt-2.5 font-display font-semibold text-[20px]" />
+            <p className="cf-label mt-3 leading-relaxed">The opening frame and first line give the audience a reason to keep watching.</p>
+
+            <label htmlFor="short-caption" className="mt-9 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Caption</label>
+            <textarea id="short-caption" value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} placeholder="On-screen / post caption" className="cf-input mt-2.5 resize-y" />
+
+            <label htmlFor="short-tags" className="mt-7 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Hashtags</label>
+            <input id="short-tags" value={hashtags} onChange={(e) => setHashtags(e.target.value)} className="cf-input mt-2.5" />
+
+            <div className="mt-9">
+              <Control name="Length" value={`${seconds}s`}>
+                <div className="flex flex-wrap gap-1.5">
+                  {platform.durations.map((d) => (
+                    <Chip key={d} active={seconds === d} onClick={() => setSeconds(d)}>{d}s</Chip>
+                  ))}
+                </div>
+              </Control>
+            </div>
+          </Cell>
+          <Cell>
+            <div className="cf-label">The frame</div>
+            <div className="mt-8 flex justify-center border-b border-cf-line pb-8">
+              <div
+                className="relative flex w-[150px] items-end border border-cf-fg bg-cf-inverse p-3 text-cf-on-inverse"
+                style={{ aspectRatio: platform.aspect.replace(":", " / ") }}
+                aria-hidden
+              >
+                <span className="font-display font-semibold text-[13px] leading-snug">{hook}</span>
+              </div>
+            </div>
+            <SpecList className="mt-8" rows={[["Platform", platform.name], ["Format", `${platform.aspect} · ${seconds}s`], ["Engine", "Wan 2.1"]]} />
+            <div className="mt-10">
+              <Pipeline steps={SHORT_PIPELINE} status={state?.status} />
+            </div>
+          </Cell>
+        </Split>
+      </Section>
+
+      <section className="mt-14 border-t border-cf-fg" aria-label="Short preview">
+        <div className="flex items-center justify-between border-b border-cf-line py-4">
+          <span className="cf-label text-cf-fg">03 — The short</span>
+          <span className="cf-label">{state ? STAGE_LABELS[state.status] : "Waiting for the hook"}</span>
+        </div>
+        <div className={state ? "pt-8" : ""}>
+          <RunPanel
+            state={state}
+            stageLabels={STAGE_LABELS}
+            readyTitle="Ready to post"
+            artSeed={hook}
+            emptyHint={
+              <div>
+                <p className="cf-display text-[clamp(38px,5vw,62px)] leading-none">Stop the scroll.</p>
+                <p className="cf-label mt-3">Sized to the right aspect ratio and length for the feed</p>
+              </div>
+            }
+          />
+        </div>
+      </section>
+
+      <div className="mt-14">
+        <ActionBand title={<>Make it for <em>{platform.name}.</em></>} copy={`${platform.aspect} · ${seconds}s · opens on “${hook}”.`}>
+          <button type="button" onClick={reset} className="cf-btn-line">
+            Reset
           </button>
-        ))}
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
-        <aside className="space-y-5">
-          <Field label="Length">
-            <div className="flex flex-wrap gap-2">
-              {platform.durations.map((d) => (
-                <Chip key={d} active={seconds === d} onClick={() => setSeconds(d)}>{d}s</Chip>
-              ))}
-            </div>
-          </Field>
-          <Field label="Hook (first 2 seconds)">
-            <input
-              value={hook}
-              onChange={(e) => setHook(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm outline-none focus:border-white/30"
-            />
-          </Field>
-          <Field label="Caption">
-            <textarea
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              rows={2}
-              placeholder="On-screen / post caption"
-              className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm outline-none focus:border-white/30"
-            />
-          </Field>
-          <Field label="Hashtags">
-            <input
-              value={hashtags}
-              onChange={(e) => setHashtags(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm outline-none focus:border-white/30"
-            />
-          </Field>
-
-          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm">
-            <Row k="Platform" v={platform.name} />
-            <Row k="Format" v={`${platform.aspect} · ${seconds}s`} />
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={onCreate}
-              disabled={running}
-              className="flex-1 rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
-            >
-              {running ? "Creating…" : `Create for ${platform.name}`}
-            </button>
-            <button onClick={reset} className="rounded-lg border border-white/15 px-4 py-2.5 text-sm hover:bg-white/5">Reset</button>
-          </div>
-        </aside>
-
-        <RunPanel
-          state={state}
-          stageLabels={STAGE_LABELS}
-          readyTitle="Ready to post"
-          emptyHint={
-            <div>
-              <p className="text-sm">Pick a platform and a hook, then press <span className="text-white/70">Create</span>.</p>
-              <p className="mt-1 text-xs">Sized to the right aspect ratio and length for the feed.</p>
-            </div>
-          }
-        />
+          <button type="button" onClick={onCreate} disabled={running || !hook.trim()} className="cf-btn-accent">
+            {running ? "Creating…" : `Create for ${platform.name}`}
+          </button>
+        </ActionBand>
       </div>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <span className="text-xs uppercase tracking-wider text-white/40">{label}</span>
-      <div className="mt-2">{children}</div>
-    </div>
-  );
-}
+const SHORT_PIPELINE: PipelineStep[] = [
+  { name: "Hook & script", at: "PLANNING" },
+  { name: "Vertical clip", at: "GENERATING" },
+  { name: "Captions & export", at: "RENDERING" },
+];
+
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-xs transition ${
-        active ? "border-white/40 bg-white/10 text-white" : "border-white/10 text-white/60 hover:border-white/25"
-      }`}
-    >
+    <button type="button" onClick={onClick} aria-pressed={active} className="cf-option">
       {children}
     </button>
-  );
-}
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="flex items-center justify-between py-0.5">
-      <span className="text-white/50">{k}</span>
-      <span className="font-medium">{v}</span>
-    </div>
   );
 }

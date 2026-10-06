@@ -1,4 +1,5 @@
 import { mkdtemp, writeFile, mkdir, rm } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { Storage } from "../storage/storage";
@@ -10,6 +11,8 @@ import {
   audioMixArgs,
   muxArgs,
   hlsArgs,
+  outroTextArgs,
+  OUTRO_FONT,
   DEFAULT_FORMAT,
   type VideoFormat,
 } from "./commands";
@@ -47,7 +50,8 @@ export class RenderEngine {
     projectId: string,
     scenes: SceneAssets[],
     onProgress?: (p: number) => void,
-    brand?: { logoKey?: string | null; primaryColor?: string },
+    brand?: { logoKey?: string | null; primaryColor?: string; outroText?: string | null },
+    opts: { filmSec?: number } = {},
   ): Promise<RenderResult> {
     const work = await mkdtemp(join(tmpdir(), `cineforge-${projectId}-`));
     try {
@@ -108,10 +112,25 @@ export class RenderEngine {
               outro,
             ]);
           }
+          // The kit's outro line, best-effort: drawtext needs a font, and the
+          // logo card above must still ship if no font is available.
+          let card = outro;
+          const line = brand.outroText?.trim();
+          if (line && existsSync(OUTRO_FONT)) {
+            try {
+              const textFile = join(work, "outro.txt");
+              await writeFile(textFile, line.slice(0, 120));
+              const withText = join(work, "outro_text.mp4");
+              await this.run(outroTextArgs(outro, withText, textFile));
+              card = withText;
+            } catch (e) {
+              console.warn(`[render] outro line skipped:`, e instanceof Error ? e.message : e);
+            }
+          }
           // Outro resolution may differ from body clips: re-encode pass keeps
           // concat valid (same vf chain as the light normalize above).
           const outroNorm = join(work, "outro_norm.mp4");
-          await this.run(["-i", outro, "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=16,format=yuv420p", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an", outroNorm]);
+          await this.run(["-i", card, "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=16,format=yuv420p", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an", outroNorm]);
           clips.push(outroNorm);
           console.log(`[render] appended branded outro`);
         } catch (e) {
@@ -160,7 +179,7 @@ export class RenderEngine {
         const sfx = sfxKey ? await dl(sfxKey, "sfx.wav") : undefined;
         if (voice || music || sfx) {
           const mix = join(work, "mix.m4a");
-          await this.run(audioMixArgs({ music, voice, sfx }, mix));
+          await this.run(audioMixArgs({ music, voice, sfx }, mix, { musicLoopSec: opts.filmSec }));
           const muxed = join(work, "muxed.mp4");
           console.log(`[render] mux audio bed (voice=${!!voice} music=${!!music} sfx=${!!sfx})`);
           await this.run(muxArgs(body, mix, muxed));

@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "./AuthProvider";
-import { AuthCard } from "./AuthCard";
+import { StudioGate } from "./cf/StudioGate";
+import { CinemaArt, type Scene } from "./cf/CinemaArt";
+
+/** How each asset category is pictured until it has real reference art. */
+const CATEGORY_SCENE: Record<string, Scene> = { prop: "interior", vehicle: "city", creature: "forest", logo: "studio", brand: "studio", object: "interior" };
+import { Cell, Control, EmptyState, PageHeader, Section, SpecList, Split } from "./cf/primitives";
 import { createAsset, listAssets, ASSET_CATEGORIES, type AssetCategory, type AssetRow } from "../lib/library";
 
 const PLURAL: Record<AssetCategory, string> = {
@@ -13,18 +18,10 @@ const PLURAL: Record<AssetCategory, string> = {
   brand: "Brands",
   object: "Objects",
 };
-const GRADIENT: Record<AssetCategory, string> = {
-  prop: "from-amber-500/25 to-rose-500/20",
-  vehicle: "from-sky-500/25 to-indigo-500/20",
-  creature: "from-emerald-500/25 to-teal-500/20",
-  logo: "from-fuchsia-500/25 to-purple-500/20",
-  brand: "from-cyan-500/25 to-blue-500/20",
-  object: "from-white/15 to-white/[0.04]",
-};
 
-/** Visual Asset Studio — reusable props, vehicles, creatures, logos and brands. */
-export function AssetLibrary() {
-  const { enabled, loading, user } = useAuth();
+/** The Asset Archive (docs/design/asset-archive.html, dark room). Visual Asset Studio — reusable props, vehicles, creatures, logos and brands. */
+export function AssetLibrary({ children }: { children?: ReactNode }) {
+  const { user } = useAuth();
   const [items, setItems] = useState<AssetRow[] | null>(null);
   const [filter, setFilter] = useState<AssetCategory | "all">("all");
   const [name, setName] = useState("");
@@ -57,113 +54,89 @@ export function AssetLibrary() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Assets</h1>
-        <p className="mt-1 text-sm text-white/55">
-          A reusable visual library — props, vehicles, creatures, logos and brands you can drop into any project.
-        </p>
-      </header>
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="Production / Asset archive"
+        title={<>The asset<br /><em>archive.</em></>}
+        copy={
+          <>
+            <p>A reusable visual library — props, vehicles, creatures, logos and brands — and every shot your productions have painted.</p>
+            <p><strong>Catalogued once. Available to every production.</strong></p>
+          </>
+        }
+        status={{ tone: items?.length ? "live" : "idle", label: items ? `${items.length} catalogued` : "Asset archive" }}
+      />
+      <div className="pt-12">
+        <StudioGate signIn="Sign in to build your asset library" what="Assets">
+          <Split>
+            <Cell>
+              <form onSubmit={onCreate}>
+                <div className="cf-label">Catalogue an asset</div>
+                <h2 className="cf-display mt-8 text-[clamp(30px,3vw,42px)] leading-none">Add to the archive.</h2>
+                <label htmlFor="asset-name" className="mb-2 mt-7 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Name</label>
+                <input id="asset-name" value={name} required onChange={(e) => setName(e.target.value)} placeholder="Royal carriage" className="cf-input font-display font-semibold text-[18px]" />
+                <div className="mt-6">
+                  <Control name="Category" value={category}>
+                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Asset category">
+                      {ASSET_CATEGORIES.map((c) => (
+                        <button type="button" key={c} onClick={() => setCategory(c)} aria-pressed={category === c} className="cf-option">
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </Control>
+                </div>
+                <label htmlFor="asset-desc" className="mb-2 mt-6 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Description</label>
+                <textarea id="asset-desc" value={description} required onChange={(e) => setDescription(e.target.value)} placeholder="Materials, era, distinctive details…" rows={4} className="cf-input resize-y" />
+                <button type="submit" disabled={busy || !name || !description} className="cf-btn-accent mt-8">
+                  {busy ? "Cataloguing…" : "Create asset"}
+                </button>
+                {error && <p role="alert" className="mt-4 border-l-2 border-cf-danger pl-3 text-[12px] text-cf-danger">{error}</p>}
+              </form>
+            </Cell>
+            <Cell>
+              <div className="cf-label">Holdings</div>
+              <SpecList className="mt-8" rows={ASSET_CATEGORIES.map((c) => [PLURAL[c], String(items?.filter((a) => a.category === c).length ?? 0)])} />
+            </Cell>
+          </Split>
 
-      {!enabled ? (
-        <Note>Connect Supabase to save assets.</Note>
-      ) : loading ? (
-        <p className="text-sm text-white/40">Loading…</p>
-      ) : !user ? (
-        <AuthCard title="Sign in to build your asset library" />
-      ) : (
-        <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
-          <form onSubmit={onCreate} className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-5">
-            <h2 className="text-sm font-semibold">New asset</h2>
-            <input
-              value={name}
-              required
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Name (e.g. Royal Carriage)"
-              className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm outline-none focus:border-white/30"
-            />
-            <div className="flex flex-wrap gap-1.5">
+          <Section
+            label="Catalogue"
+            title={items ? `${String(shown.length).padStart(2, "0")} ${filter === "all" ? "assets" : PLURAL[filter].toLowerCase()}` : "Catalogue"}
+          >
+            <div className="mb-6 flex flex-wrap gap-1.5" role="group" aria-label="Filter assets">
+              <button type="button" className="cf-option" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>All</button>
               {ASSET_CATEGORIES.map((c) => (
-                <button
-                  type="button"
-                  key={c}
-                  onClick={() => setCategory(c)}
-                  className={`rounded-full border px-2.5 py-1 text-[11px] capitalize transition ${
-                    category === c ? "border-white/40 bg-white/10 text-white" : "border-white/10 text-white/55 hover:border-white/25"
-                  }`}
-                >
-                  {c}
+                <button key={c} type="button" className="cf-option" aria-pressed={filter === c} onClick={() => setFilter(c)}>
+                  {PLURAL[c]}
                 </button>
               ))}
             </div>
-            <textarea
-              value={description}
-              required
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe it — materials, era, distinctive details…"
-              rows={4}
-              className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm outline-none focus:border-white/30"
-            />
-            <button
-              type="submit"
-              disabled={busy || !name || !description}
-              className="w-full rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
-            >
-              {busy ? "Saving…" : "Create asset"}
-            </button>
-            {error && <p className="text-xs text-amber-300">{error}</p>}
-          </form>
-
-          <div>
-            <div className="mb-4 flex flex-wrap gap-1.5">
-              <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>All</FilterChip>
-              {ASSET_CATEGORIES.map((c) => (
-                <FilterChip key={c} active={filter === c} onClick={() => setFilter(c)}>{PLURAL[c]}</FilterChip>
-              ))}
-            </div>
             {!items ? (
-              <p className="text-sm text-white/40">Loading assets…</p>
+              <p className="cf-label">Loading the catalogue…</p>
             ) : shown.length === 0 ? (
-              <Note>
-                {items.length === 0 ? "No assets yet. Create your first on the left — it's reusable everywhere." : "Nothing in this category yet."}
-              </Note>
+              <EmptyState
+                title={items.length === 0 ? <>The archive is <em>empty.</em></> : "Nothing in this category."}
+                hint={items.length === 0 ? "Catalogue your first asset above — it becomes reusable everywhere." : "Try another category."}
+              />
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {shown.map((a) => (
-                  <div key={a.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-                    <div className={`mb-2 aspect-[3/2] rounded-lg bg-gradient-to-br ${GRADIENT[(a.category as AssetCategory) ?? "object"] ?? GRADIENT.object}`} />
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{a.name}</span>
-                      <span className="rounded-full border border-white/15 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/45">{a.category}</span>
+              <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 xl:grid-cols-3">
+                {shown.map((a, i) => (
+                  <article key={a.id} className="flex min-h-[200px] flex-col bg-cf-bg">
+                    <CinemaArt seed={`${a.name} ${a.description ?? ""}`} scene={CATEGORY_SCENE[a.category]} className="aspect-video" hud={{ tag: a.category }} />
+                    <div className="flex flex-1 flex-col p-5">
+                      <span className="font-mono text-[11px] text-cf-muted">A / {String(i + 1).padStart(3, "0")}</span>
+                      <h3 className="mt-3 font-display font-semibold text-[24px] leading-tight tracking-[-0.03em]">{a.name}</h3>
+                      <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-cf-muted">{a.description}</p>
                     </div>
-                    <p className="mt-1 line-clamp-2 text-sm text-white/55">{a.description}</p>
-                  </div>
+                  </article>
                 ))}
               </div>
             )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-xs transition ${
-        active ? "border-white/40 bg-white/10 text-white" : "border-white/10 text-white/55 hover:border-white/25"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-function Note({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-white/10 text-center text-sm text-white/50">
-      <p className="max-w-sm">{children}</p>
+          </Section>
+          {children}
+        </StudioGate>
+      </div>
     </div>
   );
 }

@@ -79,12 +79,15 @@ overview.
 | 26 | [docs/26-storyboard-mode.md](docs/26-storyboard-mode.md) | Storyboard mode — the scene as a production object + Hybrid |
 | 27 | [docs/27-deploy-worker.md](docs/27-deploy-worker.md) | Deploying the worker (Docker, Compose, Render) |
 | 28 | [docs/28-continuity-engine.md](docs/28-continuity-engine.md) | **Continuity Engine (implemented)** — memory graph, bridges, identity stack |
+| 35 | [docs/35-studio-design-system.md](docs/35-studio-design-system.md) | **Studio design system** — rooms, tokens, shell, primitives, rules |
+| — | [docs/design/](docs/design/README.md) | Page designs and how each was implemented in the app |
 
 ## Code map
 
 ```
 apps/
   web/        Next.js 14 (App Router) + Tailwind — user app & admin dashboard
+              (components/cf = the studio shell + design system, docs/35)
   api/        NestJS REST + WebSocket gateway, JWT auth, BullMQ producers
   worker/     BullMQ consumers: director, scene, audio, render orchestration
   gpu-worker/ Python FastAPI service that runs on RunPod (Wan 2.1 / Hunyuan)

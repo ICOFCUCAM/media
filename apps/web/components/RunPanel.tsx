@@ -6,6 +6,8 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { fmtDuration } from "../lib/system";
 import type { DemoState, LiveScene, LiveShot, ProjectStatus } from "../lib/demo";
 import { HlsPlayer } from "./HlsPlayer";
+import { Status } from "./cf/primitives";
+import { CinemaArt } from "./cf/CinemaArt";
 
 const STAGES: ProjectStatus[] = ["PLANNING", "GENERATING", "RENDERING", "READY"];
 
@@ -20,57 +22,68 @@ export function RunPanel({
   stageLabels,
   emptyHint,
   readyTitle = "Your cut is ready",
+  fileLink = true,
+  artSeed,
 }: {
   state: DemoState | null;
   stageLabels: Record<ProjectStatus, string>;
   emptyHint?: ReactNode;
   readyTitle?: string;
+  /** Link a live run to its production file (off on the file page itself). */
+  fileLink?: boolean;
+  /** The brief — the waiting preview draws a still that follows it. */
+  artSeed?: string;
 }) {
   if (!state) {
     return (
-      <div className="flex h-full min-h-[20rem] items-center justify-center rounded-2xl border border-dashed border-white/10 text-center text-white/40">
-        <div className="px-6">{emptyHint ?? <p className="text-sm">Set it up and press Create.</p>}</div>
-      </div>
+      <CinemaArt seed={artSeed || "cineforge"} className="cf-dark min-h-[22rem] rounded-lg sm:aspect-[21/9]" letterbox motion hud={{ tag: "Preview frame" }}>
+        <div className="flex h-full items-center justify-center bg-gradient-to-t from-black/75 via-black/35 to-black/20 px-6 text-center text-white">
+          <div>{emptyHint ?? <p className="cf-display text-[44px]">Set it up and press Create.</p>}</div>
+        </div>
+      </CinemaArt>
     );
   }
 
   const prod = state.production;
   const idx = STAGES.indexOf(state.status);
+  // Live runs carry the real project id once the row exists.
+  const fileId = fileLink && state.live ? (state.projectId ?? prod?.projectId) : undefined;
 
   return (
-    <div className="space-y-4">
-      <ModeBanner live={!!state.live} />
+    <div className="space-y-8" aria-live="polite">
+      <ModeBanner live={!!state.live} fileId={fileId} />
 
       {/* Stage rail */}
-      <div className="flex items-center gap-2">
+      <ol className="grid grid-cols-2 border-l border-t border-cf-line sm:grid-cols-4" aria-label="Production stage">
         {STAGES.map((s, i) => (
-          <div
+          <li
             key={s}
-            className={`flex-1 rounded-full px-3 py-1.5 text-center text-xs transition ${
-              i < idx
-                ? "bg-emerald-400/15 text-emerald-300"
-                : i === idx
-                  ? "bg-white/15 text-white shadow-[0_0_18px_rgba(255,255,255,0.08)]"
-                  : "bg-white/5 text-white/40"
+            aria-current={i === idx ? "step" : undefined}
+            className={`flex items-center justify-between gap-2 border-b border-r border-cf-line px-4 py-4 font-sans text-[11px] font-medium uppercase tracking-[0.06em] ${
+              i === idx ? "bg-cf-inverse text-cf-on-inverse" : i < idx ? "text-cf-fg" : "text-cf-dim"
             }`}
           >
-            {i === idx && state.status !== "READY" && <PulseDot className="mr-1.5 bg-white" />}
-            {stageLabels[s]}
-          </div>
+            <span>
+              <span className="mr-2 opacity-50">{String(i + 1).padStart(2, "0")}</span>
+              {stageLabels[s]}
+            </span>
+            {i < idx && <span className="text-cf-ok">Done</span>}
+            {i === idx && state.status !== "READY" && <PulseDot className="bg-cf-accent" />}
+          </li>
         ))}
-      </div>
+      </ol>
 
-      {/* Stats */}
-      <div className={`grid gap-3 ${prod ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
+      {/* Measures */}
+      <dl className={`grid grid-cols-2 border-l border-t border-cf-line ${prod ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
         <Stat label="Progress" value={`${Math.round(state.progress * 100)}%`} />
         <Stat label="Scenes" value={`${state.scenes}`} />
         <Stat label="Status" value={stageLabels[state.status]} accent={state.status === "READY"} />
-        {prod && <Stat label="ETA" value={state.status === "READY" ? "done" : prod.etaMs ? `~${fmtEta(prod.etaMs)}` : "…"} />}
-      </div>
+        {prod && <Stat label="ETA" value={state.status === "READY" ? "Done" : prod.etaMs ? `~${fmtEta(prod.etaMs)}` : "Measuring"} />}
+      </dl>
 
       {/* Live infrastructure strip */}
       {prod && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-x-7 gap-y-3 border-b border-t border-cf-line py-4">
           <InfraChip ok={prod.claimed} label={prod.claimed ? "Render worker online" : "Waiting for worker"} />
           <InfraChip ok={prod.gpuActive} idle={!prod.gpuActive && state.status !== "READY"} label={prod.gpuActive ? `Engine active · ${prod.engine ?? "GPU"}` : state.status === "READY" ? "Engine released" : "Engine idle"} />
           <InfraChip ok label={`Queue · ${prod.queuedAhead} project${prod.queuedAhead === 1 ? "" : "s"} in pipeline`} />
@@ -79,19 +92,25 @@ export function RunPanel({
       )}
 
       {state.error && (
-        <div className="rounded-2xl border border-red-400/30 bg-red-400/[0.06] p-4 text-sm text-red-200">✕ {state.error}</div>
+        <div role="alert" className="border border-cf-danger/50 px-5 py-4 text-sm text-cf-danger">
+          <span className="cf-label mr-3 text-cf-danger">Stopped</span>
+          {state.error}
+        </div>
       )}
 
       {state.status === "RENDERING" && (
         <div>
-          <span className="text-xs uppercase tracking-wider text-white/40">Final cut · assembling</span>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-            <div
-              className="relative h-full bg-gradient-to-r from-indigo-400 via-fuchsia-400 to-cyan-400 transition-all"
-              style={{ width: `${Math.round((state.renderProgress || 0.4) * 100)}%` }}
-            >
-              <div className="absolute inset-0 cf-shimmer bg-white/30" />
-            </div>
+          <div className="flex justify-between">
+            <span className="cf-label">Final cut · assembling</span>
+            {state.renderProgress > 0 && <span className="cf-label text-cf-fg">{Math.round(state.renderProgress * 100)}%</span>}
+          </div>
+          <div className="relative mt-3 h-[2px] overflow-hidden bg-cf-line">
+            {state.renderProgress > 0 ? (
+              <div className="h-full bg-cf-accent transition-all" style={{ width: `${Math.round(state.renderProgress * 100)}%` }} />
+            ) : (
+              // The worker has not reported render progress yet — say so rather than invent a number.
+              <div className="cf-flow absolute inset-y-0 w-1/4 bg-cf-fg" />
+            )}
           </div>
         </div>
       )}
@@ -101,8 +120,8 @@ export function RunPanel({
       {/* Scene pipeline — real per-shot state with thumbnails */}
       {prod && prod.scenes.length > 0 && (
         <div>
-          <span className="text-xs uppercase tracking-wider text-white/40">Scene pipeline</span>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className="cf-label mb-3">Scene pipeline</div>
+          <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2">
             {prod.scenes.map((sc) => (
               <SceneCard key={sc.id} scene={sc} />
             ))}
@@ -120,18 +139,27 @@ export function RunPanel({
   );
 }
 
-function ModeBanner({ live }: { live: boolean }) {
+function ModeBanner({ live, fileId }: { live: boolean; fileId?: string }) {
   if (live) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.05] px-4 py-2.5 text-xs text-emerald-200 backdrop-blur">
-        <PulseDot className="bg-emerald-400" />
-        LIVE PRODUCTION — Director, GPU and render worker are doing the real work. Leave this page open or come back later; progress is saved.
+      <div className="flex flex-wrap items-start gap-3 border-l-2 border-cf-accent bg-cf-soft px-5 py-4 text-[12px] leading-relaxed">
+        <PulseDot className="mt-1.5 shrink-0 bg-cf-accent" />
+        <span className="min-w-0 flex-1">
+          <span className="cf-label mr-2 text-cf-fg">Live production</span>
+          Director, GPU and render worker are doing the real work. Leave this page open or come back later — progress is saved to Projects.
+        </span>
+        {fileId && (
+          <Link href={`/projects/${fileId}`} className="cf-link shrink-0">
+            Production file →
+          </Link>
+        )}
       </div>
     );
   }
   return (
-    <div className="rounded-2xl border border-amber-400/30 bg-amber-400/[0.06] px-4 py-2.5 text-xs text-amber-200 backdrop-blur">
-      ⚠ PREVIEW SIMULATION — nothing is being generated. Sign in (Create Film → Sign in) and re-run to use the real studio.
+    <div className="border-l-2 border-cf-warn bg-cf-soft px-5 py-4 text-[12px] leading-relaxed">
+      <span className="cf-label mr-2 text-cf-warn">Preview simulation</span>
+      Nothing is being generated. Sign in and re-run to use the real studio.
     </div>
   );
 }
@@ -140,25 +168,22 @@ function SceneCard({ scene }: { scene: LiveScene }) {
   const ready = scene.shots.filter((s) => s.status === "READY").length;
   const active = scene.shots.some((s) => s.status === "GENERATING");
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 backdrop-blur">
-      <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-xs text-white/70">
-          {scene.index + 1}. {scene.heading ?? `Scene ${scene.index + 1}`}
+    <div className="bg-cf-bg p-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="truncate font-display font-semibold text-[16px]">
+          <span className="mr-2 font-mono text-[11px] text-cf-muted">{String(scene.index + 1).padStart(2, "0")}</span>
+          {scene.heading ?? `Scene ${scene.index + 1}`}
         </span>
         <span
-          className={`flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] ${
-            scene.status === "READY"
-              ? "bg-emerald-400/15 text-emerald-300"
-              : active
-                ? "bg-cyan-400/15 text-cyan-300"
-                : "bg-white/5 text-white/40"
+          className={`flex shrink-0 items-center gap-1.5 font-sans text-[11px] font-medium uppercase tracking-[0.06em] ${
+            scene.status === "READY" ? "text-cf-ok" : active ? "text-cf-fg" : "text-cf-muted"
           }`}
         >
-          {active && <PulseDot className="bg-cyan-300" />}
-          {scene.status === "READY" ? "Completed" : active ? "Rendering on GPU" : `${ready}/${scene.shots.length} shots`}
+          {active && <PulseDot className="bg-cf-accent" />}
+          {scene.status === "READY" ? "Completed" : active ? "On GPU" : `${ready}/${scene.shots.length} shots`}
         </span>
       </div>
-      <div className="mt-2 grid grid-cols-4 gap-1.5">
+      <div className="mt-3 grid grid-cols-4 gap-1">
         {scene.shots.map((sh) => (
           <ShotTile key={sh.id} shot={sh} />
         ))}
@@ -170,11 +195,11 @@ function SceneCard({ scene }: { scene: LiveScene }) {
 function ShotTile({ shot }: { shot: LiveShot }) {
   if (shot.thumbUrl) {
     return (
-      <div className="cf-materialize relative aspect-video overflow-hidden rounded-md ring-1 ring-white/10">
-        {/* eslint-disable-next-line @next/next/no-img-element -- signed, short-lived storage URL */}
+      <div className="cf-materialize relative aspect-video overflow-hidden bg-black">
+        {/* Plain <img>: a signed, short-lived storage URL next/image cannot optimise. */}
         <img src={shot.thumbUrl} alt={`Shot ${shot.index + 1}`} className="h-full w-full object-cover" />
         {shot.gpuMs ? (
-          <span className="absolute bottom-0.5 right-1 rounded bg-black/60 px-1 text-[9px] text-white/80">{Math.round(shot.gpuMs / 1000)}s</span>
+          <span className="absolute bottom-0.5 right-1 bg-black/70 px-1 font-mono text-[10px] text-white/80">{Math.round(shot.gpuMs / 1000)}s</span>
         ) : null}
       </div>
     );
@@ -182,36 +207,31 @@ function ShotTile({ shot }: { shot: LiveShot }) {
   const generating = shot.status === "GENERATING";
   return (
     <div
-      className={`relative aspect-video overflow-hidden rounded-md ${
+      className={`relative aspect-video overflow-hidden ${
         shot.status === "READY"
-          ? "bg-emerald-400/30"
+          ? "bg-cf-ok/40"
           : generating
-            ? "bg-gradient-to-br from-indigo-500/20 to-fuchsia-500/15"
+            ? "bg-cf-inverse"
             : shot.status === "FAILED"
-              ? "bg-red-400/30"
-              : "bg-white/5"
+              ? "bg-cf-danger/40"
+              : "bg-cf-soft"
       }`}
       title={`Shot ${shot.sceneIndex + 1}.${shot.index + 1} — ${shot.status.toLowerCase()}`}
     >
-      {generating && (
-        <>
-          <div className="cf-grain absolute inset-0 opacity-50" />
-          <div className="cf-scan absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-cyan-300/50 to-transparent" />
-        </>
-      )}
+      {generating && <div className="cf-scan absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-cf-accent/50 to-transparent" />}
     </div>
   );
 }
 
 function Timeline({ events }: { events: { at: number; label: string }[] }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
-      <span className="text-xs uppercase tracking-wider text-white/40">Production timeline</span>
-      <ol className="mt-2 space-y-1.5">
+    <div className="border-t border-cf-fg pt-4">
+      <span className="cf-label">Production timeline</span>
+      <ol className="mt-3">
         {events.map((e, i) => (
-          <li key={i} className="flex gap-3 text-xs">
-            <span className="shrink-0 font-mono text-white/35">{new Date(e.at).toLocaleTimeString([], { hour12: false })}</span>
-            <span className={i === events.length - 1 ? "text-white/90" : "text-white/55"}>{e.label}</span>
+          <li key={i} className="grid grid-cols-[80px_1fr] gap-3 border-b border-cf-line py-2.5 text-[12px]">
+            <span className="font-mono text-[12px] text-cf-muted">{new Date(e.at).toLocaleTimeString([], { hour12: false })}</span>
+            <span className={i === events.length - 1 ? "text-cf-fg" : "text-cf-muted"}>{e.label}</span>
           </li>
         ))}
       </ol>
@@ -225,11 +245,11 @@ function ActivityFeed({ lines }: { lines: string[] }) {
     ref.current?.scrollTo({ top: ref.current.scrollHeight });
   }, [lines.length]);
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/30 p-4 backdrop-blur">
-      <span className="text-xs uppercase tracking-wider text-white/40">Live activity</span>
-      <div ref={ref} className="mt-2 max-h-36 space-y-1 overflow-y-auto font-mono text-[11px] leading-relaxed text-white/55">
+    <div className="cf-dark p-5">
+      <span className="cf-label">Live activity</span>
+      <div ref={ref} className="mt-3 max-h-40 space-y-1 overflow-y-auto font-mono text-[11px] leading-relaxed text-cf-muted">
         {lines.map((l, i) => (
-          <div key={i} className={i === lines.length - 1 ? "text-emerald-200/90" : undefined}>
+          <div key={i} className={i === lines.length - 1 ? "text-cf-accent" : undefined}>
             {l}
           </div>
         ))}
@@ -243,27 +263,23 @@ function StoryboardGrid({ state }: { state: DemoState }) {
   const visible = state.shots.slice(0, 160);
   return (
     <div>
-      <span className="text-xs uppercase tracking-wider text-white/40">
-        Storyboard · {ready.length}/{state.shots.length} shots
+      <span className="cf-label">
+        Preview storyboard · {ready.length}/{state.shots.length} shots
       </span>
-      <div className="mt-2 grid grid-cols-8 gap-1.5 sm:grid-cols-12">
+      <div className="mt-3 grid grid-cols-8 gap-1 sm:grid-cols-12">
         {visible.map((s, i) => (
           <div
             key={i}
-            className={`relative aspect-video overflow-hidden rounded-sm transition-all duration-300 ${
-              s.status === "pending"
-                ? "bg-white/5"
-                : s.status === "generating"
-                  ? "bg-gradient-to-br from-indigo-500/25 to-fuchsia-500/15"
-                  : "ring-1 ring-white/10"
+            className={`relative aspect-video overflow-hidden transition-all duration-300 ${
+              s.status === "pending" ? "bg-cf-soft" : s.status === "generating" ? "bg-cf-inverse" : ""
             }`}
             style={
               s.status === "ready" || s.status === "cached"
-                ? { background: `linear-gradient(135deg, hsl(${s.hue} 65% 45%), hsl(${(s.hue + 40) % 360} 60% 30%))` }
+                ? { background: `linear-gradient(135deg, hsl(${s.hue} 22% 38%), hsl(${(s.hue + 40) % 360} 18% 18%))` }
                 : undefined
             }
           >
-            {s.status === "generating" && <div className="cf-scan absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-cyan-300/50 to-transparent" />}
+            {s.status === "generating" && <div className="cf-scan absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-cf-accent/50 to-transparent" />}
           </div>
         ))}
       </div>
@@ -283,19 +299,16 @@ async function bumpViews(projectId: string) {
 function Result({ state, title }: { state: DemoState; title: string }) {
   const strip = state.shots.filter((s) => s.status === "ready" || s.status === "cached").slice(0, 24);
   return (
-    <div className="cf-grain relative overflow-hidden rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.04] p-5 shadow-[0_0_60px_-24px_rgba(16,185,129,0.7)] backdrop-blur">
-      <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[radial-gradient(closest-side,rgba(16,185,129,0.25),transparent)] blur-2xl" />
-      <div className="relative flex flex-wrap items-center justify-between gap-3">
+    <div className="border-t border-cf-fg">
+      <div className="flex flex-wrap items-end justify-between gap-4 py-5">
         <div>
-          <h3 className="flex items-center gap-2 font-semibold text-emerald-200">
-            <span className="cf-pulse-ring inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-            {title}
-          </h3>
-          <p className="text-sm text-white/60">
+          <Status tone="ok">Final cut</Status>
+          <h3 className="cf-display mt-3 text-[34px] leading-none">{title}</h3>
+          <p className="cf-label mt-2">
             {fmtDuration(state.durationSec)} · {state.scenes} scenes
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {state.filmUrl ? (
             <>
               <a
@@ -303,53 +316,40 @@ function Result({ state, title }: { state: DemoState; title: string }) {
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => state.projectId && void bumpViews(state.projectId)}
-                className="rounded-lg border border-emerald-400/40 px-3 py-1.5 text-sm text-emerald-200 hover:bg-emerald-400/10"
+                className="cf-btn-line"
               >
-                ▶ Play
+                Play ↗
               </a>
-              <a href={state.filmUrl} download className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5">
-                ↓ Download
+              <a href={state.filmUrl} download className="cf-btn-line">
+                Download
               </a>
-              <Link
-                href="/publish"
-                className="rounded-lg bg-emerald-400 px-3 py-1.5 text-sm font-semibold text-black transition hover:bg-emerald-300"
-              >
-                🚀 Launch
+              <Link href="/publish" className="cf-btn-accent">
+                Publish →
               </Link>
             </>
           ) : (
-            ["▶ Play", "↓ Download", "↗ Publish"].map((t) => (
-              <span key={t} className="cursor-default rounded-lg border border-white/15 px-3 py-1.5 text-sm text-white/70">
-                {t}
-              </span>
-            ))
+            <span className="cf-label">Preview cut — nothing to play or publish</span>
           )}
         </div>
       </div>
       {state.filmUrl ? (
-        <div className="mt-4">
+        <div>
           <HlsPlayer src={state.filmUrl} />
           {(state.filmLocales?.length ?? 0) > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="text-[11px] uppercase tracking-wider text-white/40">Also in</span>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="cf-label mr-2">Also in</span>
               {state.filmLocales!.map((l) => (
-                <a
-                  key={l.lang}
-                  href={l.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-full border border-white/15 px-2.5 py-1 text-xs text-white/70 transition hover:border-emerald-300/50 hover:text-emerald-200"
-                >
-                  {l.lang.toUpperCase()} ▶
+                <a key={l.lang} href={l.url} target="_blank" rel="noreferrer" className="cf-option">
+                  {l.lang.toUpperCase()} ↗
                 </a>
               ))}
             </div>
           )}
         </div>
       ) : (
-        <div className="mt-4 flex gap-1 overflow-hidden rounded-lg">
+        <div className="flex gap-px overflow-hidden">
           {strip.map((s, i) => (
-            <div key={i} className="h-16 flex-1" style={{ background: `linear-gradient(135deg, hsl(${s.hue} 65% 45%), hsl(${(s.hue + 40) % 360} 60% 30%))` }} />
+            <div key={i} className="h-16 flex-1" style={{ background: `linear-gradient(135deg, hsl(${s.hue} 22% 38%), hsl(${(s.hue + 40) % 360} 18% 18%))` }} />
           ))}
         </div>
       )}
@@ -359,32 +359,19 @@ function Result({ state, title }: { state: DemoState; title: string }) {
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
-      <div className="text-xs uppercase tracking-wider text-white/40">{label}</div>
-      <div className={`mt-1 text-xl font-semibold ${accent ? "text-emerald-300" : ""}`}>{value}</div>
+    <div className="border-b border-r border-cf-line px-4 py-5">
+      <dt className="cf-label">{label}</dt>
+      <dd className={`mt-2 font-display font-semibold text-[28px] leading-none tracking-[-0.03em] ${accent ? "text-cf-ok" : ""}`}>{value}</dd>
     </div>
   );
 }
 
 function InfraChip({ ok, idle, label }: { ok?: boolean; idle?: boolean; label: string }) {
-  return (
-    <span
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] backdrop-blur ${
-        ok && !idle
-          ? "border-emerald-400/25 bg-emerald-400/[0.06] text-emerald-200"
-          : idle
-            ? "border-white/10 bg-white/[0.03] text-white/45"
-            : "border-amber-400/25 bg-amber-400/[0.06] text-amber-200"
-      }`}
-    >
-      <span className={`h-1.5 w-1.5 rounded-full ${ok && !idle ? "animate-pulse bg-emerald-400" : idle ? "bg-white/30" : "bg-amber-400"}`} />
-      {label}
-    </span>
-  );
+  return <Status tone={ok && !idle ? "ok" : idle ? "idle" : "warn"}>{label}</Status>;
 }
 
 function PulseDot({ className }: { className?: string }) {
-  return <span className={`inline-block h-1.5 w-1.5 animate-pulse rounded-full align-middle ${className ?? "bg-white"}`} />;
+  return <span className={`inline-block h-1.5 w-1.5 animate-pulse rounded-full align-middle ${className ?? "bg-cf-fg"}`} />;
 }
 
 function fmtEta(ms: number): string {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import { getSupabase } from "../lib/supabase";
+import { EmptyState, Section } from "./cf/primitives";
 
 /** The live storefront shelf: community voices approved for reuse. */
 export function MarketplaceVoices() {
@@ -22,24 +23,30 @@ export function MarketplaceVoices() {
       .then(({ data }) => setVoices((data as { id: string; name: string; share_terms: string | null }[]) ?? []));
   }, [user]);
 
-  if (!voices?.length) return null;
+  if (!voices) return null;
   return (
-    <section className="mt-10">
-      <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold text-white/70">Community voices — live now</h2>
-        <Link href="/library/voices" className="text-xs text-white/40 hover:text-white">
-          Use one in the Voice Lab →
+    <Section
+      label="Live now · community voices"
+      title={`${String(voices.length).padStart(2, "0")} voices on the shelf`}
+      aside={
+        <Link href="/library/voices" className="cf-link text-cf-muted hover:text-cf-fg">
+          Use one in the Voice Room →
         </Link>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {voices.map((v) => (
-          <div key={v.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-            <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400/40 to-fuchsia-400/30 text-lg">🎙</div>
-            <div className="truncate font-medium">{v.name}</div>
-            <p className="mt-1 line-clamp-2 text-xs text-white/45">{v.share_terms || "No terms specified"}</p>
-          </div>
-        ))}
-      </div>
-    </section>
+      }
+    >
+      {voices.length === 0 ? (
+        <EmptyState title={<>The shelf is <em>empty.</em></>} hint="Offer a cloned voice from the Voice Room — once approved it appears here for everyone." />
+      ) : (
+        <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 lg:grid-cols-4">
+          {voices.map((v, i) => (
+            <article key={v.id} className="flex min-h-[170px] flex-col bg-cf-bg p-5">
+              <span className="font-mono text-[11px] text-cf-muted">V / {String(i + 1).padStart(3, "0")}</span>
+              <h3 className="mt-auto truncate pt-8 font-display font-semibold text-[24px] tracking-[-0.03em]">{v.name}</h3>
+              <p className="mt-2 line-clamp-2 text-[11px] text-cf-muted">{v.share_terms || "No terms specified"}</p>
+            </article>
+          ))}
+        </div>
+      )}
+    </Section>
   );
 }

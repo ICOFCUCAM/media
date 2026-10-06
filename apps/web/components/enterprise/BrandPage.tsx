@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../AuthProvider";
-import { AuthCard } from "../AuthCard";
+import { StudioGate } from "../cf/StudioGate";
+import { Cell, PageHeader, Split, Status } from "../cf/primitives";
 import { getSupabase } from "../../lib/supabase";
 import { signedUrl } from "../../lib/storyboard";
 
@@ -11,7 +12,9 @@ const BUCKET = "cineforge-assets";
 /** Brand kit — logo, palette, outro line. Stored per user; the render
  *  engine picks it up for white-label outros (Agency+). */
 export function BrandPage() {
-  const { enabled, loading, user } = useAuth();
+  const { user, profile } = useAuth();
+  // Mirrors render.processor: Agency, Enterprise and admins get the branded outro.
+  const eligible = !!profile && (profile.role === "ADMIN" || profile.tier === "AGENCY" || profile.tier === "ENTERPRISE");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [primary, setPrimary] = useState("#6366f1");
   const [secondary, setSecondary] = useState("#d946ef");
@@ -67,73 +70,79 @@ export function BrandPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Brand Assets</h1>
-        <p className="mt-1 text-sm text-white/55">Your logo, palette and outro — applied to white-label exports on Agency and Enterprise plans.</p>
-      </header>
-
-      {!enabled ? (
-        <p className="text-sm text-white/45">Connect Supabase first.</p>
-      ) : loading ? (
-        <p className="text-sm text-white/40">Loading…</p>
-      ) : !user ? (
-        <AuthCard title="Sign in to manage your brand" />
-      ) : (
-        <form onSubmit={onSave} className="space-y-5 rounded-xl border border-white/10 bg-white/[0.02] p-6">
-          <div className="flex items-center gap-4">
-            <div
-              className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-white/10"
-              style={{ background: `linear-gradient(135deg, ${primary}33, ${secondary}33)` }}
-            >
-              {logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt="logo" className="h-full w-full object-contain p-2" />
-              ) : (
-                <span className="text-2xl text-white/30">◎</span>
-              )}
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-white/50">Logo (PNG/SVG, transparent works best)</label>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="mt-1 w-full text-xs text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-xs file:text-white"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <label className="block">
-              <span className="text-xs text-white/50">Primary color</span>
-              <input type="color" value={primary} onChange={(e) => setPrimary(e.target.value)} className="mt-1 h-10 w-full cursor-pointer rounded-lg border border-white/10 bg-transparent" />
-            </label>
-            <label className="block">
-              <span className="text-xs text-white/50">Secondary color</span>
-              <input type="color" value={secondary} onChange={(e) => setSecondary(e.target.value)} className="mt-1 h-10 w-full cursor-pointer rounded-lg border border-white/10 bg-transparent" />
-            </label>
-          </div>
-
-          <label className="block">
-            <span className="text-xs text-white/50">Outro line (closes every export)</span>
-            <input
-              value={outro}
-              onChange={(e) => setOutro(e.target.value)}
-              placeholder="A film by Your Studio"
-              className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none placeholder:text-white/30 focus:border-white/30"
-            />
-          </label>
-
-          <div className="flex items-center gap-3">
-            <button type="submit" disabled={busy} className="rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40">
-              {busy ? "Saving…" : "Save brand kit"}
-            </button>
-            {saved && <span className="text-xs text-emerald-300">Saved ✓</span>}
-          </div>
-          <p className="text-[11px] text-white/35">Render-engine application (branded outro card on final cuts) is the wired next step.</p>
-        </form>
-      )}
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="Enterprise / Brand assets"
+        title={<>The house<br /><em>signature.</em></>}
+        copy={
+          <>
+            <p>Your logo, palette and outro line — the identity that closes white-label exports on Agency and Enterprise plans.</p>
+            <p><strong>On Agency and Enterprise plans the render worker closes every final cut with this card — logo, primary colour and outro line.</strong></p>
+          </>
+        }
+        status={{ tone: "idle", label: "Brand kit" }}
+      />
+      <div className="pt-12">
+        <StudioGate signIn="Sign in to manage your brand" what="Brand kits">
+          <form onSubmit={onSave}>
+            <Split>
+              <Cell>
+                <div className="cf-label">The kit</div>
+                <label htmlFor="brand-logo" className="cf-label mb-2 mt-8 block text-cf-fg">
+                  Logo · PNG / SVG, transparent works best
+                </label>
+                <input
+                  id="brand-logo"
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="w-full text-[11px] text-cf-muted file:mr-3 file:border file:border-cf-line file:bg-transparent file:px-3 file:py-2 file:font-mono file:text-[11px] file:uppercase file:tracking-[0.1em] file:text-cf-fg"
+                />
+                <div className="mt-7 grid grid-cols-2 gap-4">
+                  <label className="block">
+                    <span className="cf-label mb-2 block text-cf-fg">Primary</span>
+                    <input type="color" value={primary} onChange={(e) => setPrimary(e.target.value)} className="h-11 w-full cursor-pointer border border-cf-line bg-transparent" />
+                  </label>
+                  <label className="block">
+                    <span className="cf-label mb-2 block text-cf-fg">Secondary</span>
+                    <input type="color" value={secondary} onChange={(e) => setSecondary(e.target.value)} className="h-11 w-full cursor-pointer border border-cf-line bg-transparent" />
+                  </label>
+                </div>
+                <label htmlFor="brand-outro" className="cf-label mb-2 mt-7 block text-cf-fg">Outro line · closes every final cut</label>
+                <input id="brand-outro" value={outro} onChange={(e) => setOutro(e.target.value)} placeholder="A film by Your Studio" className="cf-input font-display font-semibold text-[18px]" />
+                <div className="mt-8 flex items-center gap-4">
+                  <button type="submit" disabled={busy} className="cf-btn-ink">
+                    {busy ? "Saving…" : "Save brand kit"}
+                  </button>
+                  {saved && <Status tone="ok">Saved</Status>}
+                </div>
+              </Cell>
+              <Cell>
+                <div className="cf-label">The end card · as rendered</div>
+                {/* Mirrors the render engine: primary colour at 25% over black, centred logo, the line in the lower fifth. */}
+                <div className="relative mt-8 aspect-video overflow-hidden bg-black text-white">
+                  <div className="absolute inset-0" style={{ background: primary, opacity: 0.25 }} aria-hidden />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {logoUrl ? (
+                      /* Plain <img>: a signed, short-lived storage URL. */
+                      <img src={logoUrl} alt="Your logo" className="w-1/4 object-contain" />
+                    ) : (
+                      <span className="font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-white/50">No logo yet</span>
+                    )}
+                  </div>
+                  {outro.trim() && <span className="absolute inset-x-6 bottom-[16%] text-center font-sans text-[15px]">{outro}</span>}
+                </div>
+                <p className="cf-label mt-3 leading-relaxed">
+                  {eligible
+                    ? "Your plan stamps this card on every final cut."
+                    : "Saved to your account — stamped on renders from the Agency plan up."}{" "}
+                  The secondary colour is kept for your own reference.
+                </p>
+              </Cell>
+            </Split>
+          </form>
+        </StudioGate>
+      </div>
     </div>
   );
 }

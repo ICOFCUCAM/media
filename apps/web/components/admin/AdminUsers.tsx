@@ -5,6 +5,7 @@ import { useAuth } from "../AuthProvider";
 import { AuthCard } from "../AuthCard";
 import { getSupabase } from "../../lib/supabase";
 import { msToCredits, creditsToMs } from "../../lib/plans";
+import { EmptyState, PageHeader, Status } from "../cf/primitives";
 
 const TIERS = ["FREE", "CREATOR", "STUDIO", "AGENCY", "ENTERPRISE"] as const;
 
@@ -43,63 +44,86 @@ export function AdminUsers() {
     await refresh();
   }
 
-  if (!enabled || loading) return <p className="px-6 py-8 text-sm text-white/40">Loading…</p>;
-  if (!user) return <div className="px-6 py-8"><AuthCard title="Sign in" /></div>;
-  if (profile?.role !== "ADMIN")
-    return <p className="px-6 py-8 text-sm text-white/45">Admins only.</p>;
-
-  return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Users</h1>
-        <p className="mt-1 text-sm text-white/55">{rows?.length ?? "…"} accounts · grant credits, set tiers.</p>
-      </header>
-      <div className="overflow-x-auto rounded-xl border border-white/10">
-        <table className="w-full min-w-[680px] text-sm">
-          <thead className="bg-white/[0.03] text-left text-xs uppercase tracking-wider text-white/40">
-            <tr>
-              <th className="px-4 py-2.5 font-medium">Email</th>
-              <th className="px-4 py-2.5 font-medium">Role</th>
-              <th className="px-4 py-2.5 font-medium">Tier</th>
-              <th className="px-4 py-2.5 font-medium">Credits</th>
-              <th className="px-4 py-2.5 font-medium">Joined</th>
-              <th className="px-4 py-2.5" />
-            </tr>
-          </thead>
-          <tbody>
-            {(rows ?? []).map((r) => (
-              <tr key={r.id} className="border-t border-white/5">
-                <td className="max-w-[220px] truncate px-4 py-2.5 text-white/80">{r.email}</td>
-                <td className="px-4 py-2.5">
-                  <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase ${r.role === "ADMIN" ? "border-fuchsia-400/40 text-fuchsia-300" : "border-white/15 text-white/50"}`}>{r.role}</span>
-                </td>
-                <td className="px-4 py-2.5">
-                  <select value={r.tier} onChange={(e) => void setTier(r.id, e.target.value)} className="rounded border border-white/10 bg-black/30 px-2 py-1 text-xs outline-none">
-                    {TIERS.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-4 py-2.5 text-white/70">{msToCredits(r.credits_ms).toLocaleString()}</td>
-                <td className="px-4 py-2.5 text-white/40">{new Date(r.created_at).toLocaleDateString()}</td>
-                <td className="px-4 py-2.5 text-right">
-                  {granting === r.id ? (
-                    <span className="flex justify-end gap-1.5">
-                      <input value={amount} onChange={(e) => setAmount(e.target.value)} className="w-20 rounded border border-white/15 bg-black/40 px-2 py-1 text-xs outline-none" />
-                      <button onClick={() => void grant(r.id, r.credits_ms)} className="rounded bg-emerald-400 px-2 py-1 text-xs font-semibold text-black">Grant</button>
-                      <button onClick={() => setGranting(null)} className="rounded border border-white/15 px-2 py-1 text-xs">✕</button>
-                    </span>
-                  ) : (
-                    <button onClick={() => setGranting(r.id)} className="rounded border border-white/15 px-2.5 py-1 text-xs text-white/60 hover:bg-white/5">
-                      + credits
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+  const shell = (body: React.ReactNode) => (
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="System administration / Users & credits"
+        title={<>The<br /><em>members.</em></>}
+        copy={<p>The real roster — readable by administrators only (enforced by RLS). Grant credits and set tiers inline.</p>}
+        status={{ tone: rows ? "live" : "idle", label: rows ? `${rows.length} accounts` : "Roster" }}
+      />
+      <div className="pt-12">{body}</div>
     </div>
+  );
+
+  if (!enabled) return shell(<EmptyState title="The roster needs a studio." hint="Connect Supabase (NEXT_PUBLIC_SUPABASE_URL)." />);
+  if (loading) return shell(<p className="cf-label">Opening the roster…</p>);
+  if (!user) return shell(<AuthCard title="Sign in as an admin" />);
+  if (profile?.role !== "ADMIN") return shell(<EmptyState title={<>Administrators <em>only.</em></>} hint="Your account does not carry the ADMIN role." />);
+
+  return shell(
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[760px] border-t border-cf-fg text-left">
+        <caption className="sr-only">Platform members</caption>
+        <thead>
+          <tr className="border-b border-cf-line">
+            {["Email", "Role", "Tier", "Credits", "Joined", ""].map((h, i) => (
+              <th key={i} scope="col" className="cf-label py-4 pr-4 font-normal">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {(rows ?? []).map((r) => (
+            <tr key={r.id} className="border-b border-cf-line">
+              <th scope="row" className="max-w-[260px] truncate py-4 pr-4 text-left font-display font-semibold text-[17px] font-normal">
+                {r.email}
+              </th>
+              <td className="py-4 pr-4">
+                <Status tone={r.role === "ADMIN" ? "live" : "idle"}>{r.role.toLowerCase()}</Status>
+              </td>
+              <td className="py-4 pr-4">
+                <select
+                  value={r.tier}
+                  onChange={(e) => void setTier(r.id, e.target.value)}
+                  aria-label={`Tier for ${r.email}`}
+                  className="border border-cf-line bg-cf-panel px-2 py-1.5 font-mono text-[12px] uppercase text-cf-fg outline-none focus:border-cf-fg"
+                >
+                  {TIERS.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </td>
+              <td className="py-4 pr-4 font-mono text-[11px]">{msToCredits(r.credits_ms).toLocaleString()}</td>
+              <td className="cf-label py-4 pr-4">{new Date(r.created_at).toLocaleDateString()}</td>
+              <td className="py-4 text-right">
+                {granting === r.id ? (
+                  <span className="flex justify-end gap-1.5">
+                    <input
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      inputMode="numeric"
+                      aria-label={`Credits to grant ${r.email}`}
+                      className="cf-input w-24 px-2 py-1.5 font-mono text-[11px]"
+                    />
+                    <button type="button" onClick={() => void grant(r.id, r.credits_ms)} className="cf-btn-accent px-3 py-1.5">
+                      Grant
+                    </button>
+                    <button type="button" onClick={() => setGranting(null)} aria-label="Cancel grant" className="cf-btn-line px-3 py-1.5">
+                      ×
+                    </button>
+                  </span>
+                ) : (
+                  <button type="button" onClick={() => setGranting(r.id)} className="cf-link text-cf-muted hover:text-cf-fg">
+                    + Credits
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>,
   );
 }

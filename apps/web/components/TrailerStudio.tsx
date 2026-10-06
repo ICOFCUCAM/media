@@ -4,6 +4,8 @@ import { useState, type ReactNode } from "react";
 import { useCreateRun } from "../lib/useCreateRun";
 import { RunPanel } from "./RunPanel";
 import type { ProjectStatus } from "../lib/demo";
+import { ActionBand, Cell, Control, PageHeader, Section, SpecList, Split } from "./cf/primitives";
+import { Pipeline, type PipelineStep } from "./cf/Pipeline";
 
 const STAGE_LABELS: Record<ProjectStatus, string> = {
   PLANNING: "Picking beats",
@@ -17,7 +19,8 @@ const DURATIONS = [15, 30, 60, 90];
 const MUSIC = ["Epic", "Tense", "Uplifting", "Dark", "Playful"];
 const VO = ["None", "Gravelly", "Warm", "Whispered"];
 
-/** Trailer studio — beats, voiceover and a music sting, not a feature prompt. */
+/** The Cutting Room (docs/design/create-trailer.html) — beats, voiceover and a
+ *  music sting, not a feature prompt. Runs through the shared useCreateRun. */
 export function TrailerStudio() {
   const [subject, setSubject] = useState("A sci-fi heist on a derelict space station.");
   const [type, setType] = useState(TYPES[0]);
@@ -35,78 +38,104 @@ export function TrailerStudio() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Trailer Studio</h1>
-        <p className="mt-1 text-sm text-white/55">Cut a high-impact trailer — paced for the algorithm, with a voiceover and a music sting.</p>
-      </header>
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="Cutting room / Editorial"
+        title={<>Cut the<br /><em>trailer.</em></>}
+        copy={
+          <>
+            <p>Turn a story into anticipation. Choose the objective, set the rhythm and the sound, and let the cut build toward its final image.</p>
+            <p><strong>Paced for the feed, with a voiceover and a music sting.</strong></p>
+          </>
+        }
+        status={{ tone: state?.live ? "live" : "idle", label: state ? (state.live ? "Live production" : "Preview simulation") : "Cutting room open" }}
+      />
 
-      <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
-        <aside className="space-y-5">
-          <Field label="What's it for?">
-            <textarea
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              rows={3}
-              className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm outline-none focus:border-white/30"
-            />
-          </Field>
-          <Field label="Trailer type">
-            <Chips options={TYPES} value={type} set={setType} />
-          </Field>
-          <Field label="Length">
-            <div className="flex flex-wrap gap-2">
-              {DURATIONS.map((d) => (
-                <Chip key={d} active={seconds === d} onClick={() => setSeconds(d)}>{d}s</Chip>
-              ))}
+      <Section label="01 — Editorial brief" title="Define the cut.">
+        <Split>
+          <Cell>
+            <div className="flex items-center justify-between">
+              <label htmlFor="trailer-subject" className="font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Source / story</label>
+              <span className="cf-label">Required</span>
             </div>
-          </Field>
-          <Field label="Music">
-            <Chips options={MUSIC} value={music} set={setMusic} />
-          </Field>
-          <Field label="Voiceover">
-            <Chips options={VO} value={vo} set={setVo} />
-          </Field>
-
-          <div className="flex gap-2">
-            <button
-              onClick={onCreate}
-              disabled={running}
-              className="flex-1 rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
-            >
-              {running ? "Cutting…" : "Cut trailer"}
-            </button>
-            <button onClick={reset} className="rounded-lg border border-white/15 px-4 py-2.5 text-sm hover:bg-white/5">Reset</button>
-          </div>
-        </aside>
-
-        <RunPanel
-          state={state}
-          stageLabels={STAGE_LABELS}
-          readyTitle="Trailer ready"
-          emptyHint={
-            <div>
-              <p className="text-sm">Set the type, length and tone, then press <span className="text-white/70">Cut trailer</span>.</p>
-              <p className="mt-1 text-xs">Beats, voiceover and a sting — sized to drop straight into a feed.</p>
+            <textarea id="trailer-subject" value={subject} onChange={(e) => setSubject(e.target.value)} rows={4} className="cf-input mt-2.5 resize-y p-5 leading-[1.7]" />
+            <p className="cf-label mt-3 leading-relaxed">Describe the story, film or project the trailer should sell. The Director builds the editorial arc from it.</p>
+            <div className="mt-10">
+              <Control name="Editorial objective" value={type}>
+                <Chips options={TYPES} value={type} set={setType} />
+              </Control>
+              <Control name="Length" value={`${seconds}s`}>
+                <div className="flex flex-wrap gap-1.5">
+                  {DURATIONS.map((d) => (
+                    <Chip key={d} active={seconds === d} onClick={() => setSeconds(d)}>{d}s</Chip>
+                  ))}
+                </div>
+              </Control>
             </div>
-          }
-        />
+          </Cell>
+          <Cell>
+            <div className="cf-label">Sound</div>
+            <div className="mt-8">
+              <Control name="Music" value={music}>
+                <Chips options={MUSIC} value={music} set={setMusic} />
+              </Control>
+              <Control name="Voiceover" value={vo}>
+                <Chips options={VO} value={vo} set={setVo} />
+              </Control>
+            </div>
+            <SpecList className="mt-10" rows={[["Cut", `${type} · ${seconds}s`], ["Music", music], ["Voiceover", vo], ["Engine", "Wan 2.1"]]} />
+            <div className="mt-10">
+              <Pipeline steps={TRAILER_PIPELINE} status={state?.status} />
+            </div>
+          </Cell>
+        </Split>
+      </Section>
+
+      <section className="mt-14 border-t border-cf-fg" aria-label="Trailer preview">
+        <div className="flex items-center justify-between border-b border-cf-line py-4">
+          <span className="cf-label text-cf-fg">02 — The cut</span>
+          <span className="cf-label">{state ? STAGE_LABELS[state.status] : "Waiting for the brief"}</span>
+        </div>
+        <div className={state ? "pt-8" : ""}>
+          <RunPanel
+            state={state}
+            stageLabels={STAGE_LABELS}
+            readyTitle="Trailer ready"
+            artSeed={subject}
+            emptyHint={
+              <div>
+                <p className="cf-display text-[clamp(38px,5vw,62px)] leading-none">The cut begins here.</p>
+                <p className="cf-label mt-3">Beats, voiceover and a sting — sized for the feed</p>
+              </div>
+            }
+          />
+        </div>
+      </section>
+
+      <div className="mt-14">
+        <ActionBand title={<>Make the <em>cut.</em></>} copy={`${type} trailer · ${seconds}s · ${music} score · ${vo === "None" ? "no voiceover" : `${vo.toLowerCase()} voiceover`}.`}>
+          <button type="button" onClick={reset} className="cf-btn-line">
+            Reset
+          </button>
+          <button type="button" onClick={onCreate} disabled={running || !subject.trim()} className="cf-btn-accent">
+            {running ? "Cutting…" : "Cut trailer"}
+          </button>
+        </ActionBand>
       </div>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <span className="text-xs uppercase tracking-wider text-white/40">{label}</span>
-      <div className="mt-2">{children}</div>
-    </div>
-  );
-}
+const TRAILER_PIPELINE: PipelineStep[] = [
+  { name: "Editorial beats", at: "PLANNING" },
+  { name: "Shots", at: "GENERATING" },
+  { name: "Score & voiceover", at: "RENDERING" },
+  { name: "Final cut", at: "RENDERING" },
+];
+
 function Chips({ options, value, set }: { options: string[]; value: string; set: (v: string) => void }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-1.5">
       {options.map((o) => (
         <Chip key={o} active={value === o} onClick={() => set(o)}>{o}</Chip>
       ))}
@@ -115,12 +144,7 @@ function Chips({ options, value, set }: { options: string[]; value: string; set:
 }
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-xs transition ${
-        active ? "border-white/40 bg-white/10 text-white" : "border-white/10 text-white/60 hover:border-white/25"
-      }`}
-    >
+    <button type="button" onClick={onClick} aria-pressed={active} className="cf-option">
       {children}
     </button>
   );

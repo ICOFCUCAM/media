@@ -2,20 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Cineforge rooms ──────────────────────────────────────────────
+ * Channel triplets consumed by the `cf-*` Tailwind colors. The studio is a
+ * dark screening room (.cf-dark) — easy on the eyes for long sessions with
+ * footage, and continuous with the homepage black. The paper room
+ * (.cf-light) remains for printed / editorial surfaces.
+ */
+:root,
+.cf-light {
+  --cf-bg: 244 241 234;
+  --cf-panel: 251 250 246;
+  --cf-soft: 235 231 222;
+  --cf-fg: 16 16 15;
+  --cf-muted: 119 115 107;
+  --cf-dim: 160 156 148;
+  --cf-line: 207 201 189;
+  --cf-line2: 16 16 15;
+  --cf-accent: 183 255 60;
+  --cf-inverse: 16 16 15;
+  --cf-on-inverse: 244 241 234;
+  --cf-ok: 72 130 38;
+  --cf-warn: 155 110 54;
+  --cf-danger: 168 60 50;
+}
+
+.cf-dark {
+  --cf-bg: 11 12 11;
+  --cf-panel: 20 22 20;
+  --cf-soft: 28 31 28;
+  --cf-fg: 242 241 236;
+  --cf-muted: 170 172 165;
+  --cf-dim: 118 122 116;
+  --cf-line: 40 43 40;
+  --cf-line2: 74 78 74;
+  --cf-accent: 216 255 67;
+  --cf-inverse: 242 241 236;
+  --cf-on-inverse: 11 12 11;
+  --cf-ok: 150 222 110;
+  --cf-warn: 236 186 72;
+  --cf-danger: 255 122 110;
+}
+
+.cf-light,
+.cf-dark {
+  background: rgb(var(--cf-bg));
+  color: rgb(var(--cf-fg));
+}
+
+/* Native controls (selects, file inputs, colour pickers, scrollbars) follow the room. */
+.cf-light { color-scheme: light; }
+.cf-dark { color-scheme: dark; }
+
 :root {
   color-scheme: dark;
 }
 
+/* The institution's black under everything; each page paints its own room. */
 body {
-  background: #0a0a0f;
-  color: #f5f5f7;
+  background: #080808;
+  color: #f4f2ed;
 }
 
-/* Keyboard focus — a visible, on-brand ring (mouse clicks stay clean). */
+/* Keyboard focus — a visible hairline in the room's ink (mouse clicks stay clean). */
 :focus-visible {
-  outline: 2px solid rgba(165, 180, 252, 0.8);
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline: 1px solid rgb(var(--cf-fg));
+  outline-offset: 3px;
 }
 
 /* Smooth in-page anchored scrolling. */
@@ -26,44 +77,64 @@ html {
   html { scroll-behavior: auto; }
 }
 
-/* ── Homepage cinematic motion ─────────────────────────────── */
-@keyframes cf-pan {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 100% 50%; }
+/* ── Cineforge components ─────────────────────────────────────── */
+@layer components {
+  .cf-mono {
+    @apply font-mono uppercase tracking-[0.08em];
+  }
+  /* Section kickers: small, readable caps in the sans — not tiny mono. */
+  .cf-eyebrow {
+    @apply font-sans text-[12px] font-medium uppercase tracking-[0.1em] text-cf-muted;
+  }
+  .cf-label {
+    @apply font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-muted;
+  }
+  /* Headlines speak the homepage's Manrope; italic accents stay serif ("Direct the film."). */
+  .cf-display {
+    @apply font-display font-semibold tracking-[-0.045em];
+  }
+  .cf-display em,
+  .font-display em {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 400;
+    letter-spacing: -0.03em;
+  }
+  .cf-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-5 py-3 font-sans text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .cf-btn-accent {
+    @apply cf-btn bg-cf-accent text-[#10100f] shadow-[0_0_0_1px_rgba(0,0,0,.05)] hover:brightness-105;
+  }
+  .cf-btn-ink {
+    @apply cf-btn bg-cf-inverse text-cf-on-inverse hover:opacity-90;
+  }
+  .cf-btn-line {
+    @apply cf-btn border border-cf-line2 text-cf-fg hover:border-cf-fg hover:bg-cf-soft;
+  }
+  .cf-option {
+    @apply rounded-md border border-cf-line2 px-3.5 py-2 text-left font-sans text-[13px] font-medium text-cf-muted transition hover:border-cf-fg hover:text-cf-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-cf-line2 disabled:hover:text-cf-muted;
+  }
+  .cf-option[aria-pressed="true"],
+  .cf-option.is-active {
+    @apply border-cf-accent bg-cf-accent text-[#10100f];
+  }
+  .cf-input {
+    @apply w-full rounded-md border border-cf-line2 bg-cf-panel px-4 py-3 text-[14px] text-cf-fg outline-none transition placeholder:text-cf-dim focus:border-cf-accent;
+  }
+  .cf-link {
+    @apply font-sans text-[13px] font-semibold text-cf-fg underline-offset-4 hover:text-cf-accent hover:underline;
+  }
 }
+
+/* ── Production motion (run console) ──────────────────────── */
 @keyframes cf-flow {
   0% { transform: translateX(-120%); opacity: 0; }
   20% { opacity: 1; }
-  100% { transform: translateX(120%); opacity: 0; }
+  100% { transform: translateX(420%); opacity: 0; }
 }
-@keyframes cf-shimmer {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 1; }
-}
-@keyframes cf-marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-.cf-pan { background-size: 200% 200%; animation: cf-pan 8s ease-in-out infinite alternate; }
 .cf-flow { animation: cf-flow 2.6s ease-in-out infinite; }
-.cf-shimmer { animation: cf-shimmer 2.4s ease-in-out infinite; }
-.cf-marquee { animation: cf-marquee 30s linear infinite; }
 
-/* ── 2030 futuristic film-engine motion ───────────────────────── */
-/* Aurora field — slow drifting nebula behind the hero. */
-@keyframes cf-aurora {
-  0%   { transform: translate3d(-5%, -3%, 0) scale(1.1) rotate(0deg); }
-  50%  { transform: translate3d(5%, 4%, 0) scale(1.25) rotate(8deg); }
-  100% { transform: translate3d(-5%, -3%, 0) scale(1.1) rotate(0deg); }
-}
-.cf-aurora { animation: cf-aurora 24s ease-in-out infinite; will-change: transform; }
-
-/* Conic halo that slowly rotates — the "engine core". */
-@keyframes cf-spin { to { transform: rotate(360deg); } }
-.cf-spin-slow { animation: cf-spin 28s linear infinite; }
-.cf-spin-rev { animation: cf-spin 40s linear infinite reverse; }
-
-/* Scanline sweep across a frame — generation in progress. */
+/* Scanline sweep across a frame — a shot on the GPU. */
 @keyframes cf-scan {
   0%   { transform: translateY(-100%); opacity: 0; }
   10%, 90% { opacity: 1; }
@@ -71,53 +142,30 @@ html {
 }
 .cf-scan { animation: cf-scan 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
 
-/* Pixels resolving into an image — the materialize reveal. */
+/* A finished shot resolving into place. */
 @keyframes cf-materialize {
   0%   { filter: blur(14px) saturate(0.4); opacity: 0; transform: scale(1.04); }
   100% { filter: blur(0) saturate(1); opacity: 1; transform: scale(1); }
 }
 .cf-materialize { animation: cf-materialize 1.4s ease-out both; }
 
-/* Floating drift for parallax cards. */
-@keyframes cf-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-.cf-float { animation: cf-float 6s ease-in-out infinite; }
-.cf-float-slow { animation: cf-float 9s ease-in-out infinite; }
-
-/* Gradient text shimmer for headline accents. */
-@keyframes cf-text-sheen {
-  0% { background-position: 0% center; }
-  100% { background-position: 200% center; }
-}
-.cf-sheen {
-  background-size: 200% auto;
-  animation: cf-text-sheen 5s linear infinite;
+/* Film grain for illustrated stills (CinemaArt). */
+.cf-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* Soft pulse for status dots / live indicators. */
-@keyframes cf-pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
-  70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+/* A slow push-in on a still — the frame feels shot, not printed. */
+@keyframes cf-pushin {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
 }
-.cf-pulse-ring { animation: cf-pulse-ring 2s ease-out infinite; }
-
-/* Grain overlay for filmic texture. */
-.cf-grain::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.04;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+.cf-pushin {
+  transform-origin: 50% 55%;
+  animation: cf-pushin 14s ease-in-out infinite alternate;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cf-pan, .cf-flow, .cf-shimmer, .cf-marquee,
-  .cf-aurora, .cf-spin-slow, .cf-spin-rev, .cf-scan,
-  .cf-materialize, .cf-float, .cf-float-slow, .cf-sheen, .cf-pulse-ring {
+  .cf-flow, .cf-scan, .cf-materialize, .cf-pushin {
     animation: none !important;
   }
   /* Belt-and-braces: kill ALL animation for motion-sensitive users, including
