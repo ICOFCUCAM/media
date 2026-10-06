@@ -52,3 +52,16 @@ def test_real_file_is_measured(tmp_path):
     r = video_timing_report(str(out), requested_duration_sec=6.84, requested_fps=16)
     assert r["frameCount"] == 32 and r["actualDurationUs"] == 2_000_000
     assert r["timingAccuracy"]["deltaUs"] == 2_000_000 - 6_840_000
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
+def test_regression_7_real_clip(tmp_path):
+    """docs/38 §AW.11 test 7 input: 6.840 s requested, a real 5.800 s file produced."""
+    out = tmp_path / "short.mp4"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "testsrc=s=64x64:d=5.8:r=25",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", str(out)], check=True)
+    r = video_timing_report(str(out), requested_duration_sec=6.84, requested_fps=25)
+    assert r["requestedDurationUs"] == 6_840_000
+    assert r["actualDurationUs"] == 5_800_000 and r["frameCount"] == 145
+    assert r["timingAccuracy"] == {"deltaUs": -1_040_000, "ratio": 0.847953}
+    assert r["frameRate"] == {"num": 25, "den": 1}
