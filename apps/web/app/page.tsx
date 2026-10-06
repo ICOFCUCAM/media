@@ -5,6 +5,12 @@ import { HomeMotion } from "../components/home/HomeMotion";
 import { HomeShowreel } from "../components/home/HomeShowreel";
 import { HeroFrame } from "../components/home/HeroFrame";
 import { CinemaArt, type Scene } from "../components/cf/CinemaArt";
+import { ClockIcon, ConfigCard, EngineIcon, FormatIcon } from "../components/cf/ConfigCard";
+import { WorldAtlas } from "../components/home/scenes/WorldAtlas";
+import { StoryCloseUp } from "../components/home/scenes/StoryCloseUp";
+import { ReleaseScreens } from "../components/home/scenes/ReleaseScreens";
+import { VoicePresenter } from "../components/home/scenes/VoicePresenter";
+import { AssetVisual } from "../components/home/scenes/AssetVisual";
 import { STUDIO_MODES } from "../lib/creation";
 import {
   NAV,
@@ -190,8 +196,8 @@ function WorldChapter() {
   return (
     <section className="section chapter dark">
       <div className="container chapter-grid reveal">
-        <div className="chapter-image">
-          <CinemaArt seed="Ashéron-Kor kingdom at dawn" scene="kingdom" motion className="art-fill" hud={{ tag: "Frame 001", slug: "EXT. ASHÉRON-KOR — DAWN" }} />
+        <div className="chapter-image chapter-atlas">
+          <WorldAtlas className="art-fill" />
         </div>
 
         <div className="chapter-copy">
@@ -224,11 +230,17 @@ function WorldChapter() {
 }
 
 /* ── Chapter 02 · Workspace ────────────────────────────────────────── */
+const WS_PRESETS: { title: string; tags: string; scene: Scene }[] = [
+  { title: "Kingdom epic", tags: "Epic · Historical", scene: "kingdom" },
+  { title: "Neon noir", tags: "Thriller · Sci-Fi", scene: "city" },
+  { title: "Ocean voyage", tags: "Adventure · Drama", scene: "sea" },
+];
+
 /** The five shots on the depicted timeline — drawn frames, not renders. */
 const TIMELINE: { seed: string; scene: Scene }[] = [
   { seed: "Scene 05 savannah march", scene: "savannah" },
   { seed: "Scene 06 war council", scene: "interior" },
-  { seed: "Scene 07 Ashéron-Kor dawn", scene: "kingdom" },
+  { seed: "Scene 07 throne hall", scene: "interior" },
   { seed: "Scene 08 the heir", scene: "figure" },
   { seed: "Scene 09 river crossing", scene: "sea" },
 ];
@@ -270,17 +282,52 @@ function Workspace() {
             ))}
           </aside>
 
-          <div className="studio-main">
-            <div className="scene">
-              <CinemaArt seed="Ashéron-Kor kingdom at dawn" scene="kingdom" motion letterbox className="art-fill" />
-              <div className="scene-label">SCENE 07 / EXT. ASHÉRON-KOR / DAWN</div>
-              <div className="playhead" />
-              <div className="timeline">
-                {TIMELINE.map((c, i) => (
-                  <div key={c.seed} className={`clip${i === 2 ? " is-on" : ""}`}>
-                    <CinemaArt seed={c.seed} scene={c.scene} className="art-fill" />
-                  </div>
+          <div className="studio-main cf-dark">
+            {/* A miniature of the real Create Film studio, built from its own components. */}
+            <div className="ws-shot" role="img" aria-label="The Create Film studio: start from an example, describe the film, configure length, engine and format, then create — with the production preview alongside">
+              <div className="ws-tabs" aria-hidden>
+                {["Auto", "Hybrid", "Scene-by-Scene", "Script", "Image"].map((t, i) => (
+                  <span key={t} className={i === 0 ? "is-on" : ""}>{t}</span>
                 ))}
+              </div>
+              <div className="ws-room" aria-hidden>
+                <div className="ws-controls">
+                  <div className="ws-label ws-optional">Start from an example</div>
+                  <div className="ws-presets">
+                    {WS_PRESETS.map((p, i) => (
+                      <span key={p.title} className="cf-preset" aria-pressed={i === 0}>
+                        <span className="cf-preset-thumb">
+                          <CinemaArt seed={p.title} scene={p.scene} className="h-full w-full" />
+                        </span>
+                        <span className="cf-preset-title">{p.title}</span>
+                        <span className="cf-preset-tags">{p.tags}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="ws-label ws-optional">Describe your film</div>
+                  <div className="ws-brief">An epic about an African kingdom fighting for its independence, told over three generations.</div>
+                  <div className="ws-label">Configure</div>
+                  <div className="cf-config-grid ws-config">
+                    <ConfigCard tone="length" icon={<ClockIcon />} label="Length" main="2 minutes" secondary="Final runtime" options={[]} />
+                    <ConfigCard tone="engine" icon={<EngineIcon />} label="Engine" main="Cinematic" secondary="Kling 2.1" options={[]} />
+                    <ConfigCard tone="format" icon={<FormatIcon />} label="Format" main="1080p" secondary="Full HD" options={[]} />
+                  </div>
+                  <div className="ws-create">Create film</div>
+                </div>
+                <div className="ws-preview">
+                  <div className="scene">
+                    <CinemaArt seed="Throne hall at night" scene="interior" className="art-fill" />
+                    <div className="scene-label">SCENE 07 / INT. THRONE HALL / NIGHT</div>
+                    <div className="playhead" />
+                    <div className="timeline">
+                      {TIMELINE.map((c, i) => (
+                        <div key={c.seed} className={`clip${i === 2 ? " is-on" : ""}`}>
+                          <CinemaArt seed={c.seed} scene={c.scene} className="art-fill" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -298,7 +345,7 @@ function Workspace() {
             {[
               ["Camera", "35mm"],
               ["Lens", "50mm"],
-              ["Lighting", "Dawn"],
+              ["Lighting", "Torchlight"],
               ["Character", "Locked"],
               ["World", "Locked"],
               ["Sound", "Original"],
@@ -337,8 +384,8 @@ function StoryChapter() {
           <Link href="/library/characters" className="text-link">Build your cast →</Link>
         </div>
 
-        <div className="chapter-image">
-          <CinemaArt seed="The heir returns — portrait" scene="figure" motion className="art-fill" hud={{ tag: "Frame 002", slug: "INT. THRONE ROOM — NIGHT" }} />
+        <div className="chapter-image chapter-portrait">
+          <StoryCloseUp className="art-fill" />
         </div>
       </div>
     </section>
@@ -446,6 +493,7 @@ function Publish() {
             One film.<br />
             <em>Every screen.</em>
           </h2>
+          <ReleaseScreens />
         </div>
 
         <div className="publish-copy">
@@ -500,6 +548,7 @@ function Voice() {
             story a<br />
             <em>voice.</em>
           </h2>
+          <VoicePresenter />
         </div>
 
         <div className="voice-copy">
@@ -511,12 +560,6 @@ function Voice() {
             One production can speak to audiences across languages without losing the identity of the
             original work.
           </p>
-
-          <div className="voice-wave" aria-hidden>
-            {Array.from({ length: 21 }).map((_, i) => (
-              <span key={i} style={{ animationDelay: `${(i % 7) * 0.09}s` }} />
-            ))}
-          </div>
 
           <div className="channel-list">
             {VOICE_FEATURES.map(([title, chip]) => (
@@ -533,14 +576,6 @@ function Voice() {
     </section>
   );
 }
-
-/** Product kinds pictured by the frame that fits them (Story Worlds read their name). */
-const KIND_SCENE: Record<string, Scene | undefined> = {
-  Character: "figure",
-  "Voice Pack": "stage",
-  Template: "studio",
-  "Asset Pack": "forest",
-};
 
 /* ── 07 · Marketplace ──────────────────────────────────────────────── */
 function Marketplace() {
@@ -561,7 +596,7 @@ function Marketplace() {
         <div className="reel-grid reveal">
           {MARKETPLACE_ITEMS.map((m) => (
             <Link key={m.name} href="/marketplace" className="reel">
-              <CinemaArt seed={`${m.name} ${m.kind}`} scene={KIND_SCENE[m.kind]} className="art-fill" />
+              <AssetVisual kind={m.kind} name={m.name} className="art-fill" />
               <span className="reel-tag">Keep 90%</span>
               <div className="reel-info">
                 <span>{m.kind} · {m.name}</span>

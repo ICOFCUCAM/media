@@ -32,13 +32,13 @@ export function ConfigCard({
   meta?: ReactNode;
   /** The choices this plan can run; one (or none) renders a static card. */
   options: { value: string; label: string }[];
-  value: string;
-  onChange: (value: string) => void;
+  value?: string;
+  onChange?: (value: string) => void;
   /** Tooltip — e.g. why there is only one option. */
   hint?: string;
 }) {
   const id = useId();
-  const selectable = options.length > 1;
+  const selectable = options.length > 1 && !!onChange;
   return (
     <div className="cf-config" data-tone={tone} data-static={selectable ? undefined : ""} title={hint}>
       <div className="flex items-start justify-between">
@@ -65,7 +65,7 @@ export function ConfigCard({
       {secondary && <span className="cf-config-sub">{secondary}</span>}
       {meta && <span className="cf-config-meta">{meta}</span>}
       {selectable && (
-        <select className="cf-config-select" aria-labelledby={`${id}-label`} value={value} onChange={(e) => onChange(e.target.value)}>
+        <select className="cf-config-select" aria-labelledby={`${id}-label`} value={value} onChange={(e) => onChange?.(e.target.value)}>
           {options.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}

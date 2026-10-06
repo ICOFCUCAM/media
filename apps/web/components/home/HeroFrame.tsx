@@ -2,21 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { CinemaArt, type Scene } from "../cf/CinemaArt";
+import { MasterShot } from "./scenes/MasterShot";
 import { listShowcase, publicUrl, type ShowcaseRow } from "../../lib/showcase";
 
 /**
  * The hero's living frame: a film visibly becoming a film. When admins have
  * featured a real film it plays here (muted, looped) and says so; otherwise
  * the frame walks the production path — prompt, storyboard, generation, final
- * cut — on depicted shots. Reduced motion holds a still, finished frame.
+ * cut — on the signature master shot. Reduced motion holds the finished frame.
  */
 
-const SHOTS = [
-  { slug: "EXT. ASHÉRON-KOR — DAWN", scene: "kingdom" as Scene, bg: "linear-gradient(135deg,#6b4a22 0%,#2a2014 55%,#0e1110 100%)" },
-  { slug: "INT. THRONE ROOM — NIGHT", scene: "interior" as Scene, bg: "linear-gradient(135deg,#3d3122 0%,#16130e 60%,#090908 100%)" },
-  { slug: "EXT. SAVANNAH — GOLDEN HOUR", scene: "savannah" as Scene, bg: "linear-gradient(135deg,#7a5320 0%,#4a3416 50%,#1f2a17 100%)" },
-  { slug: "EXT. WAR CAMP — DUSK", scene: "figure" as Scene, bg: "linear-gradient(135deg,#5a2f1f 0%,#2b1a14 55%,#0f1312 100%)" },
-];
+/** The signature master shot's slate — one shot, held through the whole path. */
+const SHOT = { slug: "EXT. ASHÉRON-KOR — DAWN", meta: "Day 1 · 06:12 · 35mm · f/2.8", number: "SHOT 01 / 28" };
 
 /** Scenes the storyboard tiles cycle through. */
 const BOARD: Scene[] = ["kingdom", "figure", "savannah", "interior", "kingdom", "sea", "figure", "forest", "kingdom"];
@@ -28,7 +25,6 @@ const HOLD = [1800, 1300, 1600, 2600];
 
 export function HeroFrame() {
   const [real, setReal] = useState<ShowcaseRow | null>(null);
-  const [shot, setShot] = useState(0);
   const [stage, setStage] = useState(3);
   const [typed, setTyped] = useState(PROMPT.length);
   const [still, setStill] = useState(true);
@@ -38,12 +34,11 @@ export function HeroFrame() {
     setStill(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }, []);
 
-  // Walk the production path on depicted shots.
+  // Walk the production path on the master shot.
   useEffect(() => {
     if (still || real) return;
     const t = setTimeout(() => {
       if (stage === 3) {
-        setShot((s) => (s + 1) % SHOTS.length);
         setTyped(0);
         setStage(0);
       } else setStage(stage + 1);
@@ -58,7 +53,6 @@ export function HeroFrame() {
     return () => clearTimeout(t);
   }, [stage, typed]);
 
-  const s = SHOTS[shot]!;
   const at = real ? 3 : stage;
   const resolving = !real && at === 2;
   const shown = real || at >= 2;
@@ -69,9 +63,8 @@ export function HeroFrame() {
         {real ? (
           <video className="hero-frame-video" src={publicUrl(real.video_path)} autoPlay muted loop playsInline preload="metadata" aria-label={real.title} />
         ) : (
-          <div key={shot} className={`hero-frame-image${shown ? " is-shown" : ""}`} style={{ background: s.bg }}>
-            <CinemaArt seed={s.slug} scene={s.scene} className="art-fill" />
-            <i className="hero-frame-bloom" />
+          <div className={`hero-frame-image${shown ? " is-shown" : ""}`}>
+            <MasterShot idPrefix="hero" className="art-fill" />
           </div>
         )}
         {resolving && <i className="hero-frame-scan" aria-hidden />}
@@ -81,17 +74,11 @@ export function HeroFrame() {
             <span className="hero-frame-badge">
               {real ? "● Real · generated here" : resolving ? "◐ Generating" : at === 3 ? "● 4K · Ready" : `○ ${STAGES[at]}`}
             </span>
-            <span>{real ? real.tag : `SHOT ${String(shot + 3).padStart(2, "0")}/28`}</span>
+            <span>{real ? real.tag : SHOT.number}</span>
           </div>
           <div className="hero-frame-row">
-            <span>{real ? real.title : s.slug}</span>
-            {!real && (
-              <span className="hero-frame-ticks" aria-hidden>
-                {SHOTS.map((_, k) => (
-                  <i key={k} className={k === shot ? "is-on" : ""} />
-                ))}
-              </span>
-            )}
+            <span>{real ? real.title : SHOT.slug}</span>
+            {!real && <span className="hero-frame-meta">{SHOT.meta}</span>}
           </div>
         </div>
         <i className="hero-corner tl" aria-hidden />
@@ -112,7 +99,7 @@ export function HeroFrame() {
           <div className="hero-board">
             {Array.from({ length: 9 }).map((_, k) => (
               <i key={k} className={at >= 1 ? "is-on" : ""} style={{ transitionDelay: `${k * 90}ms` }}>
-                <CinemaArt seed={`${s.slug} board ${k}`} scene={BOARD[k % BOARD.length]} className="art-fill" />
+                <CinemaArt seed={`${SHOT.slug} board ${k}`} scene={BOARD[k % BOARD.length]} className="art-fill" />
               </i>
             ))}
           </div>
