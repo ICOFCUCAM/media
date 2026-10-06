@@ -21,11 +21,21 @@ export const FAMILY_CODE: Record<string, string> = {
 
 const pathOf = (href: string) => href.split(/[?#]/)[0];
 
-/** True when `item` is the page at `pathname` (or a parent of it). */
-export function isActive(item: NavItem, pathname: string): boolean {
+function owns(item: NavItem, pathname: string): boolean {
   const p = pathOf(item.href);
   if (item.href.includes("#")) return false; // in-page anchors never own a route
   return pathname === p || (p !== "/create" && pathname.startsWith(p + "/"));
+}
+
+/**
+ * True when `item` is the page at `pathname` (or a parent of it) and no more
+ * specific entry claims it — /publish/streaming belongs to Streaming, not to
+ * the /publish item above it.
+ */
+export function isActive(item: NavItem, pathname: string): boolean {
+  if (!owns(item, pathname)) return false;
+  const depth = pathOf(item.href).length;
+  return !NAV.some((s) => s.items.some((o) => o !== item && pathOf(o.href).length > depth && owns(o, pathname)));
 }
 
 export function locate(pathname: string, sections: NavSection[] = NAV): { section: NavSection; item: NavItem | null } | null {

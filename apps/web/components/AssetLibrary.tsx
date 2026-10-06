@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "./AuthProvider";
 import { StudioGate } from "./cf/StudioGate";
+import { Composer } from "./cf/Composer";
 import { CinemaArt, type Scene } from "./cf/CinemaArt";
 
 /** How each asset category is pictured until it has real reference art. */
@@ -56,6 +57,7 @@ export function AssetLibrary({ children }: { children?: ReactNode }) {
   return (
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
       <PageHeader
+        art={false}
         eyebrow="Production / Asset archive"
         title={<>The asset<br /><em>archive.</em></>}
         copy={
@@ -68,6 +70,7 @@ export function AssetLibrary({ children }: { children?: ReactNode }) {
       />
       <div className="pt-12">
         <StudioGate signIn="Sign in to build your asset library" what="Assets">
+          <Composer label="New asset" count={items ? items.length : null}>
           <Split>
             <Cell>
               <form onSubmit={onCreate}>
@@ -99,6 +102,7 @@ export function AssetLibrary({ children }: { children?: ReactNode }) {
               <SpecList className="mt-8" rows={ASSET_CATEGORIES.map((c) => [PLURAL[c], String(items?.filter((a) => a.category === c).length ?? 0)])} />
             </Cell>
           </Split>
+          </Composer>
 
           <Section
             label="Catalogue"
@@ -120,14 +124,15 @@ export function AssetLibrary({ children }: { children?: ReactNode }) {
                 hint={items.length === 0 ? "Catalogue your first asset above — it becomes reusable everywhere." : "Try another category."}
               />
             ) : (
-              <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 xl:grid-cols-3">
-                {shown.map((a, i) => (
-                  <article key={a.id} className="flex min-h-[200px] flex-col bg-cf-bg">
-                    <CinemaArt seed={`${a.name} ${a.description ?? ""}`} scene={CATEGORY_SCENE[a.category]} className="aspect-video" hud={{ tag: a.category }} />
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {shown.map((a) => (
+                  <article key={a.id} className="group flex flex-col overflow-hidden rounded-xl border border-cf-line bg-cf-panel transition hover:border-cf-line2">
+                    <div className="overflow-hidden">
+                      <CinemaArt seed={`${a.name} ${a.description ?? ""}`} scene={CATEGORY_SCENE[a.category]} className="aspect-video transition duration-500 group-hover:scale-[1.04]" hud={{ tag: a.category }} />
+                    </div>
                     <div className="flex flex-1 flex-col p-5">
-                      <span className="font-mono text-[11px] text-cf-muted">A / {String(i + 1).padStart(3, "0")}</span>
-                      <h3 className="mt-3 font-display font-semibold text-[24px] leading-tight tracking-[-0.03em]">{a.name}</h3>
-                      <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-cf-muted">{a.description}</p>
+                      <h3 className="font-display text-[22px] font-semibold leading-tight tracking-[-0.03em]">{a.name}</h3>
+                      <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-cf-muted">{a.description}</p>
                     </div>
                   </article>
                 ))}

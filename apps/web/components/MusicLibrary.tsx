@@ -7,6 +7,7 @@ import { EmptyState, PageHeader, Section } from "./cf/primitives";
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
 import { SkeletonRows } from "./Skeleton";
+import { fmtDuration } from "../lib/system";
 
 /**
  * The Score Room (docs/design/score-room-music.html). Music & audio library — every track the pipeline produced for your
@@ -18,7 +19,7 @@ interface TrackRow {
   id: string;
   kind: string;
   key: string;
-  created_at: string;
+  duration_ms: number | null;
   title: string;
 }
 
@@ -31,13 +32,16 @@ export function MusicLibrary() {
     if (!sb || !user) return;
     void (async () => {
       // Per-scene tracks of the user's projects (RLS scopes the join).
-      const { data: scenes } = await sb.from("scenes").select("id,project_id,projects(title)").limit(400);
+      // Newest films first; audio_tracks carries no timestamp, so tracks follow their scene.
+      const { data: scenes } = await sb.from("scenes").select("id,project_id,projects(title)").order("created_at", { ascending: false }).limit(400);
       const sceneTitle = new Map((scenes ?? []).map((s) => [s.id, (s as { projects?: { title?: string } }).projects?.title ?? "Untitled film"]));
       const ids = (scenes ?? []).map((s) => s.id);
       const rows: TrackRow[] = [];
       if (ids.length) {
-        const { data: at } = await sb.from("audio_tracks").select("id,scene_id,kind,key,created_at").in("scene_id", ids).order("created_at", { ascending: false }).limit(60);
-        for (const t of at ?? []) rows.push({ id: t.id, kind: t.kind, key: t.key, created_at: t.created_at, title: sceneTitle.get(t.scene_id) ?? "Untitled" });
+        const order = new Map(ids.map((id, i) => [id, i]));
+        const { data: at } = await sb.from("audio_tracks").select("id,scene_id,kind,key,duration_ms").in("scene_id", ids).limit(60);
+        const sorted = [...(at ?? [])].sort((a, b) => (order.get(a.scene_id) ?? 0) - (order.get(b.scene_id) ?? 0));
+        for (const t of sorted) rows.push({ id: t.id, kind: t.kind, key: t.key, duration_ms: t.duration_ms, title: sceneTitle.get(t.scene_id) ?? "Untitled" });
       }
       setTracks(rows);
     })();
@@ -47,6 +51,7 @@ export function MusicLibrary() {
   return (
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
       <PageHeader
+        art={false}
         eyebrow="Production / The score room"
         title={<>The score<br /><em>room.</em></>}
         copy={
@@ -92,7 +97,7 @@ function TrackRow({ n, row }: { n: number; row: TrackRow }) {
       <span className="font-mono text-[11px] text-cf-muted">{String(n).padStart(2, "0")}</span>
       <div className="min-w-0">
         <div className="truncate font-display font-semibold text-[19px]">{row.title}</div>
-        <div className="cf-label mt-1">{new Date(row.created_at).toLocaleDateString()}</div>
+        {row.duration_ms != null && <div className="cf-label mt-1">{fmtDuration(Math.round(row.duration_ms / 1000))}</div>}
       </div>
       <span className="cf-label">{row.kind.toLowerCase()}</span>
       {url ? <audio controls src={url} className="h-9 w-full" aria-label={`Play ${row.kind.toLowerCase()} from ${row.title}`} /> : <span className="cf-label text-cf-dim">Signing…</span>}

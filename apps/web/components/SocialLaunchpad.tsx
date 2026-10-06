@@ -5,6 +5,7 @@ import { useAuth } from "./AuthProvider";
 import { StudioGate } from "./cf/StudioGate";
 import { Cell, EmptyState, PageHeader, Section, SpecList, Split, Status } from "./cf/primitives";
 import { getSupabase } from "../lib/supabase";
+import { when } from "../lib/when";
 import { SkeletonRows } from "./Skeleton";
 
 /**
@@ -111,10 +112,11 @@ export function SocialLaunchpad() {
   }
 
   const fileCls =
-    "w-full text-[11px] text-cf-muted file:mr-3 file:border file:border-cf-line file:bg-transparent file:px-3 file:py-2 file:font-mono file:text-[11px] file:uppercase file:tracking-[0.1em] file:text-cf-fg hover:file:border-cf-fg";
+    "w-full";
   return (
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
       <PageHeader
+        art={false}
         eyebrow="Publishing / The distribution desk"
         title={<>One film.<br /><em>Every screen.</em></>}
         copy={
@@ -197,7 +199,7 @@ function LaunchCard({ row, onLaunch }: { row: LaunchRow; onLaunch: () => void })
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="truncate font-display font-semibold text-[22px] tracking-[-0.02em]">{row.brief || "Untitled launch"}</div>
-          <div className="cf-label mt-1">{new Date(row.created_at).toLocaleString()}</div>
+          <div className="mt-1 text-[13px] text-cf-muted" title={new Date(row.created_at).toLocaleString()}>{when(row.created_at)}</div>
         </div>
         <div className="flex items-center gap-4">
           <Status tone={tone}>{row.status.replace(/_/g, " ").toLowerCase()}</Status>

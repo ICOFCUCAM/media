@@ -11,9 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Version comes from package.json "packageManager"; setting it here too
+      # makes the action refuse to run.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
@@ -21,6 +21,10 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      # Typecheck and build need the generated Prisma client types.
+      - name: Generate Prisma client
+        run: pnpm db:generate
 
       - name: Validate Prisma schema
         run: pnpm --filter @cineforge/db prisma validate

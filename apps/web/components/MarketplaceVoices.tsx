@@ -27,7 +27,7 @@ export function MarketplaceVoices() {
   return (
     <Section
       label="Live now · community voices"
-      title={`${String(voices.length).padStart(2, "0")} voices on the shelf`}
+      title={voices.length ? `${String(voices.length).padStart(2, "0")} ${voices.length === 1 ? "voice" : "voices"} on the shelf` : "Voices on the shelf"}
       aside={
         <Link href="/library/voices" className="cf-link text-cf-muted hover:text-cf-fg">
           Use one in the Voice Room →

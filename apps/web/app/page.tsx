@@ -7,6 +7,7 @@ import { HeroFrame } from "../components/home/HeroFrame";
 import { WorkspacePreview } from "../components/home/WorkspacePreview";
 import { CinemaArt, type Scene } from "../components/cf/CinemaArt";
 import { ClockIcon, ConfigCard, EngineIcon, FormatIcon } from "../components/cf/ConfigCard";
+import { MasterShot } from "../components/home/scenes/MasterShot";
 import { WorldAtlas } from "../components/home/scenes/WorldAtlas";
 import { StoryCloseUp } from "../components/home/scenes/StoryCloseUp";
 import { ReleaseScreens } from "../components/home/scenes/ReleaseScreens";
@@ -428,7 +429,6 @@ function Capabilities() {
     <section className="section capabilities" id="capabilities">
       <div className="container">
         <div className="eyebrow reveal">The system</div>
-        <div style={{ height: 55 }} />
 
         <div className="capability-track">
           {CAPABILITIES.map((c, i) => (
@@ -491,7 +491,6 @@ function Publish() {
       <div className="container publish-grid reveal">
         <div>
           <div className="eyebrow">05 / RELEASE</div>
-          <div style={{ height: 35 }} />
           <h2>
             One film.<br />
             <em>Every screen.</em>
@@ -545,7 +544,6 @@ function Voice() {
       <div className="container voice-grid reveal">
         <div>
           <div className="eyebrow">06 / VOICE</div>
-          <div style={{ height: 35 }} />
           <h2>
             Give the<br />
             story a<br />
@@ -621,7 +619,6 @@ function Pricing() {
         <div className="pricing-header reveal">
           <div>
             <div className="eyebrow">ACCESS</div>
-            <div style={{ height: 25 }} />
             <h2>
               Enter the<br />
               <em>studio.</em>
@@ -638,9 +635,9 @@ function Pricing() {
             <div key={t.tier} className={`price${t.highlight ? " featured" : ""}`}>
               <div className="price-name">
                 <span>{t.tier}</span>
-                {t.highlight && <span className="price-flag">Most chosen</span>}
+                {t.highlight && <span className="price-flag">Recommended</span>}
               </div>
-              <div className="price-value">{t.price}</div>
+              <PriceValue price={t.price} />
               <div className="price-description">{t.tagline}</div>
               <ul>
                 {t.features.map((f) => (
@@ -648,7 +645,7 @@ function Pricing() {
                 ))}
               </ul>
               <Link href="/pricing" className="price-cta">
-                {t.tier === "Enterprise" ? "Talk to us" : t.tier === "Free" ? "Start free" : `Go ${t.tier}`}
+                {t.tier === "Enterprise" ? "Talk to us" : t.tier === "Free" ? "Start free" : `Choose ${t.tier}`}
               </Link>
             </div>
           ))}
@@ -658,20 +655,42 @@ function Pricing() {
   );
 }
 
+/** "$19/mo" → $19 + /mo; "from $499" → from + $499 — one line, the number leads. */
+function PriceValue({ price }: { price: string }) {
+  const m = price.match(/^(from\s+)?(\$[\d,]+)(\/\w+)?$/i);
+  if (!m) return <div className="price-value">{price}</div>;
+  return (
+    <div className="price-value">
+      {m[1] && <span className="price-pre">{m[1].trim()}</span>}
+      {m[2]}
+      {m[3] && <span className="price-unit">{m[3]}</span>}
+    </div>
+  );
+}
+
 /* ── Final CTA ─────────────────────────────────────────────────────── */
 function FinalCta() {
+  const still = frame("hero");
   return (
     <section className="section final">
+      {/* The closing frame: the film's master shot, held like an end title. */}
+      <div className="final-frame" aria-hidden>
+        {still ? (
+          /* Plain <img>: a static still from public/frames. */
+          <img src={still} alt="" className="art-fill still-fill" loading="lazy" />
+        ) : (
+          <MasterShot idPrefix="final" className="art-fill" />
+        )}
+      </div>
       <div className="container reveal">
         <div className="eyebrow">CINEFORGE / {new Date().getFullYear()}</div>
-        <div style={{ height: 40 }} />
         <h2>
           YOUR STORY.<br />
           <em>YOUR WORLD.</em>
         </h2>
         <p>Enter the production system and build something worth watching.</p>
-        <Link href="/create" className="primary">Enter Cineforge</Link>
-        <Link href="/create/film" className="text-link">Or go straight to the Director&apos;s Room →</Link>
+        <Link href="/create" className="primary">Enter the studio</Link>
+        <Link href="/create/film" className="text-link">Or go straight to the Director’s Room →</Link>
       </div>
     </section>
   );
@@ -681,16 +700,22 @@ function FinalCta() {
 function Footer() {
   return (
     <footer>
-      <div>© {new Date().getFullYear()} Cineforge</div>
-      <div className="footer-links">
+      <div className="footer-brand">
+        <Link href="/" className="logo">
+          <span className="logo-mark" />
+          CINEFORGE
+        </Link>
+        <span>The film production system.</span>
+      </div>
+      <nav className="footer-links" aria-label="Footer">
         <Link href="/create">Studio</Link>
         <Link href="/projects">Films</Link>
         <Link href="/library/voices">Voice</Link>
         <Link href="/publish">Publishing</Link>
         <Link href="/marketplace">Marketplace</Link>
         <Link href="/pricing">Pricing</Link>
-        <a href="https://github.com/ICOFCUCAM/media">Code</a>
-      </div>
+      </nav>
+      <div className="footer-legal">© {new Date().getFullYear()} Cineforge</div>
     </footer>
   );
 }

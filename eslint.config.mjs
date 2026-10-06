@@ -40,4 +40,10 @@ export default tseslint.config(
       "no-empty": ["warn", { allowEmptyCatch: true }],
     },
   },
+
+  // Plain Node scripts (e.g. apps/web/scripts/*.mjs).
+  {
+    files: ["**/scripts/**/*.{js,mjs,cjs}"],
+    languageOptions: { globals: globals.node },
+  },
 );

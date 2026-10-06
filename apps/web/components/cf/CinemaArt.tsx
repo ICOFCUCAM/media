@@ -75,7 +75,8 @@ export function CinemaArt({
   scene?: Scene;
   className?: string;
   /** Viewfinder overlay: a slug bottom-left and a timecode bottom-right. */
-  hud?: { slug?: string; tag?: string } | boolean;
+  /** Overlay: a tag, a slug, and a running timecode only when `time` is set (reel frames). */
+  hud?: { slug?: string; tag?: string; time?: boolean } | boolean;
   letterbox?: boolean;
   /** A slow push-in (off under reduced motion). */
   motion?: boolean;
@@ -135,7 +136,7 @@ export function CinemaArt({
         <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 text-[11px] font-medium uppercase tracking-[0.08em] text-white/85 [text-shadow:0_1px_6px_rgba(0,0,0,.7)]">
           <div className="flex justify-between">
             {hudCfg.tag ? <span className="rounded-sm border border-white/30 bg-black/30 px-1.5 py-0.5">{hudCfg.tag}</span> : <span />}
-            <span className="font-mono">{tc}</span>
+            {hudCfg.time && <span className="font-mono">{tc}</span>}
           </div>
           {hudCfg.slug && <span className="truncate">{hudCfg.slug}</span>}
         </div>

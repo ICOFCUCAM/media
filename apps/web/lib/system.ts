@@ -69,7 +69,7 @@ export function fmtMs(ms: number): string {
 export function fmtDuration(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = Math.round(sec % 60);
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  return m > 0 ? (s ? `${m}m ${s}s` : `${m}m`) : `${s}s`;
 }
 
 /** The subsystems actually built in this repo — the "window into the system". */

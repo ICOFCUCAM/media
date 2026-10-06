@@ -53,6 +53,15 @@ Migrations (idempotent, applied to the live project) are version-controlled in
 | `0003_init_rls.sql` | ownership helpers + RLS enable + per-table policies |
 | `0004_realtime_storage.sql` | Realtime publication + `cineforge-assets` bucket + policies |
 | `0005_hardening.sql` | advisor follow-up: pinned `search_path`, EXECUTE grants |
+| `0006`–`0011` | storyboard mode, scene workbench, continuity, subtitles, publications |
+| `0012_notify_and_waitlist.sql` | finish notifications + marketplace waitlists |
+| `0013`–`0023` | beta credits, voice lab + marketplace, social launches, avatars, Agency tier, teams/brand kits, admin console, showcase, 4K, resolution |
+| `0024_guard_user_columns.sql` | users can't change their own role/tier/credits; admin RPCs closed to `anon` |
+| `0025_admin_policies_use_is_admin.sql` | admin policies use `is_admin()` (the inline checks recursed on `users`) |
+
+Live migration names differ from these file names (the live history uses the
+descriptive part only, with timestamps). Apply new files in order; every
+change made live must land here in the same commit.
 
 Regenerate types after any schema change:
 
@@ -70,7 +79,10 @@ can only touch rows that belong to their own projects.
 - Children traverse via `SECURITY DEFINER` helpers (`owns_project`,
   `owns_scene`, `owns_character`, `owns_series`, `owns_season`) so policies
   don't trigger recursive RLS.
-- Policies target the `authenticated` role; `anon` satisfies nothing.
+- Policies target the `authenticated` role; `anon` satisfies nothing (the
+  public showcase and approved community voices are the read-only exceptions).
+- Admin checks always call `is_admin()` — never an inline
+  `exists (select … from users)`, which recurses through `users`' own policies.
 - **Workers bypass RLS** by using the service-role key — they are the only
   writers of generated shots, renders and films.
 

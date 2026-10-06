@@ -427,3 +427,52 @@ html {
     transform: none;
   }
 }
+
+/* App-wide typographic finish (matches the homepage polish): balanced
+   headlines, no single-word last lines, aligned figures in data. */
+.cf-display,
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+dd,
+td,
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hairline grids (`gap-px bg-cf-line`): draw the rules on the cells, not the
+   container, so a short last row leaves empty space instead of grey blocks. */
+.gap-px.bg-cf-line {
+  background: transparent;
+}
+.gap-px.bg-cf-line > * {
+  box-shadow: 0 0 0 0.5px rgb(var(--cf-line));
+}
+
+/* File pickers in the studio's own button style. */
+input[type="file"] {
+  font: 500 13px var(--font-inter), Inter, sans-serif;
+  color: rgb(var(--cf-muted));
+}
+input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  padding: 9px 14px;
+  border: 1px solid rgb(var(--cf-line2));
+  border-radius: 6px;
+  background: rgb(var(--cf-panel));
+  color: rgb(var(--cf-fg));
+  font: 600 13px var(--font-inter), Inter, sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+input[type="file"]::file-selector-button:hover {
+  border-color: rgb(var(--cf-fg));
+  background: rgb(var(--cf-soft));
+}

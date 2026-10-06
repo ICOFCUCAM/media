@@ -196,12 +196,13 @@ export interface Database {
         Row: {
           id: string;
           scene_id: string;
-          kind: "MUSIC" | "VOICE" | "SFX";
+          kind: "MUSIC" | "VOICE" | "SFX" | "AMBIENCE";
           key: string;
+          start_ms: number;
+          duration_ms: number | null;
           meta: Record<string, unknown> | null;
-          created_at: string;
         };
-        Insert: { scene_id: string; kind: "MUSIC" | "VOICE" | "SFX"; key: string };
+        Insert: { scene_id: string; kind: "MUSIC" | "VOICE" | "SFX" | "AMBIENCE"; key: string };
         Update: Record<string, never>;
         Relationships: [];
       };
@@ -212,7 +213,7 @@ export interface Database {
         Relationships: [];
       };
       brand_kits: {
-        Row: { user_id: string; logo_key: string | null; primary_color: string; secondary_color: string; outro_text: string | null; updated_at: string };
+        Row: { user_id: string; logo_key: string | null; primary_color: string | null; secondary_color: string | null; outro_text: string | null; updated_at: string };
         Insert: { user_id: string; logo_key?: string | null; primary_color?: string; secondary_color?: string; outro_text?: string | null };
         Update: { logo_key?: string | null; primary_color?: string; secondary_color?: string; outro_text?: string | null };
         Relationships: [];

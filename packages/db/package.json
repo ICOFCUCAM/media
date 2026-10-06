@@ -9,7 +9,7 @@
     "prisma": "prisma",
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.drift.json"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0"

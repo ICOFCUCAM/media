@@ -26,6 +26,7 @@ export default function MarketplacePage() {
   return (
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
       <PageHeader
+        art={false}
         eyebrow="Publishing / The exchange"
         title={<>The<br /><em>Exchange.</em></>}
         copy={

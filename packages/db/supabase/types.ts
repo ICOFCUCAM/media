@@ -12,6 +12,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -92,6 +94,98 @@ export type Database = {
             columns: ["scene_id"]
             isOneToOne: false
             referencedRelation: "scenes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avatar_videos: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          image_key: string
+          quality: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          video_key: string | null
+          voiceover_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          image_key: string
+          quality?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+          video_key?: string | null
+          voiceover_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          image_key?: string
+          quality?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          video_key?: string | null
+          voiceover_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avatar_videos_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avatar_videos_voiceover_id_fkey"
+            columns: ["voiceover_id"]
+            isOneToOne: false
+            referencedRelation: "voiceovers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_kits: {
+        Row: {
+          logo_key: string | null
+          outro_text: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          logo_key?: string | null
+          outro_text?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          logo_key?: string | null
+          outro_text?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_kits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -282,9 +376,12 @@ export type Database = {
           duration_sec: number
           hls_key: string | null
           id: string
+          locales: Json | null
+          mp4_4k_key: string | null
           mp4_key: string
           poster_key: string | null
           project_id: string
+          publications: Json | null
           published_at: string | null
           size_bytes: number | null
           subtitle_key: string | null
@@ -296,9 +393,12 @@ export type Database = {
           duration_sec: number
           hls_key?: string | null
           id?: string
+          locales?: Json | null
+          mp4_4k_key?: string | null
           mp4_key: string
           poster_key?: string | null
           project_id: string
+          publications?: Json | null
           published_at?: string | null
           size_bytes?: number | null
           subtitle_key?: string | null
@@ -310,9 +410,12 @@ export type Database = {
           duration_sec?: number
           hls_key?: string | null
           id?: string
+          locales?: Json | null
+          mp4_4k_key?: string | null
           mp4_key?: string
           poster_key?: string | null
           project_id?: string
+          publications?: Json | null
           published_at?: string | null
           size_bytes?: number | null
           subtitle_key?: string | null
@@ -377,6 +480,32 @@ export type Database = {
           },
         ]
       }
+      marketplace_waitlist: {
+        Row: {
+          catalogue: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          catalogue: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          catalogue?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_waitlist_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           aspect_ratio: string
@@ -388,6 +517,7 @@ export type Database = {
           model_id: string
           progress: number
           prompt: string
+          resolution: string
           spent_ms: number
           status: Database["public"]["Enums"]["project_status"]
           target_seconds: number
@@ -405,6 +535,7 @@ export type Database = {
           model_id?: string
           progress?: number
           prompt: string
+          resolution?: string
           spent_ms?: number
           status?: Database["public"]["Enums"]["project_status"]
           target_seconds: number
@@ -418,9 +549,11 @@ export type Database = {
           error_message?: string | null
           estimated_ms?: number | null
           id?: string
+          mode?: string
           model_id?: string
           progress?: number
           prompt?: string
+          resolution?: string
           spent_ms?: number
           status?: Database["public"]["Enums"]["project_status"]
           target_seconds?: number
@@ -439,9 +572,24 @@ export type Database = {
         ]
       }
       relationships: {
-        Row: { from_id: string; id: string; kind: string; to_id: string }
-        Insert: { from_id: string; id?: string; kind: string; to_id: string }
-        Update: { from_id?: string; id?: string; kind?: string; to_id?: string }
+        Row: {
+          from_id: string
+          id: string
+          kind: string
+          to_id: string
+        }
+        Insert: {
+          from_id: string
+          id?: string
+          kind: string
+          to_id: string
+        }
+        Update: {
+          from_id?: string
+          id?: string
+          kind?: string
+          to_id?: string
+        }
         Relationships: [
           {
             foreignKeyName: "relationships_from_id_fkey"
@@ -548,8 +696,12 @@ export type Database = {
       }
       scenes: {
         Row: {
+          bridge: Json | null
           camera: string | null
+          character_ref: string | null
+          continuity_score: number | null
           created_at: string
+          depends_on: number[]
           dialogue: string | null
           duration_sec: number
           episode_id: string | null
@@ -562,17 +714,22 @@ export type Database = {
           music: string | null
           narration: string | null
           project_id: string
+          state_patch: Json | null
           status: Database["public"]["Enums"]["scene_status"]
+          subtitles: Json | null
           summary: string
           time_of_day: string | null
           updated_at: string
           weather: string | null
-          character_ref: string | null
           world_ref: string | null
         }
         Insert: {
+          bridge?: Json | null
           camera?: string | null
+          character_ref?: string | null
+          continuity_score?: number | null
           created_at?: string
+          depends_on?: number[]
           dialogue?: string | null
           duration_sec?: number
           episode_id?: string | null
@@ -585,17 +742,22 @@ export type Database = {
           music?: string | null
           narration?: string | null
           project_id: string
+          state_patch?: Json | null
           status?: Database["public"]["Enums"]["scene_status"]
+          subtitles?: Json | null
           summary: string
           time_of_day?: string | null
           updated_at?: string
           weather?: string | null
-          character_ref?: string | null
           world_ref?: string | null
         }
         Update: {
+          bridge?: Json | null
           camera?: string | null
+          character_ref?: string | null
+          continuity_score?: number | null
           created_at?: string
+          depends_on?: number[]
           dialogue?: string | null
           duration_sec?: number
           episode_id?: string | null
@@ -608,12 +770,13 @@ export type Database = {
           music?: string | null
           narration?: string | null
           project_id?: string
+          state_patch?: Json | null
           status?: Database["public"]["Enums"]["scene_status"]
+          subtitles?: Json | null
           summary?: string
           time_of_day?: string | null
           updated_at?: string
           weather?: string | null
-          character_ref?: string | null
           world_ref?: string | null
         }
         Relationships: [
@@ -752,7 +915,9 @@ export type Database = {
         Row: {
           attempts: number
           cache_key: string | null
+          camera_movement: string | null
           camera_plan: Json | null
+          camera_type: string | null
           created_at: string
           duration_sec: number
           gpu_ms: number | null
@@ -764,12 +929,10 @@ export type Database = {
           prompt: string
           prompt_hash: string | null
           qc_score: number | null
+          reference_video_key: string | null
           scene_id: string
           seed: number | null
           seed_image_key: string | null
-          camera_type: string | null
-          camera_movement: string | null
-          reference_video_key: string | null
           source: string
           status: Database["public"]["Enums"]["shot_status"]
           thumbnail_key: string | null
@@ -779,7 +942,9 @@ export type Database = {
         Insert: {
           attempts?: number
           cache_key?: string | null
+          camera_movement?: string | null
           camera_plan?: Json | null
+          camera_type?: string | null
           created_at?: string
           duration_sec?: number
           gpu_ms?: number | null
@@ -791,12 +956,10 @@ export type Database = {
           prompt: string
           prompt_hash?: string | null
           qc_score?: number | null
+          reference_video_key?: string | null
           scene_id: string
           seed?: number | null
           seed_image_key?: string | null
-          camera_type?: string | null
-          camera_movement?: string | null
-          reference_video_key?: string | null
           source?: string
           status?: Database["public"]["Enums"]["shot_status"]
           thumbnail_key?: string | null
@@ -806,7 +969,9 @@ export type Database = {
         Update: {
           attempts?: number
           cache_key?: string | null
+          camera_movement?: string | null
           camera_plan?: Json | null
+          camera_type?: string | null
           created_at?: string
           duration_sec?: number
           gpu_ms?: number | null
@@ -818,11 +983,11 @@ export type Database = {
           prompt?: string
           prompt_hash?: string | null
           qc_score?: number | null
+          reference_video_key?: string | null
           scene_id?: string
           seed?: number | null
-          camera_type?: string | null
-          camera_movement?: string | null
-          reference_video_key?: string | null
+          seed_image_key?: string | null
+          source?: string
           status?: Database["public"]["Enums"]["shot_status"]
           thumbnail_key?: string | null
           updated_at?: string
@@ -834,6 +999,80 @@ export type Database = {
             columns: ["scene_id"]
             isOneToOne: false
             referencedRelation: "scenes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      showcase: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string | null
+          tag: string
+          title: string
+          video_path: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          tag?: string
+          title: string
+          video_path: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          tag?: string
+          title?: string
+          video_path?: string
+        }
+        Relationships: []
+      }
+      social_launches: {
+        Row: {
+          brief: string
+          created_at: string
+          error_message: string | null
+          id: string
+          kit: Json | null
+          results: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+          video_key: string
+        }
+        Insert: {
+          brief?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          kit?: Json | null
+          results?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          video_key: string
+        }
+        Update: {
+          brief?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          kit?: Json | null
+          results?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          video_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_launches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -875,6 +1114,41 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_invites: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          owner_id: string
+          role: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          owner_id: string
+          role?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          owner_id?: string
+          role?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invites_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -931,6 +1205,7 @@ export type Database = {
           display_name: string | null
           email: string
           id: string
+          notify_on_finish: boolean
           role: Database["public"]["Enums"]["role"]
           stripe_id: string | null
           tier: Database["public"]["Enums"]["tier"]
@@ -942,6 +1217,7 @@ export type Database = {
           display_name?: string | null
           email: string
           id: string
+          notify_on_finish?: boolean
           role?: Database["public"]["Enums"]["role"]
           stripe_id?: string | null
           tier?: Database["public"]["Enums"]["tier"]
@@ -953,12 +1229,123 @@ export type Database = {
           display_name?: string | null
           email?: string
           id?: string
+          notify_on_finish?: boolean
           role?: Database["public"]["Enums"]["role"]
           stripe_id?: string | null
           tier?: Database["public"]["Enums"]["tier"]
           updated_at?: string
         }
         Relationships: []
+      }
+      voiceovers: {
+        Row: {
+          audio_key: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          language: string
+          status: string
+          text: string
+          title: string
+          updated_at: string
+          user_id: string
+          voice_id: string | null
+        }
+        Insert: {
+          audio_key?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          language?: string
+          status?: string
+          text: string
+          title: string
+          updated_at?: string
+          user_id: string
+          voice_id?: string | null
+        }
+        Update: {
+          audio_key?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          language?: string
+          status?: string
+          text?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          voice_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voiceovers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voiceovers_voice_id_fkey"
+            columns: ["voice_id"]
+            isOneToOne: false
+            referencedRelation: "voices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voices: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          name: string
+          provider: string | null
+          provider_voice_id: string | null
+          sample_key: string | null
+          share_status: string
+          share_terms: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          name: string
+          provider?: string | null
+          provider_voice_id?: string | null
+          sample_key?: string | null
+          share_status?: string
+          share_terms?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          name?: string
+          provider?: string | null
+          provider_voice_id?: string | null
+          sample_key?: string | null
+          share_status?: string
+          share_terms?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voices_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wardrobes: {
         Row: {
@@ -1035,6 +1422,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_list_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          credits_ms: number
+          email: string
+          id: string
+          projects: number
+          role: string
+          tier: string
+        }[]
+      }
+      grant_credits: {
+        Args: { minutes: number; target_email: string }
+        Returns: number
+      }
       is_admin: { Args: never; Returns: boolean }
       owns_character: { Args: { c: string }; Returns: boolean }
       owns_project: { Args: { p: string }; Returns: boolean }
@@ -1079,10 +1482,175 @@ export type Database = {
         | "QC_FAIL"
         | "READY"
         | "FAILED"
-      tier: "FREE" | "CREATOR" | "STUDIO" | "ENTERPRISE"
+      tier: "FREE" | "CREATOR" | "STUDIO" | "AGENCY" | "ENTERPRISE"
     }
     CompositeTypes: {
       [_ in never]: never
     }
   }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      audio_kind: ["VOICE", "MUSIC", "SFX", "AMBIENCE"],
+      location_kind: [
+        "CITY",
+        "KINGDOM",
+        "BUILDING",
+        "ROOM",
+        "LANDSCAPE",
+        "INTERIOR",
+        "EXTERIOR",
+      ],
+      project_status: [
+        "DRAFT",
+        "PLANNING",
+        "GENERATING",
+        "RENDERING",
+        "PAUSED",
+        "READY",
+        "FAILED",
+      ],
+      render_status: ["QUEUED", "ASSEMBLING", "TRANSCODING", "DONE", "FAILED"],
+      role: ["USER", "ADMIN"],
+      scene_status: [
+        "PENDING",
+        "PROMPTING",
+        "GENERATING",
+        "AUDIO",
+        "QC",
+        "READY",
+        "FAILED",
+      ],
+      shot_status: [
+        "PENDING",
+        "QUEUED",
+        "GENERATING",
+        "UPLOADED",
+        "QC_PASS",
+        "QC_FAIL",
+        "READY",
+        "FAILED",
+      ],
+      tier: ["FREE", "CREATOR", "STUDIO", "AGENCY", "ENTERPRISE"],
+    },
+  },
+} as const
