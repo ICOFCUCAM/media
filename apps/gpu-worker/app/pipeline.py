@@ -168,11 +168,27 @@ class VideoPipeline:
         video_op: str | None = None,
         motion_strength: float | None = None,
         lora_keys: list[str] | None = None,
+        input_urls: dict[str, str] | None = None,
+        legacy_fallback: bool = False,
     ) -> tuple[str, str | None]:
-        """Run inference and return (local_mp4_path, local_thumbnail_path)."""
+        """Run inference and return (local_mp4_path, local_thumbnail_path).
+
+        `input_urls` maps each input key to a one-time presigned URL (docs/39).
+        When given, inputs are fetched only through it; the legacy direct-bucket
+        read remains for report-mode callers that do not send URLs yet.
+        """
         self.load()
+        self._input_urls = input_urls
+        # Report mode only: if a presigned fetch fails, read the bucket directly
+        # as before, so observing the gateway never breaks generation.
+        self._legacy_fallback = legacy_fallback
         lora_keys = lora_keys or []
         if not self._real:
+            # Placeholder mode still fetches every presigned input, so the
+            # one-time I/O path is exercised end to end without a GPU.
+            if input_urls is not None:
+                for key in [*reference_image_keys, *(reference_video_keys or []), *lora_keys]:
+                    os.unlink(self._download(key))
             return self._placeholder(prompt, width, height, duration_sec, fps, reference_image_keys, video_op, lora_keys)
 
         import torch  # noqa: PLC0415
@@ -243,7 +259,19 @@ class VideoPipeline:
 
     # ── helpers ──────────────────────────────────────────────
     def _download(self, key: str) -> str:
-        """Download an S3 object (reference frame / LoRA) to a temp file."""
+        """Download an input (reference frame / LoRA) to a temp file."""
+        urls = getattr(self, "_input_urls", None)
+        if urls is not None:
+            from .media_io import fetch_to_temp, suffix_of  # noqa: PLC0415
+
+            try:
+                if key not in urls:
+                    raise RuntimeError("input key has no presigned URL")
+                return fetch_to_temp(urls[key], suffix=suffix_of(key))
+            except Exception as e:  # noqa: BLE001
+                if not getattr(self, "_legacy_fallback", False):
+                    raise
+                print(f'{{"event":"gateway.io_fallback","direction":"input","error":{type(e).__name__!r}}}')
         import boto3  # noqa: PLC0415
 
         s3 = boto3.client(
@@ -267,7 +295,7 @@ class VideoPipeline:
                 "-f", "lavfi", "-i", f"color=c=gray:s={width}x{height}:d={duration_sec}:r={fps}",
                 "-vf", (
                     f"drawtext=text='{_san(prompt)[:40]}':fontcolor=white:fontsize=24:x=20:y=20,"
-                    f"drawtext=text='{signals}':fontcolor=white:fontsize=18:x=20:y=56"
+                    f"drawtext=text='{_san(signals)}':fontcolor=white:fontsize=18:x=20:y=56"
                 ),
                 "-c:v", "libx264", "-pix_fmt", "yuv420p", out,
             ],

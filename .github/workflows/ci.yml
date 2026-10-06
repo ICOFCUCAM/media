@@ -58,3 +58,48 @@ jobs:
       - name: Gateway security tests
         run: python -m pytest -q
         working-directory: apps/gpu-worker
+
+  # docs/39 PR 2 acceptance: the real GPU worker in GATEWAY_MODE=enforce,
+  # driven by the real TypeScript Gateway Authority (happy path + rejections).
+  gateway-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install gpu-worker runtime deps (no ML stack needed in placeholder mode)
+        run: pip install fastapi==0.111.0 "uvicorn[standard]==0.30.0" pydantic==2.7.0 "PyJWT[crypto]==2.9.0"
+      - name: Install ffmpeg (placeholder clips)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Gateway end-to-end acceptance
+        run: pnpm --filter @cineforge/model-adapters exec vitest run e2e
+        env:
+          GATEWAY_E2E: "1"
+
+  # Migration 0026 applied to a scratch Postgres with its validation script.
+  migration-0026:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply 0026 and run its validation
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f packages/db/supabase/tests/supabase-stubs.sql
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f packages/db/supabase/migrations/0026_runtime_gateway.sql
+          psql "$PGURL" -v ON_ERROR_STOP=1 -f packages/db/supabase/tests/0026_runtime_gateway.test.sql

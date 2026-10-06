@@ -20,9 +20,18 @@ T2V = ("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", "a" * 40)
 I2V = ("Wan-AI/Wan2.1-I2V-14B-480P-Diffusers", "b" * 40)
 
 
+OUTPUT = {"videoKey": "projects/p1/video/grant-1.mp4", "videoUploadUrl": "https://store.example/put/v?sig=1",
+          "thumbnailKey": "projects/p1/video/grant-1.thumb.jpg", "thumbnailUploadUrl": "https://store.example/put/t?sig=1"}
+
+
 def gen_body(**over) -> bytes:
     body = {"jobId": "grant-1", "prompt": "a lighthouse at dusk", "durationSec": 5.0,
-            "width": 832, "height": 480, "fps": 16, **over}
+            "width": 832, "height": 480, "fps": 16, "output": OUTPUT, **over}
+    if body.get("output") is None:
+        body.pop("output")
+    keys = [*(body.get("referenceImageKeys") or []), *(body.get("loraKeys") or [])]
+    if keys and "inputUrls" not in body:
+        body["inputUrls"] = {k: f"https://store.example/get/{k}?sig=1" for k in keys}
     return json.dumps(body).encode()
 
 
@@ -74,12 +83,52 @@ def test_livez_is_public_and_discloses_nothing(signing_key):
 
 
 def test_authorized_generate_runs(signing_key, mint):
-    client, pipeline, _ = build_client(signing_key)
+    client, pipeline, app = build_client(signing_key)
     body = gen_body()
     with client:
         r = post(client, body, mint.token(body, authz=cineforge_authz()))
     assert r.status_code == 200, r.text
     assert len(pipeline.calls) == 1
+    # Outputs go only to the keys Cineforge granted, through the one-time URL.
+    assert r.json()["videoKey"] == OUTPUT["videoKey"] and r.json()["videoBytes"] == 4321
+    assert app.state.fake_store.puts == [(OUTPUT["videoUploadUrl"], "video/mp4")]
+    assert app.state.fake_store.legacy == []
+
+
+def test_enforce_requires_output_target(signing_key, mint):
+    client, pipeline, _ = build_client(signing_key)
+    body = gen_body(output=None)
+    with client:
+        r = post(client, body, mint.token(body, authz=cineforge_authz()))
+    assert r.json()["detail"]["error"] == "OUTPUT_TARGET_MISSING" and pipeline.calls == []
+
+
+def test_enforce_requires_a_url_for_every_input(signing_key, mint):
+    client, pipeline, _ = build_client(signing_key)
+    body = gen_body(loraKeys=["projects/p1/identities/c1/v1/lora.safetensors"], inputUrls={})
+    authz = cineforge_authz(loras=("projects/p1/identities/c1/v1/lora.safetensors",))
+    with client:
+        r = post(client, body, mint.token(body, authz=authz))
+    assert r.json()["detail"]["error"] == "INPUT_URL_MISSING" and pipeline.calls == []
+
+
+def test_presigned_input_urls_reach_the_pipeline(signing_key, mint):
+    client, pipeline, _ = build_client(signing_key)
+    body = gen_body(loraKeys=["projects/p1/identities/c1/v1/lora.safetensors"])
+    authz = cineforge_authz(loras=("projects/p1/identities/c1/v1/lora.safetensors",))
+    with client:
+        r = post(client, body, mint.token(body, authz=authz))
+    assert r.status_code == 200, r.text
+    assert pipeline.calls[0]["input_urls"] == {"projects/p1/identities/c1/v1/lora.safetensors":
+                                               "https://store.example/get/projects/p1/identities/c1/v1/lora.safetensors?sig=1"}
+
+
+def test_enforce_refuses_to_start_with_storage_credentials(signing_key, monkeypatch):
+    monkeypatch.setenv("S3_SECRET_KEY", "permanent-secret")
+    client, _, _ = build_client(signing_key)
+    with pytest.raises(GatewayConfigError):
+        with client:
+            pass
 
 
 def test_status_scope_reads_health_and_manifest(signing_key, mint):
@@ -180,7 +229,7 @@ def test_unpinned_real_model_is_unresolved(signing_key, mint):
 
 def test_timing_fields_must_be_explicit(signing_key, mint):
     client, pipeline, _ = build_client(signing_key)
-    body = json.dumps({"jobId": "grant-1", "prompt": "x"}).encode()  # relies on defaults
+    body = json.dumps({"jobId": "grant-1", "prompt": "x", "output": OUTPUT}).encode()  # timing relies on defaults
     with client:
         r = post(client, body, mint.token(body, authz=cineforge_authz()))
     assert r.status_code == 422 and r.json()["detail"]["error"] == "TIMING_MISSING"
@@ -219,6 +268,15 @@ def test_report_mode_serves_legacy_client(signing_key):
     assert r.status_code == 200 and len(pipeline.calls) == 1
 
 
+def test_report_mode_legacy_client_keeps_direct_upload(signing_key):
+    client, pipeline, app = build_client(signing_key, mode="report")
+    body = json.dumps({"prompt": "x", "durationSec": 5.0, "width": 832, "height": 480, "fps": 16}).encode()
+    with client:
+        r = post(client, body, None)
+    assert r.status_code == 200 and r.json()["videoKey"].startswith("_generated/")
+    assert len(app.state.fake_store.legacy) == 1
+
+
 # ── fail-closed startup in enforce mode ───────────────────────────────────────
 
 def test_enforce_startup_requires_deployment_id(signing_key):
@@ -242,3 +300,56 @@ def _runtime() -> str:
         return f"diffusers@{metadata.version('diffusers')}"
     except metadata.PackageNotFoundError:
         return "diffusers@unknown"
+
+
+# ── authentication happens before request parsing ─────────────────────────────
+
+def test_malformed_body_without_token_is_401_not_a_schema_error(signing_key):
+    client, pipeline, _ = build_client(signing_key)
+    with client:
+        r = client.post("/generate", content=b"{not json", headers={"content-type": "application/json"})
+    assert r.status_code == 401 and r.json()["detail"]["error"] == "MISSING_TOKEN"
+    assert pipeline.calls == []
+
+
+def test_malformed_body_with_valid_token_is_422(signing_key, mint):
+    client, pipeline, _ = build_client(signing_key)
+    body = b'{"prompt": 5}'
+    with client:
+        r = post(client, body, mint.token(body))
+    assert r.status_code == 422 and r.json()["detail"]["error"] == "INVALID_REQUEST"
+    assert pipeline.calls == []
+
+
+# ── report mode never lets the new I/O path break generation ─────────────────
+
+def test_report_mode_falls_back_when_presigned_upload_fails(signing_key, mint):
+    from .conftest import FakeStore
+
+    class FailingPut(FakeStore):
+        def put(self, url, local, content_type):
+            raise OSError("upload refused")
+
+    store = FailingPut()
+    client, pipeline, _ = build_client(signing_key, mode="report", store=store)
+    body = gen_body()
+    with client:
+        r = post(client, body, mint.token(body, authz=cineforge_authz()))
+    assert r.status_code == 200 and r.json()["videoKey"].startswith("_generated/")
+    assert len(store.legacy) == 1
+
+
+def test_enforce_mode_never_falls_back_on_upload_failure(signing_key, mint):
+    from .conftest import FakeStore
+
+    class FailingPut(FakeStore):
+        def put(self, url, local, content_type):
+            raise OSError("upload refused")
+
+    store = FailingPut()
+    client, _, _ = build_client(signing_key, store=store)
+    body = gen_body()
+    with client:
+        with pytest.raises(OSError):
+            post(client, body, mint.token(body, authz=cineforge_authz()))
+    assert store.legacy == []

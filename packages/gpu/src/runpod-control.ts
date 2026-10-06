@@ -17,7 +17,7 @@ export interface RunpodControlOptions {
   podId?: string;
   /** Endpoint id (serverless mode) — toggle min workers. */
   endpointId?: string;
-  /** Health URL of the gpu-worker for readiness checks. */
+  /** Readiness URL of the gpu-worker (`/livez`, public; docs/39). */
   healthUrl: string;
   apiBase?: string; // default https://api.runpod.io
 }
@@ -75,12 +75,23 @@ export class RunpodControlClient {
     }
   }
 
-  /** Is the gpu-worker actually serving (model loaded)? Used after start(). */
+  /**
+   * Is the gpu-worker actually serving (model loaded)? Used after start().
+   * Probes the public `/livez` route: the worker loads the model before it
+   * accepts connections, so a plain `ok` means ready. `/health` needs a
+   * gateway token (docs/39); its JSON is still accepted for older workers.
+   */
   async isHealthy(): Promise<boolean> {
     try {
-      const res = await fetch(this.opts.healthUrl, { signal: AbortSignal.timeout(5000) });
+      let res = await fetch(this.opts.healthUrl, { signal: AbortSignal.timeout(5000) });
+      // A worker image older than the gateway has no /livez; fall back to /health.
+      if (res.status === 404 && this.opts.healthUrl.endsWith("/livez")) {
+        res = await fetch(this.opts.healthUrl.replace(/\/livez$/, "/health"), { signal: AbortSignal.timeout(5000) });
+      }
       if (!res.ok) return false;
-      const body = (await res.json()) as { status?: string; modelLoaded?: boolean };
+      const text = (await res.text()).trim();
+      if (text === "ok") return true;
+      const body = JSON.parse(text) as { status?: string; modelLoaded?: boolean };
       return (body.status === "ok" || body.status === "healthy") && body.modelLoaded !== false;
     } catch {
       return false;

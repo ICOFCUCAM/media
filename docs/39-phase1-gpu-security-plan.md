@@ -1,6 +1,6 @@
 # 39 — Phase 1 implementation plan: GPU security / Media Runtime Gateway
 
-Status: **APPROVED (2026-10-06) with all six recommended options in §7. PR 1 implemented; PRs 2–5 pending.**
+Status: **APPROVED (2026-10-06) with all six recommended options in §7. PR 1 merged (`67ac8ae`); PR 2 implemented (under review). Production stays in report mode.**
 Implements: docs/38 v2.6, **§AX.2 Phase 1**, which is specified in §O, §P, §Y, §AV.2, §AV.3 and §AW.11 (tests 5, 6).
 Date: 2026-10-06.
 
@@ -274,3 +274,63 @@ Original decision text:
   - whether the production pod URL is a pod proxy URL or a serverless endpoint (the client shape implies a pod proxy).
 
   PR 5's runbook includes the checks you run to confirm these.
+
+
+## 9. PR 2 as delivered — Cineforge controls and authorizes GPU execution
+
+PR 2 carries what §6 split into PRs 2 and 3, per the "GO — start PR 2"
+directive: token issuance, job authorization, audit (migration 0026),
+image-digest pinning, enforcement configuration, and the one-time storage URLs
+with the Supabase fallback. ComfyUI, models, A/V and billing are untouched.
+
+**Chain of trust.** Cineforge job (shot row read fresh before dispatch) →
+Gateway Authority (`packages/model-adapters/src/gateway`) checks the job, the
+registered + approved deployment and, in enforce, the provider-attested image
+digest → mints an Ed25519 token bound to deployment, scope, job, exact body and
+the authorization digest computed from the **approved manifest** → the GPU
+worker verifies it (PR 1) and recomputes the digest from what it would run →
+execution reads/writes only through one-time URLs → Cineforge accepts only the
+granted output key after a HEAD/size check → grant row completed.
+
+**Image digest.** The authoritative running image comes from the provider's
+control plane (RunPod `pod.imageName`), never from the pod. Enforcement needs it
+to equal the approved `repo@sha256:<digest>`; the authority re-checks it on
+dispatch (cached ≤ 60 s). `/capabilities` also reports the baked-in source
+commit as status information. CI prints the digest of every built image.
+
+**Modes.** Cineforge side: per-deployment `runtime_deployments.enforcement`
+(default `report`), plus a global floor `GPU_GATEWAY_MODE` (default `report`).
+GPU side: `GATEWAY_MODE` (default `report`). Deploying code changes none of
+these. The only path to `enforce` for a deployment is
+`gateway:admin enforce`, which checks live, at that moment: approval and
+manifest; immutable approved image; provider-reported image equal to it; pod
+reports enforce + its deployment id + the approved manifest; pod refuses an
+unauthenticated request and a forged token. The switch and its evidence are
+written to `runtime_gateway_events`; a database trigger also records every
+change to a deployment row, however it is made.
+
+### 9.1 Security targets and known limitations (accepted for PR 2)
+
+| Item | Cineforge target | Current state | Status |
+|---|---|---|---|
+| Upload URL lifetime | **30 minutes** (S3 presigned PUT, the default path) | 30 minutes | meets target |
+| Upload URL lifetime, Supabase fallback (`GPU_UPLOAD_URL_MODE=supabase`) | 30 minutes | **≈ 2 hours, provider-imposed** (Supabase signed upload URLs have a fixed validity); single-use, unique per grant, cannot overwrite, no permanent credential exposed, scope limited to that job's object | **accepted limitation — not the target**. Tighten when Supabase allows a shorter TTL or the fallback mechanism changes |
+| LoRA / adapter binding in the authorization digest | **content-addressed**: model → revision → artifact → content hash → approved manifest → execution token | authz v1 binds LoRAs by **storage key (filename) only** | **known security limitation**, not equivalent to content-addressed integrity. Authz v2 adds the artifact content hash and must land before Wan 3.x, ComfyUI workflows, new LoRAs or Qwen-Image are authorized |
+
+## 10. Rollout runbook (operator actions)
+
+| Step | Action | Production effect |
+|---|---|---|
+| 0 | Merge PR 2. Apply migration 0026 to the Supabase project (same as earlier migrations), regenerate `packages/db/supabase/types.ts`. | none — report mode; audit rows start appearing once keys are set |
+| 1 | `pnpm --filter @cineforge/worker gateway:admin keygen` → set `GPU_JWT_SIGNING_KEY` on Render (secret) and `GPU_JWT_PUBLIC_KEYS` on the pod. Set `DEPLOYMENT_ID` on the pod. | calls become signed; pod (report mode) logs verification results |
+| 2 | Pin the pod image to the digest from the build summary (`<user>/cineforge-gpu@sha256:…`), set `WAN_MODEL_REVISION` (and I2V/Hunyuan revisions if used), restart. | pinned image, pinned weights |
+| 3 | `gateway:admin register --id … --model wan-2.1 --url … --pod …`, then `gateway:admin approve --id … --image <user>/cineforge-gpu@sha256:…` | deployment approved; still report |
+| 4 | Verify presigned uploads work against Supabase: run one shot; check its grant row is `completed` (not `completed_unverified`) and the clip is under `projects/{id}/video/`. If uploads fail, set `GPU_UPLOAD_URL_MODE=supabase` (+ `SUPABASE_SERVICE_ROLE_KEY` on Render) and repeat. | outputs move to the project layout |
+| 5 | Pod: `GATEWAY_MODE=enforce`, **remove** `S3_ACCESS_KEY` / `S3_SECRET_KEY` from the pod env, restart (it refuses to start otherwise). Then `gateway:admin enforce --id …`. | GPU path enforced end to end |
+| 6 | After step 5 is verified with real shots: **rotate the Supabase S3 keys** and update them on Render only. Never put them back on a pod. | old keys (once present on a GPU host) are dead |
+| 7 | Optional global floor: `GPU_GATEWAY_MODE=enforce` on Render, so any unregistered GPU URL is refused too. | strict everywhere |
+
+Rollback at any point: `gateway:admin report --id … --reason "…"` (recorded)
+and/or `GATEWAY_MODE=report` on the pod. Do not rotate the S3 keys (step 6)
+before step 5 is live and verified: until then the report-mode path still uses
+them.

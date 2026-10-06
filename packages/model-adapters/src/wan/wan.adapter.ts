@@ -59,6 +59,7 @@ export class WanAdapter implements VideoModelAdapter {
         extra: req.extra,
       },
       signal,
+      req.job,
     );
     return {
       videoKey: out.videoKey,

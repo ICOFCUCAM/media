@@ -1,3 +1,4 @@
+import type { JobContext } from "./gateway/types";
 /**
  * Video model abstraction layer.
  *
@@ -48,6 +49,8 @@ export interface ShotRequest {
   camera?: CameraPlan;
   /** Free-form, model-specific knobs (motion strength, guidance, steps). */
   extra?: Record<string, unknown>;
+  /** The Cineforge job this shot belongs to, for GPU execution authorization (docs/39). */
+  job?: JobContext;
 }
 
 /** Video-to-video operations (mirror the Video → Video studio). */

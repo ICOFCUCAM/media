@@ -22,6 +22,10 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 
+# Source commit baked in at build time (reported by /capabilities, scope status).
+ARG SOURCE_COMMIT=unknown
+ENV CINEFORGE_SOURCE_COMMIT=${SOURCE_COMMIT}
+
 # Model selection + Hugging Face cache (mount a volume here to persist weights).
 ENV MODEL_NAME=wan-2.1
 ENV HF_HOME=/root/.cache/huggingface
