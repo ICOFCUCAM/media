@@ -2,17 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "./AuthProvider";
-import { AuthCard } from "./AuthCard";
+import { StudioGate } from "./cf/StudioGate";
+import { EmptyState, PageHeader, Section, Status } from "./cf/primitives";
+import { fmtDuration } from "../lib/system";
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
 import { HlsPlayer } from "./HlsPlayer";
 import { SkeletonCards } from "./Skeleton";
 import { featureFilm } from "../lib/showcase";
 
-/** Streaming — your channel: every finished film with adaptive playback
+/** The Screening Room (docs/design/screening-room.html). Streaming — your channel: every finished film with adaptive playback
  *  (HLS ladder when rendered, MP4 fallback) and per-title stats. */
 export function StreamingChannel() {
-  const { enabled, loading, user, profile } = useAuth();
+  const { user, profile } = useAuth();
   const isAdmin = profile?.role === "ADMIN";
   const [notice, setNotice] = useState<string | null>(null);
   const [titles, setTitles] = useState<
@@ -59,84 +61,128 @@ export function StreamingChannel() {
     setNotice(null);
     try {
       await featureFilm(t.projectId, t.mp4Key, t.title);
-      setNotice(`"${t.title}" is now featured on the homepage ✓`);
+      setNotice(`“${t.title}” is now featured on the homepage.`);
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "Feature failed");
     }
   }
 
+  const totalViews = titles?.reduce((t, x) => t + x.views, 0) ?? 0;
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Streaming</h1>
-        <p className="mt-1 text-sm text-white/55">Your channel — every finished title, streamable now. Public channel pages ship next.</p>
-      </header>
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="Publishing / Screening"
+        title={<>The<br /><em>Screening</em><br />Room.</>}
+        copy={
+          <>
+            <p>Finished work deserves a place of its own. Every completed production screens here with adaptive playback and its own numbers.</p>
+            <p><strong>Your private channel today — public channel pages are not built yet.</strong></p>
+          </>
+        }
+        status={titles ? { tone: titles.length ? "live" : "idle", label: `${titles.length} titles · ${totalViews} views` } : { tone: "idle", label: "Screening room" }}
+      />
+      <div className="pt-12">
+        <StudioGate signIn="Sign in to open your channel" what="Screenings">
+          {!titles ? (
+            <SkeletonCards cards={2} />
+          ) : titles.length === 0 ? (
+            <EmptyState
+              title={<>Nothing to <em>screen yet.</em></>}
+              hint="Your channel fills itself as productions complete."
+              action={{ label: "Enter the studio", href: "/create" }}
+            />
+          ) : (
+            <>
+              <section aria-label="Featured screening">
+                <div className="mb-5 flex items-end justify-between gap-4">
+                  <div>
+                    <div className="cf-label">Featured screening</div>
+                    <div className="mt-2 font-serif text-[28px] leading-none tracking-[-0.03em]">{current?.title}</div>
+                  </div>
+                  <span className="cf-label">Master / {fmtDuration(Math.round(current?.duration ?? 0))}</span>
+                </div>
+                <div className="cf-dark grid gap-px bg-cf-line lg:grid-cols-[1.4fr_0.6fr]">
+                  <div className="bg-cf-bg p-4 sm:p-8">{current?.url && <HlsPlayer key={current.projectId} src={current.url} />}</div>
+                  <div className="flex flex-col bg-cf-bg p-6 sm:p-8">
+                    <div className="cf-label">Cineforge premiere</div>
+                    <h2 className="cf-display mt-4 text-[clamp(32px,3.6vw,52px)] leading-[0.95]">{current?.title}</h2>
+                    <dl className="mt-8 grid grid-cols-3 border-b border-t border-cf-line">
+                      {[
+                        ["Runtime", fmtDuration(Math.round(current?.duration ?? 0))],
+                        ["Views", String(current?.views ?? 0)],
+                        ["Dubbed", current?.locales.length ? current.locales.map((l) => l.toUpperCase()).join(" ") : "—"],
+                      ].map(([k, v], i) => (
+                        <div key={k} className={`py-4 ${i ? "border-l border-cf-line pl-4" : ""}`}>
+                          <dt className="cf-label">{k}</dt>
+                          <dd className="mt-2 truncate text-[12px]">{v}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <div className="mt-auto flex flex-wrap gap-2 pt-8">
+                      {isAdmin && current && (
+                        <button type="button" onClick={() => void onFeature(current)} className="cf-btn-accent">
+                          Feature on homepage
+                        </button>
+                      )}
+                      {current && (
+                        <button type="button" onClick={() => void onDelete(current.projectId, current.title)} className="cf-btn border border-cf-line text-cf-muted hover:border-cf-danger hover:text-cf-danger">
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                    {notice && <p role="status" className="mt-4 text-[12px] text-cf-accent">{notice}</p>}
+                  </div>
+                </div>
+              </section>
 
-      {!enabled ? (
-        <p className="text-sm text-white/45">Connect Supabase first.</p>
-      ) : loading ? (
-        <p className="text-sm text-white/40">Loading…</p>
-      ) : !user ? (
-        <AuthCard title="Sign in to open your channel" />
-      ) : !titles ? (
-        <SkeletonCards cards={4} />
-      ) : titles.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 text-sm text-white/55">
-          No finished films yet — your channel fills itself as productions complete.
-        </div>
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-          <div>
-            {current?.url && (
-              <div className="overflow-hidden rounded-2xl border border-white/15 shadow-[0_0_80px_-30px_rgba(99,102,241,0.8)]">
-                <HlsPlayer src={current.url} />
-              </div>
-            )}
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h2 className="font-semibold">{current?.title}</h2>
-                <p className="text-xs text-white/45">
-                  {Math.round(current?.duration ?? 0)}s · {current?.views ?? 0} views
-                  {current?.locales.length ? ` · dubbed: ${current.locales.map((l) => l.toUpperCase()).join(", ")}` : ""}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {isAdmin && current && (
-                  <button
-                    onClick={() => void onFeature(current)}
-                    className="rounded-lg border border-amber-400/40 px-3 py-1.5 text-xs text-amber-300 transition hover:bg-amber-400/10"
-                  >
-                    ★ Feature on homepage
-                  </button>
-                )}
-                {current && (
-                  <button
-                    onClick={() => void onDelete(current.projectId, current.title)}
-                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/50 transition hover:border-rose-400/40 hover:text-rose-300"
-                  >
-                    ✕ Delete
-                  </button>
-                )}
-              </div>
-            </div>
-            {notice && <p className="mt-2 text-xs text-amber-200">{notice}</p>}
-          </div>
-          <div className="space-y-2">
-            {titles.map((t) => (
-              <button
-                key={t.projectId}
-                onClick={() => setActive(t.projectId)}
-                className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm transition ${
-                  current?.projectId === t.projectId ? "border-white/40 bg-white/[0.06]" : "border-white/10 bg-white/[0.02] hover:border-white/25"
-                }`}
-              >
-                <span className="truncate">{t.title}</span>
-                <span className="ml-2 shrink-0 text-xs text-white/40">{t.views} views</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+              <Section label="Viewing destinations" title={<>One production.<br />Many rooms.</>}>
+                <ol className="border-t border-cf-fg">
+                  {titles.map((t, i) => {
+                    const on = current?.projectId === t.projectId;
+                    return (
+                      <li key={t.projectId} className="border-b border-cf-line">
+                        <button
+                          type="button"
+                          onClick={() => setActive(t.projectId)}
+                          aria-pressed={on}
+                          className={`grid w-full grid-cols-[44px_1fr_auto] items-center gap-4 px-2 py-5 text-left transition ${on ? "bg-cf-soft" : "hover:bg-cf-soft/60"}`}
+                        >
+                          <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                          <span className="min-w-0">
+                            <span className="block truncate font-serif text-[19px]">{t.title}</span>
+                            <span className="cf-label mt-1 block">
+                              {fmtDuration(Math.round(t.duration))}
+                              {t.locales.length ? ` · ${t.locales.length + 1} languages` : ""}
+                            </span>
+                          </span>
+                          <Status tone={on ? "live" : "idle"}>{t.views} views</Status>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </Section>
+
+              <Section label="Screening control" title="Presentation, not distribution.">
+                <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    ["Playback master", "MP4", "Signed, short-lived link per screening."],
+                    ["Captions & dubs", `${titles.filter((t) => t.locales.length).length} dubbed`, "Language tracks from the multilingual pipeline."],
+                    ["Audience access", "Private", "Only you, signed in. Public pages are not built yet."],
+                    ["Analytics", `${totalViews} views`, "Plays counted per title, read by Audience."],
+                  ].map(([k, v, note]) => (
+                    <div key={k} className="min-h-[160px] bg-cf-bg p-5">
+                      <div className="cf-label">{k}</div>
+                      <div className="mt-8 font-serif text-[22px] tracking-[-0.03em]">{v}</div>
+                      <p className="mt-1.5 text-[11px] text-cf-muted">{note}</p>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            </>
+          )}
+        </StudioGate>
+      </div>
     </div>
   );
 }
