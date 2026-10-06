@@ -51,6 +51,10 @@
   color: rgb(var(--cf-fg));
 }
 
+/* Native controls (selects, file inputs, colour pickers, scrollbars) follow the room. */
+.cf-light { color-scheme: light; }
+.cf-dark { color-scheme: dark; }
+
 :root {
   color-scheme: dark;
 }
