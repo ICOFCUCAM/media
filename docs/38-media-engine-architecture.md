@@ -4492,9 +4492,7 @@ to the same contract:
    from this environment.
 5. **Counsel review** of ComfyUI GPL-3.0 for any future on-premise
    distribution (§AV.7).
-6. **Optional separate fix:** replace the silent `-shortest` narration
-   truncation with a hard duration check in today's render path (§AW.11
-   test 1). It needs separate approval and is not part of this PR.
+6. ~~**Optional separate fix:** replace the silent `-shortest` narration truncation with a hard duration check in today's render path (§AW.11 test 1).~~ **DONE (2026-10-06)** — see §AW.11 and §AY.
 
 
 ---
@@ -4793,3 +4791,34 @@ Every requirement from the two directives and where this document satisfies it.
 
     Then approve the architecture, merge, and separately approve
     **Phase 1 — GPU security**.
+
+---
+
+## AY. Implementation status (2026-10-06)
+
+This is a status log, not a design change. The design sections above remain authoritative.
+
+| Phase (§AX.2) | Status | Delivered in | Operationally live? |
+|---|---|---|---|
+| 1 — GPU security | Implemented. **Not complete operationally.** | docs/39 (gateway, Ed25519 execution tokens, authz v2 with LoRA content hashes, one-time I/O, admin audit view, verified image chain) | Report mode only. Migration 0026 applied; 0027 not applied. No signing keys deployed, no deployment approved, enforcement off, S3 keys not rotated (docs/39 §10). |
+| 2 — Master Production Clock | Implemented | docs/40 (`@cineforge/shared/clock`) | Yes, as a library. The render's frame-rate conform now executes the clock's plan. |
+| 3 — Runtime contract | Implemented | docs/40 (timing reports, outcome classification, `WorkflowRuntime`, `DiffusersRuntime`) | Record mode (`RUNTIME_TIMING_POLICY=record`). The GPU image that reports timing must be verified and deployed first. |
+| 4 — Audio and timeline data model | Implemented | docs/41 (migrations 0028–0030, Prisma, timeline builder, ledger) | **Migrations not applied.** Code degrades with one log line until they are. |
+| 5 — A/V Sync Engine | Implemented (analysis) | docs/42 | Operator-run (`avsync:check`). Vision analysis for lip sync is not integrated; its licenses are not verified (§AU.10). |
+| 6 — ComfyUI runtime | **Not started.** Gated on Phase 1 being complete. | — | — |
+| 7–12 | Not started | — | — |
+
+**Regression tests (§AW.11).** All seven are in CI:
+- tests 1, 2, 3, 4 and 7 at engine level, with real-media counterparts for 1, 2 and 7;
+- tests 5 and 6 against the real GPU worker in enforce mode.
+
+**What comes next, in order:**
+1. Finish Phase 1 operationally (docs/39 §10):
+   - verify the deployed image;
+   - deploy the keys, and register and approve the deployment;
+   - turn on enforcement;
+   - rotate the S3 keys.
+2. Apply migrations 0027–0030 (docs/41).
+3. Run `RUNTIME_TIMING_POLICY=record` and `avsync:check` on real productions. Resolve the `WAN_MAX_FRAMES` mismatch and calibrate the tolerances.
+4. Only then start Phase 6.
+
