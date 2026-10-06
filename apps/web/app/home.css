@@ -9,7 +9,7 @@
   --black: #080808;
   --black-soft: #101010;
   --white: #f4f2ed;
-  --muted: #9c9a94;
+  --muted: #aaaca5;
   --line: rgba(244,242,237,.15);
   --line-soft: rgba(244,242,237,.08);
   --accent: #d8ff62;
@@ -48,10 +48,11 @@
 }
 
 .cfh .eyebrow {
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: .16em;
-  font-size: 11px;
+  letter-spacing: .1em;
+  font-size: 12px;
   color: var(--muted);
 }
 
@@ -277,9 +278,10 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
-  letter-spacing: .12em;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: rgba(244,242,237,.78);
   text-shadow: 0 1px 8px rgba(0,0,0,.6);
@@ -343,9 +345,10 @@
 }
 
 .cfh .hero-prompt span {
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
-  letter-spacing: .14em;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -353,8 +356,9 @@
 .cfh .hero-prompt p {
   margin: 8px 0 0;
   min-height: 3.6em;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 11px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   line-height: 1.6;
   color: #d9d6cf;
 }
@@ -396,9 +400,10 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
-  letter-spacing: .14em;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: #5c5a55;
 }
@@ -473,9 +478,10 @@
 
 .cfh .metric-label {
   margin-top: 12px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
-  letter-spacing: .14em;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -553,8 +559,9 @@
   right: 5vw;
   display: flex;
   justify-content: space-between;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   color: #76746e;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -633,6 +640,8 @@
 .cfh .chapter-image::before {
   content: "";
   position: absolute;
+  z-index: 1;
+  pointer-events: none;
   inset: 12%;
   border: 1px solid rgba(244,242,237,.17);
 }
@@ -642,10 +651,11 @@
   position: absolute;
   bottom: 25px;
   left: 28px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   color: #aaa69c;
-  letter-spacing: .12em;
+  letter-spacing: .1em;
 }
 
 .cfh .chapter-grid {
@@ -660,10 +670,11 @@
 }
 
 .cfh .chapter-number {
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 10px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   color: var(--accent);
-  letter-spacing: .15em;
+  letter-spacing: .1em;
   margin-bottom: 35px;
 }
 
@@ -700,16 +711,17 @@
   gap: 20px;
   padding: 14px 0;
   border-bottom: 1px solid var(--line-soft);
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 10px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: .1em;
-  color: #aaa69d;
+  color: #c4c2bb;
   transition: color .3s ease, padding .3s ease;
 }
 
 .cfh .chapter-index a span:last-child {
-  color: #66645f;
+  color: #8d8f88;
   text-align: right;
 }
 
@@ -774,11 +786,12 @@
 }
 
 .cfh .studio-sidebar h4 {
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: .15em;
-  color: #66645f;
+  letter-spacing: .1em;
+  color: #8d8f88;
   margin: 0 0 25px;
 }
 
@@ -794,7 +807,7 @@
   display: block;
   padding: 11px 0;
   font-size: 12px;
-  color: #77756f;
+  color: #a9aba4;
   transition: color .3s ease;
 }
 
@@ -845,9 +858,10 @@
   position: absolute;
   top: 18px;
   left: 18px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
-  color: #85827a;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  color: #d6d4cc;
 }
 
 .cfh .playhead {
@@ -894,11 +908,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 18px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: .12em;
-  color: #66645f;
+  letter-spacing: .1em;
+  color: #8d8f88;
 }
 
 .cfh .pipeline span:first-child {
@@ -911,11 +926,12 @@
 }
 
 .cfh .inspector {
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
-  color: #66645f;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  color: #8d8f88;
   text-transform: uppercase;
-  letter-spacing: .13em;
+  letter-spacing: .1em;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--line-soft);
   margin-bottom: 20px;
@@ -926,7 +942,7 @@
   justify-content: space-between;
   margin: 17px 0;
   font-size: 11px;
-  color: #aaa69d;
+  color: #c4c2bb;
 }
 
 .cfh .parameter span:last-child {
@@ -971,8 +987,9 @@
 }
 
 .cfh .capability-number {
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 11px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   color: #77746d;
 }
 
@@ -994,10 +1011,11 @@
 .cfh .capability-go {
   display: block;
   margin-top: 18px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 10px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: .12em;
+  letter-spacing: .1em;
   color: #101010;
 }
 
@@ -1121,8 +1139,9 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: .1em;
   color: #c4c0b7;
@@ -1140,8 +1159,9 @@
   z-index: 1;
   top: 18px;
   right: 20px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: .1em;
   color: var(--accent);
@@ -1202,8 +1222,9 @@
   border-bottom: 1px solid #c7c4bb;
   display: flex;
   justify-content: space-between;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 10px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: .1em;
 }
@@ -1383,10 +1404,11 @@
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 10px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: .12em;
+  letter-spacing: .1em;
 }
 
 .cfh .price-flag {
@@ -1501,10 +1523,11 @@
   color: #77746e;
   display: flex;
   justify-content: space-between;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: .12em;
+  letter-spacing: .1em;
 }
 
 .cfh .footer-links {
@@ -1679,3 +1702,33 @@
   .cfh .hero-scroll::after { animation: none; }
   .cfh .hero-image { transition: none; }
 }
+
+/* ------------------------------
+   DRAWN FRAMES — CinemaArt fills every frame that has no footage yet
+------------------------------ */
+
+.cfh .art-fill {
+  position: absolute;
+  inset: 0;
+}
+
+.cfh .scene { background: #0b0c0b; }
+.cfh .scene::before { display: none; }
+.cfh .scene-label,
+.cfh .playhead,
+.cfh .timeline { z-index: 2; }
+.cfh .scene-label {
+  padding: 4px 8px;
+  border: 1px solid rgba(255,255,255,.3);
+  background: rgba(0,0,0,.35);
+  color: #fff;
+  letter-spacing: .08em;
+}
+.cfh .timeline { background: rgba(0,0,0,.55); backdrop-filter: blur(6px); }
+.cfh .clip { position: relative; overflow: hidden; background: #111; }
+.cfh .clip.is-on { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cfh .pipeline span:first-child { font-weight: 600; }
+.cfh .studio-item.active { color: var(--black); background: var(--white); padding-left: 10px; margin: 0 -10px; border-radius: 4px; }
+.cfh .hero-board i { position: relative; overflow: hidden; }
+.cfh .hero-board i .art-fill { opacity: 0; transition: opacity .5s ease; transition-delay: inherit; }
+.cfh .hero-board i.is-on .art-fill { opacity: 1; }

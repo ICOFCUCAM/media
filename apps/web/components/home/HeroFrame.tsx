@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CinemaArt, type Scene } from "../cf/CinemaArt";
 import { listShowcase, publicUrl, type ShowcaseRow } from "../../lib/showcase";
 
 /**
@@ -11,11 +12,14 @@ import { listShowcase, publicUrl, type ShowcaseRow } from "../../lib/showcase";
  */
 
 const SHOTS = [
-  { slug: "EXT. ASHÉRON-KOR — DAWN", bg: "linear-gradient(135deg,#6b4a22 0%,#2a2014 55%,#0e1110 100%)" },
-  { slug: "INT. THRONE ROOM — NIGHT", bg: "linear-gradient(135deg,#3d3122 0%,#16130e 60%,#090908 100%)" },
-  { slug: "EXT. SAVANNAH — GOLDEN HOUR", bg: "linear-gradient(135deg,#7a5320 0%,#4a3416 50%,#1f2a17 100%)" },
-  { slug: "EXT. WAR CAMP — DUSK", bg: "linear-gradient(135deg,#5a2f1f 0%,#2b1a14 55%,#0f1312 100%)" },
+  { slug: "EXT. ASHÉRON-KOR — DAWN", scene: "kingdom" as Scene, bg: "linear-gradient(135deg,#6b4a22 0%,#2a2014 55%,#0e1110 100%)" },
+  { slug: "INT. THRONE ROOM — NIGHT", scene: "interior" as Scene, bg: "linear-gradient(135deg,#3d3122 0%,#16130e 60%,#090908 100%)" },
+  { slug: "EXT. SAVANNAH — GOLDEN HOUR", scene: "savannah" as Scene, bg: "linear-gradient(135deg,#7a5320 0%,#4a3416 50%,#1f2a17 100%)" },
+  { slug: "EXT. WAR CAMP — DUSK", scene: "figure" as Scene, bg: "linear-gradient(135deg,#5a2f1f 0%,#2b1a14 55%,#0f1312 100%)" },
 ];
+
+/** Scenes the storyboard tiles cycle through. */
+const BOARD: Scene[] = ["kingdom", "figure", "savannah", "interior", "kingdom", "sea", "figure", "forest", "kingdom"];
 
 const PROMPT = "An epic about an African kingdom fighting for its independence, told over three generations.";
 const STAGES = ["Prompt", "Storyboard", "Generation", "Final cut"] as const;
@@ -66,6 +70,7 @@ export function HeroFrame() {
           <video className="hero-frame-video" src={publicUrl(real.video_path)} autoPlay muted loop playsInline preload="metadata" aria-label={real.title} />
         ) : (
           <div key={shot} className={`hero-frame-image${shown ? " is-shown" : ""}`} style={{ background: s.bg }}>
+            <CinemaArt seed={s.slug} scene={s.scene} className="art-fill" />
             <i className="hero-frame-bloom" />
           </div>
         )}
@@ -106,7 +111,9 @@ export function HeroFrame() {
           </div>
           <div className="hero-board">
             {Array.from({ length: 9 }).map((_, k) => (
-              <i key={k} className={at >= 1 ? "is-on" : ""} style={{ transitionDelay: `${k * 90}ms` }} />
+              <i key={k} className={at >= 1 ? "is-on" : ""} style={{ transitionDelay: `${k * 90}ms` }}>
+                <CinemaArt seed={`${s.slug} board ${k}`} scene={BOARD[k % BOARD.length]} className="art-fill" />
+              </i>
             ))}
           </div>
         </div>

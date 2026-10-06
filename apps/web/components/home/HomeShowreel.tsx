@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CinemaArt, type Scene } from "../cf/CinemaArt";
 import { listShowcase, publicUrl, type ShowcaseRow } from "../../lib/showcase";
 
 /** Placeholder frames shown until admins feature real films. */
-const PLACEHOLDERS: { title: string; tag: string }[] = [
-  { title: "Feature Film", tag: "Drama" },
-  { title: "World", tag: "Fantasy" },
-  { title: "Documentary", tag: "Film" },
-  { title: "Commercial", tag: "Brand" },
-  { title: "Short", tag: "Vertical" },
-  { title: "Music Video", tag: "Performance" },
+const PLACEHOLDERS: { title: string; tag: string; scene: Scene }[] = [
+  { title: "Feature Film", tag: "Drama", scene: "kingdom" },
+  { title: "World", tag: "Fantasy", scene: "forest" },
+  { title: "Documentary", tag: "Film", scene: "savannah" },
+  { title: "Commercial", tag: "Brand", scene: "studio" },
+  { title: "Short", tag: "Vertical", scene: "city" },
+  { title: "Music Video", tag: "Performance", scene: "stage" },
 ];
 
 /**
@@ -51,6 +52,8 @@ export function HomeShowreel() {
       ))}
       {fill.map((p) => (
         <div key={p.title} className="reel">
+          <CinemaArt seed={`${p.title} ${p.tag}`} scene={p.scene} className="art-fill" />
+          <span className="reel-tag">Drawn frame · your film here</span>
           <div className="reel-info">
             <span>{p.title}</span>
             <span>{p.tag}</span>

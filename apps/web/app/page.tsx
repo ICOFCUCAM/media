@@ -4,6 +4,7 @@ import "./home.css";
 import { HomeMotion } from "../components/home/HomeMotion";
 import { HomeShowreel } from "../components/home/HomeShowreel";
 import { HeroFrame } from "../components/home/HeroFrame";
+import { CinemaArt, type Scene } from "../components/cf/CinemaArt";
 import { STUDIO_MODES } from "../lib/creation";
 import {
   NAV,
@@ -177,7 +178,9 @@ function WorldChapter() {
   return (
     <section className="section chapter dark">
       <div className="container chapter-grid reveal">
-        <div className="chapter-image" data-frame="CINEFORGE / FRAME 001" />
+        <div className="chapter-image">
+          <CinemaArt seed="Ashéron-Kor kingdom at dawn" scene="kingdom" motion className="art-fill" hud={{ tag: "Frame 001", slug: "EXT. ASHÉRON-KOR — DAWN" }} />
+        </div>
 
         <div className="chapter-copy">
           <div className="chapter-number">01 / WORLD</div>
@@ -209,6 +212,15 @@ function WorldChapter() {
 }
 
 /* ── Chapter 02 · Workspace ────────────────────────────────────────── */
+/** The five shots on the depicted timeline — drawn frames, not renders. */
+const TIMELINE: { seed: string; scene: Scene }[] = [
+  { seed: "Scene 05 savannah march", scene: "savannah" },
+  { seed: "Scene 06 war council", scene: "interior" },
+  { seed: "Scene 07 Ashéron-Kor dawn", scene: "kingdom" },
+  { seed: "Scene 08 the heir", scene: "figure" },
+  { seed: "Scene 09 river crossing", scene: "sea" },
+];
+
 function Workspace() {
   const studio = navSection("Studio");
   const production = navSection("Production");
@@ -248,14 +260,15 @@ function Workspace() {
 
           <div className="studio-main">
             <div className="scene">
+              <CinemaArt seed="Ashéron-Kor kingdom at dawn" scene="kingdom" motion letterbox className="art-fill" />
               <div className="scene-label">SCENE 07 / EXT. ASHÉRON-KOR / DAWN</div>
               <div className="playhead" />
               <div className="timeline">
-                <div className="clip" />
-                <div className="clip" />
-                <div className="clip" />
-                <div className="clip" />
-                <div className="clip" />
+                {TIMELINE.map((c, i) => (
+                  <div key={c.seed} className={`clip${i === 2 ? " is-on" : ""}`}>
+                    <CinemaArt seed={c.seed} scene={c.scene} className="art-fill" />
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -312,7 +325,9 @@ function StoryChapter() {
           <Link href="/library/characters" className="text-link">Build your cast →</Link>
         </div>
 
-        <div className="chapter-image" data-frame="CINEFORGE / FRAME 002" />
+        <div className="chapter-image">
+          <CinemaArt seed="The heir returns — portrait" scene="figure" motion className="art-fill" hud={{ tag: "Frame 002", slug: "INT. THRONE ROOM — NIGHT" }} />
+        </div>
       </div>
     </section>
   );
@@ -500,6 +515,14 @@ function Voice() {
   );
 }
 
+/** Product kinds pictured by the frame that fits them (Story Worlds read their name). */
+const KIND_SCENE: Record<string, Scene | undefined> = {
+  Character: "figure",
+  "Voice Pack": "stage",
+  Template: "studio",
+  "Asset Pack": "forest",
+};
+
 /* ── 07 · Marketplace ──────────────────────────────────────────────── */
 function Marketplace() {
   return (
@@ -519,6 +542,7 @@ function Marketplace() {
         <div className="reel-grid reveal">
           {MARKETPLACE_ITEMS.map((m) => (
             <Link key={m.name} href="/marketplace" className="reel">
+              <CinemaArt seed={`${m.name} ${m.kind}`} scene={KIND_SCENE[m.kind]} className="art-fill" />
               <span className="reel-tag">Keep 90%</span>
               <div className="reel-info">
                 <span>{m.kind} · {m.name}</span>
