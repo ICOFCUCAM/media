@@ -7,6 +7,7 @@ Version: **2** (2026-10-06) · Supersedes nothing; extends docs/12, 22, 23, 25, 
 |---|---|
 | 1 | Image Intelligence & Generation Engine; model-neutral Video Engine; registry, router, schemas, queues, GPU, security, billing, identity, continuity, migration, phases (§A–§AE). |
 | 2 | **DeployPro** adopted as Cineforge's long-term infrastructure and media-render platform. Added: Cineforge/DeployPro separation of concerns (§0), portability rules (§AF), DeployPro capability and gap analysis from its repository (§AG), `GpuProvider` abstraction (§AH), model-aware GPU scheduling (§AI), media render pipeline (§AJ), `StorageProvider` abstraction (§AK), database portability (§AL), Redis/BullMQ on DeployPro (§AM), private networking (§AN), container deployment model (§AO), control-plane contract (§AP), GPU pool (§AQ), combined product + infrastructure migration roadmap (§AR), requirement traceability for both directives (§AS). Sections A, B, M, N, O, P, Z, AA, AB, AC, AD revised to be provider-neutral. |
+| 2.4 | **Review decisions recorded** (§AV): binding decisions on the production-runtime boundary; single **Media Runtime Gateway** for the existing GPU worker and the ComfyUI worker; workflow **and** model authorization digest (no model substitution); the A/V ↔ runtime meeting point; **timing integrity rule** (no runtime may silently alter production timing) with video/audio timing reports; post-review implementation sequence; ComfyUI GPL-3.0 position clarified. |
 | 2.3 | **Synchronized production** (Part IV, §AU): Master Production Clock (integer-µs timebase, rational fps), audio-first planning, Audio Engine, A/V Synchronization Engine and validators, lip-sync validation, music/SFX/ambience anchoring, automatic repair loop, Final Quality Gate, mastering pipeline, production state machine, timeline/audio/sync/repair/version/provenance tables; verified current-code gaps (e.g. silent `-shortest` truncation, 16 vs 24 fps); analysis-tool licenses checked. |
 | 2.2 | **Workflow Runtime / ComfyUI integration** (§AT): ComfyUI as an execution runtime behind `WorkflowRuntime` (with `DiffusersRuntime`), versioned Workflow Registry, Workflow Builder, ComfyUI worker design, security, license obligations (ComfyUI is GPL-3.0; its server has no authentication), promotion pipeline; provenance columns added to §J/§K; images, phases, traceability and decisions updated. |
 | 2.1 | **Model neutrality clarified** (review directive): the Video Engine names no primary model; Wan 2.2 is the initial license-safe production candidate; LTX and HunyuanVideo are pluggable candidates subject to their licenses. Model **eligibility** dimensions and **lifecycle statuses** added to the registry (§H). Character identity defined as a Cineforge-owned system (§R). GPU security requirements restated as non-negotiable (§O). Universal metering incl. rendering (§Q). |
@@ -942,6 +943,7 @@ create table public.video_generations (
   job_id text, worker_id text, gpu_type text,
   queue_ms int, inference_ms int, gpu_ms int, vram_peak_mb int,
   output_key text, thumbnail_key text, quality_score real,
+  timing_report jsonb,                  -- VideoTimingReport (§AV.5); required for success
   error_code text, error_message text,
   created_at timestamptz not null default now(), started_at timestamptz, completed_at timestamptz,
   unique (shot_id, idempotency_key)
@@ -2394,7 +2396,9 @@ export interface RuntimeValidation { ok: boolean; errors: Array<{ code: string; 
 export interface RuntimeEstimate { gpuMs: number; vramMb: number; gpuClass: string; confidence: "low" | "medium" | "high" }
 export type RuntimeStatus =
   | { state: "queued" | "loading" | "running"; progress: number; node?: string }
-  | { state: "succeeded"; result: ImageGenerationResult | ShotResult }
+  | { state: "succeeded" | "succeeded_out_of_tolerance";
+      result: ImageGenerationResult | ShotResult;
+      timing?: VideoTimingReport | AudioTimingReport }   // required for video/audio (§AV.5); missing → invalid
   | { state: "failed"; error: { code: string; message: string; retryable: boolean } }
   | { state: "cancelled" };
 
@@ -3394,7 +3398,7 @@ artifacts and validation state.
 | `video_generations` | video attempt ledger | §K + `timing_constraints jsonb`, `timeline_version_id` | new |
 | `entity_images` | images ↔ entities | §J | new |
 | `character_identities` | versioned identity | §R | new |
-| `audio_generations` | audio ledger (dialogue, music, sfx, ambience) | like `image_generations` + `kind`, `language`, `voice_id`, `meta jsonb` (AudioAssetMeta) | supersedes ad-hoc `audio_tracks` writes; `audio_tracks` kept as a compatibility view during migration |
+| `audio_generations` | audio ledger (dialogue, music, sfx, ambience) | like `image_generations` + `kind`, `language`, `voice_id`, `meta jsonb` (AudioAssetMeta), `timing_report jsonb` (AudioTimingReport, §AV.5 — required for success) | supersedes ad-hoc `audio_tracks` writes; `audio_tracks` kept as a compatibility view during migration |
 | `audio_events` | placed audio on a timeline (start/end µs, gain, stem, anchor) | `timeline_version_id`, `audio_generation_id`, `media_version_id`, `stem`, `start_us`, `end_us`, `gain_db`, `fade_in_us`, `fade_out_us` | generalizes `audio_tracks.start_ms/duration_ms/gain_db` |
 | `production_timelines` | timeline versions per project | `project_id`, `version`, `fps_num`, `fps_den`, `sample_rate`, `duration_us`, `status` (`draft`,`approved`,`superseded`,`frozen`), `parent_version_id` | new |
 | `timeline_events` | every timed thing: shots, dialogue, words (optional), music cues, SFX, ambience, subtitles, transitions, titles, VFX, visual actions | `timeline_version_id`, `kind`, `start_us`, `end_us`, `ref_type`, `ref_id`, `anchor_event_id`, `anchor_offset_us`, `anchor_mode`, `payload jsonb` | maps from `scenes`, `shots`, `dialogue_lines` (existing) |
@@ -3618,6 +3622,221 @@ truncation with a duration check that fails loudly (AU.19 h).
 | 15 | §Z, AU.24 |
 
 
+## AV. Production-runtime boundary, Media Runtime Gateway and timing integrity (binding)
+
+This section records the architecture review's binding decisions on where
+Cineforge ends and a runtime begins, and the rule that keeps runtimes from
+silently changing the production.
+
+### AV.1 Binding decisions
+
+1. **Cineforge owns production intelligence.** ComfyUI (and every runtime)
+   executes workflows; it does not own Cineforge's characters, scenes, shots,
+   timelines, billing, identity system or production state.
+2. **The six-operation runtime contract is mandatory** for every runtime:
+   `execute → validate → estimate → cancel → status → capabilities` (§AT.6).
+3. **The Workflow Registry is the control plane.** A workflow cannot request
+   arbitrary models or arbitrary ComfyUI graphs; the registry determines what
+   is authorized (§AT.7).
+4. **The Workflow Builder fills named slots in controlled templates only**
+   (§AT.8) — no arbitrary graph construction, which would become a security,
+   reproducibility and licensing problem.
+5. **ComfyUI remains private.** Never `Internet → ComfyUI`. All access passes
+   through the authenticated Media Runtime Gateway (AV.2).
+6. **The gateway authorizes both the workflow and the models.** A request of
+   the form "run this approved workflow, but replace the approved model with
+   another model" is rejected (AV.3).
+7. **No storage credentials on GPU machines.** GPU workers receive only
+   short-lived, narrowly scoped upload/download access (§O, §AT.12).
+8. **ComfyUI remains replaceable.** The same Cineforge production request is
+   executable through ComfyUI, Diffusers or a future runtime without changing
+   the production layer.
+9. **No runtime may silently alter production timing** (AV.5).
+
+### AV.2 Media Runtime Gateway — one security boundary for every GPU path
+
+```
+                 ┌───────────────────┐
+                 │     Cineforge     │
+                 └─────────┬─────────┘
+                           │
+                    Authenticated API
+                           │
+                 ┌─────────▼─────────┐
+                 │ Media Runtime     │
+                 │ Gateway           │
+                 └─────────┬─────────┘
+                           │
+             ┌─────────────┴─────────────┐
+             │                           │
+      Existing GPU Worker          ComfyUI Worker
+      (Diffusers: Wan/Hunyuan)     (ComfyUI on 127.0.0.1)
+             │                           │
+             └─────────────┬─────────────┘
+                           GPU
+```
+- The gateway is the **shared authenticated GPU execution layer** built in the
+  security phase: the existing Wan/Hunyuan path and the future ComfyUI path get
+  the **same** security boundary.
+- Deployment form: the gateway logic is the sidecar core (`apps/gpu-worker`
+  core, §AT.10) running in front of every GPU worker; on DeployPro it may also
+  run as a pool-level gateway (§AT.12). In both forms it performs the same
+  checks, and the worker behind it is unreachable except through it.
+- Checks, in order: token signature/expiry/replay → deployment (`aud`) →
+  action (`scope`) → job (`sub` = job id) → body hash → **workflow
+  authorization** → **model authorization** → timing contract present (AV.5)
+  → resource limits → then execution. Every decision is logged with the job id.
+
+### AV.3 Workflow and model authorization (no substitution)
+
+The signed job token carries an **authorization manifest digest** computed by
+Cineforge when the route and workflow were chosen:
+
+```
+authz = sha256( workflow_id @ version
+              + runtime + runtime_version
+              + graph_sha256                       // bound graph (ComfyUI) or request template hash (Diffusers)
+              + sorted[(model_role, model_version_id, weights_revision, weights_sha256)]
+              + sorted[(lora_key, lora_sha256)]
+              + node_set_digest                    // ComfyUI custom nodes (package@commit)
+              + timing_contract_digest )           // AV.5
+```
+The gateway recomputes the digest from the actual request and the worker's
+resolved model files; any mismatch — a different model, weights revision,
+LoRA, node, graph or timing contract — is rejected with `403
+AUTHZ_MISMATCH` before anything reaches the GPU. The worker loads model files
+**only by content hash** from its read-only cache, so a path that points at a
+different file cannot satisfy the digest.
+
+### AV.4 Where the runtime architecture meets A/V synchronization
+
+The ComfyUI/runtime architecture (§AT) and the synchronized-production
+architecture (§AU) meet at the **production-runtime boundary**:
+
+```
+Cineforge Production Plan
+          │
+          ▼
+   Master Production Clock
+          │
+     ┌────┴────┐
+     ▼         ▼
+ Audio Plan   Video Plan
+     │         │
+     ▼         ▼
+Audio Runtime  Video Runtime
+     │         │
+     └────┬────┘
+          ▼
+     AVSyncEngine
+          │
+    ┌─────┴─────┐
+    ▼           ▼
+   PASS        FAIL
+    │           │
+    ▼           ▼
+ Master     Repair/Regenerate
+```
+A runtime never receives "generate a video". It receives a **timed production
+request**, e.g.:
+
+> Generate **shot 17** for **6.84 s**, using **approved character identity**
+> `char-amara@v3`, **approved reference frame** `storyboard 17 v2`, this
+> **camera/motion specification**, **24 fps**, and these **production timing
+> constraints** (speaking interval 1.20–5.90 s for Amara; door-slam action at
+> 6.10 s ± 80 ms).
+
+The Audio Engine holds the corresponding authoritative timing for the same
+timeline version. That is what allows Cineforge to state: *the generated sound
+belongs to this production timeline, and the generated picture was created
+against that timeline.*
+
+### AV.5 Timing integrity rule — no runtime may silently alter production timing
+
+If a runtime produces a 5.8 s clip when Cineforge requested 6.84 s, that is
+**not** a successful execution. Every runtime returns a **timing report**, and
+**Cineforge — not the runtime — decides** whether the difference is
+acceptable, using the tolerance policy of the timeline (`sync_policies`, §AU.9).
+
+Video timing report:
+
+```ts
+export interface VideoTimingReport {
+  requestedDurationUs: bigint;
+  actualDurationUs: bigint;                    // measured from the output container, not from parameters
+  timingAccuracy: { deltaUs: bigint; ratio: number };   // actual − requested; actual / requested
+  frameRate: { num: number; den: number };     // as produced
+  timebase: { num: number; den: number };      // container timebase (e.g. 1/12288)
+  frameCount: number;
+  requestedFrameRate: { num: number; den: number };
+  conformApplied?: "none" | "duplicate" | "interpolate" | "trim" | "pad";  // runtimes may NOT apply these silently; only when the request allowed it
+}
+```
+
+Audio timing report:
+
+```ts
+export interface AudioTimingReport {
+  requestedStartUs: bigint; requestedEndUs: bigint;
+  actualStartUs: bigint; actualEndUs: bigint;  // first/last non-silent sample relative to the requested anchor
+  durationUs: bigint;
+  wordTimestamps?: Array<{ text: string; startUs: bigint; endUs: bigint; confidence?: number }>;
+  phonemeTimestamps?: Array<{ symbol: string; startUs: bigint; endUs: bigint }>;  // when available
+  sampleRate: number;
+  loudness: { integratedLufs: number; truePeakDbtp: number; lra?: number };
+}
+```
+
+Rules:
+- A runtime result **without** a timing report is invalid (`status=FAILED`,
+  `error_code=TIMING_REPORT_MISSING`), even if media was produced.
+- Runtimes must not trim, pad, re-time, loop or change frame rate to hit a
+  duration unless the request explicitly allowed that operation; any such
+  operation is reported in `conformApplied`.
+- Measured values come from the produced file (ffprobe / sample count), not
+  from echoing the request parameters.
+- Cineforge evaluates the report against tolerances: **within tolerance** →
+  `SUCCEEDED`; **outside tolerance** → `SUCCEEDED_OUT_OF_TOLERANCE` (media
+  kept as a version, *not* placed on the timeline) and an `av_sync_issues`
+  row with a proposed repair (§AU.12). It never counts as a successful
+  production step.
+- Reports are stored on the ledger rows (`video_generations.timing_report`,
+  `audio_generations.timing_report`) and in `workflow_runs`, so the A/V
+  engine performs real synchronization instead of joining files with FFmpeg.
+
+### AV.6 Implementation sequence after this review (supersedes ordering conflicts)
+
+| Phase | Scope | Notes |
+|---|---|---|
+| **1 — Architecture approval** | review the decisions in this document | this PR; do not merge until approved |
+| **2 — Security foundation** | shared authenticated GPU execution layer = **Media Runtime Gateway** (AV.2) in front of the existing GPU worker; job tokens, workflow/model authorization digest (AV.3), one-time storage URLs, no storage credentials on GPU machines | existing Wan/Hunyuan path protected first |
+| **3 — Runtime abstraction** | the six operations (§AT.6) incl. timing reports (AV.5); `DiffusersRuntime` over existing backends | |
+| **4 — ComfyUI worker** | only after the gateway exists; ComfyUI on 127.0.0.1 behind it | may run on the existing GPU infrastructure (RunPod); DeployPro GPU not required yet |
+| **5 — Workflow registry** | register the first controlled workflows | named-slot templates only |
+| **6 — Model integration** | approved image/video workflows (Qwen-Image/Edit; Wan 2.2 benchmark) | license gates apply |
+| **7 — A/V production system** | Master Production Clock, audio-first planning, Audio Engine, AVSyncEngine, repair, Final Quality Gate, mastering (§AU) | schemas for clock/timeline/audio events/sync reports may be drafted in parallel with phases 2–3 |
+
+DeployPro GPU support not being ready is **not a blocker**: the runtime
+contract sits above the GPU provider, so the ComfyUI worker can run on the
+existing GPU infrastructure and later move to DeployPro (or any provider)
+without Cineforge changing its production architecture.
+
+### AV.7 License position on ComfyUI (clarified)
+
+- ComfyUI's GPL-3.0 license does **not** mean "ComfyUI cannot be used
+  commercially". The architectural question is how Cineforge **integrates and
+  distributes** it.
+- For the planned **cloud/SaaS** architecture, running ComfyUI as a separately
+  deployed execution component — with Cineforge's proprietary code outside the
+  ComfyUI process, talking to it over HTTP via the gateway — is substantially
+  cleaner than embedding proprietary code in a modified ComfyUI distribution.
+- A future **on-premise / customer-installed** Cineforge package is a
+  different legal question (distribution); it stays with counsel review and is
+  not assumed to be answered by the cloud architecture.
+- **Every ComfyUI custom node is part of the licensing review**, recorded per
+  package and commit like models (§AT.7, §AT.15).
+
+
 ---
 
 ## AS. Requirement traceability
@@ -3668,6 +3887,25 @@ Every requirement from the two directives and where this document satisfies it.
 | Security first phase; no unauthenticated generation/training endpoint; short-lived signed job tokens, deployment-bound, action-bound, body-bound; one-time upload/download URLs; no permanent storage credentials in GPU workers; private GPU networking | O (requirements table), AN, AA phase 2, AR I2 |
 | Universal metering (image, video, training, upscale, rendering, other GPU ops) without necessarily charging; collect cost/performance data before pricing | Q |
 | Architecture review PR, no implementation code | Status line; PR |
+
+**Review 1 — Architecture review feedback (v2.4)**
+
+| Item | Section(s) |
+|---|---|
+| Cineforge owns production intelligence; ComfyUI only executes | AV.1 (1), AT.2 |
+| Six-operation runtime contract mandatory | AV.1 (2), AT.6 |
+| Workflow registry is the control plane | AV.1 (3), AT.7 |
+| Named slots in controlled templates | AV.1 (4), AT.8 |
+| ComfyUI private; Cineforge → Authenticated Media Runtime Gateway → Authorized Workflow → ComfyUI Worker → GPU; never Internet → ComfyUI | AV.1 (5), AV.2 |
+| Gateway authorizes workflow AND models; model substitution rejected | AV.1 (6), AV.3 |
+| No storage credentials on GPU machines | AV.1 (7), O |
+| ComfyUI replaceable (ComfyUI / Diffusers / future) | AV.1 (8), AT.6 |
+| GPL-3.0 interpretation; on-prem as separate legal question; custom nodes in review | AV.7, AT.15 |
+| Shared authenticated GPU execution layer for existing and ComfyUI workers | AV.2 |
+| Phases 1–7 (approval → security → runtime → ComfyUI → registry → models → A/V) | AV.6 |
+| ComfyUI ↔ A/V meeting at the production-runtime boundary; timed production requests | AV.4 |
+| No runtime may silently alter production timing; video and audio timing reports; Cineforge decides | AV.5, AT.6, K |
+| DeployPro GPU not a blocker; runtime contract above the provider | AV.6, AH |
 
 **Directive 5 — Complete media production architecture (v2.3)**
 
@@ -3821,3 +4059,7 @@ Every requirement from the two directives and where this document satisfies it.
     weights) and **Wan 2.2 S2V** as the audio-driven talking-shot candidate.
 17. Approve **sync tolerances and delivery profiles** as configuration to be
     calibrated in the benchmark, not fixed in code.
+18. Approve the **binding decisions in §AV.1**, the **Media Runtime Gateway**
+    with workflow + model authorization digest, the **timing integrity rule**
+    with mandatory timing reports, and the **post-review implementation
+    sequence (§AV.6)**, which supersedes the earlier ordering notes.
