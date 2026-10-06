@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MARKETPLACE_CATEGORIES } from "../../../lib/products";
+import { WaitlistButton } from "../../../components/WaitlistButton";
 import { MarketplaceVoices } from "../../../components/MarketplaceVoices";
 import { PageHeader, Section, Status } from "../../../components/cf/primitives";
 import { CinemaArt, type Scene } from "../../../components/cf/CinemaArt";
@@ -54,7 +55,7 @@ export default function MarketplacePage() {
                   <div className="font-display font-semibold text-[20px] tracking-[-0.02em]">{c.name}</div>
                   <p className="mt-2 min-h-[3.2em] text-[13px] leading-snug text-cf-muted">{c.blurb}</p>
                   <div className="mt-4">
-                    <Status tone={open ? "live" : "idle"}>{open ? "Open · community" : "Not open yet"}</Status>
+                    {open ? <Status tone="live">Open · community</Status> : <WaitlistButton catalogue={c.id} />}
                   </div>
                 </div>
               </li>
