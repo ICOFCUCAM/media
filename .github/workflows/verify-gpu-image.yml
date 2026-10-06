@@ -1,0 +1,103 @@
+name: Verify GPU worker image
+
+# docs/39 §10: Base commit → GPU image → immutable digest → VERIFY CONTENTS →
+# deploy → verify runtime. Checks a cineforge-gpu image by digest without a
+# GPU and without touching any pod: identity, source commit, exact contents of
+# /app/app against git, and the gateway's security boundary in enforce mode
+# (apps/gpu-worker/scripts/verify_image.py). Runs after every image build and
+# on demand for any digest (Actions → Verify GPU worker image → Run workflow).
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Immutable reference <user>/cineforge-gpu@sha256:<digest>, or just sha256:<digest> for this repo's image"
+        required: true
+      expect_commit:
+        description: "Expected source commit (optional, full 40-char sha)"
+        required: false
+        default: ""
+  workflow_call:
+    inputs:
+      image:
+        type: string
+        required: true
+      expect_commit:
+        type: string
+        required: false
+        default: ""
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          sudo docker image prune -af || true
+          df -h /
+
+      # Full history: the image's source commit must exist in this repository.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install verifier deps
+        run: pip install "PyJWT[crypto]==2.9.0"
+
+      # Optional: authenticated pulls avoid anonymous rate limits.
+      - name: Log in to Docker Hub
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          user="$(printf '%s' "$DH_USER" | tr -cd 'A-Za-z0-9._-')"
+          token="$(printf '%s' "$DH_TOKEN" | tr -cd 'A-Za-z0-9_-')"
+          if [ -n "$user" ] && [ -n "$token" ]; then
+            printf '%s' "$token" | docker login -u "$user" --password-stdin
+          else
+            echo "No Docker Hub credentials; pulling anonymously."
+          fi
+
+      - name: Verify
+        env:
+          IMAGE: ${{ inputs.image }}
+          EXPECT: ${{ inputs.expect_commit }}
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          case "$IMAGE" in
+            sha256:*) IMAGE="$(printf '%s' "$DH_USER" | tr -cd 'A-Za-z0-9._-')/cineforge-gpu@$IMAGE" ;;
+          esac
+          args=("$IMAGE" --report verify-report.json)
+          if [ -n "$EXPECT" ]; then args+=(--expect-commit "$EXPECT"); fi
+          python3 apps/gpu-worker/scripts/verify_image.py "${args[@]}"
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ ! -f verify-report.json ]; then echo "No report produced." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          r = json.load(open("verify-report.json"))
+          print(f"### GPU image {'VERIFIED' if r['passed'] else 'NOT VERIFIED'}")
+          f = r["facts"]
+          print(f"- Image identity: `{r['image'].split('/')[-1]}`")
+          print(f"- Source identity: `SOURCE_COMMIT={f.get('sourceCommit')}`")
+          print(f"- Code digest: `{f.get('codeSha256Image')}` ({f.get('files')} files)")
+          print()
+          print("| Check | Result | Detail |")
+          print("|---|---|---|")
+          for c in r["checks"]:
+              print(f"| {c['name']} | {'✅' if c['ok'] else '❌'} | {c['detail'].replace('|', '/')} |")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gpu-image-verification
+          path: verify-report.json
+          if-no-files-found: ignore

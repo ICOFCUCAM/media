@@ -21,6 +21,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      # Digest only: a job output that contains a secret (the username) is dropped.
+      digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Free up disk space
         run: |
@@ -93,5 +96,13 @@ jobs:
           echo "### GPU worker image" >> "$GITHUB_STEP_SUMMARY"
           echo "Pin and approve: \`cineforge-gpu@${{ steps.build.outputs.digest }}\` (source ${{ github.sha }})" >> "$GITHUB_STEP_SUMMARY"
           echo "Tags: $(echo '${{ steps.tags.outputs.tags }}' | sed 's#.*/##' | tr '\n' ' ')" >> "$GITHUB_STEP_SUMMARY"
-          echo "Verify before deploying: run **Verify GPU worker image** with this digest." >> "$GITHUB_STEP_SUMMARY"
+          echo "The verify job below checks this digest (contents vs git, gateway probes). Deploy only a VERIFIED digest." >> "$GITHUB_STEP_SUMMARY"
 
+  # Verify the image just pushed, by digest, before anyone deploys it.
+  verify:
+    needs: build
+    uses: ./.github/workflows/verify-gpu-image.yml
+    with:
+      image: ${{ needs.build.outputs.digest }}
+      expect_commit: ${{ github.sha }}
+    secrets: inherit
