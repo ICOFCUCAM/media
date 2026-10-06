@@ -66,3 +66,36 @@ Component classes: `cf-btn-accent`, `cf-btn-ink`, `cf-btn-line`,
    cards and gradients; the accent marks the primary action and live state.
 5. **Accessible by default.** Labelled fields, `aria-pressed` on options,
    `role="alert"` for errors, visible focus, reduced-motion respected.
+
+## Verifying the studio
+
+Before shipping a change to the studio:
+
+1. `pnpm --filter @cineforge/web exec tsc --noEmit`, `npx eslint apps/web`,
+   `pnpm --filter @cineforge/web build`, `pnpm test` (package suites).
+2. Load every route in `NAV` plus `/`, `/projects/<id>`, `/studio`,
+   `/system` at 1440, 1100 and 390 px: no console errors, no horizontal
+   page overflow, breadcrumb and navigator present.
+3. Walk the flows: the gate resolves (type, material) to the right room;
+   switching modes rewrites `?mode=`; Script → board → Generate all →
+   Assemble; a series, trailer, short and advert each start a run and show
+   the console; a platform switch clamps the short's length; the mobile
+   index opens, closes on Escape and route change, and returns focus.
+4. With Supabase configured, sign in and repeat the runs live: the banner
+   reads *Live production*, the production file link appears, and the
+   project shows up in the archive with Realtime status.
+
+## Known gaps surfaced by the redesign
+
+These are engine or product questions, left untouched by the UI work:
+
+- **Plan length caps are not enforced.** `MAX_FILM_SEC` only locks the
+  length buttons; neither the create flow nor the worker clamps
+  `target_seconds`. Free (30 s) cannot pick any film length, yet the
+  default 2-minute selection still runs.
+- **AI seed image** in the Director's Board records a placeholder seed —
+  no image provider is wired to that action.
+- **Paid marketplace, public channel pages, channel access control and a
+  music engine** have no backend; the UI marks them as not open.
+- **Team invites** are stored but not emailed (SMTP), and the **brand kit**
+  is saved but not yet stamped onto renders.
