@@ -1,12 +1,13 @@
 # 38 — Cineforge Media Engine & DeployPro Infrastructure Architecture
 
-Status: **PROPOSED — for review. No implementation until approved.**
-Version: **2** (2026-10-06) · Supersedes nothing; extends docs/12, 22, 23, 25, 28.
+Status: **UNDER ARCHITECTURE REVIEW. Implementation: NOT APPROVED.** No implementation until the architecture is explicitly approved.
+Version: **2.6** (2026-10-06) · Supersedes nothing; extends docs/12, 22, 23, 25, 28.
 
 | Version | Change |
 |---|---|
 | 1 | Image Intelligence & Generation Engine; model-neutral Video Engine; registry, router, schemas, queues, GPU, security, billing, identity, continuity, migration, phases (§A–§AE). |
 | 2 | **DeployPro** adopted as Cineforge's long-term infrastructure and media-render platform. Added: Cineforge/DeployPro separation of concerns (§0), portability rules (§AF), DeployPro capability and gap analysis from its repository (§AG), `GpuProvider` abstraction (§AH), model-aware GPU scheduling (§AI), media render pipeline (§AJ), `StorageProvider` abstraction (§AK), database portability (§AL), Redis/BullMQ on DeployPro (§AM), private networking (§AN), container deployment model (§AO), control-plane contract (§AP), GPU pool (§AQ), combined product + infrastructure migration roadmap (§AR), requirement traceability for both directives (§AS). Sections A, B, M, N, O, P, Z, AA, AB, AC, AD revised to be provider-neutral. |
+| 2.6 | **Review-control amendment** (§AX; updates to §O, §Y, §AT.19, §AU.26, §AV.6, §AW.11, §AW.15, §AS, decisions 5, 19, 20): governing 12-phase implementation order (GPU security → clock → runtime contract → audio/timeline model → A/V sync → ComfyUI → workflow registry → approved models → repair → Final Quality Gate → mastering → DeployPro), mapped to earlier numberings; the review's 20 requirements mapped to sections; contradictions resolved (Final Quality Gate placed after mastering in the final model; phase-numbering conflicts); ComfyUI-runtime ↔ A/V-production relationship stated as rules; unresolved decisions. |
 | 2.5 | **Approved architecture amendment** (§AW; updates to §AT.6, §AU.12, §AU.13, §AU.18, §AV.1, §AV.5, §AV.6): synchronized production system as the core principle; Master Production Clock as sole temporal authority; generated media as execution result; no silent narration truncation; result outcomes ACCEPTED / REQUIRES_REPAIR / REQUIRES_REGENERATION / FAILED; approved production states; 22 binding decisions; FFmpeg restricted; generation modes and talking-shot request; music/SFX examples; tolerance keys and production profiles (`sync_policies`); metering and provenance scope; licensing verification list; 7 regression tests; 12-phase implementation order; final architectural model. |
 | 2.4 | **Review decisions recorded** (§AV): binding decisions on the production-runtime boundary; single **Media Runtime Gateway** for the existing GPU worker and the ComfyUI worker; workflow **and** model authorization digest (no model substitution); the A/V ↔ runtime meeting point; **timing integrity rule** (no runtime may silently alter production timing) with video/audio timing reports; post-review implementation sequence; ComfyUI GPL-3.0 position clarified. |
 | 2.3 | **Synchronized production** (Part IV, §AU): Master Production Clock (integer-µs timebase, rational fps), audio-first planning, Audio Engine, A/V Synchronization Engine and validators, lip-sync validation, music/SFX/ambience anchoring, automatic repair loop, Final Quality Gate, mastering pipeline, production state machine, timeline/audio/sync/repair/version/provenance tables; verified current-code gaps (e.g. silent `-shortest` truncation, 16 vs 24 fps); analysis-tool licenses checked. |
@@ -1062,7 +1063,7 @@ adapter, DeployPro the preferred adapter, others can be added. Extend
 
 ---
 
-## O. Authentication architecture (mandatory fix — Phase 2)
+## O. Authentication architecture (mandatory fix — implementation Phase 1, §AX.2)
 
 Today: the worker sends `Authorization: Bearer <RUNPOD_API_KEY>`; FastAPI checks
 nothing; anyone with a pod URL can call `/generate` and `/train`.
@@ -1427,7 +1428,7 @@ output_key, quality_score, routing decision`.
 
 ## Y. Security
 
-- GPU auth (§O) and presigned-only storage (§P) — Phase 2, before any new model.
+- GPU auth (§O) and presigned-only storage (§P) — implementation Phase 1 (§AX.2), before any new model.
 - RLS on all new tables; worker-only columns protected by guard triggers (as
   0024 does for users); registry tables admin-only.
 - Input validation: key prefix = `projects/{project_id}/`; image size and
@@ -2951,7 +2952,7 @@ create.
 
 ### AT.19 Implementation order (addendum) mapped to phases
 
-> **Superseded for sequencing by the approved 12-phase order in §AV.6.** Kept for traceability of the addendum's steps.
+> **Superseded for sequencing by the governing 12-phase order in §AX.2** (previously §AV.6). Kept for traceability of the addendum's steps.
 
 | # | Addendum step | Maps to | Notes |
 |---|---|---|---|
@@ -3606,7 +3607,7 @@ FINAL FILM + PROVENANCE MANIFEST
 
 ### AU.26 Implementation priority (directive) and reconciliation
 
-> **Superseded for sequencing by the approved 12-phase order in §AV.6** (GPU security first; clock, audio and sync schemas in parallel). Kept for traceability.
+> **Superseded for sequencing by the governing 12-phase order in §AX.2** (previously §AV.6; GPU security first; clock, audio and sync schemas in parallel). Kept for traceability.
 
 Directive order:
 1. Define the Master Production Clock and timeline schema.
@@ -3852,6 +3853,8 @@ Rules:
   engine performs real synchronization instead of joining files with FFmpeg.
 
 ### AV.6 Implementation order (approved, 12 phases — supersedes earlier orderings)
+
+> **Superseded for sequencing by §AX.2 (v2.6).** The scope of each phase below is unchanged; §AX.2 renumbers them, drops the architecture amendment as a phase, and adds Mastering as its own phase. Kept for traceability.
 
 | Phase | Scope | Gate to start |
 |---|---|---|
@@ -4153,7 +4156,7 @@ license policy (`generation_provenance`, §AU.16).
 Tests 1–4 and 7 run in CI against fixture media (FFmpeg-generated tone/bars
 clips of known durations) with no GPU; tests 5–6 run against the gateway with
 a placeholder backend. Each becomes a required check for the phase that
-introduces the behavior (§AV.6). Test 1 also has a quick, separately approved
+introduces the behavior (§AX.2 lists which tests gate which phase). Test 1 also has a quick, separately approved
 fix available: replace the silent `-shortest` truncation with a hard
 duration check in today's render path.
 
@@ -4242,17 +4245,23 @@ inherit ComfyUI's license status.
                     └───────────────────────┘
                             │
                             ▼
-                    FINAL QUALITY GATE
+                  PRE-MASTER VALIDATION
+                      (VALIDATING)
                             │
                             ▼
                          MASTERING
+                  (FFmpeg as executor)
                             │
                             ▼
-                         FFmpeg
-                            │
+                    FINAL QUALITY GATE ──(fail)──► REPAIR PLANNER
+                     (QUALITY_GATE)
+                            │ (pass)
                             ▼
-                      MASTER FILM
+                  MASTER FILM · COMPLETE
 ```
+
+> Corrected in v2.6 (§AX.4 #1): the Final Quality Gate runs on the rendered
+> master, after mastering, matching the production state machine (§AU.18).
 
 ### AW.16 The 20 required establishments — where each is defined
 
@@ -4278,6 +4287,195 @@ inherit ComfyUI's license status.
 | 18 | Configurable synchronization tolerances | AW.9 |
 | 19 | Regression tests for observed failures | AW.11 |
 | 20 | FFmpeg restricted to media processing/mastering | AW.7, AV.1 (22) |
+
+The second review's twenty requirements, numbered differently, are mapped in §AX.3.
+
+
+## AX. Review-control amendment — consistency pass and governing implementation order (v2.6)
+
+Status: **architecture under review. Implementation: NOT APPROVED.** The PR
+stays unmerged until the architecture is explicitly approved. This section
+amends the document; it replaces nothing above except where it says
+"supersedes", and every superseded passage is kept for traceability.
+
+### AX.1 What this amendment is
+
+The second review asked for the timing, synchronization, runtime-security and
+licensing amendment to be completed and checked against twenty explicit
+requirements. That content was already added in v2.4 (§AV) and v2.5 (§AW). This
+pass:
+
+1. maps the review's twenty requirements one-to-one onto the sections that
+   define them (§AX.3);
+2. resolves the contradictions found while checking (§AX.4);
+3. adopts the review's implementation order as the governing order (§AX.2);
+4. states explicitly the relationship between the ComfyUI runtime architecture
+   and the A/V production architecture (§AX.5).
+
+### AX.2 Governing implementation order (supersedes §AV.6 for sequencing)
+
+The architecture amendment itself is no longer counted as a phase. It is the
+precondition for all of them: **architecture approved → PR merged → Phase 1
+may start.**
+
+| Phase | Scope | Defined in | Gate to start | Regression tests (§AW.11) that become required checks |
+|---|---|---|---|---|
+| **1 — GPU security** | Authenticated Media Runtime Gateway in front of every GPU path; secure the existing GPU service; no unauthenticated generation or training endpoint; short-lived signed job tokens (deployment-, action-, job- and body-bound, replay-protected); workflow + model authorization digest; one-time upload/download URLs; no permanent storage credentials on GPU workers; audit of every request and artifact | O, P, Y, AV.2, AV.3 | architecture approved and PR merged | 5, 6 |
+| **2 — Master Production Clock** | authoritative timeline: integer-microsecond positions, exact rational frame rates, one production fps, controlled conversion only | AU.4, AW.3 | Phase 1 started (may run in parallel, AV.1 decision 15) | 2 |
+| **3 — Runtime contract** | six operations (`execute`, `validate`, `estimate`, `cancel`, `status`, `capabilities`); mandatory video/audio timing reports; Cineforge-side outcome classification; `DiffusersRuntime` over the existing backends | AT.6, AV.5 | Phase 1 (runtime calls go through the gateway) | 7 |
+| **4 — Audio + timeline data model** | `audio_tracks` and `dialogue_lines` become part of the authoritative timing system; timeline, audio-generation, sync-issue, repair, version, provenance and `sync_policies` tables | AU.16, AW.9, AW.13 | Phase 2 | 1, 3 |
+| **5 — A/V Sync Engine** | TimelineAnalyzer, DialogueAligner, DurationValidator, DriftDetector, SubtitleSynchronizer, MusicCueValidator, SFXCueValidator, LoudnessValidator, FrameRateValidator, lip-sync validation, RepairPlanner (and the remaining components in §AU.7) | AU.7–AU.11 | Phases 2–4 | 1, 2, 3, 4 |
+| **6 — ComfyUI runtime** | `cineforge-comfy-worker`, ComfyUI on 127.0.0.1 only, behind the gateway | AT.10, AT.12, AV.2 | Phase 1 **complete**; Phase 3 | 5, 6 (re-run against the ComfyUI path) |
+| **7 — Workflow Registry** | versioned, immutable, controlled workflow templates with named slots; Workflow Builder | AT.7, AT.8, AW.8 | Phases 3, 6 | 5 |
+| **8 — Approved image/video models** | integration only after license, territory, technical, cost and quality validation; registry status `production` set only by that process | C, D, E, H, AW.14 | Phase 7 | 5 |
+| **9 — Repair engine** | automatic diagnosis, safe repair, targeted regeneration, bounded retries | AU.12 | Phase 5 | 1, 4, 7 |
+| **10 — Final Quality Gate** | synchronized technical validity becomes the definition of `COMPLETE` | AU.13, AU.18 | Phases 5, 9 | 1–4, 7 |
+| **11 — Mastering** | final assembly against the approved timeline, loudness, codec targets, provenance manifest; FFmpeg as the media-processing executor | AU.17, AW.7 | Phase 10 | 1, 2, 3 |
+| **12 — DeployPro GPU orchestration** | move workers onto DeployPro when its GPU orchestration is ready, without changing the production architecture | AF–AR | DeployPro gates G1–G4 (§AG) | all |
+
+**Mapping to earlier numbering.**
+
+| This order | §AV.6 (v2.4/v2.5) | §AA product phases | §AR infrastructure |
+|---|---|---|---|
+| 1 GPU security | 2 | 2 | I2 |
+| 2 Master Production Clock | 3 | — (new in Part IV) | — |
+| 3 Runtime contract | 4 | 3–4 (registry/router; worker core + backends) | — |
+| 4 Audio + timeline data model | 5 | — (new in Part IV) | — |
+| 5 A/V Sync Engine | 6 | — (new in Part IV) | — |
+| 6 ComfyUI runtime | 7 | — (§AT) | — |
+| 7 Workflow Registry | 8 | — (§AT) | — |
+| 8 Approved image/video models | 9 | 5, 12, 13 | — |
+| 9 Repair engine | 10 | 15 (QC auto-regenerate) | — |
+| 10 Final Quality Gate | 11 | 15 | — |
+| 11 Mastering | (inside 11) | — | — (§AJ media render) |
+| 12 DeployPro GPU orchestration | 12 | — | I3–I11 |
+
+The §AA product phases 6–11, 14 and 16 (image tables, storyboard frames,
+gpt-image-1 removal, identity, world assets, editing, continuity, Model Lab)
+keep their scope and dependencies. They are scheduled after Phase 8, because
+each depends on approved image models running behind the gateway and the
+runtime contract.
+
+**Order of the gate and mastering.** Building the Final Quality Gate (Phase 10)
+before the new mastering pipeline (Phase 11) does not change the runtime order
+of the production state machine (§AU.18): at run time, `VALIDATING` (pre-master)
+→ `MASTERING` → `QUALITY_GATE` (post-render) → `COMPLETE`. In Phase 10 the
+gate is built and enforced against today's render output. Phase 11 replaces the
+render with the mastering pipeline, and the gate then runs on the master.
+
+### AX.3 The review's twenty requirements — where each is defined
+
+| # | Requirement (review wording) | Section(s) |
+|---|---|---|
+| 1 | Master Production Clock as the sole temporal authority | AU.4, AW.3, AV.1 (19, 20) |
+| 2 | No runtime may silently alter production timing | AV.5, AV.1 (18) |
+| 3 | Runtime requested-vs-actual timing metadata | AV.5 (`VideoTimingReport`, `AudioTimingReport`), AT.6 (`RuntimeStatus.timing`), K/AU.16 (`timing_report`) |
+| 4 | Audio-first production planning | AU.5, AW.4 |
+| 5 | A/V Synchronization Engine | AU.7, AU.8 |
+| 6 | Dialogue, lip-sync, music, SFX, ambience and subtitle synchronization | AU.8 (dialogue levels), AU.9 (lip sync), AU.11 + AW.6 (music, SFX, ambience, transitions, silence), AU.7 SubtitleSynchronizer + AW.11 test 3 (subtitles) |
+| 7 | Automatic repair and regeneration loop | AU.12, AV.5 (outcomes), AW.15 |
+| 8 | Final Quality Gate as the definition of production completion | AU.13, AU.18, AV.1 (14) |
+| 9 | No silent narration truncation | AW.2, AU.12, AV.1 (21), AW.11 test 1 |
+| 10 | Authenticated Media Runtime Gateway | AV.2, O |
+| 11 | Workflow authorization **and** model authorization | AV.3, AW.8, AW.11 test 5 |
+| 12 | Private ComfyUI execution | AT.10, AT.12, AV.2, AV.1 (6) |
+| 13 | No permanent storage credentials on GPU workers | O, P, AT.13, AV.1 (8) |
+| 14 | Runtime portability between ComfyUI, Diffusers and future runtimes | AT.6, AT.18, AV.1 (9), AX.5 |
+| 15 | Workflow Registry and controlled workflow templates | AT.7, AT.8, AW.8, AV.1 (4, 5) |
+| 16 | Model licensing and territory enforcement | D, H (eligibility), AV.1 (10), AW.14, AT.15, AV.7 |
+| 17 | Configurable synchronization tolerances | AW.9 (`sync_policies`, production profiles), AV.1 (17) |
+| 18 | Regression tests for the failures discovered in the current implementation | AW.11 (tests 1–7), AU.2, AU.19 |
+| 19 | FFmpeg as media-processing/mastering infrastructure, not the synchronization intelligence | AW.7, AU.17, AV.1 (22) |
+| 20 | Relationship between the ComfyUI runtime architecture and the A/V production architecture | AV.4, AX.5 |
+
+The v2.5 list of twenty required establishments (§AW.16) remains valid. The
+review's list above uses different numbering and merges or splits some items.
+For example, review item 6 itemizes the synchronization domains, and review
+item 20 is not on the v2.5 list.
+
+### AX.4 Contradictions found and how they are resolved
+
+| # | Contradiction | Where | Resolution |
+|---|---|---|---|
+| 1 | The final architectural model placed **FINAL QUALITY GATE before MASTERING**. The state machine places the Final Quality Gate **after** mastering, with pre-master validation before it. | AW.15 vs AU.18 | AW.15 diagram corrected: QUALITY ANALYSIS → PASS → **PRE-MASTER VALIDATION** → MASTERING (FFmpeg) → **FINAL QUALITY GATE** → COMPLETE / MASTER FILM, with a gate failure returning to the repair planner. The state machine (AU.18) is authoritative. |
+| 2 | Three implementation numberings coexisted, so "Phase 2" meant GPU security in §AA and §AV.6 but "Master Production Clock" in the review's order. | AA, AV.6, O, Y, decisions 5 and 19 | §AX.2 is the governing order. §AV.6 is marked superseded for sequencing. References in §O, §Y and decisions 5 and 19 now say "implementation Phase 1 (§AX.2)". §AA keeps its product-phase scope, mapped in §AX.2. |
+| 3 | §AV.6 listed the architecture amendment as Phase 1 and had no mastering phase. The review lists mastering as Phase 11 and does not count the amendment. | AV.6 | Adopted the review's order. Mastering (§AU.17) is a separate Phase 11. The amendment is the precondition to Phase 1. |
+| 4 | §AT.19 and §AU.26 carry their own earlier orderings. | AT.19, AU.26 | Already marked superseded (v2.5). Their pointers now refer to §AX.2. |
+
+No contradiction was found between Parts I–IV and §AV/§AW on:
+- model neutrality (Wan 2.2 as the initial license-safe candidate; LTX license-dependent; HunyuanVideo territory-restricted; Wan 2.1 legacy fallback);
+- ComfyUI isolation;
+- the storage-credential rule;
+- the timing-integrity rule;
+- metering;
+- DeployPro as later, non-blocking infrastructure.
+
+### AX.5 ComfyUI runtime architecture ↔ A/V production architecture
+
+This restates §AV.4 as rules, so that both halves of the document are bound
+to the same contract:
+
+1. **Ownership.**
+   - The A/V production architecture (§AU) owns the timeline, the audio plan,
+     the video plan, synchronization, repair decisions, the Final Quality
+     Gate and mastering.
+   - The runtime architecture (§AT) owns only **execution** of one
+     authorized workflow version.
+   - ComfyUI, Diffusers and any future runtime are interchangeable at this
+     boundary.
+2. **What crosses the boundary.**
+   - **Inbound:** a timed production request (shot id, timeline version,
+     requested duration in µs, production fps, identity and reference
+     versions, timing constraints such as speaking intervals and action
+     events), bound by the gateway's workflow + model authorization digest.
+   - **Outbound:** artifacts plus a mandatory timing report (§AV.5). Nothing
+     else flows back. In particular, no runtime returns a timeline, a cut
+     decision or an acceptance verdict.
+3. **Classification is Cineforge's.**
+   - The AVSyncEngine and outcome classifier evaluate the timing report
+     against the Master Production Clock and the `sync_policies` tolerances.
+   - The outcome is `ACCEPTED`, `REQUIRES_REPAIR`, `REQUIRES_REGENERATION`
+     or `FAILED`.
+   - A missing or invalid timing report is an invalid result, never a
+     success.
+4. **Repair goes back through the same boundary.**
+   - A regeneration chosen by the repair planner is a new timed production
+     request for the **same** timeline version.
+   - It goes through the same gateway authorization. Changing the model or
+     workflow version requires a new authorization; silent substitution is
+     never allowed.
+5. **Workflows declare timing capability.**
+   - Workflow Registry entries (§AT.7) declare which timing parameters they
+     honor (duration, fps, frame count, audio conditioning) through
+     `capabilities()`.
+   - The router does not select a workflow that cannot honor the requested
+     timing within tolerance for the production profile.
+6. **Portability test.**
+   - Swapping a shot's runtime from Diffusers to ComfyUI (or a future
+     runtime) with the same authorized workflow semantics must not change
+     the timeline, the request or the classification rules. Only the
+     execution backend and the provenance record change.
+   - Regression test 7 runs against every runtime adapter.
+
+### AX.6 Unresolved decisions (carried to review)
+
+1. **Approve the architecture** (whole document, v2.6), then merge the PR.
+   Implementation starts only after explicit approval.
+2. **Confirm the governing order (§AX.2)**, including Final Quality Gate
+   (Phase 10) before Mastering (Phase 11) as an implementation order, with the
+   run-time order unchanged.
+3. **Confirm where the §AA product phases are scheduled**, relative to the
+   twelve phases: after Phase 8, or in parallel where independent.
+4. **License verification still open** (§AW.14): Qwen-Image / Edit, Z-Image,
+   bundled text encoders, editing and pose models, WhisperX alignment models,
+   pyannote and MFA models, SyncNet weights, MediaPipe models, ComfyUI
+   custom nodes. These were unverifiable here because Hugging Face is blocked
+   from this environment.
+5. **Counsel review** of ComfyUI GPL-3.0 for any future on-premise
+   distribution (§AV.7).
+6. **Optional separate fix:** replace the silent `-shortest` narration
+   truncation with a hard duration check in today's render path (§AW.11
+   test 1). It needs separate approval and is not part of this PR.
 
 
 ---
@@ -4377,6 +4575,17 @@ Every requirement from the two directives and where this document satisfies it.
 | 40 Binding decisions 1–22 | AV.1 |
 | 41 Implementation order phases 1–12 | AV.6 |
 | 42 Final directive (20 required establishments) | AW.16 |
+
+**Review 2 — Complete the amendment, report, control implementation (v2.6)**
+
+| Review item | Section(s) |
+|---|---|
+| Requirements 1–20 (clock authority … ComfyUI ↔ A/V relationship) | AX.3 (one row each) |
+| Do not simplify or summarize; preserve and amend rather than replace | AX.1; all earlier sections retained; superseded passages marked, not deleted |
+| Implementation order: GPU security → clock → runtime contract → audio/timeline model → A/V sync → ComfyUI → workflow registry → approved models → repair → Final Quality Gate → mastering → DeployPro | AX.2 |
+| Report contradictions | AX.4 |
+| Report unresolved decisions | AX.6 |
+| Do not merge; do not implement until explicitly approved | Status line; AX status; AX.6 (1) |
 
 **Review 1 — Architecture review feedback (v2.4)**
 
@@ -4517,7 +4726,7 @@ Every requirement from the two directives and where this document satisfies it.
    counsel opinion on Attachment A item 20 and the $10M threshold).
 4. Accept **HunyuanVideo's territory restriction** (not available in EU/UK/KR,
    outputs never used for training), or exclude it entirely.
-5. Approve **GPU security (Phase 2 / I2)** as the first implementation phase.
+5. Approve **GPU security (implementation Phase 1 per §AX.2; §AA phase 2 / I2)** as the first implementation phase.
 6. Approve **universal metering** with charging enabled per kind (initially
    video only) until real cost/performance data sets prices.
 7. Approve the **Cineforge-owned identity** approach without InsightFace-based
@@ -4555,4 +4764,13 @@ Every requirement from the two directives and where this document satisfies it.
     sequence (§AV.6)**, which supersedes the earlier ordering notes.
 19. Review the **v2.5 amendment (§AW)**: result outcomes, production states,
     22 binding decisions, 12-phase order, regression tests 1–7, tolerance
-    profiles — then approve implementation of **Phase 2 (GPU security)**.
+    profiles — then approve implementation of **GPU security** (Phase 1 in the governing order, §AX.2).
+20. Review the **v2.6 review-control amendment (§AX)**:
+    - the governing 12-phase order (§AX.2);
+    - the twenty-requirement map (§AX.3);
+    - the contradictions resolved (§AX.4), including the Final Quality Gate
+      placed after mastering in §AW.15;
+    - the open items (§AX.6).
+
+    Then approve the architecture, merge, and separately approve
+    **Phase 1 — GPU security**.
