@@ -9,8 +9,27 @@ import { getSupabase } from "../../lib/supabase";
 
 const ROLES = ["EDITOR", "PRODUCER", "VIEWER"] as const;
 
-/** Teams — invite collaborators by email; invites persist and are manageable.
- *  Email delivery + acceptance flow arrives with SMTP; stated honestly. */
+/** Teams — invite collaborators by email. The invite row is the record; the
+ *  team-invite edge function emails it through Supabase Auth and marks it
+ *  ACCEPTED once that email has a Cineforge account. */
+
+/** Call the team-invite edge function with the member's JWT. */
+async function inviteFn(body: Record<string, unknown>): Promise<{ ok: boolean; data: { message?: string; error?: string; accepted?: number } }> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, data: { error: "Supabase not configured" } };
+  const { data: session } = await sb.auth.getSession();
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/team-invite`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${session?.session?.access_token ?? ""}` },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 404) return { ok: false, data: { error: "Email delivery needs the team-invite function deployed (supabase functions deploy team-invite)." } };
+    return { ok: res.ok, data: await res.json().catch(() => ({})) };
+  } catch (e) {
+    return { ok: false, data: { error: e instanceof Error ? e.message : "Invite service unreachable" } };
+  }
+}
 export function TeamsPage() {
   const { user, profile } = useAuth();
   const [invites, setInvites] = useState<{ id: string; email: string; role: string; status: string; created_at: string }[] | null>(null);
@@ -18,6 +37,7 @@ export function TeamsPage() {
   const [role, setRole] = useState<string>("EDITOR");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const sb = getSupabase();
@@ -27,8 +47,10 @@ export function TeamsPage() {
   }, [user]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    if (!user) return;
+    // Pick up invitees who have joined since, then show the ledger.
+    void inviteFn({ action: "sync" }).finally(() => void refresh());
+  }, [user, refresh]);
 
   async function onInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -37,9 +59,12 @@ export function TeamsPage() {
     setBusy(true);
     setError(null);
     try {
-      const ins = await sb.from("team_invites").insert({ owner_id: user.id, email: email.trim().toLowerCase(), role });
+      const ins = await sb.from("team_invites").insert({ owner_id: user.id, email: email.trim().toLowerCase(), role }).select("id").single();
       if (ins.error) throw new Error(ins.error.message);
       setEmail("");
+      setNotice(null);
+      const sent = await inviteFn({ action: "send", inviteId: ins.data.id, redirectTo: `${window.location.origin}/projects` });
+      setNotice(sent.ok ? (sent.data.message ?? "Invite sent.") : `Invite saved, but not emailed: ${sent.data.error ?? "unknown error"}`);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invite failed");
@@ -67,7 +92,7 @@ export function TeamsPage() {
         copy={
           <>
             <p>Invite collaborators into your studio as editors, producers or viewers.</p>
-            <p><strong>Invites are recorded now; email delivery and sign-in acceptance arrive with SMTP.</strong></p>
+            <p><strong>Each invite is emailed through your Supabase Auth email settings, and marked accepted when that person joins.</strong></p>
           </>
         }
         status={{ tone: full ? "warn" : "live", label: Number.isFinite(seatLimit) ? `${active} / ${seatLimit} seats · ${profile?.tier ?? "FREE"}` : "Unlimited seats" }}
@@ -95,6 +120,11 @@ export function TeamsPage() {
               </button>
             </form>
             {error && <p role="alert" className="mt-4 border-l-2 border-cf-danger pl-3 text-[12px] text-cf-danger">{error}</p>}
+            {notice && (
+              <p role="status" className={`mt-4 border-l-2 pl-3 text-[12px] ${notice.startsWith("Invite saved, but") ? "border-cf-warn text-cf-warn" : "border-cf-ok text-cf-ok"}`}>
+                {notice}
+              </p>
+            )}
             {full && (
               <p className="mt-4 border-l-2 border-cf-warn pl-3 text-[12px] text-cf-warn">
                 Seat limit reached — <Link href="/pricing" className="underline">upgrade</Link> for more.
