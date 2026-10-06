@@ -94,3 +94,23 @@ export function subscribeProject(id: string, onChange: (row: ProjectRow) => void
     .subscribe();
   return channel;
 }
+
+/**
+ * Real poster frames for finished projects — the render engine stores one
+ * per film (films.poster_key). Returns project id → short-lived signed URL;
+ * projects without a finished film are simply absent (callers draw a frame).
+ */
+export async function posterUrls(projectIds: string[]): Promise<Record<string, string>> {
+  const sb = getSupabase();
+  if (!sb || projectIds.length === 0) return {};
+  const { data } = await sb.from("films").select("project_id, poster_key").in("project_id", projectIds).not("poster_key", "is", null);
+  const rows = (data ?? []).filter((r): r is { project_id: string; poster_key: string } => !!r.poster_key);
+  if (rows.length === 0) return {};
+  const { data: signed } = await sb.storage.from("cineforge-assets").createSignedUrls(rows.map((r) => r.poster_key), 3600);
+  const out: Record<string, string> = {};
+  rows.forEach((r, i) => {
+    const url = signed?.[i]?.signedUrl;
+    if (url) out[r.project_id] = url;
+  });
+  return out;
+}

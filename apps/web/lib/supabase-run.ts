@@ -428,6 +428,7 @@ export class SupabaseRun {
     production.etaMs = 0;
     production.gpuActive = false;
     state.shots = state.shots.map((s) => ({ ...s, status: "ready" }));
+    if (film?.poster_key) state.posterUrl = (await signedUrl(film.poster_key)) ?? undefined;
     if (film?.mp4_key) {
       const url = await signedUrl(film.mp4_key);
       // 4K master (docs/33): exposed as a downloadable pill when upscaled.
