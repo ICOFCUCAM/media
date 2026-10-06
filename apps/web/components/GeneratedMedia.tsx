@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
+import { Section } from "./cf/primitives";
 
 /** Generated media gallery — the actual stills + clips your films produced. */
 export function GeneratedMedia() {
@@ -39,22 +40,34 @@ export function GeneratedMedia() {
 
   if (!user || !shots?.length) return null;
   return (
-    <div className="mt-10">
-      <h2 className="mb-3 text-sm font-semibold text-white/70">Generated media — latest ready shots</h2>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <Section label="Generated media" title="Latest ready shots">
+      <div className="grid grid-cols-2 gap-px border border-cf-line bg-cf-line sm:grid-cols-3 lg:grid-cols-4">
         {shots.map((s) => (
-          <div key={s.id} className="group overflow-hidden rounded-xl border border-white/10 bg-white/[0.02]">
+          <figure key={s.id} className="bg-cf-bg">
             {s.clip ? (
-              <video src={s.clip} muted loop playsInline onMouseEnter={(e) => void e.currentTarget.play()} onMouseLeave={(e) => e.currentTarget.pause()} poster={s.still} className="aspect-video w-full object-cover" />
+              <video
+                src={s.clip}
+                muted
+                loop
+                playsInline
+                onMouseEnter={(e) => void e.currentTarget.play()}
+                onMouseLeave={(e) => e.currentTarget.pause()}
+                onFocus={(e) => void e.currentTarget.play()}
+                onBlur={(e) => e.currentTarget.pause()}
+                tabIndex={0}
+                poster={s.still}
+                aria-label={`Clip from ${s.title}`}
+                className="aspect-video w-full bg-black object-cover"
+              />
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={s.still} alt="" className="aspect-video w-full object-cover" />
+              /* Plain <img>: a signed, short-lived storage URL. */
+              <img src={s.still} alt={`Still from ${s.title}`} className="aspect-video w-full object-cover" />
             )}
-            <div className="truncate px-2.5 py-1.5 text-[11px] text-white/45">{s.title}</div>
-          </div>
+            <figcaption className="cf-label truncate px-3 py-2.5">{s.title}</figcaption>
+          </figure>
         ))}
       </div>
-      <p className="mt-2 text-[11px] text-white/30">Hover a clip to preview. Every shot is reusable — remix coming to the storyboard.</p>
-    </div>
+      <p className="cf-label mt-3">Hover or focus a clip to preview it.</p>
+    </Section>
   );
 }
