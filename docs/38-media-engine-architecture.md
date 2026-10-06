@@ -7,6 +7,7 @@ Version: **2** (2026-10-06) · Supersedes nothing; extends docs/12, 22, 23, 25, 
 |---|---|
 | 1 | Image Intelligence & Generation Engine; model-neutral Video Engine; registry, router, schemas, queues, GPU, security, billing, identity, continuity, migration, phases (§A–§AE). |
 | 2 | **DeployPro** adopted as Cineforge's long-term infrastructure and media-render platform. Added: Cineforge/DeployPro separation of concerns (§0), portability rules (§AF), DeployPro capability and gap analysis from its repository (§AG), `GpuProvider` abstraction (§AH), model-aware GPU scheduling (§AI), media render pipeline (§AJ), `StorageProvider` abstraction (§AK), database portability (§AL), Redis/BullMQ on DeployPro (§AM), private networking (§AN), container deployment model (§AO), control-plane contract (§AP), GPU pool (§AQ), combined product + infrastructure migration roadmap (§AR), requirement traceability for both directives (§AS). Sections A, B, M, N, O, P, Z, AA, AB, AC, AD revised to be provider-neutral. |
+| 2.5 | **Approved architecture amendment** (§AW; updates to §AT.6, §AU.12, §AU.13, §AU.18, §AV.1, §AV.5, §AV.6): synchronized production system as the core principle; Master Production Clock as sole temporal authority; generated media as execution result; no silent narration truncation; result outcomes ACCEPTED / REQUIRES_REPAIR / REQUIRES_REGENERATION / FAILED; approved production states; 22 binding decisions; FFmpeg restricted; generation modes and talking-shot request; music/SFX examples; tolerance keys and production profiles (`sync_policies`); metering and provenance scope; licensing verification list; 7 regression tests; 12-phase implementation order; final architectural model. |
 | 2.4 | **Review decisions recorded** (§AV): binding decisions on the production-runtime boundary; single **Media Runtime Gateway** for the existing GPU worker and the ComfyUI worker; workflow **and** model authorization digest (no model substitution); the A/V ↔ runtime meeting point; **timing integrity rule** (no runtime may silently alter production timing) with video/audio timing reports; post-review implementation sequence; ComfyUI GPL-3.0 position clarified. |
 | 2.3 | **Synchronized production** (Part IV, §AU): Master Production Clock (integer-µs timebase, rational fps), audio-first planning, Audio Engine, A/V Synchronization Engine and validators, lip-sync validation, music/SFX/ambience anchoring, automatic repair loop, Final Quality Gate, mastering pipeline, production state machine, timeline/audio/sync/repair/version/provenance tables; verified current-code gaps (e.g. silent `-shortest` truncation, 16 vs 24 fps); analysis-tool licenses checked. |
 | 2.2 | **Workflow Runtime / ComfyUI integration** (§AT): ComfyUI as an execution runtime behind `WorkflowRuntime` (with `DiffusersRuntime`), versioned Workflow Registry, Workflow Builder, ComfyUI worker design, security, license obligations (ComfyUI is GPL-3.0; its server has no authentication), promotion pipeline; provenance columns added to §J/§K; images, phases, traceability and decisions updated. |
@@ -2396,9 +2397,11 @@ export interface RuntimeValidation { ok: boolean; errors: Array<{ code: string; 
 export interface RuntimeEstimate { gpuMs: number; vramMb: number; gpuClass: string; confidence: "low" | "medium" | "high" }
 export type RuntimeStatus =
   | { state: "queued" | "loading" | "running"; progress: number; node?: string }
-  | { state: "succeeded" | "succeeded_out_of_tolerance";
+  | { state: "completed";                         // execution finished; NOT a production verdict
       result: ImageGenerationResult | ShotResult;
       timing?: VideoTimingReport | AudioTimingReport }   // required for video/audio (§AV.5); missing → invalid
+  // Cineforge (never the runtime) then classifies the result:
+  // ACCEPTED | REQUIRES_REPAIR | REQUIRES_REGENERATION | FAILED   (§AV.5)
   | { state: "failed"; error: { code: string; message: string; retryable: boolean } }
   | { state: "cancelled" };
 
@@ -2948,6 +2951,8 @@ create.
 
 ### AT.19 Implementation order (addendum) mapped to phases
 
+> **Superseded for sequencing by the approved 12-phase order in §AV.6.** Kept for traceability of the addendum's steps.
+
 | # | Addendum step | Maps to | Notes |
 |---|---|---|---|
 | 1 | Approve architecture and model/license policy | P1 | this PR |
@@ -3337,6 +3342,12 @@ export type RepairAction =
   | { kind: "recompute_sequence"; sceneIds: string[] }
   | { kind: "human_review"; reason: string };
 ```
+Narration longer than picture (e.g. narration 42.000 s, picture 35.000 s) is
+a **timeline mismatch → repair required**, never a silent truncation. Possible
+repairs: extend picture · generate an additional shot · adjust shot structure
+· re-time narration · regenerate affected video. **Only an explicit production
+decision may shorten the narration** (recorded with who/when/why).
+
 Repair policy: automatic repairs have a per-production budget (attempts and
 credits); after the budget, issues go to human review. Repairs always create
 **new media versions** (AU.16), never overwrite approved media.
@@ -3349,7 +3360,7 @@ synchronization · scene and shot transitions · music timing · SFX timing ·
 ambience continuity · subtitle/caption alignment · audio silence gaps · audio
 clipping and technical defects · program loudness · sample rate · frame rate
 and timebase · dropped or duplicate frames · black frames · missing media ·
-timeline continuity · media provenance and successful asset resolution ·
+timeline continuity · media provenance and successful asset resolution · codec validity · media integrity (decodes end-to-end, checksums) · silence anomalies · production metadata (manifest complete) ·
 required render outputs and codecs.
 
 Delivery profiles (configuration) define targets per output: e.g. program
@@ -3432,19 +3443,33 @@ ids and delivery profile — the film is reproducible from its manifest.
 
 ### AU.18 Production state machine
 
+States (approved):
+
 ```
-PLANNED → SCRIPTED → TIMELINED → MEDIA_GENERATING → SYNC_ANALYSIS
-        → QUALITY_REPAIR (if required) → READY_FOR_MASTER → MASTERING → COMPLETE
+PLANNING → TIMELINE_BUILDING → AUDIO_PLANNING → VIDEO_PLANNING → GENERATING
+        → SYNCING → VALIDATING ──(fail)──► REPAIRING ──► SYNCING
+                    │
+                 (pass)
+                    ▼
+               MASTERING → QUALITY_GATE ──(pass)──► COMPLETE
+                               │
+                            (fail) ──► REPAIRING   (or FAILED when the repair budget is exhausted)
+any state ──(unrecoverable)──► FAILED
 ```
-A production is **never** marked COMPLETE solely because all generation jobs
-succeeded.
+- `VALIDATING` is the **pre-master** synchronization validation (AVSyncEngine
+  over the approved timeline); `QUALITY_GATE` is the **Final Quality Gate**
+  over the rendered master (codec validity, media integrity, loudness, frame
+  rate, dropped/black frames, plus re-confirmation of sync). Both must pass.
+- A production is **never** marked COMPLETE solely because all generation jobs
+  succeeded or because FFmpeg produced a file.
 
 Compatibility: today's `projects.status` enum (`DRAFT`, `PLANNING`,
-`GENERATING`, `RENDERING`, `PAUSED`, `READY`, `FAILED`) stays for existing UI;
-a new `projects.production_state` column carries the new machine, with a
-mapping (`PLANNED/SCRIPTED/TIMELINED → PLANNING`, `MEDIA_GENERATING/
-SYNC_ANALYSIS/QUALITY_REPAIR → GENERATING`, `READY_FOR_MASTER/MASTERING →
-RENDERING`, `COMPLETE → READY`) until the UI migrates.
+`GENERATING`, `RENDERING`, `PAUSED`, `READY`, `FAILED`) stays for the existing
+UI; a new `projects.production_state` column carries the new machine, mapped
+until the UI migrates: `PLANNING/TIMELINE_BUILDING/AUDIO_PLANNING/
+VIDEO_PLANNING → PLANNING`, `GENERATING/SYNCING/VALIDATING/REPAIRING →
+GENERATING`, `MASTERING/QUALITY_GATE → RENDERING`, `COMPLETE → READY`,
+`FAILED → FAILED`.
 
 ### AU.19 Failure examples the system must catch
 
@@ -3581,6 +3606,8 @@ FINAL FILM + PROVENANCE MANIFEST
 
 ### AU.26 Implementation priority (directive) and reconciliation
 
+> **Superseded for sequencing by the approved 12-phase order in §AV.6** (GPU security first; clock, audio and sync schemas in parallel). Kept for traceability.
+
 Directive order:
 1. Define the Master Production Clock and timeline schema.
 2. Define Audio Engine interfaces and audio event schema.
@@ -3628,30 +3655,40 @@ This section records the architecture review's binding decisions on where
 Cineforge ends and a runtime begins, and the rule that keeps runtimes from
 silently changing the production.
 
-### AV.1 Binding decisions
+### AV.1 Binding decisions (approved, 22)
 
-1. **Cineforge owns production intelligence.** ComfyUI (and every runtime)
-   executes workflows; it does not own Cineforge's characters, scenes, shots,
-   timelines, billing, identity system or production state.
-2. **The six-operation runtime contract is mandatory** for every runtime:
-   `execute → validate → estimate → cancel → status → capabilities` (§AT.6).
-3. **The Workflow Registry is the control plane.** A workflow cannot request
-   arbitrary models or arbitrary ComfyUI graphs; the registry determines what
-   is authorized (§AT.7).
-4. **The Workflow Builder fills named slots in controlled templates only**
-   (§AT.8) — no arbitrary graph construction, which would become a security,
-   reproducibility and licensing problem.
-5. **ComfyUI remains private.** Never `Internet → ComfyUI`. All access passes
-   through the authenticated Media Runtime Gateway (AV.2).
-6. **The gateway authorizes both the workflow and the models.** A request of
-   the form "run this approved workflow, but replace the approved model with
-   another model" is rejected (AV.3).
-7. **No storage credentials on GPU machines.** GPU workers receive only
-   short-lived, narrowly scoped upload/download access (§O, §AT.12).
-8. **ComfyUI remains replaceable.** The same Cineforge production request is
-   executable through ComfyUI, Diffusers or a future runtime without changing
-   the production layer.
-9. **No runtime may silently alter production timing** (AV.5).
+1. Cineforge owns production intelligence.
+2. ComfyUI executes workflows but does not own Cineforge production state.
+3. The six-operation runtime contract is mandatory: `execute`, `validate`,
+   `estimate`, `cancel`, `status`, `capabilities`.
+4. The Workflow Registry is the production control plane.
+5. Workflows use controlled templates and named slots.
+6. ComfyUI remains private.
+7. The Media Runtime Gateway authorizes both workflows and models.
+8. GPU workers receive no permanent storage credentials.
+9. Cineforge remains runtime-neutral.
+10. Model licensing and territory restrictions are enforced before execution.
+11. GPU security is the first implementation priority.
+12. DeployPro GPU support can be added later without changing Cineforge's
+    production architecture.
+13. ComfyUI licensing and custom-node licensing require appropriate legal
+    review for on-premise/customer distribution.
+14. A film is complete only after synchronized production passes the Final
+    Quality Gate.
+15. GPU security remains first priority while clock, audio and
+    synchronization schemas can be developed in parallel.
+16. Synchronization and analysis tools may be adopted subject to final
+    model/weight/license verification.
+17. Synchronization tolerances and loudness/codec targets are configuration
+    values calibrated through testing.
+18. No runtime may silently alter production timing.
+19. The Master Production Clock is the sole temporal authority for a
+    Cineforge production.
+20. Generated media is an execution result, not the source of truth for the
+    production timeline.
+21. Narration must never be silently truncated to fit available picture.
+22. FFmpeg is a mastering/media-processing component, not Cineforge's
+    synchronization intelligence.
 
 ### AV.2 Media Runtime Gateway — one security boundary for every GPU path
 
@@ -3795,31 +3832,45 @@ Rules:
   operation is reported in `conformApplied`.
 - Measured values come from the produced file (ffprobe / sample count), not
   from echoing the request parameters.
-- Cineforge evaluates the report against tolerances: **within tolerance** →
-  `SUCCEEDED`; **outside tolerance** → `SUCCEEDED_OUT_OF_TOLERANCE` (media
-  kept as a version, *not* placed on the timeline) and an `av_sync_issues`
-  row with a proposed repair (§AU.12). It never counts as a successful
-  production step.
+- Cineforge evaluates the report against the timeline's tolerance profile
+  and classifies the result as exactly one of:
+
+  | Outcome | Meaning | Effect |
+  |---|---|---|
+  | `ACCEPTED` | within tolerance | media version placed on the timeline |
+  | `REQUIRES_REPAIR` | out of tolerance but a safe repair exists (retime, conform, trim handles the plan allowed, re-time audio) | version kept, not placed; `av_sync_issues` + `repair_jobs` |
+  | `REQUIRES_REGENERATION` | out of tolerance and no safe repair | version kept for provenance; regeneration with corrected constraints |
+  | `FAILED` | invalid result (no timing report, corrupt media, wrong frame rate without permitted conform, authorization mismatch) or repair budget exhausted | escalate / human review |
+
+  The runtime never assigns these outcomes. Example: requested 6.840 s,
+  produced 6.793 s → `requested_duration = 6.840`, `actual_duration = 6.793`,
+  `timing_accuracy` calculated, status `REQUIRES_REPAIR` (if outside the
+  configured `duration_tolerance`); the MP4 does not redefine the production
+  duration.
 - Reports are stored on the ledger rows (`video_generations.timing_report`,
   `audio_generations.timing_report`) and in `workflow_runs`, so the A/V
   engine performs real synchronization instead of joining files with FFmpeg.
 
-### AV.6 Implementation sequence after this review (supersedes ordering conflicts)
+### AV.6 Implementation order (approved, 12 phases — supersedes earlier orderings)
 
-| Phase | Scope | Notes |
+| Phase | Scope | Gate to start |
 |---|---|---|
-| **1 — Architecture approval** | review the decisions in this document | this PR; do not merge until approved |
-| **2 — Security foundation** | shared authenticated GPU execution layer = **Media Runtime Gateway** (AV.2) in front of the existing GPU worker; job tokens, workflow/model authorization digest (AV.3), one-time storage URLs, no storage credentials on GPU machines | existing Wan/Hunyuan path protected first |
-| **3 — Runtime abstraction** | the six operations (§AT.6) incl. timing reports (AV.5); `DiffusersRuntime` over existing backends | |
-| **4 — ComfyUI worker** | only after the gateway exists; ComfyUI on 127.0.0.1 behind it | may run on the existing GPU infrastructure (RunPod); DeployPro GPU not required yet |
-| **5 — Workflow registry** | register the first controlled workflows | named-slot templates only |
-| **6 — Model integration** | approved image/video workflows (Qwen-Image/Edit; Wan 2.2 benchmark) | license gates apply |
-| **7 — A/V production system** | Master Production Clock, audio-first planning, Audio Engine, AVSyncEngine, repair, Final Quality Gate, mastering (§AU) | schemas for clock/timeline/audio events/sync reports may be drafted in parallel with phases 2–3 |
+| **1 — Architecture amendment** | this document (v2.5) | review of this PR |
+| **2 — GPU security** | Authenticated **Media Runtime Gateway**; secure the existing GPU service; no unauthenticated generation endpoints; authorization digest (workflow + models); one-time storage URLs; storage credentials removed from GPU workers | architecture approved |
+| **3 — Master Production Clock** | authoritative timeline representation: microsecond precision + exact rational frame rates (§AU.4) | phase 2 started (may run in parallel) |
+| **4 — Runtime contract** | `execute()`, `validate()`, `estimate()`, `cancel()`, `status()`, `capabilities()` with timing reports (§AT.6, §AV.5); `DiffusersRuntime` over existing backends | phase 2 |
+| **5 — Audio/timeline schema** | `audio_tracks` and `dialogue_lines` become part of the authoritative timing system (§AU.16) | phase 3 |
+| **6 — A/V Sync Engine** | TimelineAnalyzer, DialogueAligner, DurationValidator, DriftDetector, SubtitleSynchronizer, MusicCueValidator, SFXCueValidator, LoudnessValidator, FrameRateValidator, RepairPlanner | phases 3–5 |
+| **7 — ComfyUI worker** | only after the security boundary exists | phase 2 complete |
+| **8 — Workflow Registry** | register controlled production workflows | phases 4, 7 |
+| **9 — Approved model integration** | only after license, territory, technical, cost and quality validation | phase 8 |
+| **10 — Production repair system** | automatic diagnosis and safe regeneration (§AU.12) | phase 6 |
+| **11 — Final Quality Gate** | synchronized technical validity becomes a prerequisite for `COMPLETE` | phases 6, 10 |
+| **12 — DeployPro integration** | move workers when DeployPro GPU orchestration is ready, without changing the production architecture | DeployPro gates G1–G4 |
 
-DeployPro GPU support not being ready is **not a blocker**: the runtime
-contract sits above the GPU provider, so the ComfyUI worker can run on the
-existing GPU infrastructure and later move to DeployPro (or any provider)
-without Cineforge changing its production architecture.
+CI passing confirms that the code builds; it does not confirm that the
+production architecture is correct. Each phase ships behind the regression
+tests in §AW.11 that apply to it.
 
 ### AV.7 License position on ComfyUI (clarified)
 
@@ -3835,6 +3886,398 @@ without Cineforge changing its production architecture.
   not assumed to be answered by the cloud architecture.
 - **Every ComfyUI custom node is part of the licensing review**, recorded per
   package and commit like models (§AT.7, §AT.15).
+
+
+## AW. Approved architecture amendment — synchronized production system (v2.5)
+
+Status: **APPROVED FOR ARCHITECTURE AMENDMENT. Implementation: NOT YET
+APPROVED.** The PR stays unmerged until this amendment has been reviewed.
+
+### AW.1 Core principle
+
+Cineforge is designed as a **production system**. A successful generation
+request does not mean a film has been successfully produced. A film is
+complete only when the whole chain has been satisfied:
+
+```
+STORY
+  ↓
+SCRIPT
+  ↓
+PRODUCTION PLAN
+  ↓
+MASTER PRODUCTION CLOCK
+  ↓
+AUDIO PLAN + VIDEO PLAN
+  ↓
+MEDIA GENERATION
+  ↓
+A/V SYNCHRONIZATION
+  ↓
+QUALITY ANALYSIS
+  ↓
+REPAIR / REGENERATION IF REQUIRED
+  ↓
+FINAL QUALITY GATE
+  ↓
+MASTER FILM
+```
+The final product contains technically and creatively synchronized picture
+and sound. The architectural objective: Cineforge must not merely generate
+video and audio — it must **generate, synchronize, validate, repair, and
+master a complete production against one authoritative timeline.**
+
+### AW.2 Current problems that must be corrected
+
+1. **Narration is not controlling the picture timeline.** Scene narration is
+   joined end-to-end and placed beneath the video, with no authoritative
+   timing relationship to individual shots (`render-engine.ts`).
+2. **Narration can be silently truncated** (`-shortest` in the mux). With
+   narration 42.000 s and picture 35.000 s the system must **not** produce
+   35.000 s of narration. Required:
+
+   ```
+   TIMELINE VALIDATION
+           ↓
+   42.000 sec narration
+   35.000 sec picture
+           ↓
+   MISMATCH
+           ↓
+   REPAIR / REGENERATE / FAIL
+   ```
+   The system fails loudly or initiates an approved repair strategy. **No
+   source media may be silently destroyed to make the timeline fit.**
+3. **Frame-rate mismatch** (generated shots 16 fps, production 24 fps) is not
+   an incidental detail: production FPS is authoritative; clips are converted
+   through a controlled process; no independent timing systems may accumulate
+   drift.
+4. **Estimated subtitle timing** is replaced by: Speech → authoritative
+   timestamps → dialogue timeline → subtitle synchronization.
+
+### AW.3 Master Production Clock — sole temporal authority
+
+**Binding rule:** *The Master Production Clock is the sole temporal authority
+for a Cineforge production. No media runtime, model, workflow, renderer,
+codec, or external service may create an independent production timeline.*
+
+```
+                 CINEFORGE MASTER CLOCK
+                          │
+          ┌───────────────┼───────────────┐
+          │               │               │
+          ▼               ▼               ▼
+        VIDEO           AUDIO          EVENTS
+          │               │               │
+      ┌───┼───┐       ┌───┼───┐       ┌───┼───┐
+      │   │   │       │   │   │       │   │   │
+    shots frames     dialogue music    cuts actions
+    camera motion    SFX       ambience transitions
+```
+Precision: whole microseconds; frame rates as exact rationals — 24 fps =
+`24/1`, 23.976 fps = `24000/1001`, 25 fps = `25/1`, 30 fps = `30/1`, 29.97 fps
+= `30000/1001`. One authoritative frame rate per production; generated media
+converted to it in a controlled operation; conversion may not introduce
+cumulative drift (§AU.4).
+
+**Generated media is an execution result, not the source of truth.** A
+generated clip of 6.793 s for a 6.840 s request does not redefine the
+production duration: Cineforge records `requested_duration = 6.840`,
+`actual_duration = 6.793`, `timing_accuracy`, and an outcome (§AV.5); the
+synchronization and repair systems decide the action.
+
+### AW.4 Audio is part of video production
+
+Preferred flow: Story → Script → Dialogue timing → Audio plan → Master
+timeline → Video shot plan → Video generation → A/V synchronization →
+Validation → Master. Audio timing is one of the constraints on video
+generation. A shot request therefore looks like:
+
+```
+Generate Shot 17
+Duration:            6.840 seconds
+Dialogue:            00:01:42.380 → 00:01:48.920
+Character:           approved identity
+Camera:              medium close-up
+Motion:              character speaking
+Timing constraints:  dialogue-driven
+Frame rate:          production FPS
+Reference:           approved character/reference frame
+```
+— fundamentally different from "generate video + generate audio + join with
+FFmpeg".
+
+**Audio execution metadata** (required): `requested_start`, `requested_end`,
+`actual_start`, `actual_end`, `duration`, `word_timestamps`,
+`phoneme_timestamps`, `sample_rate`, `loudness`. Phoneme timing is preserved
+where available; **word-level timing is mandatory** wherever the selected
+speech/transcription system supports it (§AV.5 `AudioTimingReport`).
+
+**Dialogue synchronization** is authoritative and computable, e.g. dialogue
+00:01:42.380 → 00:01:48.920 vs video speaking segment 00:01:42.210 →
+00:01:49.020 → the engine calculates onset/offset deltas against tolerances.
+Subtitle timing derives from authoritative dialogue/voice timing, never
+independently estimated.
+
+### AW.5 Talking shots and generation modes
+
+Generation modes (model-neutral operations in the registry):
+`text_to_video` · `image_to_video` · `speech_to_video` · `reference_to_video`
+· `continuation` · `extension`.
+
+A talking-shot production request may contain: `character_identity`,
+`reference_image`, `dialogue_audio`, `word_timestamps`, `phoneme_timestamps`,
+`requested_duration`, `camera`, `motion`, `environment`, `frame_rate`,
+`production_constraints`. The runtime generates **against** the production
+timing rather than inventing its own. Wan 2.2 S2V is the initial candidate
+where licensing and technical verification remain valid; the architecture
+stays model-neutral.
+
+Lip-sync analysis may use approved tools such as WhisperX, pyannote, Montreal
+Forced Aligner, MediaPipe and SyncNet, each subject to final license
+verification; the A/V engine is tool-neutral (analyzers are registry entries,
+not hard dependencies).
+
+### AW.6 Music, SFX, ambience, transitions, silence
+
+The audio plan contains: dialogue · music · sound_effects · ambience ·
+transitions · silence. Music is not a single looped track.
+
+```
+Music cue:  START 00:03:14.000   END 00:04:02.500
+            Fade in: 1.5 sec     Fade out: 2.0 sec
+
+Door closes: 00:05:17.420
+SFX:         door_close.wav
+Expected sync: ± configured tolerance
+```
+Music cues and SFX reference the Master Production Clock via
+`timeline_events` with anchors (§AU.11).
+
+### AW.7 FFmpeg's role (restricted)
+
+FFmpeg remains an important technical media-processing component, but **it is
+not Cineforge's synchronization intelligence**.
+
+```
+Production Plan
+      ↓
+Master Clock
+      ↓
+Audio Plan ───────── Video Plan
+      ↓                  ↓
+Audio Runtime       Video Runtime
+      ↓                  ↓
+      └────────┬─────────┘
+               ↓
+          AVSyncEngine
+               ↓
+        Repair Planner
+               ↓
+        Final Quality Gate
+               ↓
+             FFmpeg
+               ↓
+         MASTER OUTPUT
+```
+FFmpeg executes technical media operations (conform, transcode, mix, mux,
+measure); Cineforge decides whether the production is correct. FFmpeg flags
+that change timing implicitly (`-shortest`, implicit `fps` resampling, `amix`
+duration modes, `apad`) are only used when the master plan explicitly
+requests them.
+
+### AW.8 Workflow builder example (named slots)
+
+```
+Character Workflow
+├── character_description
+├── reference_image
+├── identity_configuration
+├── style
+├── pose
+├── environment
+└── output_specification
+```
+Users interact with Cineforge concepts, never raw ComfyUI nodes. Each workflow
+version declares required models, model versions, GPU requirements, VRAM
+requirements, license status, territories, allowed production modes, cost
+model, inputs, outputs, validation rules and estimated execution time
+(§AT.7). The gateway authorizes workflow **and** model, preventing security
+bypass, license violations, unapproved models, unexpected costs and
+non-reproducible generations (§AV.3).
+
+### AW.9 Configurable tolerances and production profiles
+
+Never hard-coded. Configuration keys (per profile, calibrated through testing):
+`dialogue_start_tolerance`, `dialogue_end_tolerance`, `lip_sync_tolerance`,
+`music_cue_tolerance`, `SFX_tolerance`, `subtitle_tolerance`,
+`duration_tolerance`, `drift_tolerance`, `loudness_tolerance`.
+
+Profiles: `cinematic` · `documentary` · `social` · `broadcast` · `education`
+· `corporate`. A production selects a profile; the profile id and version
+are recorded on every sync report so results remain explainable after
+calibration changes.
+
+```sql
+create table public.sync_policies (
+  id text not null, version int not null,                 -- 'cinematic', 3
+  tolerances jsonb not null,                               -- the keys above, in µs / LU
+  delivery jsonb not null,                                 -- loudness/true-peak targets, codecs, fps, sample rate, subtitle formats
+  created_at timestamptz not null default now(),
+  primary key (id, version)
+);
+```
+
+### AW.10 Billing, metering and provenance
+
+Everything that consumes production resources is eventually metered: video
+generation · image generation · audio generation · voice · music · SFX ·
+upscaling · translation · lip sync · analysis · GPU time · storage ·
+rendering (`usage_records.kind` extended accordingly, §Q). Generation results
+carry enough provenance to explain: which model · which workflow · which
+runtime · which GPU · which duration · which resources · which cost · which
+license policy (`generation_provenance`, §AU.16).
+
+### AW.11 Regression tests for today's production failures (mandatory)
+
+| # | Test | Input | Expected | Must not happen |
+|---|---|---|---|---|
+| 1 | Narration longer than picture | narration 42 s, picture 35 s | FAIL / REPAIR (timeline mismatch) | silent truncation |
+| 2 | Frame-rate mismatch | source 16 fps, production 24 fps | controlled conversion recorded as a media version; timeline durations exact | independent timing drift |
+| 3 | Subtitle synchronization | dialogue with word timestamps | subtitle timing derived from authoritative dialogue timing | independent estimation |
+| 4 | Dialogue/video mismatch | dialogue outside the visual speaking segment | AVSyncEngine detects mismatch → issue + repair plan | final render silently accepts mismatch |
+| 5 | Unauthorized model substitution | approved workflow + unauthorized model | gateway rejects (`AUTHZ_MISMATCH`) | GPU executes |
+| 6 | Unauthenticated GPU request | no / invalid / expired / replayed token | request rejected | GPU executes generation |
+| 7 | Runtime duration mismatch | requested 6.840 s, produced 5.800 s | `actual_duration` recorded, `timing_accuracy` calculated, outcome REQUIRES_REPAIR / REQUIRES_REGENERATION / FAILED | success |
+
+Tests 1–4 and 7 run in CI against fixture media (FFmpeg-generated tone/bars
+clips of known durations) with no GPU; tests 5–6 run against the gateway with
+a placeholder backend. Each becomes a required check for the phase that
+introduces the behavior (§AV.6). Test 1 also has a quick, separately approved
+fix available: replace the silent `-shortest` truncation with a hard
+duration check in today's render path.
+
+### AW.12 Production queues and dependencies
+
+Dedicated queues `timeline`, `avsync`, `repair`, `master` (with existing
+`image`, `video`, `audio`). Dependency chain — a later stage never runs
+before its dependencies are valid:
+
+```
+timeline
+   ↓
+audio/video generation
+   ↓
+avsync
+   ↓
+repair if required
+   ↓
+quality gate
+   ↓
+master
+```
+
+### AW.13 Data model
+
+The production tables of §AU.16 are adopted, and the existing
+`audio_tracks` and `dialogue_lines` are migrated into the authoritative timing
+architecture: their `start_ms`/`duration_ms`/`gain_db` fields stop being
+unused and become `timeline_events`/`audio_events` placements on the Master
+Production Clock.
+
+### AW.14 Licensing items requiring final primary-source verification
+
+Qwen-Image · Qwen-Image-Edit · Z-Image · bundled text encoders · editing
+models · pose-control models · WhisperX alignment models · pyannote models ·
+MFA models · SyncNet weights · MediaPipe · ComfyUI · ComfyUI custom nodes.
+Licensing is tracked at the workflow/model level and is part of production
+authorization (§H eligibility, §AV.3 digest). No custom node is assumed to
+inherit ComfyUI's license status.
+
+### AW.15 Final architectural model
+
+```
+                         CINEFORGE
+                            │
+                            ▼
+                   PRODUCTION INTELLIGENCE
+                            │
+                            ▼
+                 MASTER PRODUCTION CLOCK
+                            │
+             ┌──────────────┴──────────────┐
+             │                             │
+             ▼                             ▼
+        AUDIO PLAN                    VIDEO PLAN
+             │                             │
+             ▼                             ▼
+      AUDIO ENGINE                  VIDEO ENGINE
+             │                             │
+             │                    ┌────────┴────────┐
+             │                    │                 │
+             │                ComfyUI           Diffusers
+             │                Runtime            Runtime
+             │                    │                 │
+             │                    └────────┬────────┘
+             │                             │
+             └──────────────┬──────────────┘
+                            ▼
+                       AVSyncEngine
+                            │
+                            ▼
+                      QUALITY ANALYSIS
+                            │
+                    ┌───────┴───────┐
+                    ▼               ▼
+                  PASS             FAIL
+                    │               │
+                    │               ▼
+                    │          REPAIR PLANNER
+                    │               │
+                    │               ▼
+                    │         REGENERATE/FIX
+                    │               │
+                    │               └───────┐
+                    │                       │
+                    └───────────────────────┘
+                            │
+                            ▼
+                    FINAL QUALITY GATE
+                            │
+                            ▼
+                         MASTERING
+                            │
+                            ▼
+                         FFmpeg
+                            │
+                            ▼
+                      MASTER FILM
+```
+
+### AW.16 The 20 required establishments — where each is defined
+
+| # | Requirement | Section(s) |
+|---|---|---|
+| 1 | Master Production Clock | AU.4, AW.3 |
+| 2 | Audio-first production planning | AU.5, AW.4 |
+| 3 | A/V Synchronization Engine | AU.7, AU.8 |
+| 4 | Final Quality Gate | AU.13, AU.18 |
+| 5 | Automatic repair loop | AU.12 |
+| 6 | No silent narration truncation | AW.2, AU.12, AW.11 (test 1), AV.1 (21) |
+| 7 | No runtime may silently alter production timing | AV.5, AV.1 (18) |
+| 8 | Master Production Clock as sole temporal authority | AW.3, AV.1 (19, 20) |
+| 9 | Runtime requested-vs-actual timing metadata | AV.5, AW.4 |
+| 10 | Authenticated Media Runtime Gateway | AV.2 |
+| 11 | Workflow authorization | AV.3, AT.7 |
+| 12 | Model authorization | AV.3, AW.8 |
+| 13 | Private ComfyUI execution | AT.10, AV.2 |
+| 14 | No permanent storage credentials on GPU machines | O, AV.1 (8) |
+| 15 | Runtime portability | AT.6, AH, AV.1 (9, 12) |
+| 16 | Workflow Registry | AT.7, AW.8 |
+| 17 | Licensing/territory enforcement | H, AV.1 (10), AW.14 |
+| 18 | Configurable synchronization tolerances | AW.9 |
+| 19 | Regression tests for observed failures | AW.11 |
+| 20 | FFmpeg restricted to media processing/mastering | AW.7, AV.1 (22) |
 
 
 ---
@@ -3887,6 +4330,53 @@ Every requirement from the two directives and where this document satisfies it.
 | Security first phase; no unauthenticated generation/training endpoint; short-lived signed job tokens, deployment-bound, action-bound, body-bound; one-time upload/download URLs; no permanent storage credentials in GPU workers; private GPU networking | O (requirements table), AN, AA phase 2, AR I2 |
 | Universal metering (image, video, training, upscale, rendering, other GPU ops) without necessarily charging; collect cost/performance data before pricing | Q |
 | Architecture review PR, no implementation code | Status line; PR |
+
+**Approval directive — synchronized production, runtime security, ComfyUI isolation, quality gate (v2.5)**
+
+| Directive section | Section(s) |
+|---|---|
+| 1 Core principle (production system; completion chain) | AW.1 |
+| 2 Current problems (narration not controlling picture; silent truncation) | AW.2, AU.2 |
+| 3 Master Production Clock (single authority; diagram) | AW.3, AU.4 |
+| 4 Precision (µs; rational fps examples; one fps; controlled conversion) | AW.3, AU.4 |
+| 5 No runtime may silently alter timing; required video metadata; ACCEPTED/REQUIRES_REPAIR/REQUIRES_REGENERATION/FAILED | AV.5 |
+| 6 Sole temporal authority; generated media is an execution result | AW.3, AV.1 (19, 20) |
+| 7 Audio part of video production; shot-17 request | AW.4 |
+| 8 Audio execution metadata; word-level mandatory where supported | AW.4, AV.5 |
+| 9 AVSyncEngine components | AU.7 |
+| 10 A/V synchronization flow | AU.7, AV.4 |
+| 11 Dialogue synchronization; subtitles from authoritative timing | AW.4, AU.8 |
+| 12 Lip-sync validation tools, license-gated, tool-neutral | AW.5, AU.10 |
+| 13 Talking-shot generation; modes; request fields; Wan 2.2 S2V candidate | AW.5 |
+| 14 Music, SFX, ambience (cue and SFX examples) | AW.6, AU.11 |
+| 15 Final Quality Gate checks (incl. codec validity, media integrity, silence anomalies, production metadata) | AU.13 |
+| 16 Automatic repair loop and diagnostic | AU.12 |
+| 17 Narration-too-long failure example and allowed repairs | AW.2, AU.12, AW.11 |
+| 18 Frame-rate mismatch | AW.2, AU.4, AW.11 |
+| 19 Estimated subtitle timing | AW.2, AW.11 |
+| 20 FFmpeg's role | AW.7 |
+| 21 Runtime architecture (six operations; ComfyUI/Diffusers/Future) | AT.6 |
+| 22 ComfyUI's role (does not own characters … workflows) | AT.2, AT.3 |
+| 23 ComfyUI private | AT.10, AV.2 |
+| 24 Workflow + model authorization | AV.3, AW.8 |
+| 25 Workflow Registry (declarations) | AT.7, AW.8 |
+| 26 Controlled workflow builder (character slots example) | AT.8, AW.8 |
+| 27 GPU security; shared gateway | AV.2, O |
+| 28 No storage credentials on GPU machines | O, AT.12 |
+| 29 DeployPro separation; provider portability | 0, AU.23, AH |
+| 30 ComfyUI replaceable | AT.6, AV.1 (9) |
+| 31 Licensing verification list | AW.14 |
+| 32 ComfyUI GPL-3.0 interpretation; custom nodes | AV.7, AT.15 |
+| 33 Billing/metering scope and provenance | AW.10, Q |
+| 34 Production states (approved list) | AU.18 |
+| 35 Job queues and dependencies | AW.12, AU.15 |
+| 36 Data model; migrate audio_tracks/dialogue_lines | AW.13, AU.16 |
+| 37 Configurable tolerances and profiles | AW.9 |
+| 38 Regression tests 1–7 | AW.11 |
+| 39 Final architectural model | AW.15 |
+| 40 Binding decisions 1–22 | AV.1 |
+| 41 Implementation order phases 1–12 | AV.6 |
+| 42 Final directive (20 required establishments) | AW.16 |
 
 **Review 1 — Architecture review feedback (v2.4)**
 
@@ -4063,3 +4553,6 @@ Every requirement from the two directives and where this document satisfies it.
     with workflow + model authorization digest, the **timing integrity rule**
     with mandatory timing reports, and the **post-review implementation
     sequence (§AV.6)**, which supersedes the earlier ordering notes.
+19. Review the **v2.5 amendment (§AW)**: result outcomes, production states,
+    22 binding decisions, 12-phase order, regression tests 1–7, tolerance
+    profiles — then approve implementation of **Phase 2 (GPU security)**.
