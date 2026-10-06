@@ -4461,9 +4461,15 @@ to the same contract:
 
 1. **Approve the architecture** (whole document, v2.6), then merge the PR.
    Implementation starts only after explicit approval.
-2. **Confirm the governing order (§AX.2)**, including Final Quality Gate
-   (Phase 10) before Mastering (Phase 11) as an implementation order, with the
-   run-time order unchanged.
+2. ~~Confirm the governing order (§AX.2), including Final Quality Gate
+   (Phase 10) before Mastering (Phase 11).~~ **RESOLVED — confirmed by the
+   reviewer.**
+   - **Phase 10** establishes and validates the Final Quality Gate.
+   - **Phase 11** introduces the mastering pipeline.
+   - **Runtime production order:** generation → synchronization → repair →
+     pre-master validation → mastering → Final Quality Gate → COMPLETE.
+   - If the Final Quality Gate fails after mastering, the production returns
+     to the appropriate repair stage.
 3. **Confirm where the §AA product phases are scheduled**, relative to the
    twelve phases: after Phase 8, or in parallel where independent.
 4. **License verification still open** (§AW.14): Qwen-Image / Edit, Z-Image,
