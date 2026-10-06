@@ -71,6 +71,7 @@ export function StreamingChannel() {
   return (
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
       <PageHeader
+        art={false}
         eyebrow="Publishing / Screening"
         title={<>The<br /><em>Screening</em><br />Room.</>}
         copy={
@@ -79,7 +80,7 @@ export function StreamingChannel() {
             <p><strong>Your private channel today — public channel pages are not built yet.</strong></p>
           </>
         }
-        status={titles ? { tone: titles.length ? "live" : "idle", label: `${titles.length} titles · ${totalViews} views` } : { tone: "idle", label: "Screening room" }}
+        status={titles ? { tone: titles.length ? "live" : "idle", label: `${titles.length} titles · ${totalViews.toLocaleString("en-US")} views` } : { tone: "idle", label: "Screening room" }}
       />
       <div className="pt-12">
         <StudioGate signIn="Sign in to open your channel" what="Screenings">
@@ -102,14 +103,14 @@ export function StreamingChannel() {
                   <span className="cf-label">Master / {fmtDuration(Math.round(current?.duration ?? 0))}</span>
                 </div>
                 <div className="cf-dark grid gap-px bg-cf-line lg:grid-cols-[1.4fr_0.6fr]">
-                  <div className="bg-cf-bg p-4 sm:p-8">{current?.url && <HlsPlayer key={current.projectId} src={current.url} />}</div>
+                  <div className="flex items-center bg-black">{current?.url && <HlsPlayer key={current.projectId} src={current.url} />}</div>
                   <div className="flex flex-col bg-cf-bg p-6 sm:p-8">
                     <div className="cf-label">Cineforge premiere</div>
                     <h2 className="cf-display mt-4 text-[clamp(32px,3.6vw,52px)] leading-[0.95]">{current?.title}</h2>
                     <dl className="mt-8 grid grid-cols-3 border-b border-t border-cf-line">
                       {[
                         ["Runtime", fmtDuration(Math.round(current?.duration ?? 0))],
-                        ["Views", String(current?.views ?? 0)],
+                        ["Views", (current?.views ?? 0).toLocaleString("en-US")],
                         ["Dubbed", current?.locales.length ? current.locales.map((l) => l.toUpperCase()).join(" ") : "—"],
                       ].map(([k, v], i) => (
                         <div key={k} className={`py-4 ${i ? "border-l border-cf-line pl-4" : ""}`}>
@@ -155,7 +156,7 @@ export function StreamingChannel() {
                               {t.locales.length ? ` · ${t.locales.length + 1} languages` : ""}
                             </span>
                           </span>
-                          <Status tone={on ? "live" : "idle"}>{t.views} views</Status>
+                          <Status tone={on ? "live" : "idle"}>{t.views.toLocaleString("en-US")} views</Status>
                         </button>
                       </li>
                     );
@@ -169,7 +170,7 @@ export function StreamingChannel() {
                     ["Playback master", "MP4", "Signed, short-lived link per screening."],
                     ["Captions & dubs", `${titles.filter((t) => t.locales.length).length} dubbed`, "Language tracks from the multilingual pipeline."],
                     ["Audience access", "Private", "Only you, signed in. Public pages are not built yet."],
-                    ["Analytics", `${totalViews} views`, "Plays counted per title, read by Audience."],
+                    ["Analytics", `${totalViews.toLocaleString("en-US")} views`, "Plays counted per title, read by Audience."],
                   ].map(([k, v, note]) => (
                     <div key={k} className="min-h-[160px] bg-cf-bg p-5">
                       <div className="cf-label">{k}</div>

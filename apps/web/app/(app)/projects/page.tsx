@@ -7,6 +7,7 @@ import { AuthCard } from "../../../components/AuthCard";
 import { listProjects, posterUrls, type ProjectRow } from "../../../lib/projects";
 import { getSupabase } from "../../../lib/supabase";
 import { fmtDuration } from "../../../lib/system";
+import { when } from "../../../lib/when";
 import { EmptyState, PageHeader, Section, SpecList, Status } from "../../../components/cf/primitives";
 import { CinemaArt } from "../../../components/cf/CinemaArt";
 
@@ -74,6 +75,7 @@ export default function ProjectsPage() {
   return (
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
       <PageHeader
+        art={false}
         eyebrow="Production system / Archive"
         title={<>The<br /><em>Archive.</em></>}
         copy={
@@ -108,7 +110,7 @@ export default function ProjectsPage() {
         <EmptyState className="mt-12" title={<>No productions <em>yet.</em></>} hint="Start in the Studio — your films and series collect here." action={{ label: "Enter the studio", href: "/create" }} />
       ) : (
         <>
-          {lead && <Lead project={lead} />}
+          {lead && <Lead project={lead} poster={posters[lead.id]} />}
 
           <Section
             label="All productions"
@@ -135,40 +137,36 @@ export default function ProjectsPage() {
             {shown.length === 0 ? (
               <EmptyState title="Nothing matches." hint="Try another filter or search." />
             ) : (
-              <ol className="border-t border-cf-fg">
-                {shown.map((p, i) => (
-                  <li key={p.id} className="group grid grid-cols-[36px_1fr_auto] items-center gap-4 border-b border-cf-line py-4 md:grid-cols-[36px_1.6fr_0.6fr_0.6fr_1fr_0.6fr_40px]">
-                    <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
-                    <Link href={`/projects/${p.id}`} className="flex min-w-0 items-center gap-4">
-                      {posters[p.id] ? (
-                        /* Plain <img>: a short-lived signed storage URL. */
-                        <img src={posters[p.id]} alt="" className="hidden aspect-video w-28 shrink-0 rounded object-cover sm:block" />
-                      ) : (
-                        <CinemaArt seed={p.title} className="hidden aspect-video w-28 shrink-0 rounded sm:block" />
-                      )}
-                      <span className="min-w-0">
-                        <span className="block truncate font-display font-semibold text-[20px] tracking-[-0.02em] group-hover:underline group-hover:decoration-cf-line group-hover:underline-offset-4">
-                          {p.title}
-                        </span>
-                        <span className="cf-label mt-1 block md:hidden">
-                          {MODE_LABEL[p.mode] ?? p.mode} · {fmtDuration(p.target_seconds)} · {STAGE_LABEL[p.status] ?? p.status}
-                        </span>
+              <ol className="border-t border-cf-line">
+                {shown.map((p) => (
+                  <li
+                    key={p.id}
+                    className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-5 gap-y-2 border-b border-cf-line py-4 sm:grid-cols-[136px_minmax(0,1fr)_auto] lg:grid-cols-[136px_minmax(0,1fr)_170px_110px_40px]"
+                  >
+                    <Link href={`/projects/${p.id}`} className="hidden overflow-hidden rounded-md sm:block" tabIndex={-1} aria-hidden>
+                      <Poster src={posters[p.id]} seed={p.title} className="aspect-video w-full transition duration-500 group-hover:scale-[1.04]" />
+                    </Link>
+                    <Link href={`/projects/${p.id}`} className="min-w-0">
+                      <span className="block truncate font-display text-[19px] font-semibold tracking-[-0.02em] group-hover:text-cf-accent">{p.title}</span>
+                      <span className="mt-1 block text-[13px] text-cf-muted">
+                        {MODE_LABEL[p.mode] ?? p.mode} · {fmtDuration(p.target_seconds)} · {p.resolution}
+                        <span className="lg:hidden"> · {when(p.created_at)}</span>
                       </span>
                     </Link>
-                    <span className="cf-label hidden md:block">{MODE_LABEL[p.mode] ?? p.mode}</span>
-                    <span className="hidden font-mono text-[12px] md:block">{fmtDuration(p.target_seconds)}</span>
-                    <span className="hidden md:block">
+                    <span className="col-start-2 sm:col-start-auto lg:col-start-auto">
                       <StateLine project={p} />
                     </span>
-                    <span className="cf-label hidden md:block">{new Date(p.created_at).toLocaleDateString()}</span>
-                    <span className="text-right">
+                    <span className="hidden text-[13px] text-cf-muted lg:block" title={new Date(p.created_at).toLocaleString()}>
+                      {when(p.created_at)}
+                    </span>
+                    <span className="hidden text-right lg:block">
                       {!ACTIVE.has(p.status) && (
                         <button
                           type="button"
                           onClick={() => void onDelete(p.id, p.title)}
                           aria-label={`Delete ${p.title}`}
                           title="Delete project"
-                          className="h-8 w-8 border border-transparent text-cf-dim transition hover:border-cf-danger hover:text-cf-danger"
+                          className="h-9 w-9 rounded-md text-cf-dim opacity-0 transition hover:bg-cf-soft hover:text-cf-danger focus:opacity-100 group-hover:opacity-100"
                         >
                           ×
                         </button>
@@ -213,32 +211,56 @@ function StateLine({ project: p }: { project: ProjectRow }) {
 }
 
 /** The lead production — what is being made now, or the latest work. */
-function Lead({ project: p }: { project: ProjectRow }) {
+function Lead({ project: p, poster }: { project: ProjectRow; poster?: string }) {
+  const live = ACTIVE.has(p.status);
   return (
     <section className="border-b border-cf-line py-12" aria-label="Lead production">
-      <div className="cf-label mb-5">{ACTIVE.has(p.status) ? "Active production" : "Most recent"}</div>
-      <div className="cf-dark grid lg:grid-cols-[1.35fr_0.65fr]">
-        <div className="relative flex min-h-[320px] flex-col justify-end overflow-hidden p-8">
-          <div className="pointer-events-none absolute inset-[12%] border border-cf-line" aria-hidden />
-          <span className="cf-label relative">CF / {p.id.slice(0, 4).toUpperCase()}</span>
-          <h2 className="cf-display relative mt-3 text-[clamp(36px,4.5vw,64px)] leading-[0.95]">{p.title}</h2>
-          {p.prompt && p.prompt !== p.title && <p className="relative mt-4 line-clamp-2 max-w-xl text-[13px] leading-relaxed text-cf-muted">{p.prompt}</p>}
-        </div>
-        <div className="border-t border-cf-line p-8 lg:border-l lg:border-t-0">
+      <div className="cf-label mb-5">{live ? "In production now" : "Most recent"}</div>
+      <div className="cf-dark grid overflow-hidden rounded-xl border border-cf-line lg:grid-cols-[1.4fr_0.6fr]">
+        <Link href={`/projects/${p.id}`} className="group relative block min-h-[340px] overflow-hidden">
+          <Poster src={poster} seed={p.title} motion className="absolute inset-0 h-full w-full transition duration-700 group-hover:scale-[1.03]" />
+          <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" aria-hidden />
+          <span className="absolute inset-x-0 bottom-0 p-8">
+            {live && (
+              <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-black/50 px-3 py-1 text-[12px] font-medium text-white backdrop-blur">
+                <i className="h-1.5 w-1.5 rounded-full bg-cf-accent" />
+                {STAGE_LABEL[p.status] ?? p.status} · {Math.round(p.progress * 100)}%
+              </span>
+            )}
+            <h2 className="cf-display text-[clamp(32px,4vw,58px)] leading-[0.98] text-white [text-wrap:balance]">{p.title}</h2>
+            {live && (
+              <span className="mt-5 block h-[3px] max-w-md overflow-hidden rounded-full bg-white/20">
+                <span className="block h-full bg-cf-accent transition-all" style={{ width: `${Math.round(p.progress * 100)}%` }} />
+              </span>
+            )}
+          </span>
+        </Link>
+        <div className="flex flex-col border-t border-cf-line p-7 lg:border-l lg:border-t-0">
           <SpecList
             rows={[
-              ["Production", STAGE_LABEL[p.status] ?? p.status],
-              ["Progress", `${Math.round(p.progress * 100)}%`],
+              ["Status", STAGE_LABEL[p.status] ?? p.status],
               ["Runtime", fmtDuration(p.target_seconds)],
               ["Format", p.resolution],
               ["Mode", MODE_LABEL[p.mode] ?? p.mode],
+              ["Started", when(p.created_at)],
             ]}
           />
-          <Link href={`/projects/${p.id}`} className="cf-btn-accent mt-8 w-full">
+          <Link href={`/projects/${p.id}`} className="cf-btn-accent mt-7 w-full lg:mt-auto">
             Open production →
           </Link>
         </div>
       </div>
     </section>
   );
+}
+
+/** A finished film's real poster, or a drawn frame — also when the poster fails to load. */
+function Poster({ src, seed, className = "", motion }: { src?: string; seed: string; className?: string; motion?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  if (src && !failed)
+    return (
+      /* Plain <img>: a short-lived signed storage URL. */
+      <img src={src} alt="" onError={() => setFailed(true)} className={`object-cover ${className}`} />
+    );
+  return <CinemaArt seed={seed} motion={motion} className={className} />;
 }

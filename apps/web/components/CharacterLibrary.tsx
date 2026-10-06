@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import { StudioGate } from "./cf/StudioGate";
+import { Composer } from "./cf/Composer";
 import { CinemaArt } from "./cf/CinemaArt";
 import { Cell, EmptyState, PageHeader, Section, SpecList, Split } from "./cf/primitives";
 import { createCharacter, listCharacters, type CharacterWithOrigin } from "../lib/library";
@@ -69,6 +70,7 @@ export function CharacterLibrary() {
   return (
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
       <PageHeader
+        art={false}
         eyebrow="Production / Casting room"
         title={<>Cast the<br /><em>story.</em></>}
         copy={
@@ -81,6 +83,7 @@ export function CharacterLibrary() {
       />
       <div className="pt-12">
         <StudioGate signIn="Sign in to build your cast" what="Characters">
+          <Composer label="New character" count={items ? items.length : null}>
           <Split>
             <Cell>
               <form onSubmit={onCreate}>
@@ -114,31 +117,32 @@ export function CharacterLibrary() {
               />
             </Cell>
           </Split>
+          </Composer>
 
           <Section label="The cast" title={items ? `${String(items.length).padStart(2, "0")} characters` : "The cast"}>
             {!items ? (
               <p className="cf-label">Loading the cast…</p>
             ) : items.length === 0 ? (
-              <EmptyState title={<>No one is <em>cast yet.</em></>} hint="Create your first character above — it becomes reusable everywhere." />
+              <EmptyState title={<>No one is <em>cast yet.</em></>} hint="Open a casting call above — the character becomes reusable everywhere." />
             ) : (
-              <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 xl:grid-cols-3">
-                {items.map((c, i) => (
-                  <article key={c.id} className="flex flex-col bg-cf-bg">
-                    <div className="relative aspect-[4/5] overflow-hidden bg-cf-panel">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {items.map((c) => (
+                  <article key={c.id} className="group flex flex-col overflow-hidden rounded-xl border border-cf-line bg-cf-panel transition hover:border-cf-line2">
+                    <div className="relative aspect-[4/3] sm:aspect-[4/5] overflow-hidden bg-cf-panel">
                       {portraits[c.id] ? (
                         /* Plain <img>: a signed, short-lived storage URL. */
                         <img src={portraits[c.id]} alt={`Portrait of ${c.name}`} className="h-full w-full object-cover" />
                       ) : (
-                        <CinemaArt seed={`${c.name} ${c.appearance ?? ""}`} scene="figure" className="h-full w-full" hud={{ tag: "Portrait renders on first use" }} />
+                        <CinemaArt seed={`${c.name} ${c.appearance ?? ""}`} scene="figure" className="h-full w-full" />
                       )}
-                      <span className="absolute left-4 top-4 font-mono text-[11px] text-white/80">{String(i + 1).padStart(2, "0")}</span>
+                      {!portraits[c.id] && (
+                        <span className="absolute left-3 top-3 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-medium text-white/85 backdrop-blur">Portrait pending</span>
+                      )}
                     </div>
                     <div className="flex flex-1 flex-col p-5">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <h3 className="font-display font-semibold text-[26px] leading-none tracking-[-0.03em]">{c.name}</h3>
-                        <span className="cf-label truncate">{c.projects?.title === "Library" || !c.projects ? "Library" : c.projects.title}</span>
-                      </div>
-                      <p className="mt-3 line-clamp-3 text-[12px] leading-relaxed text-cf-muted">{c.appearance}</p>
+                      <h3 className="font-display text-[24px] font-semibold leading-tight tracking-[-0.03em]">{c.name}</h3>
+                      <span className="mt-1 truncate text-[12px] text-cf-dim">{c.projects?.title === "Library" || !c.projects ? "Library" : c.projects.title}</span>
+                      <p className="mt-3 line-clamp-3 text-[13px] leading-relaxed text-cf-muted">{c.appearance}</p>
                       <Link href="/create/film?mode=storyboard" className="cf-link mt-auto pt-5 text-cf-muted hover:text-cf-fg">
                         Cast in a film →
                       </Link>

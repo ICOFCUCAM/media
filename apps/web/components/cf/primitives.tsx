@@ -89,7 +89,7 @@ function ReelStrip({ seed }: { seed: string }) {
           letterbox
           motion={k === 0}
           className={`aspect-[21/9] rounded-md ${k > 0 ? "hidden sm:block" : ""}`}
-          hud={{ tag: `Shot ${String(k + 1).padStart(2, "0")}` }}
+          hud={{ tag: `Shot ${String(k + 1).padStart(2, "0")}`, time: true }}
         />
       ))}
     </div>

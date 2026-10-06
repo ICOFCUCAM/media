@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import { StudioGate } from "./cf/StudioGate";
+import { Composer } from "./cf/Composer";
 import { CinemaArt } from "./cf/CinemaArt";
 import { Cell, Control, EmptyState, PageHeader, Section, SpecList, Split } from "./cf/primitives";
 import { createLocation, listLocations, LOCATION_KINDS, type LocationWithOrigin } from "../lib/library";
@@ -44,6 +45,7 @@ export function WorldLibrary() {
   return (
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
       <PageHeader
+        art={false}
         eyebrow="Production / Production design"
         title={<>Design the<br /><em>world.</em></>}
         copy={
@@ -56,6 +58,7 @@ export function WorldLibrary() {
       />
       <div className="pt-12">
         <StudioGate signIn="Sign in to build your worlds" what="Worlds">
+          <Composer label="New location" count={items ? items.length : null}>
           <Split>
             <Cell>
               <form onSubmit={onCreate}>
@@ -90,6 +93,7 @@ export function WorldLibrary() {
               />
             </Cell>
           </Split>
+          </Composer>
 
           <Section label="The world bible" title={items ? `${String(items.length).padStart(2, "0")} locations` : "Locations"}>
             {!items ? (
@@ -97,10 +101,9 @@ export function WorldLibrary() {
             ) : items.length === 0 ? (
               <EmptyState title={<>No worlds <em>yet.</em></>} hint="Create your first location above — then set stories inside it." />
             ) : (
-              <ol className="border-t border-cf-fg">
-                {items.map((l, i) => (
-                  <li key={l.id} className="grid gap-4 border-b border-cf-line py-6 md:grid-cols-[36px_200px_1fr_1.4fr_auto] md:items-start">
-                    <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+              <ol className="border-t border-cf-line">
+                {items.map((l) => (
+                  <li key={l.id} className="grid gap-4 border-b border-cf-line py-6 md:grid-cols-[200px_1fr_1.4fr_auto] md:items-start">
                     <CinemaArt seed={`${l.kind} ${l.name} ${l.description ?? ""}`} letterbox className="aspect-video rounded-md" hud={{ tag: l.kind }} />
                     <div>
                       <h3 className="font-display font-semibold text-[26px] leading-none tracking-[-0.03em]">{l.name}</h3>

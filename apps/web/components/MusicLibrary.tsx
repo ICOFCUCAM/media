@@ -47,6 +47,7 @@ export function MusicLibrary() {
   return (
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
       <PageHeader
+        art={false}
         eyebrow="Production / The score room"
         title={<>The score<br /><em>room.</em></>}
         copy={

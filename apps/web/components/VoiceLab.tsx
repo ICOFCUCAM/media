@@ -218,10 +218,11 @@ export function VoiceLab() {
   const readyVoices = [...(voices ?? []).filter((v) => v.status === "READY"), ...(community ?? [])];
 
   const fileCls =
-    "w-full text-[11px] text-cf-muted file:mr-3 file:border file:border-cf-line file:bg-transparent file:px-3 file:py-2 file:font-mono file:text-[11px] file:uppercase file:tracking-[0.1em] file:text-cf-fg hover:file:border-cf-fg";
+    "w-full";
   return (
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
       <PageHeader
+        art={false}
         eyebrow="Production / The voice room"
         title={<>Give the story<br />a <em>voice.</em></>}
         copy={
@@ -301,7 +302,7 @@ export function VoiceLab() {
                 <Dept n="02" title="Read a speech" copy="Any length — speeches, news scripts, narration — in your clone, a community voice or the stock narrator." />
                 <label htmlFor="vo-title" className="cf-label mb-2 mt-7 block text-cf-fg">Title</label>
                 <input id="vo-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Independence Day address" className="cf-input" />
-                <div className="mt-5 grid grid-cols-2 gap-2">
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 sm:gap-2 lg:grid-cols-1 lg:gap-4 2xl:grid-cols-2 2xl:gap-2">
                   <label className="block">
                     <span className="cf-label mb-2 block text-cf-fg">Voice</span>
                     <select value={voiceId} onChange={(e) => setVoiceId(e.target.value)} className="cf-input py-2.5">

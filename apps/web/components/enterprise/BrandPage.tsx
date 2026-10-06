@@ -96,7 +96,7 @@ export function BrandPage() {
                   ref={fileRef}
                   type="file"
                   accept="image/*"
-                  className="w-full text-[11px] text-cf-muted file:mr-3 file:border file:border-cf-line file:bg-transparent file:px-3 file:py-2 file:font-mono file:text-[11px] file:uppercase file:tracking-[0.1em] file:text-cf-fg"
+                  className="w-full"
                 />
                 <div className="mt-7 grid grid-cols-2 gap-4">
                   <label className="block">

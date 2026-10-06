@@ -778,7 +778,7 @@ function SceneStill({ scene: s, tag }: { scene: SceneDraft; tag: string }) {
       seed={seed}
       letterbox
       className="aspect-video w-full rounded-md border border-cf-line"
-      hud={{ tag, slug: s.heading || `Scene ${String(s.index + 1).padStart(2, "0")}` }}
+      hud={{ tag, time: true, slug: s.heading || `Scene ${String(s.index + 1).padStart(2, "0")}` }}
     />
   );
 }
