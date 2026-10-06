@@ -227,6 +227,12 @@ export const NAV: NavSection[] = [
     ],
   },
   {
+    title: "View",
+    items: [
+      { label: "Creator", href: "/view/creator" },
+    ],
+  },
+  {
     title: "System Administration",
     adminOnly: true,
     items: [
