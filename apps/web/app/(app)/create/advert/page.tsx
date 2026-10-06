@@ -1,11 +1,13 @@
 "use client";
 
 import { CreateStudio } from "../../../../components/CreateStudio";
+import { PageHeader } from "../../../../components/cf/primitives";
 import { AD_PRESETS } from "../../../../lib/ads";
 
 /**
- * Advert channel (docs/30) — a video ad is a short, platform-shaped project
- * with a call-to-action. The presets carry the right aspect + duration per
+ * The Commercial Studio (docs/design/create-advert.html; advert channel,
+ * docs/30) — a video ad is a short, placement-shaped project with a
+ * call-to-action. The presets carry the right aspect + duration per
  * placement; the Director writes the spot, the same pipeline films it.
  */
 export default function CreateAdvertPage() {
@@ -13,7 +15,20 @@ export default function CreateAdvertPage() {
     <CreateStudio
       kind="advert"
       heading="Create an Advert"
-      blurb="Pick a placement, describe the product and the feeling — the Director writes a spot with a call-to-action, and the studio films it in the platform's exact format."
+      blurb=""
+      header={
+        <PageHeader
+          eyebrow="Commercial studio / Brand film"
+          title={<>Make the<br /><em>case.</em></>}
+          copy={
+            <>
+              <p>Build a commercial that gives a product, service or idea a reason to matter. Pick a placement, describe the product and the feeling.</p>
+              <p><strong>The Director writes a spot with a call-to-action; the studio films it in the placement&apos;s exact format.</strong></p>
+            </>
+          }
+          status={{ label: "Commercial studio ready" }}
+        />
+      }
       durations={[
         { label: "6s bumper", value: 6 },
         { label: "15s", value: 15 },
