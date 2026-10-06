@@ -2041,8 +2041,6 @@
   border-radius: 1.7cqw;
   background: linear-gradient(140deg, #f2f3f5 0%, #b4b6bb 16%, #6a6c72 44%, #9a9ca2 72%, #eceef1 100%);
   box-shadow:
-    -0.32cqw 0.06cqw 0 #868890,
-    -0.36cqw 0.1cqw 0 #4a4c51,
     0 0.2cqw 0.4cqw rgba(40, 30, 20, 0.16),
     -1.4cqw 2.2cqw 3.2cqw -1.4cqw rgba(40, 30, 20, 0.32);
 }
@@ -2061,8 +2059,8 @@
 .cfh .dv-tablet-screen { aspect-ratio: 16 / 10; border-radius: 1cqw; }
 
 /* Phone: flagship slab — brushed titanium band, thin even border, pill camera. */
-.cfh .dv-phone { position: absolute; z-index: 3; right: 4%; bottom: 1%; width: 17%; perspective: 1300px; }
-.cfh .dv-phone-tilt { transform: rotateY(-14deg) rotateX(2deg) rotateZ(2deg); transform-origin: 50% 70%; }
+.cfh .dv-phone { position: absolute; z-index: 3; right: 3%; bottom: 1%; width: 19%; perspective: 1300px; }
+.cfh .dv-phone-tilt { transform: rotateY(-14deg) rotateX(-3deg) rotateZ(2deg); transform-origin: 50% 70%; }
 .cfh .dv-phone-metal {
   padding: 0.24cqw;
   border-radius: 3.5cqw;
@@ -2073,16 +2071,6 @@
     0 0.2cqw 0.4cqw rgba(40, 30, 20, 0.18),
     1.4cqw 2.2cqw 3cqw -1.2cqw rgba(40, 30, 20, 0.36);
 }
-.cfh .dv-phone-metal::before,
-.cfh .dv-phone-metal::after {
-  content: "";
-  position: absolute;
-  width: 0.22cqw;
-  border-radius: 1px;
-  background: linear-gradient(90deg, #77736c, #bdb8af);
-}
-.cfh .dv-phone-metal::before { left: -0.2cqw; top: 20%; height: 6%; box-shadow: 0 3.6cqw 0 #9a968e, 0 6.4cqw 0 #9a968e; }
-.cfh .dv-phone-metal::after { right: -0.2cqw; top: 28%; height: 11%; }
 .cfh .dv-phone-bezel { padding: 0.34cqw; border-radius: 3.28cqw; }
 .cfh .dv-phone-screen { aspect-ratio: 9 / 19.5; border-radius: 2.95cqw; }
 .cfh .dv-island {
@@ -2097,6 +2085,281 @@
   background: #000;
   box-shadow: inset 0.18cqw 0 0.16cqw -0.04cqw rgba(70, 90, 130, 0.55);
 }
+
+/* TV — MAKE: the finished master, one quiet mark. */
+.cfh .tv-mark {
+  position: absolute;
+  z-index: 3;
+  right: 1.6%;
+  bottom: 3%;
+  font-size: 0.95cqw;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Tablet — DIRECT: a production instrument, not a dashboard. */
+.cfh .dt {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 0.8cqw;
+  padding: 0.6cqw 1.2cqw 1.2cqw;
+  background: radial-gradient(120% 90% at 30% 0%, #17181a, #0a0b0b 70%);
+  color: #f2f1ec;
+  font-family: var(--font-inter), Inter, sans-serif;
+}
+.cfh .dt-head { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; }
+.cfh .dt-title { font-family: var(--serif); font-style: italic; font-size: 1.75cqw; line-height: 1; }
+.cfh .dt-title small { margin-left: 0.6cqw; font-family: var(--font-inter), Inter, sans-serif; font-style: normal; font-size: 0.85cqw; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #8d8f88; }
+.cfh .dt-status { display: flex; align-items: center; gap: 0.45cqw; font-size: 0.9cqw; color: #c9cbc4; }
+.cfh .dt-status i { width: 0.6cqw; height: 0.6cqw; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0.8cqw var(--accent); }
+.cfh .dt-preview { position: relative; overflow: hidden; border-radius: 0.6cqw; }
+.cfh .dt-cam,
+.cfh .dt-slate {
+  position: absolute;
+  z-index: 2;
+  font-size: 0.8cqw;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+.cfh .dt-cam { right: 0.8cqw; top: 0.7cqw; padding: 0.25cqw 0.55cqw; border-radius: 0.3cqw; background: rgba(0, 0, 0, 0.45); }
+.cfh .dt-slate { left: 0.9cqw; bottom: 0.7cqw; }
+.cfh .dt-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5cqw;
+  padding: 0.7cqw 0.8cqw;
+  overflow: hidden;
+  border-radius: 0.6cqw;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 0 0 0.06cqw rgba(255, 255, 255, 0.07);
+  min-width: 0;
+}
+.cfh .dt-score { position: relative; display: flex; align-items: center; gap: 0.8cqw; }
+.cfh .dt-score svg { width: 3.4cqw; height: 3.4cqw; transform: rotate(-90deg); }
+.cfh .dt-ring-bg { fill: none; stroke: rgba(255, 255, 255, 0.1); stroke-width: 3; }
+.cfh .dt-ring { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+.cfh .dt-score-n { position: absolute; left: 0; width: 3.4cqw; text-align: center; font-family: var(--font-manrope), Manrope, sans-serif; font-size: 1.2cqw; font-weight: 700; }
+.cfh .dt-score-l { font-size: 0.85cqw; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #a9aba4; }
+.cfh .dt-rows { margin: 0; display: flex; flex-direction: column; gap: 0.35cqw; }
+.cfh .dt-rows div { display: flex; flex-direction: column; gap: 0; padding-top: 0.35cqw; border-top: 0.06cqw solid rgba(255, 255, 255, 0.07); }
+.cfh .dt-rows dt { font-size: 0.72cqw; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #7d7f79; }
+.cfh .dt-rows dd { margin: 0; font-size: 0.84cqw; color: #e9e8e3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cfh .dt-board { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.5cqw; }
+.cfh .dt-shot { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 0.35cqw; }
+.cfh .dt-shot b { position: absolute; z-index: 2; left: 0.4cqw; bottom: 0.25cqw; font-size: 0.7cqw; font-weight: 600; color: rgba(255, 255, 255, 0.85); }
+.cfh .dt-shot i { position: absolute; z-index: 2; right: 0.4cqw; top: 0.4cqw; width: 0.55cqw; height: 0.55cqw; border-radius: 50%; }
+.cfh .dt-shot.is-ready i { background: #96de6e; }
+.cfh .dt-shot.is-live { box-shadow: 0 0 0 0.14cqw var(--accent); }
+.cfh .dt-shot.is-live i { background: var(--accent); box-shadow: 0 0 0.6cqw var(--accent); }
+.cfh .dt-shot.is-queued { opacity: 0.45; }
+.cfh .dt-shot.is-queued i { background: rgba(255, 255, 255, 0.5); }
+
+/* Phone — RELEASE: vertical cut, subtitles, voice, launch. */
+.cfh .dv-phone-screen { color: #fff; font-family: var(--font-inter), Inter, sans-serif; }
+.cfh .dv-phone-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.35) 42%, rgba(0, 0, 0, 0) 60%);
+}
+.cfh .dp-ready {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 8.4%;
+  display: flex;
+  align-items: center;
+  gap: 0.35cqw;
+  padding: 0.25cqw 0.6cqw;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  font-size: 0.72cqw;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.cfh .dp-ready i { width: 0.45cqw; height: 0.45cqw; border-radius: 50%; background: var(--accent); }
+.cfh .dp-sub {
+  position: absolute;
+  z-index: 3;
+  left: 6%;
+  right: 6%;
+  top: 47%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25cqw;
+  font-size: 1.05cqw;
+  font-weight: 600;
+  text-align: center;
+  text-shadow: 0 0.1cqw 0.5cqw rgba(0, 0, 0, 0.9);
+}
+.cfh .dp-sub small { font-size: 0.62cqw; font-weight: 600; letter-spacing: 0.12em; color: var(--accent); }
+.cfh .dp-sheet {
+  position: absolute;
+  z-index: 3;
+  left: 4%;
+  right: 4%;
+  bottom: 2.4%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55cqw;
+  padding: 0.7cqw;
+  border-radius: 1.6cqw;
+  background: rgba(16, 17, 16, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: inset 0 0 0 0.05cqw rgba(255, 255, 255, 0.1);
+}
+.cfh .dp-langs { display: flex; gap: 0.25cqw; }
+.cfh .dp-langs span { flex: 1; padding: 0.2cqw 0; border-radius: 0.3cqw; text-align: center; font-size: 0.62cqw; font-weight: 700; color: #c9cbc4; background: rgba(255, 255, 255, 0.07); }
+.cfh .dp-langs span.is-on { background: var(--accent); color: #10100f; }
+.cfh .dp-langs .dp-more { background: none; color: #8d8f88; }
+.cfh .dp-voice { display: flex; align-items: center; gap: 0.45cqw; font-size: 0.66cqw; color: #d9d8d2; white-space: nowrap; }
+.cfh .dp-wave { display: flex; align-items: center; gap: 0.1cqw; height: 1.1cqw; width: 3.4cqw; flex-shrink: 0; }
+.cfh .dp-wave i { flex: 1; border-radius: 1px; background: #a98bff; }
+.cfh .dp-platforms { display: flex; align-items: center; gap: 0.22cqw; }
+.cfh .dp-platforms span { display: grid; width: 1.35cqw; height: 1.35cqw; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, 0.12); font-size: 0.5cqw; font-weight: 700; }
+.cfh .dp-platforms em { margin-left: auto; font-style: normal; font-size: 0.6cqw; color: #96de6e; white-space: nowrap; }
+.cfh .dp-cta { padding: 0.55cqw 0; border-radius: 0.9cqw; background: var(--accent); color: #10100f; text-align: center; font-size: 0.72cqw; font-weight: 700; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes dt-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .cfh .reveal.visible .dt-status i,
+  .cfh .reveal.visible .dt-shot.is-live i { animation: dt-pulse 1.6s ease-in-out infinite; }
+  .cfh .reveal.visible .dp-wave i { animation: vp-pulse 1s ease-in-out infinite alternate; }
+  .cfh .reveal.visible .dp-wave i:nth-child(3n) { animation-delay: 0.2s; }
+  .cfh .reveal.visible .dp-wave i:nth-child(3n + 1) { animation-delay: 0.4s; }
+}
+
+/* ── Hardware: the physical details that make a device believable ── */
+.cfh .dv-key {
+  position: absolute;
+  z-index: 0;
+  border-radius: 0.14cqw;
+  background: linear-gradient(90deg, #6f6c66, #c6c1b8 55%, #8e8a83);
+  box-shadow: inset 0 0 0 0.03cqw rgba(0, 0, 0, 0.25);
+}
+.cfh .dv-break { position: absolute; z-index: 1; background: rgba(40, 38, 35, 0.75); }
+.cfh .dv-edge { position: absolute; display: flex; align-items: center; justify-content: space-between; }
+.cfh .dv-edge .usbc { display: block; border-radius: 999px; background: #0d0d0e; box-shadow: inset 0 0.03cqw 0.05cqw rgba(255, 255, 255, 0.2); }
+.cfh .dv-edge .mic { display: block; width: 0.12cqw; height: 0.12cqw; border-radius: 50%; background: #111; }
+
+/* Cinema display: chassis depth on the visible side, a shadowed wall gap. */
+.cfh .dv-tv-depth {
+  position: absolute;
+  z-index: -1;
+  top: 0.6%;
+  bottom: 0.6%;
+  right: -0.42cqw;
+  width: 0.5cqw;
+  border-radius: 0 0.3cqw 0.3cqw 0;
+  background: linear-gradient(90deg, #2b2c2f, #5d5f64 60%, #3a3b3e);
+  box-shadow: 0.6cqw 0.4cqw 1cqw rgba(40, 30, 20, 0.22);
+}
+
+/* Tablet: left short edge (speaker grilles, mic, USB-C), keys and breaks on top. */
+.cfh .dv-tablet-edge {
+  left: -0.56cqw;
+  top: 3.5%;
+  bottom: 3.5%;
+  width: 0.56cqw;
+  flex-direction: column;
+  padding: 1.2cqw 0;
+  border-radius: 0.6cqw 0 0 0.6cqw;
+  background: linear-gradient(90deg, #4c4e53, #8f9197 45%, #c9cbd0 90%);
+}
+.cfh .dv-tablet-edge .grille {
+  display: block;
+  width: 0.16cqw;
+  height: 12%;
+  background: repeating-linear-gradient(180deg, #1b1c1e 0 0.11cqw, transparent 0.11cqw 0.28cqw);
+}
+.cfh .dv-tablet-edge .usbc { width: 0.2cqw; height: 1.15cqw; }
+.cfh .dv-tablet-power { top: -0.18cqw; right: 12%; width: 2.2cqw; height: 0.2cqw; }
+.cfh .dv-tablet-vol { top: -0.18cqw; right: 17%; width: 3.6cqw; height: 0.2cqw; }
+.cfh .dv-tablet-break-a { top: 0; left: 18%; width: 0.12cqw; height: 0.2cqw; }
+.cfh .dv-tablet-break-b { top: 0; right: 30%; width: 0.12cqw; height: 0.2cqw; }
+
+/* Phone: keys on both sides, antenna breaks, bottom face with port and grilles. */
+.cfh .dv-phone-action { left: -0.24cqw; top: 15%; width: 0.26cqw; height: 2.4%; }
+.cfh .dv-phone-volup { left: -0.24cqw; top: 20.5%; width: 0.26cqw; height: 5.5%; }
+.cfh .dv-phone-voldn { left: -0.24cqw; top: 27.5%; width: 0.26cqw; height: 5.5%; }
+.cfh .dv-phone-power { right: -0.6cqw; top: 23%; width: 0.28cqw; height: 9%; }
+.cfh .dv-phone-camctl {
+  right: -0.52cqw;
+  top: 58%;
+  width: 0.2cqw;
+  height: 5.5%;
+  background: linear-gradient(90deg, #232325, #4a4a4e);
+}
+.cfh .dv-phone-break-a { right: -0.36cqw; top: 9%; width: 0.36cqw; height: 0.1cqw; }
+.cfh .dv-phone-break-b { left: -0.02cqw; bottom: 10%; width: 0.26cqw; height: 0.1cqw; }
+.cfh .dv-phone-bottom {
+  left: 13%;
+  right: 13%;
+  bottom: -0.42cqw;
+  height: 0.42cqw;
+  gap: 0.6cqw;
+  padding: 0 0.8cqw;
+  border-radius: 0 0 1.6cqw 1.6cqw;
+  background: linear-gradient(180deg, #8c8982, #5d5a55);
+}
+.cfh .dv-phone-bottom .holes {
+  display: block;
+  flex: 1;
+  height: 0.16cqw;
+  background: radial-gradient(circle, #141414 42%, transparent 48%) 0 0 / 0.32cqw 100% repeat-x;
+}
+.cfh .dv-phone-bottom .usbc { width: 1.25cqw; height: 0.22cqw; }
+.cfh .dv-earpiece {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 0.1cqw;
+  width: 16%;
+  height: 0.1cqw;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: #1f2022;
+}
+.cfh .dv-island i {
+  position: absolute;
+  right: 18%;
+  top: 50%;
+  width: 0.42cqw;
+  height: 0.42cqw;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #34446a, #050508 70%);
+}
+
+/* OS status bars — per device: the phone has cellular, the tablet does not, the TV none. */
+.cfh .os-status { position: relative; z-index: 4; display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cfh .os-right { display: flex; align-items: center; gap: 0.32cqw; }
+.cfh .os-ico { display: block; height: 0.6cqw; width: auto; }
+.cfh .os-batt { display: flex; align-items: center; gap: 0.18cqw; }
+.cfh .os-batt-ico { height: 0.58cqw; }
+.cfh .dt-os { grid-column: 1 / -1; font-size: 0.72cqw; color: #d9dad4; }
+.cfh .dp-os { position: absolute; left: 9.5%; right: 7%; top: 2.5%; font-size: 0.74cqw; color: #fff; }
+.cfh .dp-os .os-ico { height: 0.5cqw; }
+.cfh .dp-os .os-batt-ico { height: 0.5cqw; }
+
+/* Phone playback row. */
+.cfh .dp-play { display: flex; align-items: center; gap: 0.4cqw; }
+.cfh .dp-play .os-ico { height: 0.55cqw; }
+.cfh .dp-bar { flex: 1; height: 0.14cqw; border-radius: 9px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+.cfh .dp-bar i { display: block; width: 47%; height: 100%; background: #fff; }
+.cfh .dp-time { font-size: 0.56cqw; color: #c9cbc4; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* Contact shadows: a tight core where the device meets the floor, a soft penumbra. */
 .cfh .dv-contact {
@@ -2142,11 +2405,11 @@
   margin: 0 14px 3px;
   background: #c9c4b9;
 }
-.cfh .release-caption i { font-style: normal; color: #b3ada2; }
+.cfh .release-caption i { margin-left: 6px; font-style: normal; letter-spacing: 0.1em; color: #b3ada2; }
 @media (max-width: 600px) {
   .cfh .release-showcase { margin-top: 36px; }
   .cfh .dv-tablet { width: 54%; }
-  .cfh .dv-phone { width: 21%; }
+  .cfh .dv-phone { width: 22%; }
   .cfh .release-caption { font-size: 9.5px; letter-spacing: 0.14em; }
   .cfh .release-caption span + span::before { width: 12px; margin: 0 8px 3px; }
 }
