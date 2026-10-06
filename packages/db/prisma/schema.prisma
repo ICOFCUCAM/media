@@ -41,6 +41,7 @@ model User {
   tier        Tier     @default(FREE)
   creditsMs   Int      @default(0) @map("credits_ms") // remaining generation budget, in GPU-ms
   stripeId    String?  @map("stripe_id")
+  notifyOnFinish Boolean @default(false) @map("notify_on_finish") // email when a production is READY/FAILED
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -625,4 +626,14 @@ model BrandKit {
   updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   @@map("brand_kits")
+}
+
+/// Interest in marketplace catalogues that are not open yet (migration 0012).
+model MarketplaceWaitlist {
+  userId    String   @map("user_id") @db.Uuid
+  catalogue String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([userId, catalogue])
+  @@map("marketplace_waitlist")
 }

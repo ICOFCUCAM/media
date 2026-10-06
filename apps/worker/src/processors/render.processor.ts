@@ -11,6 +11,7 @@ import { prisma } from "@cineforge/db";
 import { RenderEngine, type SceneAssets } from "../ffmpeg/render-engine";
 import { S3Storage } from "../storage/storage";
 import { realtime } from "../realtime";
+import { notifyFinish } from "../notify";
 import { enqueueLocalize } from "../orchestration/localize-queue";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
@@ -133,6 +134,7 @@ export const renderWorker = new Worker<RenderJob>(
         console.error(`[render] project=${projectId} has ${scenes.length} scenes but 0 clips — marking FAILED`);
         await prisma.project.update({ where: { id: projectId }, data: { status: "FAILED", errorMessage: message } });
         await realtime.emit("error", { projectId, scope: "render", message });
+        await notifyFinish(projectId, "FAILED", message);
         return { projectId, failed: "no clips" };
       } else {
         // No storage at all (local demo without GPU) — record metadata only so
@@ -153,6 +155,7 @@ export const renderWorker = new Worker<RenderJob>(
 
       await realtime.emit("film.ready", { projectId, filmId: film.id, mp4Key, hlsKey });
       console.log(`[render] READY project=${projectId} film=${film.id} duration=${durationSec}s`);
+      await notifyFinish(projectId, "READY");
 
       // 4K export (docs/33): CHOICE-driven — runs when the creator picked the
       // 4K format at create time (the picker is plan-classified in the UI;
@@ -196,6 +199,8 @@ export const renderWorker = new Worker<RenderJob>(
       await realtime
         .emit("error", { projectId, scope: "render", message: err instanceof Error ? err.message : String(err) })
         .catch(() => {});
+      // Email once, on the final attempt — not on every retry.
+      if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) await notifyFinish(projectId, "FAILED", short);
       throw err; // let BullMQ record the job failure / apply retries
     }
   },
