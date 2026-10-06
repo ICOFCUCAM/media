@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Cineforge — Create Film</title>
+
+<style>
+:root{
+  --paper:#f4f1ea;
+  --ink:#10100f;
+  --muted:#77736b;
+  --line:#cfc9bd;
+  --soft:#ebe7de;
+  --acid:#b7ff3c;
+  --white:#fbfaf6;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+}
+
+button{
+  font:inherit;
+  cursor:pointer;
+}
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:78px;
+  border-right:1px solid var(--line);
+  background:rgba(244,241,234,.97);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  z-index:40;
+}
+
+.logo{
+  width:78px;
+  height:78px;
+  display:grid;
+  place-items:center;
+  border-bottom:1px solid var(--line);
+  font-weight:900;
+  letter-spacing:-.08em;
+}
+
+.rail-nav{
+  padding-top:25px;
+  display:flex;
+  flex-direction:column;
+  gap:11px;
+}
+
+.rail-nav a{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  color:var(--muted);
+  text-decoration:none;
+  font:10px ui-monospace,monospace;
+}
+
+.rail-nav a.active{
+  background:var(--ink);
+  color:var(--paper);
+}
+
+.rail-dot{
+  margin-top:auto;
+  margin-bottom:22px;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+main{
+  margin-left:78px;
+}
+
+.page{
+  width:min(1500px,100%);
+  margin:auto;
+  padding:34px 6vw 150px;
+}
+
+.breadcrumb{
+  display:flex;
+  gap:11px;
+  margin-bottom:60px;
+  color:var(--muted);
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.breadcrumb strong{
+  color:var(--ink);
+}
+
+
+/* HERO */
+
+.hero{
+  display:grid;
+  grid-template-columns:1.35fr .65fr;
+  gap:8vw;
+  padding-bottom:68px;
+  border-bottom:1px solid var(--line);
+}
+
+.eyebrow{
+  margin-bottom:22px;
+  font:10px ui-monospace,monospace;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+
+h1{
+  margin:0;
+  font:400 clamp(70px,9vw,145px)/.82 Georgia,serif;
+  letter-spacing:-.065em;
+}
+
+h1 em{
+  font-style:italic;
+}
+
+.hero-copy{
+  align-self:end;
+  max-width:440px;
+  color:#555149;
+  font-size:15px;
+  line-height:1.75;
+}
+
+.hero-copy strong{
+  color:var(--ink);
+}
+
+.status{
+  margin-top:28px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.status i{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+
+/* MODES */
+
+.section{
+  padding:58px 0;
+  border-bottom:1px solid var(--line);
+}
+
+.mode-bar{
+  display:flex;
+  border-top:1px solid var(--ink);
+  border-bottom:1px solid var(--line);
+  overflow-x:auto;
+}
+
+.mode{
+  min-width:130px;
+  padding:17px 20px;
+  border-right:1px solid var(--line);
+  background:transparent;
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.mode.active{
+  background:var(--ink);
+  color:var(--paper);
+}
+
+
+/* PRODUCTION GRID */
+
+.production{
+  display:grid;
+  grid-template-columns:1.35fr .65fr;
+  gap:1px;
+  background:var(--line);
+  border:1px solid var(--line);
+}
+
+.creative,
+.specs{
+  background:var(--paper);
+  padding:34px;
+}
+
+.creative{
+  min-height:600px;
+}
+
+.specs{
+  min-height:600px;
+}
+
+.label{
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.title{
+  margin-top:40px;
+  font:400 45px Georgia,serif;
+  letter-spacing:-.04em;
+}
+
+.copy{
+  max-width:600px;
+  margin-top:13px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+
+
+/* PROMPT */
+
+.prompt-label{
+  margin-top:45px;
+  margin-bottom:9px;
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+textarea{
+  width:100%;
+  min-height:170px;
+  resize:vertical;
+  border:1px solid var(--line);
+  background:var(--white);
+  padding:20px;
+  color:var(--ink);
+  font:14px/1.7 Inter,Arial,sans-serif;
+  outline:none;
+}
+
+textarea:focus{
+  border-color:var(--ink);
+}
+
+
+/* CONTROLS */
+
+.control{
+  margin-top:26px;
+}
+
+.control-head{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+
+.control-name{
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.control-value{
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+.options{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.option{
+  border:1px solid var(--line);
+  background:transparent;
+  padding:10px 13px;
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+.option.active{
+  background:var(--ink);
+  border-color:var(--ink);
+  color:var(--paper);
+}
+
+.option.locked{
+  opacity:.42;
+  cursor:not-allowed;
+}
+
+
+/* SPECS */
+
+.specs h2{
+  margin:0 0 25px;
+  font:400 30px Georgia,serif;
+}
+
+.spec-list{
+  border-top:1px solid var(--line);
+}
+
+.spec{
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  padding:16px 0;
+  border-bottom:1px solid var(--line);
+  font-size:11px;
+}
+
+.spec span:last-child{
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+
+/* PIPELINE */
+
+.pipeline{
+  margin-top:40px;
+  border-top:1px solid var(--line);
+}
+
+.pipeline-step{
+  display:grid;
+  grid-template-columns:45px 1fr auto;
+  gap:15px;
+  align-items:center;
+  min-height:68px;
+  border-bottom:1px solid var(--line);
+}
+
+.pipeline-number{
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+}
+
+.pipeline-name{
+  font:18px Georgia,serif;
+}
+
+.pipeline-state{
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+
+/* PREVIEW */
+
+.preview{
+  margin-top:58px;
+  border-top:1px solid var(--ink);
+}
+
+.preview-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:15px 0;
+  border-bottom:1px solid var(--line);
+}
+
+.preview-head span{
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.preview-window{
+  min-height:390px;
+  display:grid;
+  place-items:center;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(16,16,15,.97),
+      rgba(39,38,34,.97)
+    );
+  color:var(--paper);
+  position:relative;
+  overflow:hidden;
+}
+
+.preview-window:before{
+  content:"";
+  position:absolute;
+  width:60%;
+  height:70%;
+  border:1px solid rgba(244,241,234,.12);
+  border-radius:50%;
+  transform:rotate(-12deg);
+}
+
+.preview-center{
+  position:relative;
+  text-align:center;
+}
+
+.preview-mark{
+  font:400 62px Georgia,serif;
+  letter-spacing:-.06em;
+}
+
+.preview-sub{
+  margin-top:10px;
+  color:#aaa69d;
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.13em;
+}
+
+
+/* ACTION */
+
+.action{
+  margin-top:60px;
+  padding:38px;
+  background:var(--ink);
+  color:var(--paper);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:30px;
+}
+
+.action h2{
+  margin:0 0 8px;
+  font:400 36px Georgia,serif;
+}
+
+.action p{
+  margin:0;
+  color:#aaa69d;
+  font-size:13px;
+}
+
+.primary{
+  border:0;
+  background:var(--acid);
+  color:var(--ink);
+  padding:15px 23px;
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.secondary{
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--ink);
+  padding:13px 18px;
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+
+/* BOTTOM */
+
+.bottom{
+  position:fixed;
+  left:78px;
+  right:0;
+  bottom:0;
+  height:72px;
+  border-top:1px solid var(--line);
+  background:rgba(244,241,234,.95);
+  backdrop-filter:blur(14px);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 5vw;
+  z-index:30;
+}
+
+.bottom-context{
+  display:flex;
+  gap:12px;
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.bottom-context b{
+  color:var(--ink);
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+}
+
+
+/* RESPONSIVE */
+
+@media(max-width:1050px){
+
+  .production{
+    grid-template-columns:1fr;
+  }
+
+}
+
+@media(max-width:800px){
+
+  .hero{
+    grid-template-columns:1fr;
+  }
+
+}
+
+@media(max-width:700px){
+
+  .rail{
+    width:58px;
+  }
+
+  .logo{
+    width:58px;
+  }
+
+  main{
+    margin-left:58px;
+  }
+
+  .page{
+    padding:25px 24px 130px;
+  }
+
+  h1{
+    font-size:70px;
+  }
+
+  .mode{
+    min-width:115px;
+  }
+
+  .action{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .bottom{
+    left:58px;
+  }
+
+  .bottom-context{
+    display:none;
+  }
+
+}
+
+</style>
+</head>
+
+
+<body>
+
+
+<aside class="rail">
+
+  <div class="logo">CF</div>
+
+  <nav class="rail-nav">
+    <a href="#" class="active">ST</a>
+    <a href="#">PR</a>
+    <a href="#">PD</a>
+    <a href="#">TM</a>
+    <a href="#">AN</a>
+    <a href="#">AC</a>
+  </nav>
+
+  <div class="rail-dot"></div>
+
+</aside>
+
+
+<main>
+
+<div class="page">
+
+
+  <!-- HERO -->
+
+  <div class="breadcrumb">
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <span>STUDIO</span>
+    <span>/</span>
+    <strong>CREATE FILM</strong>
+  </div>
+
+
+  <section class="hero">
+
+    <div>
+
+      <div class="eyebrow">
+        FILM PRODUCTION / 01
+      </div>
+
+      <h1>
+        Direct<br>
+        the <em>film.</em>
+      </h1>
+
+    </div>
+
+
+    <div class="hero-copy">
+
+      <p>
+        From premise to final cut, Cineforge turns
+        one creative direction into a complete
+        production.
+      </p>
+
+      <p>
+        Story, characters, worlds, scenes, sound
+        and finishing remain part of one continuous
+        production.
+      </p>
+
+      <p>
+        <strong>
+          You direct. Cineforge carries the production.
+        </strong>
+      </p>
+
+      <div class="status">
+        <i></i>
+        Film studio ready
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- MODES -->
+
+  <section class="section">
+
+    <div class="mode-bar">
+
+      <button class="mode active">
+        Auto
+      </button>
+
+      <button class="mode">
+        Hybrid
+      </button>
+
+      <button class="mode">
+        Scene-by-Scene
+      </button>
+
+      <button class="mode">
+        Script
+      </button>
+
+      <button class="mode">
+        Image
+      </button>
+
+      <button class="mode">
+        Audio
+      </button>
+
+      <button class="mode">
+        Video
+      </button>
+
+    </div>
+
+  </section>
+
+
+  <!-- PRODUCTION -->
+
+  <section class="section" style="padding-top:0">
+
+    <div class="production">
+
+
+      <!-- CREATIVE SIDE -->
+
+      <div class="creative">
+
+        <div class="label">
+          CREATIVE DIRECTION
+        </div>
+
+        <div class="title">
+          Start with the story.
+        </div>
+
+        <div class="copy">
+
+          Describe the film you want to make.
+          Cineforge will translate the direction
+          into screenplay, cast, locations, scenes,
+          score and final production.
+
+        </div>
+
+
+        <div class="prompt-label">
+          WHAT DO YOU WANT TO MAKE?
+        </div>
+
+        <textarea id="prompt">An epic about an African kingdom fighting for its independence, told over three generations.</textarea>
+
+
+        <!-- LENGTH -->
+
+        <div class="control">
+
+          <div class="control-head">
+            <span class="control-name">
+              Length
+            </span>
+
+            <span
+              class="control-value"
+              id="lengthValue">
+              2 min
+            </span>
+          </div>
+
+          <div class="options">
+
+            <button
+              class="option"
+              onclick="chooseOption(this,'lengthValue','1 min')">
+              1 min
+            </button>
+
+            <button
+              class="option active"
+              onclick="chooseOption(this,'lengthValue','2 min')">
+              2 min
+            </button>
+
+            <button class="option locked">
+              5 min
+            </button>
+
+            <button class="option locked">
+              15 min
+            </button>
+
+            <button class="option locked">
+              30 min
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <!-- QUALITY -->
+
+        <div class="control">
+
+          <div class="control-head">
+            <span class="control-name">
+              Quality
+            </span>
+
+            <span class="control-value">
+              Standard
+            </span>
+          </div>
+
+          <div class="options">
+
+            <button
+              class="option active"
+              onclick="quality(this)">
+              Standard · Wan 2.1
+            </button>
+
+            <button
+              class="option locked">
+              Cinematic · Kling 2.1
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <!-- FORMAT -->
+
+        <div class="control">
+
+          <div class="control-head">
+            <span class="control-name">
+              Master format
+            </span>
+
+            <span class="control-value">
+              480p draft
+            </span>
+          </div>
+
+          <div class="options">
+
+            <button
+              class="option active"
+              onclick="format(this)">
+              480p
+            </button>
+
+            <button class="option locked">
+              720p HD
+            </button>
+
+            <button class="option locked">
+              1080p FHD
+            </button>
+
+            <button class="option locked">
+              4K UHD
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- SPECIFICATION SIDE -->
+
+      <div class="specs">
+
+        <div class="label">
+          PRODUCTION SPECIFICATION
+        </div>
+
+        <h2>
+          The production plan.
+        </h2>
+
+
+        <div class="spec-list">
+
+          <div class="spec">
+            <span>Production</span>
+            <span>Film</span>
+          </div>
+
+          <div class="spec">
+            <span>Mode</span>
+            <span>Auto</span>
+          </div>
+
+          <div class="spec">
+            <span>Runtime</span>
+            <span id="runtime">2m 0s</span>
+          </div>
+
+          <div class="spec">
+            <span>Quality</span>
+            <span id="qualitySpec">Standard</span>
+          </div>
+
+          <div class="spec">
+            <span>Format</span>
+            <span id="formatSpec">480p</span>
+          </div>
+
+          <div class="spec">
+            <span>Generation</span>
+            <span>Own GPU</span>
+          </div>
+
+        </div>
+
+
+        <div class="pipeline">
+
+          <div class="pipeline-step">
+
+            <div class="pipeline-number">01</div>
+
+            <div class="pipeline-name">
+              Screenplay
+            </div>
+
+            <div class="pipeline-state">
+              Automatic
+            </div>
+
+          </div>
+
+
+          <div class="pipeline-step">
+
+            <div class="pipeline-number">02</div>
+
+            <div class="pipeline-name">
+              Characters
+            </div>
+
+            <div class="pipeline-state">
+              Automatic
+            </div>
+
+          </div>
+
+
+          <div class="pipeline-step">
+
+            <div class="pipeline-number">03</div>
+
+            <div class="pipeline-name">
+              Worlds & locations
+            </div>
+
+            <div class="pipeline-state">
+              Automatic
+            </div>
+
+          </div>
+
+
+          <div class="pipeline-step">
+
+            <div class="pipeline-number">04</div>
+
+            <div class="pipeline-name">
+              Scene generation
+            </div>
+
+            <div class="pipeline-state">
+              Automatic
+            </div>
+
+          </div>
+
+
+          <div class="pipeline-step">
+
+            <div class="pipeline-number">05</div>
+
+            <div class="pipeline-name">
+              Sound & score
+            </div>
+
+            <div class="pipeline-state">
+              Automatic
+            </div>
+
+          </div>
+
+
+          <div class="pipeline-step">
+
+            <div class="pipeline-number">06</div>
+
+            <div class="pipeline-name">
+              Final cut
+            </div>
+
+            <div class="pipeline-state">
+              Automatic
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- PREVIEW -->
+
+  <section class="section">
+
+    <div class="preview">
+
+      <div class="preview-head">
+
+        <span>
+          PRODUCTION PREVIEW
+        </span>
+
+        <span>
+          WAITING FOR DIRECTION
+        </span>
+
+      </div>
+
+
+      <div class="preview-window">
+
+        <div class="preview-center">
+
+          <div class="preview-mark">
+            Your film begins here.
+          </div>
+
+          <div class="preview-sub">
+            Describe it above · Then enter production
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="action">
+
+      <div>
+
+        <h2>
+          Ready to make the film?
+        </h2>
+
+        <p>
+          Your direction becomes the production brief.
+          The existing Cineforge engine takes it from there.
+        </p>
+
+      </div>
+
+      <button
+        class="primary"
+        onclick="createFilm()">
+        Create film
+      </button>
+
+    </div>
+
+  </section>
+
+
+</div>
+
+
+<div class="bottom">
+
+  <div class="bottom-context">
+
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <b>CREATE FILM</b>
+
+  </div>
+
+
+  <div class="actions">
+
+    <button
+      class="secondary"
+      onclick="resetFilm()">
+      Reset
+    </button>
+
+    <button
+      class="primary"
+      onclick="createFilm()">
+      Create film
+    </button>
+
+  </div>
+
+</div>
+
+</main>
+
+
+<script>
+
+function chooseOption(button,target,value){
+
+  const parent = button.parentElement;
+
+  parent
+    .querySelectorAll(".option")
+    .forEach(item => item.classList.remove("active"));
+
+  button.classList.add("active");
+
+  document.getElementById(target).textContent = value;
+
+  if(value === "1 min"){
+    document.getElementById("runtime").textContent = "1m 0s";
+  }
+
+  if(value === "2 min"){
+    document.getElementById("runtime").textContent = "2m 0s";
+  }
+
+}
+
+
+function quality(button){
+
+  button
+    .parentElement
+    .querySelectorAll(".option")
+    .forEach(item => item.classList.remove("active"));
+
+  button.classList.add("active");
+
+  document.getElementById("qualitySpec").textContent =
+    "Standard";
+
+}
+
+
+function format(button){
+
+  button
+    .parentElement
+    .querySelectorAll(".option")
+    .forEach(item => item.classList.remove("active"));
+
+  button.classList.add("active");
+
+  document.getElementById("formatSpec").textContent =
+    button.textContent.trim();
+
+}
+
+
+function createFilm(){
+
+  const prompt =
+    document.getElementById("prompt").value.trim();
+
+  if(!prompt){
+
+    alert(
+      "Please describe the film before entering production."
+    );
+
+    return;
+  }
+
+  alert(
+    "Create Film placeholder.\n\n" +
+    "The existing Cineforge CreateStudio engine will receive " +
+    "the production brief.\n\n" +
+    "No production engine has been replaced."
+  );
+
+}
+
+
+function resetFilm(){
+
+  document.getElementById("prompt").value =
+    "An epic about an African kingdom fighting for its independence, told over three generations.";
+
+  document.getElementById("runtime").textContent =
+    "2m 0s";
+
+  document.getElementById("qualitySpec").textContent =
+    "Standard";
+
+  document.getElementById("formatSpec").textContent =
+    "480p";
+
+}
+
+</script>
+
+</body>
+</html>

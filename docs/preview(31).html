@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cineforge — Performance / The Performance Desk</title>
+<style>
+:root{--ink:#10100f;--paper:#f4f1ea;--muted:#77736b;--line:#cfc9bd;--acid:#b7ff3c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,Arial,sans-serif}
+button{font:inherit}
+
+.rail{
+ position:fixed;inset:0 auto 0 0;width:82px;
+ border-right:1px solid var(--line);
+ display:flex;flex-direction:column;align-items:center;
+ background:rgba(244,241,234,.96);z-index:5
+}
+.logo{font-weight:900;letter-spacing:-.08em;font-size:20px;margin:25px 0 35px}
+.rail a{
+ writing-mode:vertical-rl;text-decoration:none;color:var(--muted);
+ font-size:10px;letter-spacing:.14em;text-transform:uppercase;margin:18px 0
+}
+.rail a.active{color:var(--ink)}
+.dot{margin-top:auto;margin-bottom:26px;width:8px;height:8px;border-radius:50%;background:var(--acid)}
+
+main{margin-left:82px;min-height:100vh}
+
+.top{
+ height:76px;border-bottom:1px solid var(--line);
+ display:flex;align-items:center;justify-content:space-between;padding:0 48px
+}
+.crumb{
+ font:11px ui-monospace,monospace;letter-spacing:.12em;
+ color:var(--muted);text-transform:uppercase
+}
+.top button{
+ border:1px solid var(--ink);background:none;padding:10px 16px;
+ text-transform:uppercase;font-size:10px;letter-spacing:.1em
+}
+
+.hero{
+ padding:64px 7vw 52px;border-bottom:1px solid var(--line);
+ display:grid;grid-template-columns:1.5fr .85fr;gap:70px
+}
+.eyebrow{
+ font:10px ui-monospace,monospace;letter-spacing:.16em;
+ color:var(--muted);text-transform:uppercase
+}
+.hero h1{
+ font-family:Georgia,serif;font-weight:400;
+ font-size:clamp(60px,8vw,128px);
+ line-height:.84;letter-spacing:-.07em;margin:18px 0 28px
+}
+.hero p{
+ max-width:650px;font-size:17px;line-height:1.6;color:#4e4a44
+}
+.signal{
+ align-self:end;border-left:1px solid var(--line);padding-left:30px
+}
+.signal strong{
+ display:block;font-family:Georgia,serif;font-size:50px;
+ font-weight:400;margin:10px 0
+}
+.signal span{font-size:11px;color:var(--muted)}
+
+.content{padding:42px 7vw 90px}
+
+.sectionhead{
+ display:flex;justify-content:space-between;align-items:end;margin-bottom:18px
+}
+.sectionhead h2{
+ font-family:Georgia,serif;font-weight:400;font-size:34px;margin:0
+}
+.sectionhead span{
+ font:10px ui-monospace,monospace;color:var(--muted);text-transform:uppercase
+}
+
+.metrics{
+ display:grid;grid-template-columns:repeat(4,1fr);
+ border-top:1px solid var(--ink);border-bottom:1px solid var(--line)
+}
+.metric{padding:25px 20px 28px;border-right:1px solid var(--line)}
+.metric:last-child{border:0}
+.metric label{
+ font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)
+}
+.metric strong{
+ display:block;font-family:Georgia,serif;font-size:36px;
+ font-weight:400;margin:15px 0 7px
+}
+.metric small{font-size:11px;color:#467400}
+
+.grid{
+ display:grid;grid-template-columns:1.45fr .85fr;
+ gap:28px;margin-top:48px
+}
+.panel{border-top:1px solid var(--ink);padding-top:16px}
+.panel h3{
+ font-family:Georgia,serif;font-weight:400;font-size:27px;margin:0 0 23px
+}
+
+.chart{
+ height:255px;border-bottom:1px solid var(--line);
+ background:
+ repeating-linear-gradient(
+  to bottom,
+  transparent 0,
+  transparent 61px,
+  rgba(16,16,15,.08) 62px
+ )
+}
+svg{width:100%;height:100%}
+.axis{
+ display:flex;justify-content:space-between;margin-top:11px;
+ font:10px ui-monospace,monospace;color:var(--muted)
+}
+
+.stat{
+ display:flex;justify-content:space-between;
+ border-bottom:1px solid var(--line);
+ padding:17px 0;font-size:12px
+}
+.stat strong{font-weight:500}
+
+.table{border-top:1px solid var(--line)}
+.row{
+ display:grid;grid-template-columns:1.3fr .55fr .55fr .55fr;
+ gap:12px;padding:17px 0;border-bottom:1px solid var(--line);
+ font-size:12px
+}
+.row span{color:var(--muted)}
+.row b{font-weight:500}
+
+.stages{
+ display:grid;grid-template-columns:1fr 1fr 1fr;
+ border-top:1px solid var(--ink);margin-top:50px
+}
+.stage{
+ padding:22px 20px 30px;
+ border-right:1px solid var(--line);min-height:165px
+}
+.stage:last-child{border:0}
+.stage h4{
+ font:10px ui-monospace,monospace;
+ letter-spacing:.12em;text-transform:uppercase;margin:0 0 17px
+}
+.stage strong{
+ font-family:Georgia,serif;font-size:28px;font-weight:400
+}
+.stage p{
+ font-size:12px;line-height:1.6;color:var(--muted);max-width:270px
+}
+
+.actions{
+ position:sticky;bottom:0;border-top:1px solid var(--ink);
+ background:rgba(244,241,234,.95);backdrop-filter:blur(12px);
+ padding:14px 7vw;display:flex;justify-content:space-between;align-items:center
+}
+.actions span{
+ font:10px ui-monospace,monospace;color:var(--muted)
+}
+.actions button{
+ border:1px solid var(--ink);background:var(--ink);
+ color:var(--paper);padding:12px 20px;
+ text-transform:uppercase;font-size:10px;letter-spacing:.12em
+}
+.actions .secondary{
+ background:none;color:var(--ink);margin-right:8px
+}
+
+@media(max-width:900px){
+ .hero,.grid{grid-template-columns:1fr}
+ .metrics{grid-template-columns:1fr 1fr}
+ .stages{grid-template-columns:1fr}
+ .rail{width:60px}
+ main{margin-left:60px}
+ .top{padding:0 25px}
+ .hero,.content{padding-left:25px;padding-right:25px}
+ .actions{padding-left:25px;padding-right:25px}
+}
+
+@media(max-width:560px){
+ .rail{display:none}
+ main{margin:0}
+ .metrics{grid-template-columns:1fr}
+ .metric{border-right:0;border-bottom:1px solid var(--line)}
+ .row{grid-template-columns:1.3fr .7fr}
+ .row span:nth-child(2),
+ .row b:nth-child(2){display:none}
+}
+</style>
+</head>
+
+<body>
+
+<aside class="rail">
+
+<div class="logo">CF</div>
+
+<a href="#">Studio</a>
+<a href="#">Production</a>
+<a href="#" class="active">Performance</a>
+<a href="#">Publishing</a>
+<a href="#">Account</a>
+
+<div class="dot"></div>
+
+</aside>
+
+
+<main>
+
+<header class="top">
+
+<div class="crumb">
+CINEFORGE / ANALYTICS / PERFORMANCE
+</div>
+
+<button onclick="alert('Performance period selector')">
+Current period · Sep 2026
+</button>
+
+</header>
+
+
+<section class="hero">
+
+<div>
+
+<div class="eyebrow">
+The Performance Desk · Production intelligence
+</div>
+
+<h1>
+Know what<br>
+is working.
+</h1>
+
+<p>
+See the health of every production from first cut to final
+release — output, efficiency, audience response and the
+signals that tell a team where to act next.
+</p>
+
+</div>
+
+
+<div class="signal">
+
+<div class="eyebrow">
+Production health
+</div>
+
+<strong>
+87.4
+</strong>
+
+<span>
+Prototype composite score · live production telemetry
+will replace these values.
+</span>
+
+</div>
+
+</section>
+
+
+<section class="content">
+
+<div class="sectionhead">
+<h2>Production position</h2>
+<span>September · all productions</span>
+</div>
+
+
+<div class="metrics">
+
+<div class="metric">
+<label>Active productions</label>
+<strong>18</strong>
+<small>↑ 4 from Aug</small>
+</div>
+
+<div class="metric">
+<label>On schedule</label>
+<strong>83%</strong>
+<small>↑ 6.2 pts</small>
+</div>
+
+<div class="metric">
+<label>Render efficiency</label>
+<strong>91.6%</strong>
+<small>↑ 3.8 pts</small>
+</div>
+
+<div class="metric">
+<label>Release ready</label>
+<strong>7</strong>
+<small>3 entering release</small>
+</div>
+
+</div>
+
+
+<div class="grid">
+
+<section class="panel">
+
+<h3>Production performance</h3>
+
+<div class="chart">
+
+<svg viewBox="0 0 900 255" preserveAspectRatio="none">
+
+<path
+d="M0 198
+C85 188 125 171 190 180
+S295 140 360 151
+S455 112 520 125
+S615 91 685 103
+S795 52 900 61"
+fill="none"
+stroke="#10100f"
+stroke-width="2.5"/>
+
+<path
+d="M0 220
+C85 215 125 205 190 210
+S295 190 360 198
+S455 171 520 181
+S615 155 685 166
+S795 137 900 144"
+fill="none"
+stroke="#77736b"
+stroke-width="1.5"
+stroke-dasharray="5 6"/>
+
+<circle
+cx="900"
+cy="61"
+r="5"
+fill="#b7ff3c"
+stroke="#10100f"
+stroke-width="2"/>
+
+</svg>
+
+</div>
+
+<div class="axis">
+<span>APR</span>
+<span>MAY</span>
+<span>JUN</span>
+<span>JUL</span>
+<span>AUG</span>
+<span>SEP</span>
+</div>
+
+</section>
+
+
+<section class="panel">
+
+<h3>System health</h3>
+
+<div class="stat">
+<span>Jobs completed</span>
+<strong>1,284</strong>
+</div>
+
+<div class="stat">
+<span>Successful renders</span>
+<strong>98.2%</strong>
+</div>
+
+<div class="stat">
+<span>Average turnaround</span>
+<strong>31m</strong>
+</div>
+
+<div class="stat">
+<span>Revision rate</span>
+<strong>12.6%</strong>
+</div>
+
+<div class="stat">
+<span>Asset reuse</span>
+<strong>64.8%</strong>
+</div>
+
+</section>
+
+</div>
+
+
+<div class="grid">
+
+<section class="panel">
+
+<h3>Production performance by title</h3>
+
+<div class="table">
+
+<div class="row">
+<b>Northstar</b>
+<span>Feature</span>
+<span>94</span>
+<b>On track</b>
+</div>
+
+<div class="row">
+<b>Atlas — Season 01</b>
+<span>Series</span>
+<span>91</span>
+<b>On track</b>
+</div>
+
+<div class="row">
+<b>Meridian</b>
+<span>Commercial</span>
+<span>88</span>
+<b>Review</b>
+</div>
+
+<div class="row">
+<b>The Last Archive</b>
+<span>Short</span>
+<span>84</span>
+<b>On track</b>
+</div>
+
+<div class="row">
+<b>Field Notes</b>
+<span>Documentary</span>
+<span>79</span>
+<b>Attention</b>
+</div>
+
+</div>
+
+</section>
+
+
+<section class="panel">
+
+<h3>Where time goes</h3>
+
+<div class="stat">
+<span>Generation</span>
+<strong>42%</strong>
+</div>
+
+<div class="stat">
+<span>Editorial</span>
+<strong>24%</strong>
+</div>
+
+<div class="stat">
+<span>Review</span>
+<strong>18%</strong>
+</div>
+
+<div class="stat">
+<span>Rendering</span>
+<strong>11%</strong>
+</div>
+
+<div class="stat">
+<span>Other</span>
+<strong>5%</strong>
+</div>
+
+</section>
+
+</div>
+
+
+<div class="stages">
+
+<article class="stage">
+
+<h4>01 · Strongest signal</h4>
+
+<strong>Continuity</strong>
+
+<p>
+Persistent characters, worlds and reusable assets are
+reducing revision time across longer productions.
+</p>
+
+</article>
+
+
+<article class="stage">
+
+<h4>02 · Watch</h4>
+
+<strong>Editorial load</strong>
+
+<p>
+Commercial projects are entering review with more revision
+cycles than the production average.
+</p>
+
+</article>
+
+
+<article class="stage">
+
+<h4>03 · Next action</h4>
+
+<strong>Open live board</strong>
+
+<p>
+Move from the aggregate view into production-level
+performance and identify the work that needs intervention.
+</p>
+
+</article>
+
+</div>
+
+</section>
+
+
+<div class="actions">
+
+<span>
+PERFORMANCE DESK · PROTOTYPE VIEW
+</span>
+
+<div>
+
+<button
+class="secondary"
+onclick="alert('Export performance report')">
+Export report
+</button>
+
+<button
+onclick="alert('Open live performance board')">
+Open live board
+</button>
+
+</div>
+
+</div>
+
+</main>
+
+</body>
+</html>

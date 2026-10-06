@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cineforge — The Production Archive</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap');
+
+:root{
+  --ink:#11110f;
+  --paper:#f3f1eb;
+  --paper2:#e9e6de;
+  --line:rgba(17,17,15,.14);
+  --muted:#77756e;
+  --green:#b8ff4d;
+  --white:#faf9f5;
+  --rail:76px;
+}
+
+*{box-sizing:border-box}
+
+html,body{
+  margin:0;
+  width:100%;
+  min-height:100%;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+}
+
+body{
+  overflow-x:hidden;
+}
+
+/* ---------- RAIL ---------- */
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:var(--rail);
+  background:#10100f;
+  color:#f5f3ed;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  z-index:50;
+  border-right:1px solid rgba(255,255,255,.08);
+}
+
+.logo{
+  width:100%;
+  height:88px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:Manrope,sans-serif;
+  font-weight:700;
+  font-size:18px;
+  letter-spacing:-.08em;
+}
+
+.logo span{
+  color:var(--green);
+}
+
+.rail-nav{
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  align-items:center;
+  gap:8px;
+  margin-top:20px;
+}
+
+.rail-button{
+  width:48px;
+  height:48px;
+  border:0;
+  background:transparent;
+  color:#888780;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:.2s;
+  position:relative;
+}
+
+.rail-button:hover,
+.rail-button.active{
+  color:#fff;
+  background:#1d1d1b;
+}
+
+.rail-button.active:before{
+  content:"";
+  position:absolute;
+  left:0;
+  width:3px;
+  height:20px;
+  background:var(--green);
+}
+
+.rail-icon{
+  width:17px;
+  height:17px;
+  border:1px solid currentColor;
+  opacity:.8;
+}
+
+.icon-grid{
+  display:grid;
+  grid-template-columns:repeat(2,5px);
+  grid-template-rows:repeat(2,5px);
+  gap:3px;
+  border:0;
+}
+
+.icon-grid i{
+  border:1px solid currentColor;
+}
+
+.icon-lines{
+  border:0;
+  position:relative;
+}
+
+.icon-lines:before,
+.icon-lines:after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  height:1px;
+  background:currentColor;
+}
+
+.icon-lines:before{top:5px}
+.icon-lines:after{top:11px}
+
+.rail-bottom{
+  margin-top:auto;
+  margin-bottom:22px;
+}
+
+/* ---------- MAIN ---------- */
+
+main{
+  margin-left:var(--rail);
+  min-height:100vh;
+}
+
+.topbar{
+  height:88px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 52px;
+}
+
+.crumb{
+  font-family:"DM Mono",monospace;
+  font-size:10px;
+  letter-spacing:.12em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+
+.crumb strong{
+  color:var(--ink);
+  font-weight:500;
+}
+
+.top-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.top-btn{
+  height:38px;
+  padding:0 17px;
+  border:1px solid var(--line);
+  background:transparent;
+  font-family:"DM Mono",monospace;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  cursor:pointer;
+}
+
+.top-btn:hover{
+  background:#e8e5dd;
+}
+
+.top-btn.primary{
+  background:var(--ink);
+  color:white;
+  border-color:var(--ink);
+}
+
+/* ---------- HERO ---------- */
+
+.hero{
+  padding:70px 7vw 48px;
+  border-bottom:1px solid var(--line);
+}
+
+.eyebrow{
+  font-family:"DM Mono",monospace;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.16em;
+  color:var(--muted);
+  margin-bottom:22px;
+}
+
+.hero-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:50px;
+}
+
+h1{
+  margin:0;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:clamp(58px,8vw,118px);
+  font-weight:400;
+  line-height:.88;
+  letter-spacing:-.065em;
+}
+
+.hero-copy{
+  max-width:390px;
+  color:#5e5c56;
+  font-size:14px;
+  line-height:1.7;
+  padding-bottom:6px;
+}
+
+.hero-copy strong{
+  color:var(--ink);
+  font-weight:500;
+}
+
+/* ---------- ARCHIVE CONTROLS ---------- */
+
+.archive-bar{
+  padding:22px 7vw;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid var(--line);
+  gap:20px;
+}
+
+.filters{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.filter{
+  border:1px solid var(--line);
+  background:transparent;
+  padding:9px 14px;
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  cursor:pointer;
+}
+
+.filter.active,
+.filter:hover{
+  background:var(--ink);
+  color:white;
+  border-color:var(--ink);
+}
+
+.search{
+  width:220px;
+  height:37px;
+  border:1px solid var(--line);
+  background:transparent;
+  padding:0 13px;
+  outline:none;
+  font-family:"DM Mono",monospace;
+  font-size:10px;
+}
+
+.search:focus{
+  border-color:var(--ink);
+}
+
+/* ---------- FEATURED PROJECT ---------- */
+
+.feature{
+  margin:0 7vw;
+  padding:52px 0;
+  border-bottom:1px solid var(--line);
+}
+
+.feature-label{
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:16px;
+}
+
+.feature-project{
+  display:grid;
+  grid-template-columns:1.45fr .8fr;
+  min-height:390px;
+  border:1px solid var(--line);
+  background:#161614;
+  color:#f4f2ec;
+}
+
+.feature-visual{
+  position:relative;
+  min-height:390px;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 68% 42%,rgba(184,255,77,.18),transparent 19%),
+    radial-gradient(circle at 40% 70%,rgba(255,255,255,.07),transparent 26%),
+    linear-gradient(125deg,#22221f,#11110f 60%,#292925);
+}
+
+.feature-visual:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(118deg,transparent 38%,rgba(255,255,255,.05) 38.2%,transparent 38.5%),
+    linear-gradient(72deg,transparent 61%,rgba(255,255,255,.035) 61.2%,transparent 61.4%);
+}
+
+.film-title{
+  position:absolute;
+  left:34px;
+  bottom:28px;
+  font-family:Georgia,serif;
+  font-size:54px;
+  line-height:.9;
+  max-width:440px;
+  letter-spacing:-.05em;
+}
+
+.feature-meta{
+  padding:34px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  border-left:1px solid rgba(255,255,255,.12);
+}
+
+.meta-kicker{
+  font-family:"DM Mono",monospace;
+  color:#96958d;
+  font-size:9px;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+
+.meta-name{
+  margin-top:10px;
+  font-family:Manrope,sans-serif;
+  font-size:21px;
+  font-weight:500;
+}
+
+.meta-description{
+  color:#a5a39b;
+  font-size:12px;
+  line-height:1.65;
+  margin-top:12px;
+}
+
+.stats{
+  margin-top:30px;
+  border-top:1px solid rgba(255,255,255,.12);
+}
+
+.stat{
+  display:flex;
+  justify-content:space-between;
+  padding:11px 0;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+}
+
+.stat span:first-child{color:#77766f}
+.stat span:last-child{color:#efeee9}
+
+.open{
+  width:100%;
+  height:42px;
+  background:var(--green);
+  color:#10100f;
+  border:0;
+  font-family:"DM Mono",monospace;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-size:10px;
+  cursor:pointer;
+  margin-top:25px;
+}
+
+/* ---------- PROJECT GRID ---------- */
+
+.archive{
+  padding:52px 7vw 100px;
+}
+
+.archive-heading{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  margin-bottom:24px;
+}
+
+.archive-heading h2{
+  font-family:Georgia,serif;
+  font-weight:400;
+  font-size:36px;
+  letter-spacing:-.04em;
+  margin:0;
+}
+
+.archive-count{
+  font-family:"DM Mono",monospace;
+  color:var(--muted);
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.projects{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:1px;
+  background:var(--line);
+  border:1px solid var(--line);
+}
+
+.project{
+  background:var(--paper);
+  min-height:320px;
+  position:relative;
+  cursor:pointer;
+  transition:.25s;
+  overflow:hidden;
+}
+
+.project:hover{
+  background:#e9e6dd;
+}
+
+.project-visual{
+  height:205px;
+  position:relative;
+  overflow:hidden;
+  background:#d7d4cb;
+}
+
+.project:nth-child(2) .project-visual{
+  background:
+    linear-gradient(145deg,#30312d,#88877e);
+}
+
+.project:nth-child(3) .project-visual{
+  background:
+    radial-gradient(circle at 25% 30%,#b6b4ab 0 5%,transparent 5.5%),
+    linear-gradient(120deg,#22231f,#74746d);
+}
+
+.project:nth-child(4) .project-visual{
+  background:
+    linear-gradient(180deg,#b4b0a6,#282824);
+}
+
+.project:nth-child(5) .project-visual{
+  background:
+    radial-gradient(circle at 72% 35%,#aaa89f,transparent 18%),
+    linear-gradient(135deg,#464741,#151613);
+}
+
+.project:nth-child(6) .project-visual{
+  background:
+    linear-gradient(105deg,#1d1e1b 0 42%,#aaa79d 42% 43%,#34352f 43%);
+}
+
+.project-visual:after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(130deg,transparent 40%,rgba(255,255,255,.07),transparent 70%);
+}
+
+.project-number{
+  position:absolute;
+  top:14px;
+  left:16px;
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  color:rgba(255,255,255,.65);
+  z-index:2;
+}
+
+.project-type{
+  position:absolute;
+  top:14px;
+  right:16px;
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  color:rgba(255,255,255,.7);
+  text-transform:uppercase;
+  z-index:2;
+}
+
+.project-info{
+  padding:18px 18px 20px;
+}
+
+.project-name{
+  font-family:Georgia,serif;
+  font-size:24px;
+  letter-spacing:-.04em;
+}
+
+.project-details{
+  margin-top:8px;
+  display:flex;
+  justify-content:space-between;
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+
+.project-status{
+  margin-top:15px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  text-transform:uppercase;
+  color:#595850;
+}
+
+.dot{
+  width:5px;
+  height:5px;
+  background:var(--green);
+  border-radius:50%;
+}
+
+.dot.gray{
+  background:#99978f;
+}
+
+/* ---------- EMPTY ---------- */
+
+.empty{
+  margin-top:1px;
+  border:1px solid var(--line);
+  padding:40px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:#eeece5;
+}
+
+.empty h3{
+  margin:0 0 7px;
+  font-family:Georgia,serif;
+  font-size:26px;
+  font-weight:400;
+}
+
+.empty p{
+  margin:0;
+  font-size:12px;
+  color:var(--muted);
+}
+
+.create{
+  border:1px solid var(--ink);
+  background:var(--ink);
+  color:#fff;
+  height:40px;
+  padding:0 20px;
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  text-transform:uppercase;
+  cursor:pointer;
+}
+
+/* ---------- RESPONSIVE ---------- */
+
+@media(max-width:950px){
+  .hero-row{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .feature-project{
+    grid-template-columns:1fr;
+  }
+
+  .feature-meta{
+    border-left:0;
+    border-top:1px solid rgba(255,255,255,.12);
+  }
+
+  .projects{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+
+@media(max-width:680px){
+  :root{--rail:58px}
+
+  .topbar{
+    padding:0 20px;
+  }
+
+  .hero,
+  .archive,
+  .feature{
+    padding-left:25px;
+    padding-right:25px;
+  }
+
+  .archive-bar{
+    padding:18px 25px;
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .search{
+    width:100%;
+  }
+
+  h1{
+    font-size:58px;
+  }
+
+  .projects{
+    grid-template-columns:1fr;
+  }
+
+  .feature{
+    margin-left:25px;
+    margin-right:25px;
+  }
+
+  .empty{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:20px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ================= RAIL ================= -->
+
+<aside class="rail">
+
+  <div class="logo">
+    CF<span>·</span>
+  </div>
+
+  <nav class="rail-nav">
+
+    <button class="rail-button" title="Create">
+      <div class="rail-icon icon-grid">
+        <i></i><i></i><i></i><i></i>
+      </div>
+    </button>
+
+    <button class="rail-button active" title="Projects">
+      <div class="rail-icon icon-lines"></div>
+    </button>
+
+    <button class="rail-button" title="Characters">
+      <div class="rail-icon" style="border-radius:50%;"></div>
+    </button>
+
+    <button class="rail-button" title="Worlds">
+      <div class="rail-icon" style="transform:rotate(45deg);"></div>
+    </button>
+
+    <button class="rail-button" title="Assets">
+      <div class="rail-icon" style="border-style:dashed;"></div>
+    </button>
+
+  </nav>
+
+  <div class="rail-bottom">
+    <button class="rail-button" title="Settings">
+      <div class="rail-icon" style="border-radius:50%;"></div>
+    </button>
+  </div>
+
+</aside>
+
+
+<!-- ================= MAIN ================= -->
+
+<main>
+
+  <header class="topbar">
+
+    <div class="crumb">
+      CINEFORGE / <strong>PRODUCTION ARCHIVE</strong>
+    </div>
+
+    <div class="top-actions">
+      <button class="top-btn" id="viewBtn">Index View</button>
+      <button class="top-btn primary" id="newBtn">New Production</button>
+    </div>
+
+  </header>
+
+
+  <!-- ================= HERO ================= -->
+
+  <section class="hero">
+
+    <div class="eyebrow">
+      Production System / Archive
+    </div>
+
+    <div class="hero-row">
+
+      <h1>
+        The<br>
+        Archive.
+      </h1>
+
+      <div class="hero-copy">
+        Every production has a history.
+        <br><br>
+        <strong>Projects</strong> is the permanent record of
+        films, series, campaigns, shorts and worlds created
+        inside Cineforge.
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ================= FILTER BAR ================= -->
+
+  <section class="archive-bar">
+
+    <div class="filters">
+
+      <button class="filter active" data-filter="all">All</button>
+      <button class="filter" data-filter="film">Films</button>
+      <button class="filter" data-filter="series">Series</button>
+      <button class="filter" data-filter="short">Shorts</button>
+      <button class="filter" data-filter="advert">Commercials</button>
+      <button class="filter" data-filter="draft">Drafts</button>
+
+    </div>
+
+    <input
+      class="search"
+      id="search"
+      type="text"
+      placeholder="SEARCH ARCHIVE"
+    />
+
+  </section>
+
+
+  <!-- ================= FEATURED ================= -->
+
+  <section class="feature">
+
+    <div class="feature-label">
+      Active Production / Most Recent
+    </div>
+
+    <div class="feature-project">
+
+      <div class="feature-visual">
+
+        <div class="project-number">
+          CF / 024
+        </div>
+
+        <div class="film-title">
+          The Kingdom<br>
+          Beyond the Sea
+        </div>
+
+      </div>
+
+
+      <div class="feature-meta">
+
+        <div>
+
+          <div class="meta-kicker">
+            Feature Film
+          </div>
+
+          <div class="meta-name">
+            The Kingdom Beyond the Sea
+          </div>
+
+          <div class="meta-description">
+            A three-generation story of a kingdom
+            confronting the forces that seek to erase
+            its history.
+          </div>
+
+          <div class="stats">
+
+            <div class="stat">
+              <span>Production</span>
+              <span>In progress</span>
+            </div>
+
+            <div class="stat">
+              <span>Runtime</span>
+              <span>15:00</span>
+            </div>
+
+            <div class="stat">
+              <span>Format</span>
+              <span>1080p</span>
+            </div>
+
+            <div class="stat">
+              <span>Scenes</span>
+              <span>27</span>
+            </div>
+
+          </div>
+
+        </div>
+
+        <button class="open" onclick="openProject('The Kingdom Beyond the Sea')">
+          Open Production
+        </button>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ================= ARCHIVE ================= -->
+
+  <section class="archive">
+
+    <div class="archive-heading">
+
+      <h2>All productions</h2>
+
+      <div class="archive-count" id="count">
+        06 productions
+      </div>
+
+    </div>
+
+
+    <div class="projects" id="projects">
+
+      <!-- 01 -->
+
+      <article class="project" data-type="film" data-name="The Last Horizon">
+
+        <div class="project-visual">
+          <div class="project-number">01</div>
+          <div class="project-type">Film</div>
+        </div>
+
+        <div class="project-info">
+
+          <div class="project-name">
+            The Last Horizon
+          </div>
+
+          <div class="project-details">
+            <span>Film</span>
+            <span>12:40</span>
+          </div>
+
+          <div class="project-status">
+            <span class="dot"></span>
+            Rendering
+          </div>
+
+        </div>
+
+      </article>
+
+
+      <!-- 02 -->
+
+      <article class="project" data-type="series" data-name="City of Glass">
+
+        <div class="project-visual">
+          <div class="project-number">02</div>
+          <div class="project-type">Series</div>
+        </div>
+
+        <div class="project-info">
+
+          <div class="project-name">
+            City of Glass
+          </div>
+
+          <div class="project-details">
+            <span>Series</span>
+            <span>S01 / 03 EP</span>
+          </div>
+
+          <div class="project-status">
+            <span class="dot"></span>
+            In production
+          </div>
+
+        </div>
+
+      </article>
+
+
+      <!-- 03 -->
+
+      <article class="project" data-type="film" data-name="North of Memory">
+
+        <div class="project-visual">
+          <div class="project-number">03</div>
+          <div class="project-type">Film</div>
+        </div>
+
+        <div class="project-info">
+
+          <div class="project-name">
+            North of Memory
+          </div>
+
+          <div class="project-details">
+            <span>Film</span>
+            <span>08:20</span>
+          </div>
+
+          <div class="project-status">
+            <span class="dot gray"></span>
+            Completed
+          </div>
+
+        </div>
+
+      </article>
+
+
+      <!-- 04 -->
+
+      <article class="project" data-type="advert" data-name="Made for Tomorrow">
+
+        <div class="project-visual">
+          <div class="project-number">04</div>
+          <div class="project-type">Commercial</div>
+        </div>
+
+        <div class="project-info">
+
+          <div class="project-name">
+            Made for Tomorrow
+          </div>
+
+          <div class="project-details">
+            <span>Advert</span>
+            <span>00:60</span>
+          </div>
+
+          <div class="project-status">
+            <span class="dot gray"></span>
+            Delivered
+          </div>
+
+        </div>
+
+      </article>
+
+
+      <!-- 05 -->
+
+      <article class="project" data-type="short" data-name="After Rain">
+
+        <div class="project-visual">
+          <div class="project-number">05</div>
+          <div class="project-type">Short</div>
+        </div>
+
+        <div class="project-info">
+
+          <div class="project-name">
+            After Rain
+          </div>
+
+          <div class="project-details">
+            <span>Short</span>
+            <span>01:30</span>
+          </div>
+
+          <div class="project-status">
+            <span class="dot gray"></span>
+            Completed
+          </div>
+
+        </div>
+
+      </article>
+
+
+      <!-- 06 -->
+
+      <article class="project" data-type="draft" data-name="Untitled World">
+
+        <div class="project-visual">
+          <div class="project-number">06</div>
+          <div class="project-type">Draft</div>
+        </div>
+
+        <div class="project-info">
+
+          <div class="project-name">
+            Untitled World
+          </div>
+
+          <div class="project-details">
+            <span>Concept</span>
+            <span>—</span>
+          </div>
+
+          <div class="project-status">
+            <span class="dot gray"></span>
+            Development
+          </div>
+
+        </div>
+
+      </article>
+
+    </div>
+
+
+    <!-- EMPTY / NEW -->
+
+    <div class="empty">
+
+      <div>
+        <h3>Begin another production.</h3>
+        <p>
+          A film, series, commercial, short or entirely new world.
+        </p>
+      </div>
+
+      <button class="create" id="createProduction">
+        Create Production
+      </button>
+
+    </div>
+
+  </section>
+
+</main>
+
+
+<script>
+
+/* -----------------------------------------
+   FILTER SYSTEM
+----------------------------------------- */
+
+const filters = document.querySelectorAll(".filter");
+const projects = [...document.querySelectorAll(".project")];
+const count = document.getElementById("count");
+
+let currentFilter = "all";
+
+function refresh(){
+
+  const query =
+    document.getElementById("search")
+      .value
+      .toLowerCase()
+      .trim();
+
+  let visible = 0;
+
+  projects.forEach(project => {
+
+    const type = project.dataset.type;
+    const name = project.dataset.name.toLowerCase();
+
+    const filterMatch =
+      currentFilter === "all" ||
+      type === currentFilter;
+
+    const searchMatch =
+      !query ||
+      name.includes(query);
+
+    const show =
+      filterMatch &&
+      searchMatch;
+
+    project.style.display =
+      show ? "block" : "none";
+
+    if(show) visible++;
+
+  });
+
+  count.textContent =
+    `${String(visible).padStart(2,"0")} productions`;
+}
+
+
+filters.forEach(button => {
+
+  button.addEventListener("click", () => {
+
+    filters.forEach(b =>
+      b.classList.remove("active")
+    );
+
+    button.classList.add("active");
+
+    currentFilter =
+      button.dataset.filter;
+
+    refresh();
+
+  });
+
+});
+
+
+document
+  .getElementById("search")
+  .addEventListener("input", refresh);
+
+
+/* -----------------------------------------
+   TEMPORARY PRODUCTION HANDLERS
+   Replace with the existing Cineforge
+   navigation / routing at integration.
+----------------------------------------- */
+
+function openProject(name){
+
+  alert(
+    "Opening production:\n\n" +
+    name +
+    "\n\nProduction workspace integration will connect to the existing Cineforge engine."
+  );
+
+}
+
+
+document
+  .getElementById("newBtn")
+  .addEventListener("click", () => {
+
+    alert(
+      "New Production\n\n" +
+      "This will connect to the existing Create Anything / production engine."
+    );
+
+  });
+
+
+document
+  .getElementById("createProduction")
+  .addEventListener("click", () => {
+
+    alert(
+      "Create Production\n\n" +
+      "Connect this action to the existing Cineforge creation flow."
+    );
+
+  });
+
+
+document
+  .getElementById("viewBtn")
+  .addEventListener("click", () => {
+
+    alert(
+      "Index View / Production Archive\n\n" +
+      "Additional archive layouts can be connected here."
+    );
+
+  });
+
+</script>
+
+</body>
+</html>

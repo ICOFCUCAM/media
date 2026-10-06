@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cineforge — The Voice Room</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#f4f3ee;
+  --panel:#ebeae4;
+  --panel2:#e4e3dd;
+  --ink:#10110f;
+  --muted:#777871;
+  --line:#d4d3cc;
+  --line-dark:#b9b8b0;
+  --white:#faf9f5;
+  --accent:#c7f000;
+  --red:#c84d3f;
+  --rail:76px;
+  --sidebar:250px;
+}
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+  min-height:100vh;
+}
+
+button,
+input,
+textarea,
+select{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+.app{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:var(--rail) var(--sidebar) 1fr;
+}
+
+/* =========================================================
+   RAIL
+========================================================= */
+
+.rail{
+  border-right:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:space-between;
+  padding:20px 0;
+  background:#f0efe9;
+}
+
+.logo{
+  width:34px;
+  height:34px;
+  border:2px solid var(--ink);
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:Manrope;
+  font-weight:800;
+  font-size:13px;
+}
+
+.rail-icons{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.rail-btn{
+  width:42px;
+  height:42px;
+  border:0;
+  background:transparent;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#767770;
+  transition:.2s ease;
+}
+
+.rail-btn:hover,
+.rail-btn.active{
+  background:var(--ink);
+  color:white;
+}
+
+.rail-btn svg{
+  width:17px;
+  height:17px;
+}
+
+.profile-dot{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  background:#c8c7c0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:11px;
+  font-weight:700;
+}
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+.sidebar{
+  border-right:1px solid var(--line);
+  padding:26px 20px;
+  overflow:auto;
+  background:#f0efe9;
+}
+
+.brand{
+  font-family:Manrope;
+  font-weight:800;
+  font-size:15px;
+  letter-spacing:-.03em;
+  margin-bottom:42px;
+}
+
+.section{
+  margin-bottom:28px;
+}
+
+.section-label{
+  font-family:"DM Mono";
+  font-size:9px;
+  letter-spacing:.14em;
+  color:#96968e;
+  margin-bottom:9px;
+  text-transform:uppercase;
+}
+
+.nav{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.nav-item{
+  border:0;
+  background:transparent;
+  width:100%;
+  text-align:left;
+  padding:9px 10px;
+  border-radius:7px;
+  font-size:12px;
+  color:#666760;
+  transition:.18s;
+}
+
+.nav-item:hover{
+  color:var(--ink);
+  background:#e5e4de;
+}
+
+.nav-item.active{
+  background:var(--ink);
+  color:white;
+}
+
+.viewing{
+  margin-top:auto;
+  padding-top:10px;
+}
+
+.view-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:11px;
+  padding:7px 9px;
+  color:#6c6d67;
+}
+
+.view-row.active{
+  color:var(--ink);
+  font-weight:600;
+}
+
+.view-dot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#b8b8b1;
+}
+
+.view-row.active .view-dot{
+  background:var(--accent);
+}
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+.main{
+  min-width:0;
+  padding:30px 42px 150px;
+}
+
+.breadcrumb{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font-family:"DM Mono";
+  font-size:9px;
+  color:#898981;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  margin-bottom:45px;
+}
+
+.breadcrumb span:last-child{
+  color:var(--ink);
+}
+
+.hero{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:30px;
+  margin-bottom:48px;
+}
+
+.hero h1{
+  font-family:Manrope;
+  font-size:clamp(50px,7vw,105px);
+  line-height:.87;
+  letter-spacing:-.075em;
+  font-weight:700;
+  max-width:900px;
+}
+
+.hero-copy{
+  width:310px;
+  color:#676861;
+  font-size:13px;
+  line-height:1.65;
+  padding-bottom:4px;
+}
+
+.hero-copy strong{
+  color:var(--ink);
+}
+
+/* =========================================================
+   VOICE ROOM
+========================================================= */
+
+.voice-room{
+  border-top:1px solid var(--ink);
+  display:grid;
+  grid-template-columns:270px minmax(400px,1fr) 310px;
+  min-height:650px;
+}
+
+/* LEFT */
+
+.voice-list{
+  border-right:1px solid var(--line);
+  padding:20px 0;
+}
+
+.list-head{
+  padding:0 18px 15px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.mono{
+  font-family:"DM Mono";
+  font-size:9px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+.count{
+  color:#85867f;
+}
+
+.voice{
+  display:grid;
+  grid-template-columns:34px 1fr auto;
+  gap:10px;
+  padding:13px 18px;
+  border-top:1px solid transparent;
+  border-bottom:1px solid transparent;
+  transition:.18s;
+}
+
+.voice:hover{
+  background:#e9e8e2;
+}
+
+.voice.active{
+  background:var(--ink);
+  color:white;
+}
+
+.voice-avatar{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  background:#d2d1ca;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:10px;
+  font-weight:700;
+}
+
+.voice.active .voice-avatar{
+  background:#30312d;
+}
+
+.voice-name{
+  font-size:12px;
+  font-weight:600;
+  margin-bottom:3px;
+}
+
+.voice-meta{
+  font-size:9px;
+  color:#85867e;
+}
+
+.voice.active .voice-meta{
+  color:#aaa;
+}
+
+.voice-type{
+  font-family:"DM Mono";
+  font-size:8px;
+  color:#85867e;
+}
+
+.add-voice{
+  margin:18px;
+  width:calc(100% - 36px);
+  border:1px dashed var(--line-dark);
+  background:transparent;
+  padding:12px;
+  font-size:11px;
+  color:#666760;
+}
+
+/* CENTER */
+
+.voice-stage{
+  padding:30px;
+  min-width:0;
+}
+
+.stage-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:28px;
+}
+
+.stage-label{
+  font-family:"DM Mono";
+  font-size:9px;
+  letter-spacing:.12em;
+  color:#85867e;
+  text-transform:uppercase;
+}
+
+.waveform{
+  height:170px;
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  gap:3px;
+  padding:0 15px;
+  overflow:hidden;
+  background:#eeede8;
+}
+
+.bar{
+  width:3px;
+  background:#191a17;
+  opacity:.78;
+  border-radius:3px;
+  flex-shrink:0;
+}
+
+.voice-title{
+  font-family:Manrope;
+  font-size:35px;
+  letter-spacing:-.045em;
+  margin-top:27px;
+}
+
+.voice-description{
+  margin-top:8px;
+  font-size:12px;
+  color:#777871;
+  max-width:560px;
+  line-height:1.6;
+}
+
+.controls{
+  margin-top:28px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.play{
+  width:48px;
+  height:48px;
+  border:0;
+  background:var(--ink);
+  color:white;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.control{
+  height:38px;
+  border:1px solid var(--line);
+  background:var(--white);
+  padding:0 15px;
+  font-size:10px;
+  border-radius:5px;
+}
+
+.time{
+  margin-left:auto;
+  font-family:"DM Mono";
+  font-size:10px;
+  color:#777871;
+}
+
+.sample{
+  margin-top:42px;
+  border-top:1px solid var(--line);
+  padding-top:18px;
+}
+
+.sample-label{
+  font-family:"DM Mono";
+  font-size:9px;
+  color:#85867e;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  margin-bottom:12px;
+}
+
+.sample-text{
+  font-family:Georgia,serif;
+  font-size:18px;
+  line-height:1.55;
+  max-width:700px;
+}
+
+.sample-text em{
+  color:#777871;
+}
+
+/* RIGHT */
+
+.inspector{
+  border-left:1px solid var(--line);
+  padding:20px;
+}
+
+.inspector-title{
+  font-family:"DM Mono";
+  font-size:9px;
+  color:#85867e;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  margin-bottom:20px;
+}
+
+.field{
+  padding:14px 0;
+  border-top:1px solid var(--line);
+}
+
+.field-label{
+  font-family:"DM Mono";
+  font-size:8px;
+  color:#898a83;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  margin-bottom:7px;
+}
+
+.field-value{
+  font-size:12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.field-value .arrow{
+  color:#898a83;
+}
+
+.range{
+  width:100%;
+  height:2px;
+  background:#c6c5be;
+  margin-top:12px;
+  position:relative;
+}
+
+.range-fill{
+  width:68%;
+  height:2px;
+  background:var(--ink);
+}
+
+.range-dot{
+  width:9px;
+  height:9px;
+  background:var(--ink);
+  border-radius:50%;
+  position:absolute;
+  left:68%;
+  top:-3px;
+}
+
+.tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+}
+
+.tag{
+  border:1px solid var(--line-dark);
+  padding:6px 8px;
+  font-family:"DM Mono";
+  font-size:8px;
+  background:transparent;
+}
+
+.tag.active{
+  background:var(--ink);
+  border-color:var(--ink);
+  color:white;
+}
+
+/* =========================================================
+   LIBRARY
+========================================================= */
+
+.library{
+  margin-top:58px;
+  border-top:1px solid var(--ink);
+  padding-top:22px;
+}
+
+.library-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  margin-bottom:22px;
+}
+
+.library-title{
+  font-family:Manrope;
+  font-size:26px;
+  letter-spacing:-.045em;
+}
+
+.library-sub{
+  font-size:11px;
+  color:#7c7d76;
+}
+
+.voice-cards{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-left:1px solid var(--line);
+}
+
+.voice-card{
+  border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  min-height:170px;
+  padding:18px;
+  position:relative;
+  transition:.2s;
+}
+
+.voice-card:hover{
+  background:#e9e8e2;
+}
+
+.card-avatar{
+  width:54px;
+  height:54px;
+  border-radius:50%;
+  background:#d2d1ca;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  font-weight:700;
+  margin-bottom:35px;
+}
+
+.card-name{
+  font-size:12px;
+  font-weight:600;
+}
+
+.card-meta{
+  font-family:"DM Mono";
+  font-size:8px;
+  color:#85867e;
+  margin-top:5px;
+}
+
+.card-arrow{
+  position:absolute;
+  top:18px;
+  right:18px;
+  font-size:13px;
+}
+
+/* =========================================================
+   STICKY ACTION
+========================================================= */
+
+.action-bar{
+  position:fixed;
+  left:calc(var(--rail) + var(--sidebar));
+  right:0;
+  bottom:0;
+  height:72px;
+  border-top:1px solid var(--ink);
+  background:rgba(244,243,238,.94);
+  backdrop-filter:blur(15px);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 34px;
+  z-index:10;
+}
+
+.action-info{
+  display:flex;
+  gap:25px;
+  align-items:center;
+}
+
+.action-stat{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+
+.action-stat span:first-child{
+  font-family:"DM Mono";
+  font-size:8px;
+  color:#85867e;
+  text-transform:uppercase;
+}
+
+.action-stat span:last-child{
+  font-size:11px;
+  font-weight:600;
+}
+
+.action-buttons{
+  display:flex;
+  gap:8px;
+}
+
+.secondary{
+  height:42px;
+  padding:0 18px;
+  background:transparent;
+  border:1px solid var(--line-dark);
+  font-size:10px;
+}
+
+.primary{
+  height:42px;
+  padding:0 22px;
+  background:var(--ink);
+  color:white;
+  border:1px solid var(--ink);
+  font-size:10px;
+}
+
+/* =========================================================
+   MODAL
+========================================================= */
+
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(10,11,9,.45);
+  backdrop-filter:blur(5px);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:100;
+}
+
+.modal.open{
+  display:flex;
+}
+
+.modal-box{
+  width:min(570px,calc(100% - 40px));
+  background:var(--bg);
+  padding:30px;
+  border:1px solid #aaa9a1;
+  box-shadow:0 30px 80px rgba(0,0,0,.2);
+}
+
+.modal-head{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:25px;
+}
+
+.modal h2{
+  font-family:Manrope;
+  font-size:30px;
+  letter-spacing:-.05em;
+}
+
+.close{
+  border:0;
+  background:transparent;
+  font-size:20px;
+}
+
+.modal-field{
+  margin-bottom:18px;
+}
+
+.modal-field label{
+  display:block;
+  font-family:"DM Mono";
+  font-size:8px;
+  text-transform:uppercase;
+  color:#81827a;
+  margin-bottom:7px;
+}
+
+.modal-field input,
+.modal-field select{
+  width:100%;
+  height:44px;
+  background:#ebeae4;
+  border:1px solid var(--line);
+  padding:0 12px;
+  outline:none;
+}
+
+.modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:25px;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media(max-width:1200px){
+  .voice-room{
+    grid-template-columns:220px 1fr;
+  }
+
+  .inspector{
+    display:none;
+  }
+
+  .voice-cards{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+
+@media(max-width:900px){
+  .app{
+    grid-template-columns:var(--rail) 1fr;
+  }
+
+  .sidebar{
+    display:none;
+  }
+
+  .main{
+    padding:24px;
+  }
+
+  .action-bar{
+    left:var(--rail);
+  }
+
+  .hero{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .hero-copy{
+    width:auto;
+  }
+
+  .voice-room{
+    grid-template-columns:1fr;
+  }
+
+  .voice-list{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .voice{
+    display:inline-grid;
+    width:230px;
+    vertical-align:top;
+  }
+
+  .voice-list{
+    overflow-x:auto;
+    white-space:nowrap;
+  }
+
+  .list-head{
+    display:flex;
+  }
+}
+
+@media(max-width:600px){
+  :root{
+    --rail:58px;
+  }
+
+  .main{
+    padding:20px 15px 130px;
+  }
+
+  .hero h1{
+    font-size:56px;
+  }
+
+  .voice-stage{
+    padding:20px 0;
+  }
+
+  .voice-cards{
+    grid-template-columns:1fr;
+  }
+
+  .action-bar{
+    left:0;
+    padding:0 15px;
+  }
+
+  .action-info{
+    display:none;
+  }
+
+  .action-buttons{
+    margin-left:auto;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <!-- =====================================================
+       RAIL
+  ====================================================== -->
+
+  <aside class="rail">
+
+    <div class="logo">C</div>
+
+    <div class="rail-icons">
+
+      <button class="rail-btn" title="Create">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+      </button>
+
+      <button class="rail-btn active" title="Production">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <rect x="4" y="5" width="16" height="14" rx="2"/>
+          <path d="M8 9h8M8 13h5"/>
+        </svg>
+      </button>
+
+      <button class="rail-btn" title="Publishing">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path d="M5 19 19 5"/>
+          <path d="M7 5h12v12"/>
+        </svg>
+      </button>
+
+      <button class="rail-btn" title="Analytics">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path d="M5 19V9M12 19V5M19 19v-7"/>
+        </svg>
+      </button>
+
+    </div>
+
+    <div class="profile-dot">JM</div>
+
+  </aside>
+
+
+  <!-- =====================================================
+       SIDEBAR
+  ====================================================== -->
+
+  <aside class="sidebar">
+
+    <div class="brand">CINEFORGE</div>
+
+    <section class="section">
+
+      <div class="section-label">Studio</div>
+
+      <nav class="nav">
+        <button class="nav-item">Create Anything</button>
+        <button class="nav-item">Create Film</button>
+        <button class="nav-item">Create Series</button>
+        <button class="nav-item">Create Trailer</button>
+        <button class="nav-item">Create Shorts</button>
+        <button class="nav-item">Create Advert</button>
+      </nav>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="section-label">Production</div>
+
+      <nav class="nav">
+        <button class="nav-item">Projects</button>
+        <button class="nav-item">Characters</button>
+        <button class="nav-item">Worlds</button>
+        <button class="nav-item">Assets</button>
+        <button class="nav-item active">Voices</button>
+        <button class="nav-item">Music</button>
+      </nav>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="section-label">Publishing</div>
+
+      <nav class="nav">
+        <button class="nav-item">Social Distribution</button>
+        <button class="nav-item">Streaming</button>
+        <button class="nav-item">Marketplace</button>
+      </nav>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="section-label">Account</div>
+
+      <nav class="nav">
+        <button class="nav-item">Plans & Credits</button>
+      </nav>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="section-label">Analytics</div>
+
+      <nav class="nav">
+        <button class="nav-item">Revenue</button>
+        <button class="nav-item">Audience</button>
+        <button class="nav-item">Performance</button>
+      </nav>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="section-label">Enterprise</div>
+
+      <nav class="nav">
+        <button class="nav-item">Teams</button>
+        <button class="nav-item">Permissions</button>
+        <button class="nav-item">Brand Assets</button>
+      </nav>
+
+    </section>
+
+
+    <section class="viewing">
+
+      <div class="section-label">Viewing as</div>
+
+      <div class="view-row active">
+        <span class="view-dot"></span>
+        Creator
+      </div>
+
+      <div class="view-row">
+        <span class="view-dot"></span>
+        Studio
+      </div>
+
+      <div class="view-row">
+        <span class="view-dot"></span>
+        Super
+      </div>
+
+    </section>
+
+  </aside>
+
+
+  <!-- =====================================================
+       MAIN
+  ====================================================== -->
+
+  <main class="main">
+
+    <div class="breadcrumb">
+      <span>CINEFORGE</span>
+      <span>/</span>
+      <span>PRODUCTION</span>
+      <span>/</span>
+      <span>VOICES</span>
+    </div>
+
+
+    <section class="hero">
+
+      <div>
+        <h1>The Voice<br>Room.</h1>
+      </div>
+
+      <div class="hero-copy">
+        <strong>Voices are part of the production.</strong>
+        <br><br>
+        Create, preserve and direct voices across characters,
+        scenes and entire productions. A voice should remain
+        recognizable from the first line to the final cut.
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         VOICE ROOM
+    ==================================================== -->
+
+    <section class="voice-room">
+
+
+      <!-- VOICE LIST -->
+
+      <aside class="voice-list">
+
+        <div class="list-head">
+          <span class="mono">Production voices</span>
+          <span class="mono count">08</span>
+        </div>
+
+
+        <div class="voice active" data-name="Amara">
+          <div class="voice-avatar">AM</div>
+
+          <div>
+            <div class="voice-name">Amara</div>
+            <div class="voice-meta">Lead character · English</div>
+          </div>
+
+          <div class="voice-type">01</div>
+        </div>
+
+
+        <div class="voice" data-name="Elias">
+          <div class="voice-avatar">EL</div>
+
+          <div>
+            <div class="voice-name">Elias</div>
+            <div class="voice-meta">Narrator · English</div>
+          </div>
+
+          <div class="voice-type">02</div>
+        </div>
+
+
+        <div class="voice" data-name="Nia">
+          <div class="voice-avatar">NI</div>
+
+          <div>
+            <div class="voice-name">Nia</div>
+            <div class="voice-meta">Supporting · French</div>
+          </div>
+
+          <div class="voice-type">03</div>
+        </div>
+
+
+        <div class="voice" data-name="Kato">
+          <div class="voice-avatar">KA</div>
+
+          <div>
+            <div class="voice-name">Kato</div>
+            <div class="voice-meta">Supporting · English</div>
+          </div>
+
+          <div class="voice-type">04</div>
+        </div>
+
+
+        <div class="voice" data-name="Mara">
+          <div class="voice-avatar">MA</div>
+
+          <div>
+            <div class="voice-name">Mara</div>
+            <div class="voice-meta">Elder · English</div>
+          </div>
+
+          <div class="voice-type">05</div>
+        </div>
+
+
+        <button class="add-voice" id="addVoice">
+          + Add voice
+        </button>
+
+      </aside>
+
+
+      <!-- VOICE STAGE -->
+
+      <section class="voice-stage">
+
+        <div class="stage-top">
+          <div class="stage-label">Selected voice / 01</div>
+          <div class="stage-label">Persistent character voice</div>
+        </div>
+
+
+        <div class="waveform" id="waveform"></div>
+
+
+        <div class="voice-title" id="voiceTitle">
+          Amara
+        </div>
+
+        <div class="voice-description">
+          A warm, controlled voice with quiet authority.
+          Designed for dramatic dialogue, intimate scenes
+          and long-form character continuity.
+        </div>
+
+
+        <div class="controls">
+
+          <button class="play" id="playBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24"
+                 fill="currentColor">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </button>
+
+          <button class="control">Generate sample</button>
+          <button class="control">Compare</button>
+
+          <div class="time">00:00 / 00:18</div>
+
+        </div>
+
+
+        <div class="sample">
+
+          <div class="sample-label">
+            Direction sample
+          </div>
+
+          <div class="sample-text">
+            “We do not inherit the future.
+            <em>We decide what survives long enough to become it.</em>”
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- INSPECTOR -->
+
+      <aside class="inspector">
+
+        <div class="inspector-title">
+          Voice direction
+        </div>
+
+
+        <div class="field">
+
+          <div class="field-label">Voice identity</div>
+
+          <div class="field-value">
+            Amara — Original
+            <span class="arrow">↗</span>
+          </div>
+
+        </div>
+
+
+        <div class="field">
+
+          <div class="field-label">Language</div>
+
+          <div class="field-value">
+            English
+            <span class="arrow">⌄</span>
+          </div>
+
+        </div>
+
+
+        <div class="field">
+
+          <div class="field-label">Accent</div>
+
+          <div class="field-value">
+            East African
+            <span class="arrow">⌄</span>
+          </div>
+
+        </div>
+
+
+        <div class="field">
+
+          <div class="field-label">Age</div>
+
+          <div class="field-value">
+            34
+          </div>
+
+          <div class="range">
+            <div class="range-fill"></div>
+            <div class="range-dot"></div>
+          </div>
+
+        </div>
+
+
+        <div class="field">
+
+          <div class="field-label">Energy</div>
+
+          <div class="field-value">
+            Controlled
+          </div>
+
+          <div class="range">
+            <div class="range-fill" style="width:42%"></div>
+            <div class="range-dot" style="left:42%"></div>
+          </div>
+
+        </div>
+
+
+        <div class="field">
+
+          <div class="field-label">Expression</div>
+
+          <div class="tags">
+            <button class="tag active">Natural</button>
+            <button class="tag">Dramatic</button>
+            <button class="tag">Intimate</button>
+            <button class="tag">Commanding</button>
+          </div>
+
+        </div>
+
+
+        <div class="field">
+
+          <div class="field-label">Production use</div>
+
+          <div class="tags">
+            <button class="tag active">Dialogue</button>
+            <button class="tag active">Narration</button>
+            <button class="tag">Trailer</button>
+          </div>
+
+        </div>
+
+
+        <div class="field">
+
+          <div class="field-label">Continuity</div>
+
+          <div class="field-value">
+            Locked to character
+            <span>●</span>
+          </div>
+
+        </div>
+
+      </aside>
+
+    </section>
+
+
+    <!-- ===================================================
+         LIBRARY
+    ==================================================== -->
+
+    <section class="library">
+
+      <div class="library-head">
+
+        <div>
+          <div class="library-title">Voice Library</div>
+          <div class="library-sub">
+            Voices available across your productions.
+          </div>
+        </div>
+
+        <div class="mono">
+          8 voices
+        </div>
+
+      </div>
+
+
+      <div class="voice-cards">
+
+        <div class="voice-card">
+          <div class="card-avatar">AM</div>
+          <div class="card-name">Amara</div>
+          <div class="card-meta">EN · CHARACTER</div>
+          <div class="card-arrow">↗</div>
+        </div>
+
+
+        <div class="voice-card">
+          <div class="card-avatar">EL</div>
+          <div class="card-name">Elias</div>
+          <div class="card-meta">EN · NARRATOR</div>
+          <div class="card-arrow">↗</div>
+        </div>
+
+
+        <div class="voice-card">
+          <div class="card-avatar">NI</div>
+          <div class="card-name">Nia</div>
+          <div class="card-meta">FR · CHARACTER</div>
+          <div class="card-arrow">↗</div>
+        </div>
+
+
+        <div class="voice-card">
+          <div class="card-avatar">KA</div>
+          <div class="card-name">Kato</div>
+          <div class="card-meta">EN · CHARACTER</div>
+          <div class="card-arrow">↗</div>
+        </div>
+
+
+        <div class="voice-card">
+          <div class="card-avatar">MA</div>
+          <div class="card-name">Mara</div>
+          <div class="card-meta">EN · ELDER</div>
+          <div class="card-arrow">↗</div>
+        </div>
+
+
+        <div class="voice-card">
+          <div class="card-avatar">JO</div>
+          <div class="card-name">Jonah</div>
+          <div class="card-meta">EN · NARRATOR</div>
+          <div class="card-arrow">↗</div>
+        </div>
+
+
+        <div class="voice-card">
+          <div class="card-avatar">SA</div>
+          <div class="card-name">Sara</div>
+          <div class="card-meta">ES · CHARACTER</div>
+          <div class="card-arrow">↗</div>
+        </div>
+
+
+        <div class="voice-card">
+          <div class="card-avatar">DA</div>
+          <div class="card-name">David</div>
+          <div class="card-meta">DE · CHARACTER</div>
+          <div class="card-arrow">↗</div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+</div>
+
+
+<!-- =====================================================
+     ACTION BAR
+====================================================== -->
+
+<div class="action-bar">
+
+  <div class="action-info">
+
+    <div class="action-stat">
+      <span>Selected</span>
+      <span id="selectedVoice">Amara</span>
+    </div>
+
+    <div class="action-stat">
+      <span>Language</span>
+      <span>English</span>
+    </div>
+
+    <div class="action-stat">
+      <span>Continuity</span>
+      <span>Character locked</span>
+    </div>
+
+  </div>
+
+
+  <div class="action-buttons">
+
+    <button class="secondary" id="resetBtn">
+      Reset
+    </button>
+
+    <button class="primary" id="saveBtn">
+      Save voice direction →
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     ADD VOICE MODAL
+====================================================== -->
+
+<div class="modal" id="modal">
+
+  <div class="modal-box">
+
+    <div class="modal-head">
+
+      <h2>Add a voice.</h2>
+
+      <button class="close" id="closeModal">×</button>
+
+    </div>
+
+
+    <div class="modal-field">
+      <label>Voice name</label>
+      <input id="newVoiceName" placeholder="Character or narrator name">
+    </div>
+
+
+    <div class="modal-field">
+      <label>Role</label>
+      <select>
+        <option>Character</option>
+        <option>Narrator</option>
+        <option>Trailer</option>
+        <option>General production voice</option>
+      </select>
+    </div>
+
+
+    <div class="modal-field">
+      <label>Language</label>
+      <select>
+        <option>English</option>
+        <option>French</option>
+        <option>Spanish</option>
+        <option>German</option>
+        <option>Portuguese</option>
+        <option>Swahili</option>
+      </select>
+    </div>
+
+
+    <div class="modal-actions">
+
+      <button class="secondary" id="cancelModal">
+        Cancel
+      </button>
+
+      <button class="primary" id="createVoice">
+        Add voice
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   WAVEFORM
+========================================================= */
+
+const waveform = document.getElementById("waveform");
+
+for(let i=0;i<145;i++){
+
+  const bar = document.createElement("div");
+
+  bar.className = "bar";
+
+  const height =
+    12 +
+    Math.abs(Math.sin(i * 0.47)) * 60 +
+    Math.abs(Math.sin(i * 0.13)) * 35;
+
+  bar.style.height = `${Math.min(height,120)}px`;
+
+  waveform.appendChild(bar);
+}
+
+
+/* =========================================================
+   VOICE SELECTION
+========================================================= */
+
+const voices = document.querySelectorAll(".voice");
+const voiceTitle = document.getElementById("voiceTitle");
+const selectedVoice = document.getElementById("selectedVoice");
+
+voices.forEach(voice => {
+
+  voice.addEventListener("click", () => {
+
+    voices.forEach(v => v.classList.remove("active"));
+
+    voice.classList.add("active");
+
+    const name = voice.dataset.name;
+
+    voiceTitle.textContent = name;
+    selectedVoice.textContent = name;
+
+  });
+
+});
+
+
+/* =========================================================
+   TAG SELECTION
+========================================================= */
+
+document.querySelectorAll(".tag").forEach(tag => {
+
+  tag.addEventListener("click", () => {
+
+    const siblings = tag.parentElement.querySelectorAll(".tag");
+
+    siblings.forEach(s => s.classList.remove("active"));
+
+    tag.classList.add("active");
+
+  });
+
+});
+
+
+/* =========================================================
+   PLAY
+========================================================= */
+
+const playBtn = document.getElementById("playBtn");
+
+let playing = false;
+
+playBtn.addEventListener("click", () => {
+
+  playing = !playing;
+
+  playBtn.innerHTML = playing
+    ? `<span style="font-size:14px">Ⅱ</span>`
+    : `
+      <svg width="15" height="15" viewBox="0 0 24 24"
+           fill="currentColor">
+        <path d="M8 5v14l11-7z"/>
+      </svg>
+    `;
+
+});
+
+
+/* =========================================================
+   ADD VOICE MODAL
+========================================================= */
+
+const modal = document.getElementById("modal");
+
+document.getElementById("addVoice").onclick = () => {
+  modal.classList.add("open");
+};
+
+document.getElementById("closeModal").onclick = () => {
+  modal.classList.remove("open");
+};
+
+document.getElementById("cancelModal").onclick = () => {
+  modal.classList.remove("open");
+};
+
+
+document.getElementById("createVoice").onclick = () => {
+
+  const name =
+    document.getElementById("newVoiceName").value.trim();
+
+  if(!name){
+
+    document.getElementById("newVoiceName").focus();
+
+    return;
+  }
+
+  alert(
+    `Visual prototype: "${name}" would now be created through the real Cineforge voice engine.`
+  );
+
+  modal.classList.remove("open");
+
+};
+
+
+/* =========================================================
+   SAVE
+   ========================================================= */
+
+document.getElementById("saveBtn").onclick = () => {
+
+  alert(
+    "Visual prototype: voice direction would now be persisted to the Cineforge production system."
+  );
+
+};
+
+
+/* =========================================================
+   RESET
+========================================================= */
+
+document.getElementById("resetBtn").onclick = () => {
+
+  voices.forEach((v,i) => {
+
+    v.classList.toggle("active", i === 0);
+
+  });
+
+  voiceTitle.textContent = "Amara";
+  selectedVoice.textContent = "Amara";
+
+};
+
+
+/* =========================================================
+   NAVIGATION VISUAL STATE
+========================================================= */
+
+document.querySelectorAll(".nav-item").forEach(item => {
+
+  item.addEventListener("click", () => {
+
+    document.querySelectorAll(".nav-item")
+      .forEach(i => i.classList.remove("active"));
+
+    item.classList.add("active");
+
+  });
+
+});
+
+</script>
+
+</body>
+</html>

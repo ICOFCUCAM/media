@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Cineforge — Production Design</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+
+:root{
+  --bg:#080908;
+  --panel:#0d0f0d;
+  --panel2:#111311;
+  --line:rgba(255,255,255,.085);
+  --line2:rgba(255,255,255,.16);
+  --text:#f0f1eb;
+  --muted:#989c96;
+  --dim:#626761;
+  --acid:#d8ff43;
+  --cream:#e9e9df;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+html,body{
+  margin:0;
+  min-height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter,Arial,sans-serif;
+}
+
+button,input,textarea,select{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+
+/* =====================================================
+   RAIL
+===================================================== */
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:74px;
+  background:#070807;
+  border-right:1px solid var(--line);
+  z-index:50;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.logo{
+  width:74px;
+  height:82px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.logo-mark{
+  width:27px;
+  height:27px;
+  border:2px solid var(--text);
+  border-radius:50%;
+  position:relative;
+}
+
+.logo-mark:after{
+  content:"";
+  position:absolute;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--acid);
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+}
+
+.rail-menu{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding-top:24px;
+}
+
+.rail-button{
+  width:42px;
+  height:42px;
+  border:1px solid transparent;
+  background:none;
+  color:var(--dim);
+  border-radius:7px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.rail-button:hover,
+.rail-button.active{
+  color:var(--text);
+  border-color:var(--line2);
+  background:rgba(255,255,255,.04);
+}
+
+.grid-icon{
+  display:grid;
+  grid-template-columns:repeat(2,6px);
+  gap:3px;
+}
+
+.grid-icon i{
+  width:6px;
+  height:6px;
+  border:1px solid currentColor;
+}
+
+.film-icon{
+  width:17px;
+  height:15px;
+  border:1px solid currentColor;
+  position:relative;
+}
+
+.film-icon:before,
+.film-icon:after{
+  content:"";
+  position:absolute;
+  left:3px;
+  right:3px;
+  height:1px;
+  background:currentColor;
+}
+
+.film-icon:before{
+  top:4px;
+}
+
+.film-icon:after{
+  bottom:4px;
+}
+
+.world-icon{
+  width:18px;
+  height:18px;
+  border:1px solid currentColor;
+  border-radius:50%;
+  position:relative;
+}
+
+.world-icon:before{
+  content:"";
+  position:absolute;
+  top:3px;
+  bottom:3px;
+  left:7px;
+  width:3px;
+  border-left:1px solid currentColor;
+  border-right:1px solid currentColor;
+  border-radius:50%;
+}
+
+.world-icon:after{
+  content:"";
+  position:absolute;
+  left:2px;
+  right:2px;
+  top:8px;
+  height:1px;
+  background:currentColor;
+}
+
+.user-icon{
+  width:17px;
+  height:17px;
+  border:1px solid currentColor;
+  border-radius:50%;
+}
+
+.main{
+  margin-left:74px;
+  min-height:100vh;
+}
+
+
+/* =====================================================
+   TOP BAR
+===================================================== */
+
+.topbar{
+  height:82px;
+  padding:0 42px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.breadcrumb{
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--dim);
+}
+
+.breadcrumb span{
+  color:var(--muted);
+}
+
+.system{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.system-dot{
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+
+/* =====================================================
+   HERO
+===================================================== */
+
+.hero{
+  min-height:330px;
+  padding:70px 7vw 55px;
+  border-bottom:1px solid var(--line);
+  position:relative;
+  overflow:hidden;
+}
+
+.hero:after{
+  content:"PRODUCTION DESIGN";
+  position:absolute;
+  right:7vw;
+  bottom:42px;
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  letter-spacing:.17em;
+  color:var(--dim);
+}
+
+.eyebrow{
+  font-family:"DM Mono",monospace;
+  color:var(--acid);
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.18em;
+  margin-bottom:24px;
+}
+
+.hero h1{
+  margin:0;
+  font-family:Manrope,sans-serif;
+  font-size:clamp(72px,10vw,150px);
+  line-height:.8;
+  letter-spacing:-.085em;
+  font-weight:700;
+}
+
+.hero h1 em{
+  font-family:Georgia,serif;
+  font-weight:400;
+}
+
+.hero-copy{
+  max-width:580px;
+  margin-top:36px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.75;
+}
+
+
+/* =====================================================
+   WORLD WORKSPACE
+===================================================== */
+
+.workspace{
+  display:grid;
+  grid-template-columns:260px minmax(400px,1fr) 320px;
+  min-height:720px;
+  border-bottom:1px solid var(--line);
+}
+
+
+/* =====================================================
+   LEFT — WORLDS
+===================================================== */
+
+.world-list{
+  border-right:1px solid var(--line);
+  padding:28px 0;
+}
+
+.column-heading{
+  padding:0 24px 18px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.column-heading span{
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.add{
+  border:0;
+  background:none;
+  color:var(--acid);
+  font-size:16px;
+}
+
+.world-item{
+  min-height:82px;
+  padding:16px 24px;
+  border-top:1px solid var(--line);
+  cursor:pointer;
+  transition:.2s ease;
+}
+
+.world-item:hover{
+  background:rgba(255,255,255,.025);
+}
+
+.world-item.active{
+  background:rgba(216,255,67,.035);
+  border-left:2px solid var(--acid);
+  padding-left:22px;
+}
+
+.world-name{
+  font-family:Manrope,sans-serif;
+  font-size:14px;
+  font-weight:500;
+  letter-spacing:-.02em;
+}
+
+.world-meta{
+  margin-top:7px;
+  display:flex;
+  justify-content:space-between;
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  text-transform:uppercase;
+  color:var(--dim);
+}
+
+
+/* =====================================================
+   CENTER — WORLD STAGE
+===================================================== */
+
+.stage{
+  position:relative;
+  background:#090b09;
+  overflow:hidden;
+}
+
+.stage-toolbar{
+  height:61px;
+  border-bottom:1px solid var(--line);
+  padding:0 22px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.stage-title{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.stage-title strong{
+  font-family:Manrope,sans-serif;
+  font-size:12px;
+  font-weight:500;
+}
+
+.stage-title span{
+  color:var(--dim);
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  text-transform:uppercase;
+}
+
+.stage-actions{
+  display:flex;
+  gap:5px;
+}
+
+.stage-action{
+  border:1px solid var(--line);
+  background:none;
+  color:var(--dim);
+  height:30px;
+  min-width:30px;
+}
+
+.stage-action:hover{
+  color:var(--text);
+  border-color:var(--line2);
+}
+
+
+/* WORLD CANVAS */
+
+.world-canvas{
+  position:absolute;
+  inset:61px 0 0;
+  overflow:hidden;
+  background:
+    radial-gradient(
+      ellipse at 55% 42%,
+      rgba(216,255,67,.09),
+      transparent 30%
+    ),
+    linear-gradient(
+      145deg,
+      #151814 0%,
+      #080a09 52%,
+      #0d100d 100%
+    );
+}
+
+.world-canvas:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(
+      rgba(255,255,255,.018) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255,255,255,.018) 1px,
+      transparent 1px
+    );
+  background-size:60px 60px;
+  mask-image:linear-gradient(
+    to bottom,
+    black,
+    transparent
+  );
+}
+
+.mountain{
+  position:absolute;
+  bottom:18%;
+  left:8%;
+  width:76%;
+  height:45%;
+  opacity:.72;
+}
+
+.mountain:before,
+.mountain:after{
+  content:"";
+  position:absolute;
+  bottom:0;
+  border-left:150px solid transparent;
+  border-right:150px solid transparent;
+  border-bottom:270px solid rgba(235,238,229,.055);
+}
+
+.mountain:before{
+  left:8%;
+  transform:scale(.8);
+}
+
+.mountain:after{
+  left:45%;
+  transform:scale(1.15);
+  opacity:.65;
+}
+
+.river{
+  position:absolute;
+  width:2px;
+  height:70%;
+  left:47%;
+  bottom:-4%;
+  background:linear-gradient(
+    to top,
+    rgba(216,255,67,.18),
+    rgba(216,255,67,.02)
+  );
+  transform:rotate(12deg);
+  filter:blur(.2px);
+}
+
+.sun{
+  position:absolute;
+  width:190px;
+  height:190px;
+  border-radius:50%;
+  border:1px solid rgba(216,255,67,.13);
+  right:13%;
+  top:13%;
+}
+
+.sun:before{
+  content:"";
+  position:absolute;
+  inset:24px;
+  border-radius:50%;
+  background:rgba(216,255,67,.035);
+}
+
+.location{
+  position:absolute;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.45);
+  letter-spacing:.08em;
+}
+
+.location i{
+  width:5px;
+  height:5px;
+  border:1px solid var(--acid);
+  border-radius:50%;
+}
+
+.location.one{
+  left:19%;
+  bottom:28%;
+}
+
+.location.two{
+  left:59%;
+  bottom:43%;
+}
+
+.location.three{
+  right:12%;
+  bottom:20%;
+}
+
+.canvas-title{
+  position:absolute;
+  left:38px;
+  bottom:36px;
+}
+
+.canvas-title small{
+  display:block;
+  font-family:"DM Mono",monospace;
+  color:var(--acid);
+  font-size:7px;
+  letter-spacing:.15em;
+  margin-bottom:8px;
+}
+
+.canvas-title h2{
+  margin:0;
+  font-family:Manrope,sans-serif;
+  font-size:clamp(35px,4vw,61px);
+  line-height:.9;
+  letter-spacing:-.065em;
+  font-weight:600;
+}
+
+
+/* =====================================================
+   RIGHT — WORLD INSPECTOR
+===================================================== */
+
+.inspector{
+  border-left:1px solid var(--line);
+  background:#0b0d0b;
+}
+
+.inspector-head{
+  height:61px;
+  border-bottom:1px solid var(--line);
+  padding:0 22px;
+  display:flex;
+  align-items:center;
+}
+
+.inspector-head span{
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.inspector-section{
+  padding:22px;
+  border-bottom:1px solid var(--line);
+}
+
+.inspector-section h4{
+  margin:0 0 16px;
+  font-family:Manrope,sans-serif;
+  font-size:12px;
+  font-weight:500;
+}
+
+.field{
+  margin-bottom:15px;
+}
+
+.field:last-child{
+  margin-bottom:0;
+}
+
+.field label{
+  display:block;
+  color:var(--dim);
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  margin-bottom:7px;
+}
+
+.field input,
+.field textarea,
+.field select{
+  width:100%;
+  border:1px solid var(--line);
+  background:#080a08;
+  color:var(--cream);
+  outline:none;
+  padding:10px;
+  font-size:10px;
+}
+
+.field textarea{
+  min-height:80px;
+  resize:none;
+  line-height:1.6;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus{
+  border-color:var(--line2);
+}
+
+
+/* =====================================================
+   WORLD PARAMETERS
+===================================================== */
+
+.parameters{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+}
+
+.parameter{
+  border:1px solid var(--line);
+  padding:12px;
+}
+
+.parameter label{
+  display:block;
+  color:var(--dim);
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  margin-bottom:7px;
+  text-transform:uppercase;
+}
+
+.parameter span{
+  font-size:10px;
+}
+
+
+/* =====================================================
+   FOOTER ACTION
+===================================================== */
+
+.actionbar{
+  position:sticky;
+  bottom:0;
+  height:82px;
+  border-top:1px solid var(--line2);
+  background:rgba(8,9,8,.94);
+  backdrop-filter:blur(18px);
+  padding:0 42px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  z-index:20;
+}
+
+.action-meta{
+  display:flex;
+  gap:30px;
+}
+
+.action-stat{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+
+.action-stat label{
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:7px;
+  text-transform:uppercase;
+}
+
+.action-stat span{
+  font-size:10px;
+  color:var(--cream);
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+}
+
+.secondary{
+  height:40px;
+  padding:0 17px;
+  background:none;
+  border:1px solid var(--line);
+  color:var(--muted);
+  font-size:9px;
+}
+
+.primary{
+  height:40px;
+  padding:0 20px;
+  background:var(--acid);
+  border:1px solid var(--acid);
+  color:#080908;
+  font-size:9px;
+  font-weight:600;
+}
+
+.primary:hover{
+  filter:brightness(1.08);
+}
+
+
+/* =====================================================
+   MODAL
+===================================================== */
+
+.overlay{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(4,5,4,.82);
+  backdrop-filter:blur(18px);
+}
+
+.overlay.show{
+  display:flex;
+}
+
+.modal{
+  width:min(700px,calc(100vw - 40px));
+  background:#0c0e0c;
+  border:1px solid var(--line2);
+}
+
+.modal-head{
+  height:62px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 24px;
+}
+
+.modal-head span{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  color:var(--acid);
+  text-transform:uppercase;
+}
+
+.modal-close{
+  border:0;
+  background:none;
+  color:var(--dim);
+  font-size:18px;
+}
+
+.modal-body{
+  padding:34px;
+}
+
+.modal-body h2{
+  margin:0;
+  font-family:Manrope,sans-serif;
+  font-size:38px;
+  letter-spacing:-.055em;
+}
+
+.modal-body p{
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.7;
+  margin:13px 0 30px;
+}
+
+.world-options{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:6px;
+}
+
+.world-option{
+  min-height:105px;
+  border:1px solid var(--line);
+  background:none;
+  color:var(--cream);
+  text-align:left;
+  padding:14px;
+}
+
+.world-option:hover{
+  border-color:var(--acid);
+}
+
+.world-option strong{
+  display:block;
+  font-family:Manrope,sans-serif;
+  font-size:11px;
+  margin-bottom:7px;
+}
+
+.world-option span{
+  color:var(--dim);
+  font-size:8px;
+  line-height:1.5;
+}
+
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media(max-width:1100px){
+
+  .workspace{
+    grid-template-columns:220px 1fr;
+  }
+
+  .inspector{
+    display:none;
+  }
+
+}
+
+@media(max-width:760px){
+
+  .rail{
+    display:none;
+  }
+
+  .main{
+    margin-left:0;
+  }
+
+  .topbar{
+    padding:0 20px;
+  }
+
+  .hero{
+    padding:55px 25px 45px;
+  }
+
+  .hero h1{
+    font-size:65px;
+  }
+
+  .workspace{
+    grid-template-columns:1fr;
+  }
+
+  .world-list{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .world-item{
+    display:inline-block;
+    width:48%;
+    vertical-align:top;
+  }
+
+  .stage{
+    min-height:620px;
+  }
+
+  .actionbar{
+    padding:0 20px;
+  }
+
+  .action-meta{
+    gap:12px;
+  }
+
+  .action-stat:nth-child(n+3){
+    display:none;
+  }
+
+  .primary{
+    padding:0 13px;
+  }
+
+  .world-options{
+    grid-template-columns:1fr;
+  }
+
+}
+
+</style>
+</head>
+
+
+<body>
+
+
+<!-- =====================================================
+     NAVIGATION RAIL
+===================================================== -->
+
+<aside class="rail">
+
+  <div class="logo">
+    <div class="logo-mark"></div>
+  </div>
+
+  <div class="rail-menu">
+
+    <button class="rail-button">
+      <div class="grid-icon">
+        <i></i><i></i><i></i><i></i>
+      </div>
+    </button>
+
+    <button class="rail-button">
+      <div class="film-icon"></div>
+    </button>
+
+    <button class="rail-button active">
+      <div class="world-icon"></div>
+    </button>
+
+  </div>
+
+  <div style="margin-top:auto;padding-bottom:20px">
+    <button class="rail-button">
+      <div class="user-icon"></div>
+    </button>
+  </div>
+
+</aside>
+
+
+<main class="main">
+
+
+<!-- =====================================================
+     TOP BAR
+===================================================== -->
+
+<header class="topbar">
+
+  <div class="breadcrumb">
+    CINEFORGE / <span>PRODUCTION / WORLDS</span>
+  </div>
+
+  <div class="system">
+    <i class="system-dot"></i>
+    production system
+  </div>
+
+</header>
+
+
+<!-- =====================================================
+     HERO
+===================================================== -->
+
+<section class="hero">
+
+  <div class="eyebrow">
+    Production / World
+  </div>
+
+  <h1>
+    Production<br>
+    <em>Design.</em>
+  </h1>
+
+  <p class="hero-copy">
+    A film does not exist only in its scenes.
+    It exists in the places, architecture, atmosphere,
+    geography, materials and visual language that make
+    every scene belong to the same world.
+  </p>
+
+</section>
+
+
+<!-- =====================================================
+     WORKSPACE
+===================================================== -->
+
+<section class="workspace">
+
+
+<!-- =====================================================
+     WORLD LIST
+===================================================== -->
+
+<aside class="world-list">
+
+  <div class="column-heading">
+
+    <span>
+      Worlds
+    </span>
+
+    <button
+      class="add"
+      id="addWorld"
+    >
+      +
+    </button>
+
+  </div>
+
+
+  <div
+    class="world-item active"
+    data-world="The Last Kingdom"
+    data-era="Historical"
+  >
+
+    <div class="world-name">
+      The Last Kingdom
+    </div>
+
+    <div class="world-meta">
+      <span>Historical</span>
+      <span>18 locations</span>
+    </div>
+
+  </div>
+
+
+  <div
+    class="world-item"
+    data-world="The Republic"
+    data-era="Near Future"
+  >
+
+    <div class="world-name">
+      The Republic
+    </div>
+
+    <div class="world-meta">
+      <span>Near Future</span>
+      <span>24 locations</span>
+    </div>
+
+  </div>
+
+
+  <div
+    class="world-item"
+    data-world="After the Flood"
+    data-era="Contemporary"
+  >
+
+    <div class="world-name">
+      After the Flood
+    </div>
+
+    <div class="world-meta">
+      <span>Contemporary</span>
+      <span>12 locations</span>
+    </div>
+
+  </div>
+
+
+  <div
+    class="world-item"
+    data-world="Dust & Light"
+    data-era="Western"
+  >
+
+    <div class="world-name">
+      Dust & Light
+    </div>
+
+    <div class="world-meta">
+      <span>Western</span>
+      <span>9 locations</span>
+    </div>
+
+  </div>
+
+
+</aside>
+
+
+<!-- =====================================================
+     WORLD STAGE
+===================================================== -->
+
+<section class="stage">
+
+
+  <div class="stage-toolbar">
+
+    <div class="stage-title">
+
+      <strong id="stageWorld">
+        The Last Kingdom
+      </strong>
+
+      <span id="stageEra">
+        Historical
+      </span>
+
+    </div>
+
+
+    <div class="stage-actions">
+
+      <button
+        class="stage-action"
+        title="Zoom out"
+      >
+        −
+      </button>
+
+      <button
+        class="stage-action"
+        title="Reset view"
+      >
+        ○
+      </button>
+
+      <button
+        class="stage-action"
+        title="Zoom in"
+      >
+        +
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <div class="world-canvas">
+
+    <div class="sun"></div>
+
+    <div class="mountain"></div>
+
+    <div class="river"></div>
+
+
+    <div class="location one">
+      <i></i>
+      Northern Gate
+    </div>
+
+    <div class="location two">
+      <i></i>
+      Royal City
+    </div>
+
+    <div class="location three">
+      <i></i>
+      Southern Coast
+    </div>
+
+
+    <div class="canvas-title">
+
+      <small>
+        WORLD BIBLE / VISUAL MASTER
+      </small>
+
+      <h2 id="canvasTitle">
+        The Last Kingdom
+      </h2>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     INSPECTOR
+===================================================== -->
+
+<aside class="inspector">
+
+
+  <div class="inspector-head">
+
+    <span>
+      World Inspector
+    </span>
+
+  </div>
+
+
+  <!-- IDENTITY -->
+
+  <div class="inspector-section">
+
+    <h4>
+      Identity
+    </h4>
+
+    <div class="field">
+
+      <label>
+        World name
+      </label>
+
+      <input
+        id="worldName"
+        value="The Last Kingdom"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Era
+      </label>
+
+      <input
+        id="worldEra"
+        value="Historical"
+      >
+
+    </div>
+
+  </div>
+
+
+  <!-- VISUAL LANGUAGE -->
+
+  <div class="inspector-section">
+
+    <h4>
+      Visual language
+    </h4>
+
+
+    <div class="field">
+
+      <label>
+        Architecture
+      </label>
+
+      <select>
+
+        <option>Stone / fortified medieval</option>
+        <option>Industrial modern</option>
+        <option>Minimalist future</option>
+        <option>Colonial architecture</option>
+
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Atmosphere
+      </label>
+
+      <select>
+
+        <option>Cold / monumental</option>
+        <option>Warm / intimate</option>
+        <option>Bleak / restrained</option>
+        <option>Mythic / atmospheric</option>
+
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Materials
+      </label>
+
+      <input
+        value="Stone · timber · iron · earth"
+      >
+
+    </div>
+
+  </div>
+
+
+  <!-- WORLD PARAMETERS -->
+
+  <div class="inspector-section">
+
+    <h4>
+      Continuity
+    </h4>
+
+
+    <div class="parameters">
+
+      <div class="parameter">
+        <label>Locations</label>
+        <span>18</span>
+      </div>
+
+      <div class="parameter">
+        <label>Scenes</label>
+        <span>42</span>
+      </div>
+
+      <div class="parameter">
+        <label>Characters</label>
+        <span>16</span>
+      </div>
+
+      <div class="parameter">
+        <label>Versions</label>
+        <span>07</span>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- DESCRIPTION -->
+
+  <div class="inspector-section">
+
+    <h4>
+      World direction
+    </h4>
+
+    <div class="field">
+
+      <textarea>Ancient kingdom surrounded by mountains and a cold northern sea. Architecture should feel defensive, permanent and lived-in. Avoid fantasy ornamentation; the world must feel historically grounded.</textarea>
+
+    </div>
+
+  </div>
+
+
+</aside>
+
+</section>
+
+
+<!-- =====================================================
+     ACTION BAR
+===================================================== -->
+
+<div class="actionbar">
+
+  <div class="action-meta">
+
+    <div class="action-stat">
+      <label>World</label>
+      <span id="actionWorld">The Last Kingdom</span>
+    </div>
+
+    <div class="action-stat">
+      <label>Locations</label>
+      <span>18</span>
+    </div>
+
+    <div class="action-stat">
+      <label>Continuity</label>
+      <span>Locked</span>
+    </div>
+
+  </div>
+
+
+  <div class="actions">
+
+    <button
+      class="secondary"
+      id="reset"
+    >
+      Reset
+    </button>
+
+    <button
+      class="primary"
+      id="save"
+    >
+      Save world →
+    </button>
+
+  </div>
+
+</div>
+
+
+</main>
+
+
+<!-- =====================================================
+     NEW WORLD MODAL
+===================================================== -->
+
+<div
+  class="overlay"
+  id="overlay"
+>
+
+  <div class="modal">
+
+    <div class="modal-head">
+
+      <span>
+        New production world
+      </span>
+
+      <button
+        class="modal-close"
+        id="close"
+      >
+        ×
+      </button>
+
+    </div>
+
+
+    <div class="modal-body">
+
+      <h2>
+        Begin a world.
+      </h2>
+
+      <p>
+        Establish the visual foundation before scenes,
+        locations and characters are produced.
+      </p>
+
+
+      <div class="world-options">
+
+        <button class="world-option">
+
+          <strong>
+            From production
+          </strong>
+
+          <span>
+            Build the world from an existing film,
+            series or screenplay.
+          </span>
+
+        </button>
+
+
+        <button class="world-option">
+
+          <strong>
+            From concept
+          </strong>
+
+          <span>
+            Establish a new visual universe from
+            a creative direction.
+          </span>
+
+        </button>
+
+
+        <button class="world-option">
+
+          <strong>
+            From reference
+          </strong>
+
+          <span>
+            Build a world around supplied visual
+            references and production assets.
+          </span>
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+/* =====================================================
+   WORLD SWITCHING
+===================================================== */
+
+const worldItems =
+  document.querySelectorAll(".world-item");
+
+const stageWorld =
+  document.getElementById("stageWorld");
+
+const stageEra =
+  document.getElementById("stageEra");
+
+const canvasTitle =
+  document.getElementById("canvasTitle");
+
+const actionWorld =
+  document.getElementById("actionWorld");
+
+const worldName =
+  document.getElementById("worldName");
+
+const worldEra =
+  document.getElementById("worldEra");
+
+
+worldItems.forEach(item => {
+
+  item.addEventListener("click",() => {
+
+    worldItems.forEach(
+      x => x.classList.remove("active")
+    );
+
+    item.classList.add("active");
+
+    const name =
+      item.dataset.world;
+
+    const era =
+      item.dataset.era;
+
+    stageWorld.textContent = name;
+    stageEra.textContent = era;
+    canvasTitle.textContent = name;
+    actionWorld.textContent = name;
+
+    worldName.value = name;
+    worldEra.value = era;
+
+  });
+
+});
+
+
+/* =====================================================
+   INSPECTOR LIVE NAME
+===================================================== */
+
+worldName.addEventListener("input",() => {
+
+  stageWorld.textContent =
+    worldName.value || "Untitled World";
+
+  canvasTitle.textContent =
+    worldName.value || "Untitled World";
+
+  actionWorld.textContent =
+    worldName.value || "Untitled World";
+
+});
+
+
+worldEra.addEventListener("input",() => {
+
+  stageEra.textContent =
+    worldEra.value || "Undefined";
+
+});
+
+
+/* =====================================================
+   ZOOM
+===================================================== */
+
+let scale = 1;
+
+const canvas =
+  document.querySelector(".world-canvas");
+
+document
+  .querySelectorAll(".stage-action")
+  .forEach((button,index) => {
+
+    button.addEventListener("click",() => {
+
+      if(index === 0){
+        scale = Math.max(.8,scale-.1);
+      }
+
+      if(index === 1){
+        scale = 1;
+      }
+
+      if(index === 2){
+        scale = Math.min(1.4,scale+.1);
+      }
+
+      canvas.style.transform =
+        `scale(${scale})`;
+
+    });
+
+  });
+
+
+/* =====================================================
+   NEW WORLD
+===================================================== */
+
+const overlay =
+  document.getElementById("overlay");
+
+document
+  .getElementById("addWorld")
+  .addEventListener("click",() => {
+
+    overlay.classList.add("show");
+
+  });
+
+
+document
+  .getElementById("close")
+  .addEventListener("click",() => {
+
+    overlay.classList.remove("show");
+
+  });
+
+
+overlay.addEventListener("click",event => {
+
+  if(event.target === overlay){
+
+    overlay.classList.remove("show");
+
+  }
+
+});
+
+
+/* =====================================================
+   TEMPORARY SAVE
+===================================================== */
+
+document
+  .getElementById("save")
+  .addEventListener("click",() => {
+
+    const button =
+      document.getElementById("save");
+
+    button.textContent =
+      "World saved ✓";
+
+    setTimeout(() => {
+
+      button.textContent =
+        "Save world →";
+
+    },1800);
+
+  });
+
+
+/* =====================================================
+   TEMPORARY RESET
+===================================================== */
+
+document
+  .getElementById("reset")
+  .addEventListener("click",() => {
+
+    worldName.value =
+      "The Last Kingdom";
+
+    worldEra.value =
+      "Historical";
+
+    stageWorld.textContent =
+      "The Last Kingdom";
+
+    stageEra.textContent =
+      "Historical";
+
+    canvasTitle.textContent =
+      "The Last Kingdom";
+
+    actionWorld.textContent =
+      "The Last Kingdom";
+
+  });
+
+</script>
+
+</body>
+</html>

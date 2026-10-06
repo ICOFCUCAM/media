@@ -1,0 +1,2687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Cineforge — The Distribution Desk</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono&family=Inter:wght@400;500;600&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+
+:root{
+  --bg:#f4f3ee;
+  --panel:#ebeae4;
+  --panel2:#e5e4de;
+  --ink:#10110f;
+  --muted:#777871;
+  --line:#d2d1ca;
+  --line-dark:#b8b7af;
+  --white:#faf9f5;
+  --accent:#c7f000;
+
+  --rail:76px;
+  --sidebar:250px;
+}
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+  min-height:100vh;
+}
+
+button,
+input,
+select,
+textarea{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+.app{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:var(--rail) var(--sidebar) 1fr;
+}
+
+
+/* =========================================================
+   RAIL
+========================================================= */
+
+.rail{
+  background:#f0efe9;
+  border-right:1px solid var(--line);
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:20px 0;
+}
+
+.logo{
+  width:34px;
+  height:34px;
+
+  border:2px solid var(--ink);
+  border-radius:50%;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font:800 13px Manrope;
+}
+
+.rail-icons{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.rail-btn{
+  width:42px;
+  height:42px;
+
+  border:0;
+  border-radius:10px;
+
+  background:transparent;
+  color:#777871;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  transition:.2s;
+}
+
+.rail-btn:hover,
+.rail-btn.active{
+  background:var(--ink);
+  color:white;
+}
+
+.rail-btn svg{
+  width:17px;
+  height:17px;
+}
+
+.profile-dot{
+  width:34px;
+  height:34px;
+
+  border-radius:50%;
+  background:#c9c8c1;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font-size:10px;
+  font-weight:700;
+}
+
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+.sidebar{
+  background:#f0efe9;
+  border-right:1px solid var(--line);
+
+  padding:26px 20px;
+
+  overflow:auto;
+}
+
+.brand{
+  font:800 15px Manrope;
+  letter-spacing:-.03em;
+
+  margin-bottom:42px;
+}
+
+.section{
+  margin-bottom:28px;
+}
+
+.section-label{
+  font:9px "DM Mono";
+  letter-spacing:.14em;
+  text-transform:uppercase;
+
+  color:#96968e;
+
+  margin-bottom:9px;
+}
+
+.nav{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.nav-item{
+  width:100%;
+
+  border:0;
+  border-radius:7px;
+
+  background:transparent;
+
+  text-align:left;
+
+  padding:9px 10px;
+
+  font-size:12px;
+
+  color:#666760;
+
+  transition:.18s;
+}
+
+.nav-item:hover{
+  background:#e5e4de;
+  color:var(--ink);
+}
+
+.nav-item.active{
+  background:var(--ink);
+  color:white;
+}
+
+.view-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+
+  padding:7px 9px;
+
+  color:#6c6d67;
+  font-size:11px;
+}
+
+.view-row.active{
+  color:var(--ink);
+  font-weight:600;
+}
+
+.view-dot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+
+  background:#b8b8b1;
+}
+
+.view-row.active .view-dot{
+  background:var(--accent);
+}
+
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+.main{
+  min-width:0;
+
+  padding:30px 42px 150px;
+}
+
+.breadcrumb{
+  display:flex;
+  gap:9px;
+
+  font:9px "DM Mono";
+  letter-spacing:.08em;
+
+  text-transform:uppercase;
+
+  color:#898981;
+
+  margin-bottom:45px;
+}
+
+.breadcrumb span:last-child{
+  color:var(--ink);
+}
+
+
+/* =========================================================
+   HERO
+========================================================= */
+
+.hero{
+  display:flex;
+
+  justify-content:space-between;
+  align-items:flex-end;
+
+  gap:35px;
+
+  margin-bottom:48px;
+}
+
+.hero h1{
+  font:700 clamp(52px,7vw,105px)/.86 Manrope;
+
+  letter-spacing:-.075em;
+}
+
+.hero-copy{
+  width:325px;
+
+  color:#696a63;
+
+  font-size:13px;
+  line-height:1.65;
+}
+
+.hero-copy strong{
+  color:var(--ink);
+}
+
+
+/* =========================================================
+   RELEASE CONTROL
+========================================================= */
+
+.release{
+  border-top:1px solid var(--ink);
+
+  display:grid;
+
+  grid-template-columns:250px minmax(420px,1fr) 310px;
+
+  min-height:650px;
+}
+
+
+/* =========================================================
+   LEFT — DESTINATIONS
+========================================================= */
+
+.destinations{
+  border-right:1px solid var(--line);
+
+  padding:20px 0;
+}
+
+.list-head{
+  display:flex;
+  justify-content:space-between;
+
+  padding:0 18px 15px;
+}
+
+.mono{
+  font:9px "DM Mono";
+  letter-spacing:.1em;
+
+  text-transform:uppercase;
+}
+
+.muted{
+  color:#85867e;
+}
+
+.destination{
+  padding:14px 18px;
+
+  display:grid;
+  grid-template-columns:32px 1fr auto;
+
+  gap:10px;
+
+  border-top:1px solid transparent;
+  border-bottom:1px solid transparent;
+
+  transition:.18s;
+}
+
+.destination:hover{
+  background:#e9e8e2;
+}
+
+.destination.active{
+  background:var(--ink);
+  color:white;
+}
+
+.platform-icon{
+  width:30px;
+  height:30px;
+
+  border:1px solid #aaa9a2;
+  border-radius:50%;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font:10px "DM Mono";
+}
+
+.destination.active .platform-icon{
+  border-color:#55564f;
+}
+
+.platform-name{
+  font-size:12px;
+  font-weight:600;
+}
+
+.platform-meta{
+  font-size:9px;
+  color:#888981;
+  margin-top:4px;
+}
+
+.destination.active .platform-meta{
+  color:#aaa;
+}
+
+.status{
+  font:8px "DM Mono";
+  color:#85867e;
+}
+
+.destination.active .status{
+  color:#aaa;
+}
+
+.add-destination{
+  margin:18px;
+
+  width:calc(100% - 36px);
+
+  border:1px dashed var(--line-dark);
+
+  background:transparent;
+
+  padding:12px;
+
+  font-size:11px;
+
+  color:#666760;
+}
+
+
+/* =========================================================
+   CENTER — RELEASE STAGE
+========================================================= */
+
+.release-stage{
+  padding:30px;
+  min-width:0;
+}
+
+.stage-top{
+  display:flex;
+  justify-content:space-between;
+
+  margin-bottom:26px;
+}
+
+
+/* MASTER */
+
+.master{
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+
+  background:#ebeae4;
+
+  min-height:300px;
+
+  position:relative;
+
+  display:grid;
+
+  grid-template-columns:1.15fr .85fr;
+}
+
+.master-image{
+  position:relative;
+
+  min-height:300px;
+
+  overflow:hidden;
+
+  background:
+    radial-gradient(circle at 60% 30%,#999 0 1px,transparent 2px),
+    linear-gradient(
+      145deg,
+      #c9c8c1 0%,
+      #777871 45%,
+      #292a27 100%
+    );
+}
+
+.master-image:before{
+  content:"";
+
+  position:absolute;
+
+  width:210px;
+  height:210px;
+
+  border:1px solid rgba(255,255,255,.35);
+
+  border-radius:50%;
+
+  left:35%;
+  top:16%;
+}
+
+.master-image:after{
+  content:"";
+
+  position:absolute;
+
+  width:80%;
+  height:1px;
+
+  background:rgba(255,255,255,.35);
+
+  left:10%;
+  top:50%;
+
+  transform:rotate(-18deg);
+}
+
+.master-info{
+  padding:26px;
+
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+
+.master-label{
+  font:9px "DM Mono";
+  color:#777871;
+
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+.master-title{
+  font:600 30px Manrope;
+
+  letter-spacing:-.05em;
+
+  margin-top:8px;
+}
+
+.master-meta{
+  font-size:11px;
+  line-height:1.6;
+
+  color:#777871;
+
+  margin-top:8px;
+}
+
+.master-bottom{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+}
+
+.runtime{
+  font:10px "DM Mono";
+  color:#777871;
+}
+
+.ready{
+  font:8px "DM Mono";
+  text-transform:uppercase;
+
+  color:#45463f;
+
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.ready-dot{
+  width:6px;
+  height:6px;
+
+  border-radius:50%;
+
+  background:#5f8b27;
+}
+
+
+/* =========================================================
+   RELEASE TIMELINE
+========================================================= */
+
+.timeline{
+  margin-top:38px;
+
+  border-top:1px solid var(--line);
+
+  padding-top:18px;
+}
+
+.timeline-header{
+  display:flex;
+  justify-content:space-between;
+
+  margin-bottom:10px;
+}
+
+.timeline-track{
+  height:58px;
+
+  background:#e4e3dd;
+
+  position:relative;
+
+  overflow:hidden;
+}
+
+.segment{
+  position:absolute;
+
+  top:8px;
+  bottom:8px;
+
+  background:#191a17;
+}
+
+.segment.s1{
+  left:1%;
+  width:27%;
+}
+
+.segment.s2{
+  left:29%;
+  width:18%;
+}
+
+.segment.s3{
+  left:48%;
+  width:29%;
+}
+
+.segment.s4{
+  left:78%;
+  width:20%;
+}
+
+.timeline-marker{
+  position:absolute;
+
+  top:0;
+  bottom:0;
+
+  width:1px;
+
+  background:#777871;
+
+  left:53%;
+}
+
+
+/* =========================================================
+   INSPECTOR
+========================================================= */
+
+.inspector{
+  border-left:1px solid var(--line);
+
+  padding:20px;
+}
+
+.inspector-title{
+  font:9px "DM Mono";
+
+  color:#85867e;
+
+  letter-spacing:.1em;
+
+  text-transform:uppercase;
+
+  margin-bottom:20px;
+}
+
+.field{
+  border-top:1px solid var(--line);
+
+  padding:14px 0;
+}
+
+.field-label{
+  font:8px "DM Mono";
+
+  color:#898a83;
+
+  letter-spacing:.09em;
+
+  text-transform:uppercase;
+
+  margin-bottom:7px;
+}
+
+.field-value{
+  display:flex;
+  justify-content:space-between;
+
+  font-size:12px;
+}
+
+.arrow{
+  color:#888981;
+}
+
+.tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+}
+
+.tag{
+  border:1px solid var(--line-dark);
+
+  background:transparent;
+
+  padding:6px 8px;
+
+  font:8px "DM Mono";
+}
+
+.tag.active{
+  background:var(--ink);
+  border-color:var(--ink);
+  color:white;
+}
+
+.toggle{
+  width:34px;
+  height:18px;
+
+  border-radius:20px;
+
+  background:#c7c6bf;
+
+  position:relative;
+}
+
+.toggle:after{
+  content:"";
+
+  position:absolute;
+
+  width:14px;
+  height:14px;
+
+  border-radius:50%;
+
+  background:white;
+
+  left:2px;
+  top:2px;
+
+  transition:.2s;
+}
+
+.toggle.on{
+  background:var(--ink);
+}
+
+.toggle.on:after{
+  left:18px;
+}
+
+
+/* =========================================================
+   CHANNEL MATRIX
+========================================================= */
+
+.matrix{
+  margin-top:58px;
+
+  border-top:1px solid var(--ink);
+
+  padding-top:22px;
+}
+
+.matrix-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+
+  margin-bottom:22px;
+}
+
+.matrix-title{
+  font:600 26px Manrope;
+
+  letter-spacing:-.045em;
+}
+
+.matrix-sub{
+  margin-top:5px;
+
+  font-size:11px;
+
+  color:#7c7d76;
+}
+
+.channel-table{
+  border-top:1px solid var(--line);
+}
+
+.table-row{
+  display:grid;
+
+  grid-template-columns:1.4fr .8fr .8fr .8fr .8fr;
+
+  border-bottom:1px solid var(--line);
+
+  min-height:62px;
+
+  align-items:center;
+}
+
+.table-row.header{
+  min-height:42px;
+
+  font:8px "DM Mono";
+
+  color:#85867e;
+
+  text-transform:uppercase;
+}
+
+.table-cell{
+  padding:0 14px;
+  font-size:11px;
+}
+
+.table-cell:first-child{
+  padding-left:0;
+}
+
+.channel{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.channel-symbol{
+  width:27px;
+  height:27px;
+
+  border:1px solid var(--line-dark);
+
+  border-radius:50%;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font:8px "DM Mono";
+}
+
+.published{
+  display:flex;
+  align-items:center;
+  gap:6px;
+
+  font:8px "DM Mono";
+
+  text-transform:uppercase;
+}
+
+.published-dot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#5f8b27;
+}
+
+
+/* =========================================================
+   ACTION BAR
+========================================================= */
+
+.action-bar{
+  position:fixed;
+
+  left:calc(var(--rail) + var(--sidebar));
+  right:0;
+  bottom:0;
+
+  height:72px;
+
+  background:rgba(244,243,238,.94);
+
+  backdrop-filter:blur(15px);
+
+  border-top:1px solid var(--ink);
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:0 34px;
+
+  z-index:20;
+}
+
+.action-info{
+  display:flex;
+  gap:26px;
+}
+
+.action-stat{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+
+.action-stat span:first-child{
+  font:8px "DM Mono";
+  color:#85867e;
+
+  text-transform:uppercase;
+}
+
+.action-stat span:last-child{
+  font-size:11px;
+  font-weight:600;
+}
+
+.action-buttons{
+  display:flex;
+  gap:8px;
+}
+
+.secondary,
+.primary{
+  height:42px;
+
+  padding:0 19px;
+
+  font-size:10px;
+}
+
+.secondary{
+  background:transparent;
+  border:1px solid var(--line-dark);
+}
+
+.primary{
+  background:var(--ink);
+  border:1px solid var(--ink);
+
+  color:white;
+}
+
+
+/* =========================================================
+   MODAL
+========================================================= */
+
+.modal{
+  position:fixed;
+
+  inset:0;
+
+  background:rgba(10,11,9,.45);
+
+  backdrop-filter:blur(5px);
+
+  display:none;
+
+  align-items:center;
+  justify-content:center;
+
+  z-index:100;
+}
+
+.modal.open{
+  display:flex;
+}
+
+.modal-box{
+  width:min(570px,calc(100% - 40px));
+
+  background:var(--bg);
+
+  border:1px solid #aaa9a1;
+
+  padding:30px;
+
+  box-shadow:0 30px 80px rgba(0,0,0,.2);
+}
+
+.modal-head{
+  display:flex;
+  justify-content:space-between;
+
+  margin-bottom:25px;
+}
+
+.modal h2{
+  font:600 30px Manrope;
+
+  letter-spacing:-.05em;
+}
+
+.close{
+  border:0;
+  background:transparent;
+
+  font-size:20px;
+}
+
+.modal-field{
+  margin-bottom:18px;
+}
+
+.modal-field label{
+  display:block;
+
+  margin-bottom:7px;
+
+  font:8px "DM Mono";
+
+  color:#81827a;
+
+  text-transform:uppercase;
+}
+
+.modal-field input,
+.modal-field select{
+  width:100%;
+  height:44px;
+
+  background:#ebeae4;
+
+  border:1px solid var(--line);
+
+  padding:0 12px;
+
+  outline:none;
+}
+
+.modal-actions{
+  display:flex;
+
+  justify-content:flex-end;
+
+  gap:8px;
+
+  margin-top:25px;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media(max-width:1200px){
+
+  .release{
+    grid-template-columns:220px 1fr;
+  }
+
+  .inspector{
+    display:none;
+  }
+
+  .table-row{
+    grid-template-columns:1.4fr .8fr .8fr;
+  }
+
+  .table-row .hide-small{
+    display:none;
+  }
+}
+
+@media(max-width:900px){
+
+  .app{
+    grid-template-columns:var(--rail) 1fr;
+  }
+
+  .sidebar{
+    display:none;
+  }
+
+  .main{
+    padding:24px;
+  }
+
+  .action-bar{
+    left:var(--rail);
+  }
+
+  .hero{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .hero-copy{
+    width:auto;
+  }
+
+  .master{
+    grid-template-columns:1fr;
+  }
+
+  .master-image{
+    min-height:230px;
+  }
+}
+
+@media(max-width:650px){
+
+  :root{
+    --rail:58px;
+  }
+
+  .main{
+    padding:20px 15px 130px;
+  }
+
+  .hero h1{
+    font-size:58px;
+  }
+
+  .release{
+    grid-template-columns:1fr;
+  }
+
+  .destinations{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .release-stage{
+    padding:20px 0;
+  }
+
+  .action-bar{
+    left:0;
+    padding:0 15px;
+  }
+
+  .action-info{
+    display:none;
+  }
+
+  .action-buttons{
+    margin-left:auto;
+  }
+
+  .table-row{
+    grid-template-columns:1fr .8fr;
+  }
+
+  .table-row .optional{
+    display:none;
+  }
+}
+
+</style>
+</head>
+
+
+<body>
+
+<div class="app">
+
+
+<!-- =====================================================
+     RAIL
+====================================================== -->
+
+<aside class="rail">
+
+  <div class="logo">C</div>
+
+  <div class="rail-icons">
+
+    <button class="rail-btn">
+
+      <svg viewBox="0 0 24 24"
+           fill="none"
+           stroke="currentColor"
+           stroke-width="1.7">
+
+        <path d="M12 5v14M5 12h14"/>
+
+      </svg>
+
+    </button>
+
+
+    <button class="rail-btn">
+
+      <svg viewBox="0 0 24 24"
+           fill="none"
+           stroke="currentColor"
+           stroke-width="1.7">
+
+        <rect x="4" y="5"
+              width="16"
+              height="14"
+              rx="2"/>
+
+        <path d="M8 9h8M8 13h5"/>
+
+      </svg>
+
+    </button>
+
+
+    <button class="rail-btn active">
+
+      <svg viewBox="0 0 24 24"
+           fill="none"
+           stroke="currentColor"
+           stroke-width="1.7">
+
+        <path d="M5 19 19 5"/>
+        <path d="M7 5h12v12"/>
+
+      </svg>
+
+    </button>
+
+
+    <button class="rail-btn">
+
+      <svg viewBox="0 0 24 24"
+           fill="none"
+           stroke="currentColor"
+           stroke-width="1.7">
+
+        <path d="M5 19V9M12 19V5M19 19v-7"/>
+
+      </svg>
+
+    </button>
+
+  </div>
+
+
+  <div class="profile-dot">
+    JM
+  </div>
+
+</aside>
+
+
+
+<!-- =====================================================
+     SIDEBAR
+====================================================== -->
+
+<aside class="sidebar">
+
+  <div class="brand">
+    CINEFORGE
+  </div>
+
+
+  <section class="section">
+
+    <div class="section-label">
+      Studio
+    </div>
+
+    <nav class="nav">
+
+      <button class="nav-item">
+        Create Anything
+      </button>
+
+      <button class="nav-item">
+        Create Film
+      </button>
+
+      <button class="nav-item">
+        Create Series
+      </button>
+
+      <button class="nav-item">
+        Create Trailer
+      </button>
+
+      <button class="nav-item">
+        Create Shorts
+      </button>
+
+      <button class="nav-item">
+        Create Advert
+      </button>
+
+    </nav>
+
+  </section>
+
+
+
+  <section class="section">
+
+    <div class="section-label">
+      Production
+    </div>
+
+    <nav class="nav">
+
+      <button class="nav-item">
+        Projects
+      </button>
+
+      <button class="nav-item">
+        Characters
+      </button>
+
+      <button class="nav-item">
+        Worlds
+      </button>
+
+      <button class="nav-item">
+        Assets
+      </button>
+
+      <button class="nav-item">
+        Voices
+      </button>
+
+      <button class="nav-item">
+        Music
+      </button>
+
+    </nav>
+
+  </section>
+
+
+
+  <section class="section">
+
+    <div class="section-label">
+      Publishing
+    </div>
+
+    <nav class="nav">
+
+      <button class="nav-item active">
+        Social Distribution
+      </button>
+
+      <button class="nav-item">
+        Streaming
+      </button>
+
+      <button class="nav-item">
+        Marketplace
+      </button>
+
+    </nav>
+
+  </section>
+
+
+
+  <section class="section">
+
+    <div class="section-label">
+      Account
+    </div>
+
+    <nav class="nav">
+
+      <button class="nav-item">
+        Plans & Credits
+      </button>
+
+    </nav>
+
+  </section>
+
+
+
+  <section class="section">
+
+    <div class="section-label">
+      Analytics
+    </div>
+
+    <nav class="nav">
+
+      <button class="nav-item">
+        Revenue
+      </button>
+
+      <button class="nav-item">
+        Audience
+      </button>
+
+      <button class="nav-item">
+        Performance
+      </button>
+
+    </nav>
+
+  </section>
+
+
+
+  <section class="section">
+
+    <div class="section-label">
+      Enterprise
+    </div>
+
+    <nav class="nav">
+
+      <button class="nav-item">
+        Teams
+      </button>
+
+      <button class="nav-item">
+        Permissions
+      </button>
+
+      <button class="nav-item">
+        Brand Assets
+      </button>
+
+    </nav>
+
+  </section>
+
+
+
+  <section>
+
+    <div class="section-label">
+      Viewing as
+    </div>
+
+    <div class="view-row active">
+      <span class="view-dot"></span>
+      Creator
+    </div>
+
+    <div class="view-row">
+      <span class="view-dot"></span>
+      Studio
+    </div>
+
+    <div class="view-row">
+      <span class="view-dot"></span>
+      Super
+    </div>
+
+  </section>
+
+</aside>
+
+
+
+<!-- =====================================================
+     MAIN
+====================================================== -->
+
+<main class="main">
+
+
+  <div class="breadcrumb">
+
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <span>PUBLISHING</span>
+    <span>/</span>
+    <span>SOCIAL DISTRIBUTION</span>
+
+  </div>
+
+
+
+  <section class="hero">
+
+    <h1>
+      The<br>
+      Distribution<br>
+      Desk.
+    </h1>
+
+
+    <div class="hero-copy">
+
+      <strong>
+        One finished work. Every audience.
+      </strong>
+
+      <br><br>
+
+      Prepare the master once, then shape each release
+      for the places where your audience actually watches.
+      Cineforge keeps the work itself at the centre.
+
+    </div>
+
+  </section>
+
+
+
+  <!-- ===================================================
+       RELEASE CONTROL
+  ==================================================== -->
+
+  <section class="release">
+
+
+    <!-- DESTINATIONS -->
+
+    <aside class="destinations">
+
+
+      <div class="list-head">
+
+        <span class="mono">
+          Destinations
+        </span>
+
+        <span class="mono muted">
+          06
+        </span>
+
+      </div>
+
+
+
+      <div
+        class="destination active"
+        data-platform="YouTube">
+
+        <div class="platform-icon">
+          YT
+        </div>
+
+        <div>
+
+          <div class="platform-name">
+            YouTube
+          </div>
+
+          <div class="platform-meta">
+            Long-form / Shorts
+          </div>
+
+        </div>
+
+        <div class="status">
+          READY
+        </div>
+
+      </div>
+
+
+
+      <div
+        class="destination"
+        data-platform="TikTok">
+
+        <div class="platform-icon">
+          TT
+        </div>
+
+        <div>
+
+          <div class="platform-name">
+            TikTok
+          </div>
+
+          <div class="platform-meta">
+            Vertical release
+          </div>
+
+        </div>
+
+        <div class="status">
+          READY
+        </div>
+
+      </div>
+
+
+
+      <div
+        class="destination"
+        data-platform="Instagram">
+
+        <div class="platform-icon">
+          IG
+        </div>
+
+        <div>
+
+          <div class="platform-name">
+            Instagram
+          </div>
+
+          <div class="platform-meta">
+            Reels / Feed
+          </div>
+
+        </div>
+
+        <div class="status">
+          READY
+        </div>
+
+      </div>
+
+
+
+      <div
+        class="destination"
+        data-platform="Facebook">
+
+        <div class="platform-icon">
+          FB
+        </div>
+
+        <div>
+
+          <div class="platform-name">
+            Facebook
+          </div>
+
+          <div class="platform-meta">
+            Video / Feed
+          </div>
+
+        </div>
+
+        <div class="status">
+          READY
+        </div>
+
+      </div>
+
+
+
+      <div
+        class="destination"
+        data-platform="X">
+
+        <div class="platform-icon">
+          X
+        </div>
+
+        <div>
+
+          <div class="platform-name">
+            X
+          </div>
+
+          <div class="platform-meta">
+            Short-form release
+          </div>
+
+        </div>
+
+        <div class="status">
+          READY
+        </div>
+
+      </div>
+
+
+
+      <div
+        class="destination"
+        data-platform="LinkedIn">
+
+        <div class="platform-icon">
+          LI
+        </div>
+
+        <div>
+
+          <div class="platform-name">
+            LinkedIn
+          </div>
+
+          <div class="platform-meta">
+            Professional release
+          </div>
+
+        </div>
+
+        <div class="status">
+          READY
+        </div>
+
+      </div>
+
+
+
+      <button
+        class="add-destination"
+        id="addDestination">
+
+        + Add destination
+
+      </button>
+
+
+    </aside>
+
+
+
+    <!-- =================================================
+         RELEASE STAGE
+    ================================================== -->
+
+    <section class="release-stage">
+
+
+      <div class="stage-top">
+
+        <span class="mono muted">
+          Release master / 01
+        </span>
+
+        <span class="mono muted">
+          Distribution ready
+        </span>
+
+      </div>
+
+
+
+      <div class="master">
+
+
+        <div class="master-image">
+
+        </div>
+
+
+        <div class="master-info">
+
+
+          <div>
+
+            <div class="master-label">
+              Selected production
+            </div>
+
+            <div class="master-title">
+              The Kingdom
+            </div>
+
+            <div class="master-meta">
+
+              Feature film · 1080p master<br>
+              English · 16:9 · Stereo
+
+            </div>
+
+          </div>
+
+
+          <div class="master-bottom">
+
+            <div class="runtime">
+              01:42:18
+            </div>
+
+            <div class="ready">
+
+              <span class="ready-dot"></span>
+
+              Master verified
+
+            </div>
+
+          </div>
+
+
+        </div>
+
+      </div>
+
+
+
+      <!-- TIMELINE -->
+
+      <div class="timeline">
+
+
+        <div class="timeline-header">
+
+          <span class="mono muted">
+            Release timeline
+          </span>
+
+          <span class="mono muted">
+            01:42:18
+          </span>
+
+        </div>
+
+
+        <div class="timeline-track">
+
+          <div class="segment s1"></div>
+          <div class="segment s2"></div>
+          <div class="segment s3"></div>
+          <div class="segment s4"></div>
+
+          <div class="timeline-marker"></div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =================================================
+         INSPECTOR
+    ================================================== -->
+
+    <aside class="inspector">
+
+
+      <div class="inspector-title">
+        Release direction
+      </div>
+
+
+
+      <div class="field">
+
+        <div class="field-label">
+          Master
+        </div>
+
+        <div class="field-value">
+
+          The Kingdom
+
+          <span class="arrow">
+            ↗
+          </span>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="field">
+
+        <div class="field-label">
+          Destination
+        </div>
+
+        <div class="field-value">
+
+          YouTube
+
+          <span class="arrow">
+            ⌄
+          </span>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="field">
+
+        <div class="field-label">
+          Format
+        </div>
+
+        <div class="tags">
+
+          <button class="tag active">
+            16:9
+          </button>
+
+          <button class="tag">
+            9:16
+          </button>
+
+          <button class="tag">
+            1:1
+          </button>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="field">
+
+        <div class="field-label">
+          Caption
+        </div>
+
+        <div class="field-value">
+
+          English
+
+          <span class="arrow">
+            ⌄
+          </span>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="field">
+
+        <div class="field-label">
+          Auto adaptation
+        </div>
+
+        <div class="field-value">
+
+          <span>
+            Platform optimized
+          </span>
+
+          <button
+            class="toggle on"
+            id="autoToggle">
+          </button>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="field">
+
+        <div class="field-label">
+          Thumbnail
+        </div>
+
+        <div class="field-value">
+
+          Cinematic frame
+
+          <span class="arrow">
+            ↗
+          </span>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="field">
+
+        <div class="field-label">
+          Release status
+        </div>
+
+        <div class="field-value">
+
+          Ready
+
+          <span>
+            ●
+          </span>
+
+        </div>
+
+      </div>
+
+
+
+    </aside>
+
+  </section>
+
+
+
+  <!-- ===================================================
+       CHANNEL MATRIX
+  ==================================================== -->
+
+  <section class="matrix">
+
+
+    <div class="matrix-head">
+
+      <div>
+
+        <div class="matrix-title">
+          Release Matrix
+        </div>
+
+        <div class="matrix-sub">
+          Every destination prepared from the same production master.
+        </div>
+
+      </div>
+
+
+      <div class="mono muted">
+        06 destinations
+      </div>
+
+    </div>
+
+
+
+    <div class="channel-table">
+
+
+      <div class="table-row header">
+
+        <div class="table-cell">
+          Destination
+        </div>
+
+        <div class="table-cell">
+          Format
+        </div>
+
+        <div class="table-cell optional">
+          Captions
+        </div>
+
+        <div class="table-cell optional">
+          Thumbnail
+        </div>
+
+        <div class="table-cell">
+          Status
+        </div>
+
+      </div>
+
+
+
+      <div class="table-row">
+
+        <div class="table-cell">
+
+          <div class="channel">
+
+            <div class="channel-symbol">
+              YT
+            </div>
+
+            YouTube
+
+          </div>
+
+        </div>
+
+        <div class="table-cell">
+          16:9
+        </div>
+
+        <div class="table-cell optional">
+          EN
+        </div>
+
+        <div class="table-cell optional">
+          Auto
+        </div>
+
+        <div class="table-cell">
+
+          <div class="published">
+            <span class="published-dot"></span>
+            Ready
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="table-row">
+
+        <div class="table-cell">
+
+          <div class="channel">
+
+            <div class="channel-symbol">
+              TT
+            </div>
+
+            TikTok
+
+          </div>
+
+        </div>
+
+        <div class="table-cell">
+          9:16
+        </div>
+
+        <div class="table-cell optional">
+          EN
+        </div>
+
+        <div class="table-cell optional">
+          Auto
+        </div>
+
+        <div class="table-cell">
+
+          <div class="published">
+            <span class="published-dot"></span>
+            Ready
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="table-row">
+
+        <div class="table-cell">
+
+          <div class="channel">
+
+            <div class="channel-symbol">
+              IG
+            </div>
+
+            Instagram
+
+          </div>
+
+        </div>
+
+        <div class="table-cell">
+          9:16
+        </div>
+
+        <div class="table-cell optional">
+          EN
+        </div>
+
+        <div class="table-cell optional">
+          Auto
+        </div>
+
+        <div class="table-cell">
+
+          <div class="published">
+            <span class="published-dot"></span>
+            Ready
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="table-row">
+
+        <div class="table-cell">
+
+          <div class="channel">
+
+            <div class="channel-symbol">
+              FB
+            </div>
+
+            Facebook
+
+          </div>
+
+        </div>
+
+        <div class="table-cell">
+          16:9
+        </div>
+
+        <div class="table-cell optional">
+          EN
+        </div>
+
+        <div class="table-cell optional">
+          Auto
+        </div>
+
+        <div class="table-cell">
+
+          <div class="published">
+            <span class="published-dot"></span>
+            Ready
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="table-row">
+
+        <div class="table-cell">
+
+          <div class="channel">
+
+            <div class="channel-symbol">
+              X
+            </div>
+
+            X
+
+          </div>
+
+        </div>
+
+        <div class="table-cell">
+          16:9
+        </div>
+
+        <div class="table-cell optional">
+          EN
+        </div>
+
+        <div class="table-cell optional">
+          Auto
+        </div>
+
+        <div class="table-cell">
+
+          <div class="published">
+            <span class="published-dot"></span>
+            Ready
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="table-row">
+
+        <div class="table-cell">
+
+          <div class="channel">
+
+            <div class="channel-symbol">
+              LI
+            </div>
+
+            LinkedIn
+
+          </div>
+
+        </div>
+
+        <div class="table-cell">
+          16:9
+        </div>
+
+        <div class="table-cell optional">
+          EN
+        </div>
+
+        <div class="table-cell optional">
+          Auto
+        </div>
+
+        <div class="table-cell">
+
+          <div class="published">
+            <span class="published-dot"></span>
+            Ready
+          </div>
+
+        </div>
+
+      </div>
+
+
+    </div>
+
+  </section>
+
+
+</main>
+
+</div>
+
+
+
+<!-- =====================================================
+     ACTION BAR
+====================================================== -->
+
+<div class="action-bar">
+
+
+  <div class="action-info">
+
+    <div class="action-stat">
+
+      <span>
+        Destination
+      </span>
+
+      <span id="selectedPlatform">
+        YouTube
+      </span>
+
+    </div>
+
+
+    <div class="action-stat">
+
+      <span>
+        Master
+      </span>
+
+      <span>
+        1080p
+      </span>
+
+    </div>
+
+
+    <div class="action-stat">
+
+      <span>
+        Status
+      </span>
+
+      <span>
+        Ready
+      </span>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="action-buttons">
+
+    <button
+      class="secondary"
+      id="previewBtn">
+
+      Preview release
+
+    </button>
+
+
+    <button
+      class="primary"
+      id="publishBtn">
+
+      Prepare release →
+
+    </button>
+
+  </div>
+
+</div>
+
+
+
+<!-- =====================================================
+     MODAL
+====================================================== -->
+
+<div class="modal" id="modal">
+
+  <div class="modal-box">
+
+
+    <div class="modal-head">
+
+      <h2>
+        Add destination.
+      </h2>
+
+      <button
+        class="close"
+        id="closeModal">
+
+        ×
+
+      </button>
+
+    </div>
+
+
+
+    <div class="modal-field">
+
+      <label>
+        Destination
+      </label>
+
+      <input
+        id="destinationName"
+        placeholder="Platform or channel name">
+
+    </div>
+
+
+
+    <div class="modal-field">
+
+      <label>
+        Release format
+      </label>
+
+      <select>
+
+        <option>
+          16:9 — Landscape
+        </option>
+
+        <option>
+          9:16 — Vertical
+        </option>
+
+        <option>
+          1:1 — Square
+        </option>
+
+      </select>
+
+    </div>
+
+
+
+    <div class="modal-field">
+
+      <label>
+        Caption language
+      </label>
+
+      <select>
+
+        <option>
+          English
+        </option>
+
+        <option>
+          French
+        </option>
+
+        <option>
+          Spanish
+        </option>
+
+        <option>
+          German
+        </option>
+
+        <option>
+          Portuguese
+        </option>
+
+      </select>
+
+    </div>
+
+
+
+    <div class="modal-actions">
+
+      <button
+        class="secondary"
+        id="cancelModal">
+
+        Cancel
+
+      </button>
+
+
+      <button
+        class="primary"
+        id="createDestination">
+
+        Add destination
+
+      </button>
+
+    </div>
+
+
+  </div>
+
+</div>
+
+
+
+<script>
+
+/* =========================================================
+   DESTINATION SELECTION
+========================================================= */
+
+const destinations =
+  document.querySelectorAll(".destination");
+
+const selectedPlatform =
+  document.getElementById("selectedPlatform");
+
+destinations.forEach(destination=>{
+
+  destination.addEventListener("click",()=>{
+
+    destinations.forEach(d=>{
+      d.classList.remove("active");
+    });
+
+    destination.classList.add("active");
+
+    selectedPlatform.textContent =
+      destination.dataset.platform;
+
+  });
+
+});
+
+
+/* =========================================================
+   FORMAT TAGS
+========================================================= */
+
+document.querySelectorAll(".tag").forEach(tag=>{
+
+  tag.addEventListener("click",()=>{
+
+    const group =
+      tag.parentElement.querySelectorAll(".tag");
+
+    group.forEach(t=>{
+      t.classList.remove("active");
+    });
+
+    tag.classList.add("active");
+
+  });
+
+});
+
+
+/* =========================================================
+   TOGGLE
+========================================================= */
+
+const autoToggle =
+  document.getElementById("autoToggle");
+
+autoToggle.addEventListener("click",()=>{
+
+  autoToggle.classList.toggle("on");
+
+});
+
+
+/* =========================================================
+   ADD DESTINATION
+========================================================= */
+
+const modal =
+  document.getElementById("modal");
+
+document
+  .getElementById("addDestination")
+  .onclick=()=>{
+
+    modal.classList.add("open");
+
+  };
+
+
+document
+  .getElementById("closeModal")
+  .onclick=()=>{
+
+    modal.classList.remove("open");
+
+  };
+
+
+document
+  .getElementById("cancelModal")
+  .onclick=()=>{
+
+    modal.classList.remove("open");
+
+  };
+
+
+document
+  .getElementById("createDestination")
+  .onclick=()=>{
+
+    const name =
+      document
+        .getElementById("destinationName")
+        .value
+        .trim();
+
+    if(!name){
+
+      document
+        .getElementById("destinationName")
+        .focus();
+
+      return;
+
+    }
+
+    alert(
+      `Visual prototype: "${name}" would be connected through the real Cineforge distribution engine.`
+    );
+
+    modal.classList.remove("open");
+
+  };
+
+
+/* =========================================================
+   PREVIEW
+========================================================= */
+
+document
+  .getElementById("previewBtn")
+  .onclick=()=>{
+
+    alert(
+      "Visual prototype: the selected platform-specific release preview would open here."
+    );
+
+  };
+
+
+/* =========================================================
+   PREPARE RELEASE
+========================================================= */
+
+document
+  .getElementById("publishBtn")
+  .onclick=()=>{
+
+    alert(
+      "Visual prototype: Cineforge would now prepare the selected master for the chosen destination."
+    );
+
+  };
+
+
+/* =========================================================
+   NAV VISUAL STATE
+========================================================= */
+
+document
+  .querySelectorAll(".nav-item")
+  .forEach(item=>{
+
+    item.addEventListener("click",()=>{
+
+      document
+        .querySelectorAll(".nav-item")
+        .forEach(i=>{
+          i.classList.remove("active");
+        });
+
+      item.classList.add("active");
+
+    });
+
+  });
+
+</script>
+
+</body>
+</html>

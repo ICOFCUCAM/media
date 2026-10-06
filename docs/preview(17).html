@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Cineforge — Casting Room</title>
+
+<style>
+:root{
+  --ink:#090a09;
+  --paper:#f1efe8;
+  --muted:#777770;
+  --dim:#4e4e49;
+  --line:rgba(241,239,232,.12);
+  --signal:#b8ff3d;
+}
+
+*{box-sizing:border-box}
+
+html,body{
+  margin:0;
+  min-height:100%;
+  background:var(--ink);
+  color:var(--paper);
+  font-family:Inter,Arial,sans-serif;
+}
+
+button,input,textarea,select{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+.shell{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:74px 1fr;
+}
+
+/* =====================================================
+   RAIL
+===================================================== */
+
+.rail{
+  position:fixed;
+  left:0;
+  top:0;
+  bottom:0;
+  width:74px;
+  border-right:1px solid var(--line);
+  background:#090a09;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  z-index:30;
+}
+
+.brand{
+  width:74px;
+  height:74px;
+  display:grid;
+  place-items:center;
+  border-bottom:1px solid var(--line);
+  font-weight:900;
+  letter-spacing:-.08em;
+}
+
+.rail-nav{
+  padding-top:20px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.rail-btn{
+  width:42px;
+  height:42px;
+  border:1px solid transparent;
+  background:none;
+  color:#666;
+  font-size:10px;
+  position:relative;
+}
+
+.rail-btn:hover,
+.rail-btn.active{
+  color:var(--paper);
+  border-color:var(--line);
+}
+
+.rail-btn.active:before{
+  content:"";
+  position:absolute;
+  left:5px;
+  top:50%;
+  transform:translateY(-50%);
+  width:4px;
+  height:4px;
+  background:var(--signal);
+  border-radius:50%;
+}
+
+.rail-bottom{
+  margin-top:auto;
+  padding-bottom:20px;
+}
+
+/* =====================================================
+   MAIN
+===================================================== */
+
+main{
+  margin-left:74px;
+  min-width:0;
+}
+
+.topbar{
+  height:74px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 42px;
+}
+
+.crumb{
+  font:10px "DM Mono",monospace;
+  color:#666;
+  letter-spacing:.15em;
+  text-transform:uppercase;
+}
+
+.crumb strong{
+  color:var(--paper);
+  font-weight:400;
+}
+
+.top-right{
+  display:flex;
+  align-items:center;
+  gap:20px;
+}
+
+.status{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font:9px "DM Mono",monospace;
+  color:#666;
+  letter-spacing:.14em;
+}
+
+.status i{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--signal);
+}
+
+.preview{
+  border:1px solid var(--line);
+  background:none;
+  color:var(--paper);
+  padding:9px 14px;
+  font:9px "DM Mono",monospace;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+/* =====================================================
+   HERO
+===================================================== */
+
+.hero{
+  position:relative;
+  padding:72px 7vw 65px;
+  border-bottom:1px solid var(--line);
+  overflow:hidden;
+}
+
+.eyebrow{
+  font:10px "DM Mono",monospace;
+  color:var(--signal);
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  margin-bottom:28px;
+}
+
+.hero h1{
+  margin:0;
+  max-width:1050px;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:clamp(60px,9vw,145px);
+  font-weight:400;
+  line-height:.82;
+  letter-spacing:-.065em;
+}
+
+.hero h1 span{
+  display:block;
+  font-family:Inter,Arial,sans-serif;
+  font-size:.70em;
+  font-weight:800;
+  letter-spacing:-.075em;
+}
+
+.hero-copy{
+  max-width:570px;
+  margin:42px 0 0 auto;
+  color:#aaa9a1;
+  font-size:15px;
+  line-height:1.7;
+}
+
+.hero-index{
+  position:absolute;
+  right:42px;
+  top:44px;
+  font:9px "DM Mono",monospace;
+  color:#4b4b47;
+  letter-spacing:.12em;
+}
+
+/* =====================================================
+   CASTING ROOM
+===================================================== */
+
+.casting{
+  display:grid;
+  grid-template-columns:255px minmax(0,1fr) 320px;
+  min-height:760px;
+}
+
+.panel{
+  border-right:1px solid var(--line);
+  min-width:0;
+}
+
+.panel:last-child{
+  border-right:0;
+}
+
+.panel-head{
+  height:58px;
+  border-bottom:1px solid var(--line);
+  padding:0 22px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.panel-title{
+  font:9px "DM Mono",monospace;
+  color:#666;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+
+.panel-count{
+  font:9px "DM Mono",monospace;
+  color:#4e4e4a;
+}
+
+/* =====================================================
+   LEFT CAST LIST
+===================================================== */
+
+.cast-list{
+  padding:25px 22px;
+}
+
+.section-label{
+  font:9px "DM Mono",monospace;
+  color:#4e4e4a;
+  text-transform:uppercase;
+  letter-spacing:.16em;
+  margin-bottom:16px;
+}
+
+.character{
+  padding:16px 0;
+  border-bottom:1px solid rgba(241,239,232,.08);
+  cursor:pointer;
+  transition:.2s;
+}
+
+.character:hover,
+.character.active{
+  color:var(--paper);
+}
+
+.character-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.character-number{
+  font:9px "DM Mono",monospace;
+  color:#555;
+}
+
+.character.active .character-number{
+  color:var(--signal);
+}
+
+.character-name{
+  font-family:Georgia,serif;
+  font-size:17px;
+}
+
+.character-role{
+  margin-top:5px;
+  color:#666;
+  font-size:10px;
+}
+
+.character-state{
+  margin-top:8px;
+  font:8px "DM Mono",monospace;
+  color:#4f4f4a;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.character.active .character-state{
+  color:#8f8f87;
+}
+
+/* =====================================================
+   CENTER CHARACTER SPACE
+===================================================== */
+
+.character-stage{
+  position:relative;
+  min-height:700px;
+  overflow:hidden;
+  background:
+    radial-gradient(
+      circle at 58% 38%,
+      rgba(255,255,255,.08),
+      transparent 30%
+    ),
+    linear-gradient(
+      135deg,
+      #141512,
+      #0b0c0b 55%,
+      #11120f
+    );
+}
+
+.stage-grid{
+  position:absolute;
+  inset:0;
+  opacity:.22;
+  background-image:
+    linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);
+  background-size:60px 60px;
+}
+
+.stage-ring{
+  position:absolute;
+  width:460px;
+  height:620px;
+  border:1px solid rgba(241,239,232,.10);
+  border-radius:50%;
+  left:50%;
+  top:48%;
+  transform:translate(-50%,-50%);
+}
+
+.stage-ring:before{
+  content:"";
+  position:absolute;
+  inset:32px;
+  border:1px solid rgba(241,239,232,.06);
+  border-radius:50%;
+}
+
+.character-silhouette{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-45%);
+  width:210px;
+  height:470px;
+}
+
+.head{
+  position:absolute;
+  width:105px;
+  height:125px;
+  border-radius:48% 48% 46% 46%;
+  background:
+    radial-gradient(circle at 38% 35%,#d1c9b8,#7b7569 55%,#383833);
+  left:53px;
+  top:5px;
+  box-shadow:
+    0 0 80px rgba(255,255,255,.05);
+}
+
+.head:after{
+  content:"";
+  position:absolute;
+  width:120px;
+  height:62px;
+  top:-13px;
+  left:-8px;
+  border-radius:55% 55% 20% 20%;
+  background:#161713;
+}
+
+.body{
+  position:absolute;
+  left:20px;
+  top:115px;
+  width:170px;
+  height:280px;
+  border-radius:80px 80px 20px 20px;
+  background:
+    linear-gradient(
+      100deg,
+      #242620,
+      #11130f 50%,
+      #34362d
+    );
+}
+
+.shoulder{
+  position:absolute;
+  top:122px;
+  width:220px;
+  height:90px;
+  left:-5px;
+  border-radius:100px 100px 0 0;
+  background:#1b1d17;
+}
+
+.light{
+  position:absolute;
+  width:2px;
+  height:390px;
+  background:linear-gradient(
+    transparent,
+    rgba(184,255,61,.7),
+    transparent
+  );
+  left:27%;
+  top:90px;
+  transform:rotate(13deg);
+  opacity:.7;
+}
+
+.stage-top{
+  position:absolute;
+  left:26px;
+  top:24px;
+  right:26px;
+  display:flex;
+  justify-content:space-between;
+}
+
+.stage-label{
+  font:9px "DM Mono",monospace;
+  color:#777;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+
+.stage-index{
+  font:9px "DM Mono",monospace;
+  color:#4d4d49;
+}
+
+.stage-bottom{
+  position:absolute;
+  bottom:25px;
+  left:26px;
+  right:26px;
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+}
+
+.character-id{
+  font-family:Georgia,serif;
+  font-size:38px;
+  letter-spacing:-.04em;
+}
+
+.character-id small{
+  display:block;
+  font:9px "DM Mono",monospace;
+  color:#777;
+  letter-spacing:.15em;
+  text-transform:uppercase;
+  margin-bottom:7px;
+}
+
+.capture{
+  border:1px solid var(--line);
+  background:rgba(9,10,9,.8);
+  color:#aaa;
+  padding:10px 14px;
+  font:9px "DM Mono",monospace;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+/* =====================================================
+   RIGHT INSPECTOR
+===================================================== */
+
+.inspector{
+  padding:23px;
+}
+
+.field{
+  padding:18px 0;
+  border-bottom:1px solid rgba(241,239,232,.08);
+}
+
+.field label{
+  display:block;
+  margin-bottom:9px;
+  color:#555;
+  font:8px "DM Mono",monospace;
+  letter-spacing:.15em;
+  text-transform:uppercase;
+}
+
+.field input,
+.field textarea,
+.field select{
+  width:100%;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:var(--paper);
+  font-size:12px;
+}
+
+.field textarea{
+  min-height:80px;
+  resize:vertical;
+  line-height:1.55;
+}
+
+.field select{
+  border:1px solid var(--line);
+  padding:10px;
+  color:#aaa;
+}
+
+.traits{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.trait{
+  border:1px solid var(--line);
+  padding:7px 9px;
+  color:#888;
+  font:8px "DM Mono",monospace;
+  text-transform:uppercase;
+}
+
+.trait.active{
+  color:var(--paper);
+  border-color:#777;
+}
+
+.continuity-box{
+  margin-top:25px;
+  border:1px solid var(--line);
+  padding:17px;
+}
+
+.continuity-top{
+  display:flex;
+  justify-content:space-between;
+  font:8px "DM Mono",monospace;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.locked{
+  color:var(--signal);
+}
+
+.continuity-box p{
+  color:#666;
+  font-size:10px;
+  line-height:1.55;
+  margin:12px 0 0;
+}
+
+/* =====================================================
+   ACTION BAR
+===================================================== */
+
+.action{
+  position:sticky;
+  bottom:0;
+  z-index:20;
+  min-height:82px;
+  border-top:1px solid var(--line);
+  background:rgba(9,10,9,.95);
+  backdrop-filter:blur(14px);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 42px;
+}
+
+.stats{
+  display:flex;
+  gap:34px;
+}
+
+.stat{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+
+.stat-label{
+  font:8px "DM Mono",monospace;
+  color:#4f4f4b;
+  text-transform:uppercase;
+  letter-spacing:.14em;
+}
+
+.stat-value{
+  font:10px "DM Mono",monospace;
+  color:#aaa;
+}
+
+.primary{
+  border:1px solid var(--signal);
+  background:var(--signal);
+  color:#090a09;
+  padding:14px 24px;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media(max-width:1100px){
+
+  .casting{
+    grid-template-columns:225px minmax(0,1fr);
+  }
+
+  .casting .panel:last-child{
+    display:none;
+  }
+
+}
+
+@media(max-width:760px){
+
+  .shell{
+    display:block;
+  }
+
+  .rail{
+    display:none;
+  }
+
+  main{
+    margin-left:0;
+  }
+
+  .topbar{
+    padding:0 20px;
+  }
+
+  .hero{
+    padding:54px 24px;
+  }
+
+  .hero h1{
+    font-size:66px;
+  }
+
+  .hero-copy{
+    margin-left:0;
+  }
+
+  .casting{
+    display:block;
+  }
+
+  .panel{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .character-stage{
+    min-height:650px;
+  }
+
+  .stats{
+    display:none;
+  }
+
+  .action{
+    justify-content:flex-end;
+    padding:0 20px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="shell">
+
+<!-- =====================================================
+     RAIL
+===================================================== -->
+
+<aside class="rail">
+
+  <div class="brand">CF</div>
+
+  <nav class="rail-nav">
+    <button class="rail-btn">01</button>
+    <button class="rail-btn">02</button>
+    <button class="rail-btn active">03</button>
+    <button class="rail-btn">04</button>
+    <button class="rail-btn">05</button>
+    <button class="rail-btn">06</button>
+    <button class="rail-btn">07</button>
+  </nav>
+
+  <div class="rail-bottom">
+    <button class="rail-btn">◎</button>
+  </div>
+
+</aside>
+
+
+<main>
+
+<!-- =====================================================
+     TOP BAR
+===================================================== -->
+
+<header class="topbar">
+
+  <div class="crumb">
+    CINEFORGE / STUDIO /
+    <strong>CHARACTERS</strong>
+  </div>
+
+  <div class="top-right">
+
+    <div class="status">
+      <i></i>
+      CASTING ROOM · READY
+    </div>
+
+    <button class="preview">
+      Preview
+    </button>
+
+  </div>
+
+</header>
+
+
+<!-- =====================================================
+     HERO
+===================================================== -->
+
+<section class="hero">
+
+  <div class="hero-index">
+    PRODUCTION / 03
+  </div>
+
+  <div class="eyebrow">
+    Character department
+  </div>
+
+  <h1>
+    The
+    <span>Casting Room.</span>
+  </h1>
+
+  <div class="hero-copy">
+    Build characters that belong to the production, not isolated
+    generations. Appearance, voice, personality, wardrobe and
+    continuity travel with the character from scene to scene
+    and episode to episode.
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     CASTING ROOM
+===================================================== -->
+
+<section class="casting">
+
+
+<!-- =====================================================
+     CHARACTER LIST
+===================================================== -->
+
+<aside class="panel">
+
+  <div class="panel-head">
+
+    <div class="panel-title">
+      Cast
+    </div>
+
+    <div class="panel-count">
+      04
+    </div>
+
+  </div>
+
+
+  <div class="cast-list">
+
+    <div class="section-label">
+      Principal characters
+    </div>
+
+
+    <div class="character active" data-character="Mara">
+
+      <div class="character-top">
+        <div class="character-name">
+          Mara Vale
+        </div>
+
+        <div class="character-number">
+          01
+        </div>
+      </div>
+
+      <div class="character-role">
+        Investigative journalist
+      </div>
+
+      <div class="character-state">
+        Locked · Principal
+      </div>
+
+    </div>
+
+
+    <div class="character" data-character="Elias">
+
+      <div class="character-top">
+        <div class="character-name">
+          Elias Ward
+        </div>
+
+        <div class="character-number">
+          02
+        </div>
+      </div>
+
+      <div class="character-role">
+        Systems architect
+      </div>
+
+      <div class="character-state">
+        Locked · Principal
+      </div>
+
+    </div>
+
+
+    <div class="character" data-character="Director">
+
+      <div class="character-top">
+        <div class="character-name">
+          Director Kade
+        </div>
+
+        <div class="character-number">
+          03
+        </div>
+      </div>
+
+      <div class="character-role">
+        Government official
+      </div>
+
+      <div class="character-state">
+        Draft · Supporting
+      </div>
+
+    </div>
+
+
+    <div class="character" data-character="Nia">
+
+      <div class="character-top">
+        <div class="character-name">
+          Nia Vale
+        </div>
+
+        <div class="character-number">
+          04
+        </div>
+      </div>
+
+      <div class="character-role">
+        Mara's sister
+      </div>
+
+      <div class="character-state">
+        Draft · Supporting
+      </div>
+
+    </div>
+
+
+    <div style="margin-top:35px">
+
+      <button
+        id="addCharacter"
+        class="capture"
+        style="width:100%"
+      >
+        + Add character
+      </button>
+
+    </div>
+
+  </div>
+
+</aside>
+
+
+<!-- =====================================================
+     CHARACTER STAGE
+===================================================== -->
+
+<section class="panel">
+
+  <div class="panel-head">
+
+    <div class="panel-title">
+      Character stage
+    </div>
+
+    <div class="panel-count">
+      MARA / 01
+    </div>
+
+  </div>
+
+
+  <div class="character-stage">
+
+    <div class="stage-grid"></div>
+
+    <div class="stage-ring"></div>
+
+    <div class="light"></div>
+
+
+    <div class="stage-top">
+
+      <div class="stage-label">
+        Character reference
+      </div>
+
+      <div class="stage-index">
+        FRONT · NEUTRAL
+      </div>
+
+    </div>
+
+
+    <div class="character-silhouette">
+
+      <div class="head"></div>
+
+      <div class="shoulder"></div>
+
+      <div class="body"></div>
+
+    </div>
+
+
+    <div class="stage-bottom">
+
+      <div class="character-id">
+
+        <small>Principal character</small>
+
+        Mara Vale
+
+      </div>
+
+      <button class="capture">
+        Capture reference
+      </button>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     INSPECTOR
+===================================================== -->
+
+<aside class="panel">
+
+  <div class="panel-head">
+
+    <div class="panel-title">
+      Character profile
+    </div>
+
+    <div class="panel-count">
+      03
+    </div>
+
+  </div>
+
+
+  <div class="inspector">
+
+
+    <div class="field">
+
+      <label>Name</label>
+
+      <input
+        id="characterName"
+        value="Mara Vale"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>Role</label>
+
+      <input
+        value="Investigative journalist"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>Character brief</label>
+
+      <textarea>Relentless, observant and emotionally controlled. Mara follows evidence long after everyone else has accepted the official explanation.</textarea>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>Voice</label>
+
+      <select>
+        <option>CF — Mara / Natural</option>
+        <option>CF — Mara / Documentary</option>
+        <option>CF — Mara / Dramatic</option>
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>Age range</label>
+
+      <select>
+        <option>30–35</option>
+        <option>35–40</option>
+        <option>40–45</option>
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>Character traits</label>
+
+      <div class="traits">
+
+        <div class="trait active">Observant</div>
+        <div class="trait active">Relentless</div>
+        <div class="trait active">Controlled</div>
+        <div class="trait">Impulsive</div>
+        <div class="trait">Warm</div>
+        <div class="trait">Cynical</div>
+
+      </div>
+
+    </div>
+
+
+    <div class="continuity-box">
+
+      <div class="continuity-top">
+
+        <span>Visual continuity</span>
+
+        <span class="locked">
+          LOCKED
+        </span>
+
+      </div>
+
+      <p>
+        This character identity is inherited by scenes,
+        episodes and future productions using Mara Vale.
+        Changes should be deliberate.
+      </p>
+
+    </div>
+
+
+  </div>
+
+</aside>
+
+</section>
+
+
+<!-- =====================================================
+     ACTION
+===================================================== -->
+
+<footer class="action">
+
+  <div class="stats">
+
+    <div class="stat">
+      <span class="stat-label">Characters</span>
+      <span class="stat-value">04</span>
+    </div>
+
+    <div class="stat">
+      <span class="stat-label">Principal</span>
+      <span class="stat-value">02</span>
+    </div>
+
+    <div class="stat">
+      <span class="stat-label">Voice</span>
+      <span class="stat-value">MARA / NATURAL</span>
+    </div>
+
+    <div class="stat">
+      <span class="stat-label">Continuity</span>
+      <span class="stat-value">LOCKED</span>
+    </div>
+
+  </div>
+
+
+  <button
+    id="saveCharacter"
+    class="primary"
+  >
+    Save character →
+  </button>
+
+</footer>
+
+</main>
+
+</div>
+
+
+<script>
+
+/* =====================================================
+   CHARACTER SELECTION
+===================================================== */
+
+const characters =
+  document.querySelectorAll(".character");
+
+const characterName =
+  document.getElementById("characterName");
+
+const names = {
+  Mara:"Mara Vale",
+  Elias:"Elias Ward",
+  Director:"Director Kade",
+  Nia:"Nia Vale"
+};
+
+characters.forEach(character => {
+
+  character.addEventListener("click", () => {
+
+    characters.forEach(item =>
+      item.classList.remove("active")
+    );
+
+    character.classList.add("active");
+
+    const id = character.dataset.character;
+
+    characterName.value = names[id] || id;
+
+    document.querySelector(".panel-count").textContent =
+      id.toUpperCase() + " / 01";
+
+  });
+
+});
+
+
+/* =====================================================
+   TRAITS
+===================================================== */
+
+document.querySelectorAll(".trait").forEach(trait => {
+
+  trait.addEventListener("click", () => {
+    trait.classList.toggle("active");
+  });
+
+});
+
+
+/* =====================================================
+   ADD CHARACTER
+===================================================== */
+
+document
+  .getElementById("addCharacter")
+  .addEventListener("click", function(){
+
+    this.textContent = "Character slot created";
+
+    setTimeout(() => {
+      this.textContent = "+ Add character";
+    },1000);
+
+  });
+
+
+/* =====================================================
+   SAVE CHARACTER
+   TEMPORARY VISUAL HANDLER.
+   REAL ENGINE WILL BE CONNECTED AFTER PAGE SYSTEM
+   DESIGN IS COMPLETE.
+===================================================== */
+
+document
+  .getElementById("saveCharacter")
+  .addEventListener("click", function(){
+
+    this.textContent = "Saving character…";
+
+    setTimeout(() => {
+
+      this.textContent = "Character saved ✓";
+
+    },1000);
+
+  });
+
+
+/* =====================================================
+   RAIL
+===================================================== */
+
+document.querySelectorAll(".rail-btn").forEach(btn => {
+
+  btn.addEventListener("click", () => {
+
+    document.querySelectorAll(".rail-btn")
+      .forEach(item => item.classList.remove("active"));
+
+    btn.classList.add("active");
+
+  });
+
+});
+
+</script>
+
+</body>
+</html>

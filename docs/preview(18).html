@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cineforge — The Cutting Room</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#080908;
+  --panel:#0d0f0e;
+  --panel2:#111312;
+  --line:rgba(255,255,255,.09);
+  --line2:rgba(255,255,255,.15);
+  --text:#f1f2ed;
+  --muted:#929690;
+  --dim:#626761;
+  --acid:#d7ff42;
+  --cream:#e9e9df;
+  --danger:#ff766b;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+html,
+body{
+  margin:0;
+  min-height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter,Arial,sans-serif;
+}
+
+body{
+  overflow-x:hidden;
+}
+
+button,
+textarea{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+.app{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:74px 1fr;
+}
+
+/* --------------------------------------------------
+   RAIL
+-------------------------------------------------- */
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:74px;
+  border-right:1px solid var(--line);
+  background:#070807;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  z-index:50;
+}
+
+.brand{
+  width:74px;
+  height:82px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-bottom:1px solid var(--line);
+}
+
+.brand-mark{
+  width:27px;
+  height:27px;
+  border:2px solid var(--text);
+  border-radius:50%;
+  position:relative;
+}
+
+.brand-mark:after{
+  content:"";
+  position:absolute;
+  width:7px;
+  height:7px;
+  background:var(--acid);
+  border-radius:50%;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+}
+
+.rail-items{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding-top:24px;
+}
+
+.rail-btn{
+  width:42px;
+  height:42px;
+  border:1px solid transparent;
+  background:transparent;
+  color:var(--dim);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:8px;
+  transition:.2s ease;
+}
+
+.rail-btn:hover{
+  color:var(--text);
+  border-color:var(--line);
+  background:rgba(255,255,255,.025);
+}
+
+.rail-btn.active{
+  color:var(--text);
+  border-color:var(--line2);
+  background:rgba(255,255,255,.045);
+}
+
+.rail-icon{
+  width:17px;
+  height:17px;
+  position:relative;
+}
+
+.icon-grid{
+  display:grid;
+  grid-template-columns:repeat(2,6px);
+  gap:3px;
+}
+
+.icon-grid i{
+  width:6px;
+  height:6px;
+  border:1px solid currentColor;
+}
+
+.icon-film{
+  border:1px solid currentColor;
+  border-radius:2px;
+}
+
+.icon-film:before,
+.icon-film:after{
+  content:"";
+  position:absolute;
+  left:3px;
+  right:3px;
+  height:1px;
+  background:currentColor;
+}
+
+.icon-film:before{top:5px}
+.icon-film:after{bottom:5px}
+
+.icon-cut{
+  border-left:1px solid currentColor;
+  transform:rotate(32deg);
+}
+
+.icon-cut:before,
+.icon-cut:after{
+  content:"";
+  position:absolute;
+  width:12px;
+  height:1px;
+  background:currentColor;
+  left:0;
+}
+
+.icon-cut:before{top:4px}
+.icon-cut:after{top:11px}
+
+.icon-box{
+  border:1px solid currentColor;
+}
+
+.icon-box:after{
+  content:"";
+  position:absolute;
+  inset:4px;
+  border:1px solid currentColor;
+}
+
+.icon-user{
+  border:1px solid currentColor;
+  border-radius:50%;
+}
+
+.rail-bottom{
+  margin-top:auto;
+  padding-bottom:22px;
+}
+
+/* --------------------------------------------------
+   MAIN
+-------------------------------------------------- */
+
+.main{
+  margin-left:74px;
+  min-width:0;
+}
+
+.topline{
+  height:82px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 42px;
+}
+
+.crumb{
+  font-family:"DM Mono",monospace;
+  font-size:10px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--dim);
+}
+
+.crumb span{
+  color:var(--muted);
+}
+
+.top-actions{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.live{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  color:var(--dim);
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.live-dot{
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+.profile{
+  width:30px;
+  height:30px;
+  border:1px solid var(--line2);
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--muted);
+  font-size:10px;
+}
+
+/* --------------------------------------------------
+   HEADER
+-------------------------------------------------- */
+
+.hero{
+  padding:72px 7vw 48px;
+  border-bottom:1px solid var(--line);
+  position:relative;
+  overflow:hidden;
+}
+
+.hero:after{
+  content:"TRAILER / CUTTING ROOM";
+  position:absolute;
+  right:7vw;
+  top:78px;
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  letter-spacing:.16em;
+  color:rgba(255,255,255,.18);
+}
+
+.eyebrow{
+  font-family:"DM Mono",monospace;
+  font-size:10px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--acid);
+  margin-bottom:25px;
+}
+
+.hero h1{
+  margin:0;
+  font-family:Manrope,sans-serif;
+  font-size:clamp(64px,9vw,142px);
+  line-height:.82;
+  letter-spacing:-.075em;
+  font-weight:700;
+  max-width:1000px;
+}
+
+.hero h1 em{
+  font-family:Georgia,serif;
+  font-weight:400;
+  font-style:italic;
+  letter-spacing:-.07em;
+}
+
+.hero-copy{
+  max-width:590px;
+  margin-top:40px;
+  color:var(--muted);
+  font-size:15px;
+  line-height:1.7;
+}
+
+.hero-meta{
+  display:flex;
+  gap:36px;
+  margin-top:46px;
+}
+
+.meta-item{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.meta-label{
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  color:var(--dim);
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+
+.meta-value{
+  font-size:12px;
+  color:var(--cream);
+}
+
+/* --------------------------------------------------
+   CUTTING ROOM
+-------------------------------------------------- */
+
+.workspace{
+  display:grid;
+  grid-template-columns:290px minmax(0,1fr) 300px;
+  min-height:700px;
+}
+
+.column{
+  min-width:0;
+  border-right:1px solid var(--line);
+}
+
+.column:last-child{
+  border-right:0;
+}
+
+.column-head{
+  height:65px;
+  border-bottom:1px solid var(--line);
+  padding:0 25px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.column-title{
+  font-family:"DM Mono",monospace;
+  text-transform:uppercase;
+  letter-spacing:.13em;
+  font-size:9px;
+  color:var(--muted);
+}
+
+.index{
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:9px;
+}
+
+/* LEFT */
+
+.left-content{
+  padding:28px 25px 120px;
+}
+
+.field{
+  margin-bottom:30px;
+}
+
+.field-label{
+  display:block;
+  margin-bottom:10px;
+  color:var(--dim);
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+
+textarea{
+  width:100%;
+  min-height:115px;
+  resize:vertical;
+  border:0;
+  border-bottom:1px solid var(--line2);
+  background:transparent;
+  color:var(--text);
+  outline:0;
+  padding:0 0 14px;
+  font-size:14px;
+  line-height:1.65;
+}
+
+textarea:focus{
+  border-color:var(--acid);
+}
+
+.choice-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+}
+
+.choice{
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--muted);
+  padding:9px 11px;
+  font-size:10px;
+  transition:.2s;
+}
+
+.choice:hover{
+  border-color:var(--line2);
+  color:var(--text);
+}
+
+.choice.active{
+  border-color:var(--acid);
+  color:var(--text);
+  background:rgba(215,255,66,.055);
+}
+
+.length-row{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:5px;
+}
+
+.length{
+  height:43px;
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--muted);
+  font-family:"DM Mono",monospace;
+  font-size:10px;
+}
+
+.length.active{
+  border-color:var(--acid);
+  color:var(--acid);
+}
+
+.divider{
+  height:1px;
+  background:var(--line);
+  margin:35px 0;
+}
+
+.beat-list{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+
+.beat{
+  display:grid;
+  grid-template-columns:30px 1fr;
+  gap:12px;
+  padding:13px 0;
+  border-bottom:1px solid var(--line);
+}
+
+.beat-num{
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  color:var(--dim);
+}
+
+.beat-name{
+  font-size:11px;
+  color:var(--muted);
+}
+
+.beat-state{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  color:var(--dim);
+  margin-top:4px;
+}
+
+/* CENTER */
+
+.center{
+  background:
+    radial-gradient(circle at 50% 25%,rgba(215,255,66,.045),transparent 35%),
+    #090a09;
+}
+
+.center-content{
+  padding:38px 42px 140px;
+}
+
+.preview{
+  position:relative;
+  aspect-ratio:16/8.7;
+  border:1px solid var(--line);
+  background:
+    linear-gradient(120deg,rgba(255,255,255,.025),transparent 40%),
+    radial-gradient(circle at 70% 50%,rgba(255,255,255,.06),transparent 25%),
+    #101210;
+  overflow:hidden;
+}
+
+.preview-grid{
+  position:absolute;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+  background-size:50px 50px;
+  opacity:.35;
+}
+
+.preview-glow{
+  position:absolute;
+  width:46%;
+  height:70%;
+  border-radius:50%;
+  background:rgba(215,255,66,.045);
+  filter:blur(50px);
+  left:28%;
+  top:15%;
+}
+
+.preview-copy{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  text-align:center;
+}
+
+.preview-mark{
+  width:46px;
+  height:46px;
+  border:1px solid rgba(255,255,255,.28);
+  border-radius:50%;
+  margin-bottom:17px;
+  position:relative;
+}
+
+.preview-mark:after{
+  content:"";
+  position:absolute;
+  width:7px;
+  height:7px;
+  background:var(--acid);
+  border-radius:50%;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+}
+
+.preview-copy strong{
+  font-family:Manrope,sans-serif;
+  font-size:13px;
+  font-weight:500;
+}
+
+.preview-copy span{
+  margin-top:7px;
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:8px;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+
+.frame-label{
+  position:absolute;
+  top:15px;
+  left:15px;
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  letter-spacing:.12em;
+  color:rgba(255,255,255,.4);
+}
+
+.frame-time{
+  position:absolute;
+  right:15px;
+  bottom:15px;
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  color:rgba(255,255,255,.4);
+}
+
+.timeline{
+  margin-top:24px;
+}
+
+.timeline-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
+
+.timeline-head span{
+  font-family:"DM Mono",monospace;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  font-size:8px;
+  color:var(--dim);
+}
+
+.timeline-track{
+  height:70px;
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  display:flex;
+  gap:3px;
+  padding:9px 0;
+}
+
+.timeline-shot{
+  flex:1;
+  min-width:0;
+  border:1px solid var(--line);
+  background:#131513;
+  position:relative;
+  overflow:hidden;
+}
+
+.timeline-shot:nth-child(2),
+.timeline-shot:nth-child(5){
+  background:#191b18;
+}
+
+.timeline-shot:nth-child(3){
+  background:#101412;
+}
+
+.timeline-shot:after{
+  content:"";
+  position:absolute;
+  inset:50% 0 auto;
+  height:1px;
+  background:rgba(255,255,255,.06);
+}
+
+.timeline-shot span{
+  position:absolute;
+  bottom:6px;
+  left:6px;
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  color:rgba(255,255,255,.35);
+}
+
+.cuts{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:20px;
+  margin-top:40px;
+}
+
+.cut-stat{
+  border-top:1px solid var(--line);
+  padding-top:13px;
+}
+
+.cut-stat label{
+  display:block;
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  margin-bottom:7px;
+}
+
+.cut-stat strong{
+  font-family:Manrope,sans-serif;
+  font-size:17px;
+  font-weight:500;
+}
+
+/* RIGHT */
+
+.right-content{
+  padding:28px 25px 120px;
+}
+
+.inspector-section{
+  padding-bottom:26px;
+  margin-bottom:26px;
+  border-bottom:1px solid var(--line);
+}
+
+.inspector-section:last-child{
+  border-bottom:0;
+}
+
+.inspector-label{
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  color:var(--dim);
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  margin-bottom:17px;
+}
+
+.readout{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:11px 0;
+  border-bottom:1px solid var(--line);
+}
+
+.readout:last-child{
+  border-bottom:0;
+}
+
+.readout span{
+  color:var(--muted);
+  font-size:11px;
+}
+
+.readout strong{
+  color:var(--cream);
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  font-weight:400;
+}
+
+.energy{
+  display:flex;
+  align-items:flex-end;
+  height:80px;
+  gap:3px;
+  margin-top:10px;
+}
+
+.energy i{
+  flex:1;
+  background:rgba(215,255,66,.45);
+  min-height:5px;
+}
+
+.energy i:nth-child(1){height:20%}
+.energy i:nth-child(2){height:34%}
+.energy i:nth-child(3){height:28%}
+.energy i:nth-child(4){height:55%}
+.energy i:nth-child(5){height:38%}
+.energy i:nth-child(6){height:75%}
+.energy i:nth-child(7){height:48%}
+.energy i:nth-child(8){height:90%}
+.energy i:nth-child(9){height:64%}
+.energy i:nth-child(10){height:42%}
+.energy i:nth-child(11){height:72%}
+.energy i:nth-child(12){height:35%}
+.energy i:nth-child(13){height:52%}
+.energy i:nth-child(14){height:25%}
+
+/* --------------------------------------------------
+   ACTION
+-------------------------------------------------- */
+
+.actionbar{
+  position:fixed;
+  left:74px;
+  right:0;
+  bottom:0;
+  height:82px;
+  border-top:1px solid var(--line2);
+  background:rgba(8,9,8,.94);
+  backdrop-filter:blur(18px);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 42px;
+  z-index:40;
+}
+
+.production-readout{
+  display:flex;
+  gap:28px;
+}
+
+.production-readout div{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.production-readout label{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  color:var(--dim);
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.production-readout span{
+  font-size:11px;
+  color:var(--muted);
+}
+
+.action-buttons{
+  display:flex;
+  gap:10px;
+}
+
+.reset{
+  height:43px;
+  padding:0 19px;
+  border:1px solid var(--line2);
+  background:transparent;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.reset:hover{
+  color:var(--text);
+}
+
+.create{
+  height:43px;
+  padding:0 25px;
+  border:1px solid var(--acid);
+  background:var(--acid);
+  color:#090a08;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.02em;
+  transition:.2s;
+}
+
+.create:hover{
+  transform:translateY(-1px);
+  box-shadow:0 8px 30px rgba(215,255,66,.12);
+}
+
+.create:disabled{
+  opacity:.45;
+  cursor:default;
+  transform:none;
+}
+
+/* --------------------------------------------------
+   STATUS OVERLAY
+-------------------------------------------------- */
+
+.status{
+  position:fixed;
+  inset:0;
+  background:rgba(5,6,5,.78);
+  backdrop-filter:blur(10px);
+  z-index:100;
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+
+.status.show{
+  display:flex;
+}
+
+.status-panel{
+  width:min(620px,calc(100vw - 40px));
+  border:1px solid var(--line2);
+  background:#0c0e0c;
+  padding:38px;
+}
+
+.status-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:40px;
+}
+
+.status-kicker{
+  color:var(--acid);
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  letter-spacing:.15em;
+  text-transform:uppercase;
+}
+
+.status-number{
+  font-family:"DM Mono",monospace;
+  font-size:10px;
+  color:var(--dim);
+}
+
+.status-title{
+  font-family:Manrope,sans-serif;
+  font-size:34px;
+  letter-spacing:-.04em;
+  margin-bottom:10px;
+}
+
+.status-copy{
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.6;
+  margin-bottom:35px;
+}
+
+.progress{
+  height:2px;
+  background:var(--line);
+  overflow:hidden;
+}
+
+.progress-bar{
+  width:0%;
+  height:100%;
+  background:var(--acid);
+  transition:width .6s ease;
+}
+
+.stage-list{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-top:18px;
+}
+
+.stage{
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--dim);
+}
+
+.stage.active{
+  color:var(--acid);
+}
+
+.close-status{
+  margin-top:35px;
+  width:100%;
+  height:40px;
+  border:1px solid var(--line2);
+  background:transparent;
+  color:var(--muted);
+  font-size:10px;
+}
+
+/* --------------------------------------------------
+   RESPONSIVE
+-------------------------------------------------- */
+
+@media(max-width:1100px){
+  .workspace{
+    grid-template-columns:250px minmax(0,1fr);
+  }
+
+  .right{
+    display:none;
+  }
+}
+
+@media(max-width:780px){
+  .app{
+    display:block;
+  }
+
+  .rail{
+    display:none;
+  }
+
+  .main{
+    margin-left:0;
+  }
+
+  .topline{
+    padding:0 20px;
+  }
+
+  .hero{
+    padding:55px 25px 40px;
+  }
+
+  .hero:after{
+    display:none;
+  }
+
+  .hero h1{
+    font-size:64px;
+  }
+
+  .workspace{
+    display:block;
+  }
+
+  .column{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .center{
+    min-height:500px;
+  }
+
+  .center-content{
+    padding:25px;
+  }
+
+  .left-content{
+    padding-bottom:40px;
+  }
+
+  .actionbar{
+    left:0;
+    padding:0 18px;
+    height:72px;
+  }
+
+  .production-readout{
+    display:none;
+  }
+
+  .create{
+    padding:0 20px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <!-- RAIL -->
+  <aside class="rail">
+
+    <div class="brand">
+      <div class="brand-mark"></div>
+    </div>
+
+    <div class="rail-items">
+
+      <button class="rail-btn" title="Create Anything">
+        <div class="icon-grid">
+          <i></i><i></i><i></i><i></i>
+        </div>
+      </button>
+
+      <button class="rail-btn active" title="Create">
+        <div class="icon-film"></div>
+      </button>
+
+      <button class="rail-btn" title="Storyboard">
+        <div class="icon-cut"></div>
+      </button>
+
+      <button class="rail-btn" title="Production">
+        <div class="icon-box"></div>
+      </button>
+
+      <button class="rail-btn" title="Characters">
+        <div class="icon-user"></div>
+      </button>
+
+    </div>
+
+    <div class="rail-bottom">
+      <button class="rail-btn" title="Account">
+        <div class="icon-user"></div>
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <div class="topline">
+      <div class="crumb">
+        CINEFORGE / <span>STUDIO / CUTTING ROOM</span>
+      </div>
+
+      <div class="top-actions">
+        <div class="live">
+          <i class="live-dot"></i>
+          production system
+        </div>
+
+        <div class="profile">CM</div>
+      </div>
+    </div>
+
+
+    <!-- HERO -->
+    <section class="hero">
+
+      <div class="eyebrow">Trailer production / 03</div>
+
+      <h1>
+        The<br>
+        Cutting <em>Room.</em>
+      </h1>
+
+      <p class="hero-copy">
+        A trailer is not a shorter film.
+        It is a controlled sequence of anticipation —
+        the image, the silence, the reveal, the impact.
+        Build the cut before the frames are rendered.
+      </p>
+
+      <div class="hero-meta">
+
+        <div class="meta-item">
+          <span class="meta-label">Format</span>
+          <span class="meta-value">Trailer</span>
+        </div>
+
+        <div class="meta-item">
+          <span class="meta-label">Cut</span>
+          <span class="meta-value" id="heroType">Teaser</span>
+        </div>
+
+        <div class="meta-item">
+          <span class="meta-label">Duration</span>
+          <span class="meta-value" id="heroDuration">30 sec</span>
+        </div>
+
+        <div class="meta-item">
+          <span class="meta-label">Status</span>
+          <span class="meta-value">Blueprint</span>
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- WORKSPACE -->
+    <section class="workspace">
+
+      <!-- LEFT -->
+      <aside class="column left">
+
+        <div class="column-head">
+          <span class="column-title">01 / Direction</span>
+          <span class="index">BRIEF</span>
+        </div>
+
+        <div class="left-content">
+
+          <div class="field">
+
+            <label class="field-label">
+              What's it for?
+            </label>
+
+            <textarea id="subject">A sci-fi heist on a derelict space station.</textarea>
+
+          </div>
+
+
+          <div class="field">
+
+            <label class="field-label">
+              Trailer type
+            </label>
+
+            <div class="choice-grid">
+
+              <button class="choice active" data-type="Teaser">
+                Teaser
+              </button>
+
+              <button class="choice" data-type="Theatrical">
+                Theatrical
+              </button>
+
+              <button class="choice" data-type="Festival">
+                Festival
+              </button>
+
+              <button class="choice" data-type="Announcement">
+                Announcement
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <div class="field">
+
+            <label class="field-label">
+              Length
+            </label>
+
+            <div class="length-row">
+
+              <button class="length" data-length="15">
+                15s
+              </button>
+
+              <button class="length active" data-length="30">
+                30s
+              </button>
+
+              <button class="length" data-length="60">
+                60s
+              </button>
+
+              <button class="length" data-length="90">
+                90s
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <div class="divider"></div>
+
+
+          <div class="field">
+
+            <label class="field-label">
+              Music
+            </label>
+
+            <div class="choice-grid">
+
+              <button class="choice">Epic</button>
+              <button class="choice active">Tense</button>
+              <button class="choice">Uplifting</button>
+              <button class="choice">Dark</button>
+              <button class="choice">Playful</button>
+
+            </div>
+
+          </div>
+
+
+          <div class="field">
+
+            <label class="field-label">
+              Voiceover
+            </label>
+
+            <div class="choice-grid">
+
+              <button class="choice">None</button>
+              <button class="choice active">Gravelly</button>
+              <button class="choice">Warm</button>
+              <button class="choice">Whispered</button>
+
+            </div>
+
+          </div>
+
+
+          <div class="divider"></div>
+
+
+          <div class="field">
+
+            <label class="field-label">
+              Narrative beats
+            </label>
+
+            <div class="beat-list">
+
+              <div class="beat">
+                <span class="beat-num">01</span>
+                <div>
+                  <div class="beat-name">The world</div>
+                  <div class="beat-state">ESTABLISH</div>
+                </div>
+              </div>
+
+              <div class="beat">
+                <span class="beat-num">02</span>
+                <div>
+                  <div class="beat-name">The problem</div>
+                  <div class="beat-state">TENSION</div>
+                </div>
+              </div>
+
+              <div class="beat">
+                <span class="beat-num">03</span>
+                <div>
+                  <div class="beat-name">The impossible</div>
+                  <div class="beat-state">ESCALATE</div>
+                </div>
+              </div>
+
+              <div class="beat">
+                <span class="beat-num">04</span>
+                <div>
+                  <div class="beat-name">The reveal</div>
+                  <div class="beat-state">IMPACT</div>
+                </div>
+              </div>
+
+              <div class="beat">
+                <span class="beat-num">05</span>
+                <div>
+                  <div class="beat-name">The title</div>
+                  <div class="beat-state">RELEASE</div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </aside>
+
+
+      <!-- CENTER -->
+      <section class="column center">
+
+        <div class="column-head">
+          <span class="column-title">02 / Cut</span>
+          <span class="index">MASTER TIMELINE</span>
+        </div>
+
+        <div class="center-content">
+
+          <div class="preview">
+
+            <div class="preview-grid"></div>
+            <div class="preview-glow"></div>
+
+            <span class="frame-label">
+              FRAME 001 / BLUEPRINT
+            </span>
+
+            <div class="preview-copy">
+
+              <div class="preview-mark"></div>
+
+              <strong>
+                Trailer sequence preview
+              </strong>
+
+              <span>
+                Frames will appear here
+              </span>
+
+            </div>
+
+            <span class="frame-time">
+              00:00:00:00
+            </span>
+
+          </div>
+
+
+          <div class="timeline">
+
+            <div class="timeline-head">
+
+              <span>Sequence</span>
+
+              <span id="timelineLength">00:30</span>
+
+            </div>
+
+            <div class="timeline-track">
+
+              <div class="timeline-shot">
+                <span>01</span>
+              </div>
+
+              <div class="timeline-shot">
+                <span>02</span>
+              </div>
+
+              <div class="timeline-shot">
+                <span>03</span>
+              </div>
+
+              <div class="timeline-shot">
+                <span>04</span>
+              </div>
+
+              <div class="timeline-shot">
+                <span>05</span>
+              </div>
+
+              <div class="timeline-shot">
+                <span>06</span>
+              </div>
+
+              <div class="timeline-shot">
+                <span>07</span>
+              </div>
+
+              <div class="timeline-shot">
+                <span>08</span>
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div class="cuts">
+
+            <div class="cut-stat">
+              <label>Shots</label>
+              <strong id="shotCount">08</strong>
+            </div>
+
+            <div class="cut-stat">
+              <label>Average shot</label>
+              <strong id="avgShot">3.8s</strong>
+            </div>
+
+            <div class="cut-stat">
+              <label>Structure</label>
+              <strong>5 beats</strong>
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- RIGHT -->
+      <aside class="column right">
+
+        <div class="column-head">
+          <span class="column-title">03 / Sound</span>
+          <span class="index">MIX</span>
+        </div>
+
+        <div class="right-content">
+
+          <div class="inspector-section">
+
+            <div class="inspector-label">
+              Music direction
+            </div>
+
+            <div class="readout">
+              <span>Style</span>
+              <strong id="musicReadout">TENSE</strong>
+            </div>
+
+            <div class="readout">
+              <span>Arc</span>
+              <strong>BUILD / HIT</strong>
+            </div>
+
+            <div class="readout">
+              <span>Sting</span>
+              <strong>ON</strong>
+            </div>
+
+          </div>
+
+
+          <div class="inspector-section">
+
+            <div class="inspector-label">
+              Voice direction
+            </div>
+
+            <div class="readout">
+              <span>Voice</span>
+              <strong id="voiceReadout">GRAVELLY</strong>
+            </div>
+
+            <div class="readout">
+              <span>Placement</span>
+              <strong>BEAT 02</strong>
+            </div>
+
+            <div class="readout">
+              <span>Ending</span>
+              <strong>WHISPER</strong>
+            </div>
+
+          </div>
+
+
+          <div class="inspector-section">
+
+            <div class="inspector-label">
+              Energy map
+            </div>
+
+            <div class="energy">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+
+          </div>
+
+
+          <div class="inspector-section">
+
+            <div class="inspector-label">
+              Delivery
+            </div>
+
+            <div class="readout">
+              <span>Master</span>
+              <strong>1080P</strong>
+            </div>
+
+            <div class="readout">
+              <span>Frame rate</span>
+              <strong>24 FPS</strong>
+            </div>
+
+            <div class="readout">
+              <span>Audio</span>
+              <strong>STEREO</strong>
+            </div>
+
+            <div class="readout">
+              <span>Target</span>
+              <strong>STREAM</strong>
+            </div>
+
+          </div>
+
+        </div>
+
+      </aside>
+
+    </section>
+
+  </main>
+
+</div>
+
+
+<!-- ACTION BAR -->
+
+<div class="actionbar">
+
+  <div class="production-readout">
+
+    <div>
+      <label>Type</label>
+      <span id="bottomType">Teaser</span>
+    </div>
+
+    <div>
+      <label>Length</label>
+      <span id="bottomLength">30 seconds</span>
+    </div>
+
+    <div>
+      <label>Music</label>
+      <span id="bottomMusic">Tense</span>
+    </div>
+
+    <div>
+      <label>Voice</label>
+      <span id="bottomVoice">Gravelly</span>
+    </div>
+
+  </div>
+
+  <div class="action-buttons">
+
+    <button class="reset" id="reset">
+      Reset
+    </button>
+
+    <button class="create" id="create">
+      Cut trailer →
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- TEMPORARY VISUAL PRODUCTION HANDLER -->
+
+<div class="status" id="status">
+
+  <div class="status-panel">
+
+    <div class="status-top">
+
+      <div class="status-kicker">
+        Cineforge / Production
+      </div>
+
+      <div class="status-number" id="progressNumber">
+        00%
+      </div>
+
+    </div>
+
+    <div class="status-title" id="statusTitle">
+      Picking beats
+    </div>
+
+    <div class="status-copy" id="statusCopy">
+      Establishing the trailer rhythm and identifying the moments that carry the cut.
+    </div>
+
+    <div class="progress">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="stage-list">
+
+      <div class="stage active" id="stage1">
+        Picking beats
+      </div>
+
+      <div class="stage" id="stage2">
+        Cutting shots
+      </div>
+
+      <div class="stage" id="stage3">
+        Scoring & mixing
+      </div>
+
+      <div class="stage" id="stage4">
+        Trailer ready
+      </div>
+
+    </div>
+
+    <button class="close-status" id="closeStatus">
+      Close preview
+    </button>
+
+  </div>
+
+</div>
+
+
+<script>
+
+let trailerType = "Teaser";
+let duration = 30;
+let music = "Tense";
+let voice = "Gravelly";
+
+const typeButtons = document.querySelectorAll("[data-type]");
+const lengthButtons = document.querySelectorAll("[data-length]");
+
+function updateReadouts(){
+
+  document.getElementById("heroType").textContent = trailerType;
+  document.getElementById("heroDuration").textContent = duration + " sec";
+
+  document.getElementById("bottomType").textContent = trailerType;
+  document.getElementById("bottomLength").textContent = duration + " seconds";
+
+  document.getElementById("timelineLength").textContent =
+    "00:" + String(duration).padStart(2,"0");
+
+  const avg = duration / 8;
+
+  document.getElementById("avgShot").textContent =
+    avg.toFixed(1) + "s";
+}
+
+
+typeButtons.forEach(button => {
+
+  button.addEventListener("click", () => {
+
+    typeButtons.forEach(b => b.classList.remove("active"));
+
+    button.classList.add("active");
+
+    trailerType = button.dataset.type;
+
+    updateReadouts();
+
+  });
+
+});
+
+
+lengthButtons.forEach(button => {
+
+  button.addEventListener("click", () => {
+
+    lengthButtons.forEach(b => b.classList.remove("active"));
+
+    button.classList.add("active");
+
+    duration = Number(button.dataset.length);
+
+    updateReadouts();
+
+  });
+
+});
+
+
+/* Music */
+
+document.querySelectorAll(".field:nth-of-type(4) .choice").forEach(button => {
+
+  button.addEventListener("click", () => {
+
+    document
+      .querySelectorAll(".field:nth-of-type(4) .choice")
+      .forEach(b => b.classList.remove("active"));
+
+    button.classList.add("active");
+
+    music = button.textContent.trim();
+
+    document.getElementById("musicReadout").textContent =
+      music.toUpperCase();
+
+    document.getElementById("bottomMusic").textContent =
+      music;
+
+  });
+
+});
+
+
+/* Voice */
+
+document.querySelectorAll(".field:nth-of-type(5) .choice").forEach(button => {
+
+  button.addEventListener("click", () => {
+
+    document
+      .querySelectorAll(".field:nth-of-type(5) .choice")
+      .forEach(b => b.classList.remove("active"));
+
+    button.classList.add("active");
+
+    voice = button.textContent.trim();
+
+    document.getElementById("voiceReadout").textContent =
+      voice.toUpperCase();
+
+    document.getElementById("bottomVoice").textContent =
+      voice;
+
+  });
+
+});
+
+
+/* Temporary production preview */
+
+const createButton = document.getElementById("create");
+const resetButton = document.getElementById("reset");
+const status = document.getElementById("status");
+const progressBar = document.getElementById("progressBar");
+const progressNumber = document.getElementById("progressNumber");
+const statusTitle = document.getElementById("statusTitle");
+const statusCopy = document.getElementById("statusCopy");
+
+const stages = [
+  document.getElementById("stage1"),
+  document.getElementById("stage2"),
+  document.getElementById("stage3"),
+  document.getElementById("stage4")
+];
+
+let timer;
+
+createButton.addEventListener("click", () => {
+
+  status.classList.add("show");
+
+  let progress = 0;
+
+  clearInterval(timer);
+
+  timer = setInterval(() => {
+
+    progress += 2;
+
+    progressBar.style.width = progress + "%";
+
+    progressNumber.textContent =
+      String(progress).padStart(2,"0") + "%";
+
+    if(progress < 25){
+
+      statusTitle.textContent = "Picking beats";
+
+      statusCopy.textContent =
+        "Establishing the trailer rhythm and identifying the moments that carry the cut.";
+
+      activateStage(0);
+
+    } else if(progress < 55){
+
+      statusTitle.textContent = "Cutting shots";
+
+      statusCopy.textContent =
+        "Building the visual sequence, pacing the reveals and shaping the trailer arc.";
+
+      activateStage(1);
+
+    } else if(progress < 82){
+
+      statusTitle.textContent = "Scoring & mixing";
+
+      statusCopy.textContent =
+        "Balancing music, voiceover, silence and the final impact of the cut.";
+
+      activateStage(2);
+
+    } else {
+
+      statusTitle.textContent = "Trailer ready";
+
+      statusCopy.textContent =
+        "The visual production blueprint is complete. The real Cineforge engine will take over here.";
+
+      activateStage(3);
+
+    }
+
+    if(progress >= 100){
+
+      clearInterval(timer);
+
+      createButton.textContent = "Trailer ready";
+
+    }
+
+  }, 70);
+
+});
+
+
+function activateStage(index){
+
+  stages.forEach((stage,i) => {
+
+    stage.classList.toggle(
+      "active",
+      i === index
+    );
+
+  });
+
+}
+
+
+document.getElementById("closeStatus")
+  .addEventListener("click", () => {
+
+    status.classList.remove("show");
+
+  });
+
+
+resetButton.addEventListener("click", () => {
+
+  document.getElementById("subject").value =
+    "A sci-fi heist on a derelict space station.";
+
+  trailerType = "Teaser";
+  duration = 30;
+  music = "Tense";
+  voice = "Gravelly";
+
+  typeButtons.forEach(b => {
+    b.classList.toggle(
+      "active",
+      b.dataset.type === trailerType
+    );
+  });
+
+  lengthButtons.forEach(b => {
+    b.classList.toggle(
+      "active",
+      Number(b.dataset.length) === duration
+    );
+  });
+
+  updateReadouts();
+
+});
+
+
+updateReadouts();
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cineforge — Teams</title>
+
+<style>
+:root{
+  --paper:#f4f1ea;
+  --ink:#10100f;
+  --muted:#77736b;
+  --line:#cfc9bd;
+  --acid:#b7ff3c;
+  --soft:#ebe7de;
+  --white:#fbfaf6;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+html{
+  scroll-behavior:smooth;
+}
+
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+  overflow-x:hidden;
+}
+
+button,
+input,
+select{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+.rail{
+  position:fixed;
+  left:0;
+  top:0;
+  bottom:0;
+  width:78px;
+  border-right:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  z-index:20;
+  background:rgba(244,241,234,.94);
+  backdrop-filter:blur(12px);
+}
+
+.logo{
+  width:78px;
+  height:78px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-bottom:1px solid var(--line);
+  font-weight:900;
+  font-size:18px;
+  letter-spacing:-.08em;
+}
+
+.rail-nav{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  padding-top:26px;
+}
+
+.rail-nav a{
+  width:42px;
+  height:42px;
+  border:1px solid transparent;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+  color:var(--muted);
+  font-family:ui-monospace,monospace;
+  font-size:10px;
+  letter-spacing:.08em;
+  transition:.2s;
+}
+
+.rail-nav a:hover{
+  border-color:var(--line);
+  color:var(--ink);
+}
+
+.rail-nav a.active{
+  background:var(--ink);
+  color:var(--paper);
+}
+
+.rail-bottom{
+  margin-top:auto;
+  padding-bottom:22px;
+}
+
+.rail-dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+main{
+  margin-left:78px;
+  min-height:100vh;
+}
+
+.page{
+  width:min(1480px,100%);
+  margin:auto;
+  padding:34px 6vw 150px;
+}
+
+.breadcrumb{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  color:var(--muted);
+  font-family:ui-monospace,monospace;
+  font-size:10px;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+  margin-bottom:60px;
+}
+
+.breadcrumb strong{
+  color:var(--ink);
+}
+
+.hero{
+  display:grid;
+  grid-template-columns:1.4fr .6fr;
+  gap:8vw;
+  border-bottom:1px solid var(--line);
+  padding-bottom:72px;
+}
+
+.eyebrow{
+  font-family:ui-monospace,monospace;
+  font-size:10px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  margin-bottom:22px;
+}
+
+.hero h1{
+  font-family:Georgia,"Times New Roman",serif;
+  font-weight:400;
+  font-size:clamp(68px,9vw,142px);
+  line-height:.82;
+  letter-spacing:-.065em;
+  margin:0;
+  max-width:900px;
+}
+
+.hero h1 em{
+  font-style:italic;
+}
+
+.hero-copy{
+  align-self:end;
+  max-width:420px;
+  color:#555149;
+  font-size:16px;
+  line-height:1.7;
+}
+
+.hero-copy strong{
+  color:var(--ink);
+}
+
+.hero-meta{
+  margin-top:30px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-family:ui-monospace,monospace;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.status{
+  width:8px;
+  height:8px;
+  background:var(--acid);
+  border-radius:50%;
+}
+
+.section{
+  padding:58px 0;
+  border-bottom:1px solid var(--line);
+}
+
+.section-head{
+  display:grid;
+  grid-template-columns:180px 1fr;
+  gap:5vw;
+  margin-bottom:42px;
+}
+
+.section-label{
+  font-family:ui-monospace,monospace;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  color:var(--muted);
+}
+
+.section-title{
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:42px;
+  font-weight:400;
+  letter-spacing:-.04em;
+  margin:0;
+}
+
+.people{
+  border-top:1px solid var(--ink);
+}
+
+.person{
+  display:grid;
+  grid-template-columns:90px 1.2fr 1fr 180px 120px;
+  gap:20px;
+  align-items:center;
+  min-height:92px;
+  border-bottom:1px solid var(--line);
+  transition:.2s;
+}
+
+.person:hover{
+  background:var(--soft);
+}
+
+.person-number{
+  font-family:ui-monospace,monospace;
+  font-size:10px;
+  color:var(--muted);
+}
+
+.person-name{
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:24px;
+  letter-spacing:-.02em;
+}
+
+.person-role{
+  font-size:13px;
+  color:#555149;
+}
+
+.person-department{
+  font-family:ui-monospace,monospace;
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+.person-status{
+  justify-self:end;
+  font-family:ui-monospace,monospace;
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.person-status span{
+  display:inline-block;
+  width:6px;
+  height:6px;
+  background:var(--acid);
+  border-radius:50%;
+  margin-right:6px;
+}
+
+.org-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--ink);
+  border-left:1px solid var(--line);
+}
+
+.org{
+  min-height:190px;
+  border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  padding:24px;
+  position:relative;
+}
+
+.org-index{
+  font-family:ui-monospace,monospace;
+  font-size:9px;
+  color:var(--muted);
+}
+
+.org h3{
+  margin:55px 0 10px;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:26px;
+  font-weight:400;
+}
+
+.org p{
+  margin:0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.6;
+}
+
+.org-count{
+  position:absolute;
+  right:22px;
+  top:22px;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:26px;
+}
+
+.production{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:1px;
+  background:var(--line);
+  border:1px solid var(--line);
+}
+
+.production-block{
+  background:var(--paper);
+  padding:32px;
+  min-height:250px;
+}
+
+.production-block h3{
+  margin:0 0 15px;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:30px;
+  font-weight:400;
+}
+
+.production-block p{
+  max-width:430px;
+  color:var(--muted);
+  line-height:1.7;
+  font-size:13px;
+}
+
+.production-list{
+  margin-top:28px;
+  border-top:1px solid var(--line);
+}
+
+.production-row{
+  display:flex;
+  justify-content:space-between;
+  padding:14px 0;
+  border-bottom:1px solid var(--line);
+  font-size:12px;
+}
+
+.production-row span:last-child{
+  font-family:ui-monospace,monospace;
+  color:var(--muted);
+}
+
+.invite{
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:30px;
+  background:var(--ink);
+  color:var(--paper);
+  padding:34px 38px;
+}
+
+.invite h2{
+  margin:0 0 8px;
+  font-family:Georgia,"Times New Roman",serif;
+  font-weight:400;
+  font-size:34px;
+}
+
+.invite p{
+  margin:0;
+  color:#aaa69d;
+  font-size:13px;
+}
+
+.primary{
+  border:0;
+  background:var(--acid);
+  color:var(--ink);
+  padding:14px 20px;
+  font-family:ui-monospace,monospace;
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.primary:hover{
+  filter:brightness(.94);
+}
+
+.secondary{
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--ink);
+  padding:13px 18px;
+  font-family:ui-monospace,monospace;
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.action-bar{
+  position:fixed;
+  bottom:0;
+  left:78px;
+  right:0;
+  height:72px;
+  border-top:1px solid var(--line);
+  background:rgba(244,241,234,.94);
+  backdrop-filter:blur(14px);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 5vw;
+  z-index:30;
+}
+
+.action-context{
+  display:flex;
+  align-items:center;
+  gap:15px;
+  font-family:ui-monospace,monospace;
+  font-size:9px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+.action-context b{
+  color:var(--ink);
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+}
+
+@media(max-width:1000px){
+
+  .hero{
+    grid-template-columns:1fr;
+  }
+
+  .section-head{
+    grid-template-columns:1fr;
+    gap:15px;
+  }
+
+  .org-grid{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .person{
+    grid-template-columns:50px 1fr 1fr;
+    padding:15px 0;
+  }
+
+  .person-department,
+  .person-status{
+    display:none;
+  }
+}
+
+@media(max-width:700px){
+
+  .rail{
+    width:58px;
+  }
+
+  .logo{
+    width:58px;
+  }
+
+  main{
+    margin-left:58px;
+  }
+
+  .page{
+    padding:25px 24px 130px;
+  }
+
+  .hero{
+    padding-bottom:48px;
+  }
+
+  .hero h1{
+    font-size:68px;
+  }
+
+  .org-grid{
+    grid-template-columns:1fr;
+  }
+
+  .production{
+    grid-template-columns:1fr;
+  }
+
+  .invite{
+    grid-template-columns:1fr;
+  }
+
+  .action-bar{
+    left:58px;
+    padding:0 18px;
+  }
+
+  .action-context{
+    display:none;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<aside class="rail">
+
+  <div class="logo">CF</div>
+
+  <nav class="rail-nav">
+    <a href="#" title="Studio">ST</a>
+    <a href="#" title="Projects">PR</a>
+    <a href="#" title="Productions">PD</a>
+    <a href="#" class="active" title="Teams">TM</a>
+    <a href="#" title="Analytics">AN</a>
+    <a href="#" title="Access">AC</a>
+  </nav>
+
+  <div class="rail-bottom">
+    <div class="rail-dot"></div>
+  </div>
+
+</aside>
+
+<main>
+
+<div class="page">
+
+  <div class="breadcrumb">
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <span>ENTERPRISE</span>
+    <span>/</span>
+    <strong>TEAMS</strong>
+  </div>
+
+  <section class="hero">
+
+    <div>
+      <div class="eyebrow">THE PRODUCTION HOUSE / 01</div>
+
+      <h1>
+        Build the<br>
+        <em>house.</em>
+      </h1>
+    </div>
+
+    <div class="hero-copy">
+
+      <p>
+        Cineforge is built for productions larger than one person.
+        Assemble directors, writers, editors, producers, designers
+        and executives around the same production system.
+      </p>
+
+      <p>
+        <strong>One production. One source of truth.</strong>
+        Every person sees the work they are responsible for.
+      </p>
+
+      <div class="hero-meta">
+        <span class="status"></span>
+        <span>Production House Active</span>
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- PEOPLE -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="section-label">
+        PEOPLE / 02
+      </div>
+
+      <h2 class="section-title">
+        The people behind the work.
+      </h2>
+
+    </div>
+
+    <div class="people">
+
+      <div class="person">
+
+        <div class="person-number">001</div>
+
+        <div class="person-name">
+          Amara Okafor
+        </div>
+
+        <div class="person-role">
+          Executive Producer
+        </div>
+
+        <div class="person-department">
+          Production
+        </div>
+
+        <div class="person-status">
+          <span></span>Active
+        </div>
+
+      </div>
+
+
+      <div class="person">
+
+        <div class="person-number">002</div>
+
+        <div class="person-name">
+          Daniel Mercer
+        </div>
+
+        <div class="person-role">
+          Director
+        </div>
+
+        <div class="person-department">
+          Direction
+        </div>
+
+        <div class="person-status">
+          <span></span>Active
+        </div>
+
+      </div>
+
+
+      <div class="person">
+
+        <div class="person-number">003</div>
+
+        <div class="person-name">
+          Sofia Laurent
+        </div>
+
+        <div class="person-role">
+          Head Writer
+        </div>
+
+        <div class="person-department">
+          Story
+        </div>
+
+        <div class="person-status">
+          <span></span>Active
+        </div>
+
+      </div>
+
+
+      <div class="person">
+
+        <div class="person-number">004</div>
+
+        <div class="person-name">
+          Elias Mensah
+        </div>
+
+        <div class="person-role">
+          Creative Director
+        </div>
+
+        <div class="person-department">
+          Creative
+        </div>
+
+        <div class="person-status">
+          <span></span>Active
+        </div>
+
+      </div>
+
+
+      <div class="person">
+
+        <div class="person-number">005</div>
+
+        <div class="person-name">
+          Maya Chen
+        </div>
+
+        <div class="person-role">
+          Post Production
+        </div>
+
+        <div class="person-department">
+          Editorial
+        </div>
+
+        <div class="person-status">
+          <span></span>Active
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- DEPARTMENTS -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="section-label">
+        DEPARTMENTS / 03
+      </div>
+
+      <h2 class="section-title">
+        Organize the production by craft.
+      </h2>
+
+    </div>
+
+    <div class="org-grid">
+
+      <div class="org">
+
+        <div class="org-index">01</div>
+        <div class="org-count">06</div>
+
+        <h3>Production</h3>
+
+        <p>
+          Producers, coordinators and executives
+          responsible for the production itself.
+        </p>
+
+      </div>
+
+
+      <div class="org">
+
+        <div class="org-index">02</div>
+        <div class="org-count">04</div>
+
+        <h3>Direction</h3>
+
+        <p>
+          Directors and creative leads controlling
+          the visual and narrative language.
+        </p>
+
+      </div>
+
+
+      <div class="org">
+
+        <div class="org-index">03</div>
+        <div class="org-count">05</div>
+
+        <h3>Story</h3>
+
+        <p>
+          Writers, story editors and development
+          working across the narrative system.
+        </p>
+
+      </div>
+
+
+      <div class="org">
+
+        <div class="org-index">04</div>
+        <div class="org-count">03</div>
+
+        <h3>Editorial</h3>
+
+        <p>
+          Editors, finishing artists and post-production
+          specialists preparing final masters.
+        </p>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- PRODUCTIONS -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="section-label">
+        PRODUCTIONS / 04
+      </div>
+
+      <h2 class="section-title">
+        People attached to productions.
+      </h2>
+
+    </div>
+
+    <div class="production">
+
+      <div class="production-block">
+
+        <h3>Empire of Ash</h3>
+
+        <p>
+          Feature production currently in principal
+          generation. The production house owns the
+          complete creative workflow.
+        </p>
+
+        <div class="production-list">
+
+          <div class="production-row">
+            <span>Director</span>
+            <span>Daniel Mercer</span>
+          </div>
+
+          <div class="production-row">
+            <span>Producer</span>
+            <span>Amara Okafor</span>
+          </div>
+
+          <div class="production-row">
+            <span>Editor</span>
+            <span>Maya Chen</span>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="production-block">
+
+        <h3>The Last Horizon</h3>
+
+        <p>
+          Series production with multiple departments
+          working simultaneously across story, visual
+          development and post.
+        </p>
+
+        <div class="production-list">
+
+          <div class="production-row">
+            <span>Showrunner</span>
+            <span>Sofia Laurent</span>
+          </div>
+
+          <div class="production-row">
+            <span>Creative</span>
+            <span>Elias Mensah</span>
+          </div>
+
+          <div class="production-row">
+            <span>Episodes</span>
+            <span>06 / 08</span>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ACCESS -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="section-label">
+        INVITATIONS / 05
+      </div>
+
+      <h2 class="section-title">
+        Bring another craft into the room.
+      </h2>
+
+    </div>
+
+    <div class="invite">
+
+      <div>
+
+        <h2>Invite a collaborator.</h2>
+
+        <p>
+          Add someone to the production house and assign
+          their role, department and access level.
+        </p>
+
+      </div>
+
+      <button class="primary" onclick="inviteMember()">
+        Invite collaborator
+      </button>
+
+    </div>
+
+  </section>
+
+</div>
+
+
+<div class="action-bar">
+
+  <div class="action-context">
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <b>PRODUCTION HOUSE</b>
+  </div>
+
+  <div class="actions">
+
+    <button class="secondary" onclick="manageRoles()">
+      Manage roles
+    </button>
+
+    <button class="primary" onclick="inviteMember()">
+      + Invite
+    </button>
+
+  </div>
+
+</div>
+
+</main>
+
+
+<script>
+
+function inviteMember(){
+
+  alert(
+    "Invite workflow placeholder.\n\n" +
+    "Production handler will connect here later."
+  );
+
+}
+
+function manageRoles(){
+
+  alert(
+    "Role and permission management placeholder.\n\n" +
+    "The existing Cineforge permission engine remains untouched."
+  );
+
+}
+
+</script>
+
+</body>
+</html>

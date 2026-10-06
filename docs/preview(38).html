@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cineforge — Create Anything</title>
+
+<style>
+:root{
+  --paper:#f4f1ea;
+  --ink:#10100f;
+  --muted:#77736b;
+  --line:#cfc9bd;
+  --soft:#ebe7de;
+  --acid:#b7ff3c;
+  --white:#fbfaf6;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+html{
+  scroll-behavior:smooth;
+}
+
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+}
+
+button{
+  font:inherit;
+  cursor:pointer;
+}
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:78px;
+  border-right:1px solid var(--line);
+  background:rgba(244,241,234,.97);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  z-index:50;
+}
+
+.logo{
+  width:78px;
+  height:78px;
+  display:grid;
+  place-items:center;
+  border-bottom:1px solid var(--line);
+  font-weight:900;
+  letter-spacing:-.08em;
+}
+
+.rail-nav{
+  padding-top:25px;
+  display:flex;
+  flex-direction:column;
+  gap:11px;
+}
+
+.rail-nav a{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  text-decoration:none;
+  color:var(--muted);
+  font:10px ui-monospace,monospace;
+}
+
+.rail-nav a.active{
+  background:var(--ink);
+  color:var(--paper);
+}
+
+.rail-dot{
+  margin-top:auto;
+  margin-bottom:22px;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+main{
+  margin-left:78px;
+}
+
+.page{
+  width:min(1500px,100%);
+  margin:auto;
+  padding:34px 6vw 150px;
+}
+
+.breadcrumb{
+  display:flex;
+  gap:11px;
+  margin-bottom:62px;
+  color:var(--muted);
+  font:10px ui-monospace,monospace;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.breadcrumb strong{
+  color:var(--ink);
+}
+
+
+/* HERO */
+
+.hero{
+  display:grid;
+  grid-template-columns:1.4fr .6fr;
+  gap:8vw;
+  padding-bottom:72px;
+  border-bottom:1px solid var(--line);
+}
+
+.eyebrow{
+  margin-bottom:22px;
+  font:10px ui-monospace,monospace;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+
+h1{
+  margin:0;
+  font:400 clamp(75px,10vw,155px)/.82 Georgia,serif;
+  letter-spacing:-.07em;
+}
+
+h1 em{
+  font-style:italic;
+}
+
+.hero-copy{
+  align-self:end;
+  max-width:440px;
+  color:#555149;
+  font-size:15px;
+  line-height:1.75;
+}
+
+.hero-copy strong{
+  color:var(--ink);
+}
+
+.status{
+  margin-top:28px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.status i{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+
+/* CHOOSE WHAT */
+
+.section{
+  padding:64px 0;
+  border-bottom:1px solid var(--line);
+}
+
+.section-head{
+  display:grid;
+  grid-template-columns:180px 1fr;
+  gap:5vw;
+  margin-bottom:42px;
+}
+
+.label{
+  color:var(--muted);
+  font:10px ui-monospace,monospace;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.section-title{
+  margin:0;
+  font:400 44px/1.05 Georgia,serif;
+  letter-spacing:-.045em;
+  max-width:850px;
+}
+
+
+/* PRODUCTION TYPES */
+
+.types{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--ink);
+  border-left:1px solid var(--line);
+}
+
+.type{
+  min-height:260px;
+  padding:27px;
+  border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  position:relative;
+  cursor:pointer;
+  transition:.18s ease;
+}
+
+.type:hover{
+  background:var(--soft);
+}
+
+.type.selected{
+  background:var(--ink);
+  color:var(--paper);
+}
+
+.type-number{
+  font:9px ui-monospace,monospace;
+  color:var(--muted);
+}
+
+.type.selected .type-number{
+  color:#aaa69d;
+}
+
+.type-mark{
+  position:absolute;
+  top:25px;
+  right:25px;
+  width:9px;
+  height:9px;
+  border:1px solid var(--muted);
+  border-radius:50%;
+}
+
+.type.selected .type-mark{
+  background:var(--acid);
+  border-color:var(--acid);
+}
+
+.type-name{
+  margin-top:82px;
+  font:400 32px Georgia,serif;
+}
+
+.type-description{
+  margin-top:10px;
+  max-width:210px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.65;
+}
+
+.type.selected .type-description{
+  color:#aaa69d;
+}
+
+.type-meta{
+  position:absolute;
+  bottom:25px;
+  left:27px;
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+
+/* STARTING MATERIAL */
+
+.start-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  border-top:1px solid var(--ink);
+  border-left:1px solid var(--line);
+}
+
+.start{
+  min-height:150px;
+  padding:27px;
+  border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  cursor:pointer;
+  position:relative;
+}
+
+.start:hover{
+  background:var(--soft);
+}
+
+.start.selected{
+  background:var(--soft);
+}
+
+.start-number{
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+}
+
+.start-name{
+  margin-top:37px;
+  font:400 25px Georgia,serif;
+}
+
+.start-description{
+  margin-top:7px;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.start-check{
+  position:absolute;
+  top:25px;
+  right:25px;
+  width:8px;
+  height:8px;
+  border:1px solid var(--muted);
+}
+
+.start.selected .start-check{
+  background:var(--acid);
+  border-color:var(--acid);
+}
+
+
+/* WORKSPACE */
+
+.workspace{
+  display:grid;
+  grid-template-columns:1.1fr .9fr;
+  gap:1px;
+  background:var(--line);
+  border:1px solid var(--line);
+}
+
+.workspace-main,
+.workspace-side{
+  background:var(--paper);
+  padding:34px;
+}
+
+.workspace-main{
+  min-height:390px;
+}
+
+.workspace-side{
+  min-height:390px;
+}
+
+.workspace-label{
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.workspace-title{
+  margin-top:45px;
+  font:400 46px Georgia,serif;
+  letter-spacing:-.04em;
+}
+
+.workspace-copy{
+  max-width:570px;
+  margin-top:15px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+
+.prompt{
+  margin-top:35px;
+  padding:20px;
+  min-height:100px;
+  border:1px solid var(--line);
+  background:var(--white);
+  color:#555149;
+  font-size:13px;
+  line-height:1.65;
+}
+
+.workspace-side h3{
+  margin:0 0 22px;
+  font:400 30px Georgia,serif;
+}
+
+.spec-list{
+  border-top:1px solid var(--line);
+}
+
+.spec{
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  padding:15px 0;
+  border-bottom:1px solid var(--line);
+  font-size:11px;
+}
+
+.spec span:last-child{
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+
+/* PATH */
+
+.path{
+  border-top:1px solid var(--ink);
+}
+
+.path-row{
+  display:grid;
+  grid-template-columns:70px 1fr 1fr 120px;
+  align-items:center;
+  min-height:76px;
+  border-bottom:1px solid var(--line);
+}
+
+.path-row:hover{
+  background:var(--soft);
+}
+
+.path-number{
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+}
+
+.path-name{
+  font:20px Georgia,serif;
+}
+
+.path-detail{
+  color:var(--muted);
+  font-size:11px;
+}
+
+.path-action{
+  justify-self:end;
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+
+/* CTA */
+
+.cta{
+  margin-top:60px;
+  padding:40px;
+  background:var(--ink);
+  color:var(--paper);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:30px;
+}
+
+.cta h2{
+  margin:0 0 8px;
+  font:400 37px Georgia,serif;
+}
+
+.cta p{
+  margin:0;
+  color:#aaa69d;
+  font-size:13px;
+}
+
+.primary{
+  border:0;
+  background:var(--acid);
+  color:var(--ink);
+  padding:15px 22px;
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.secondary{
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--ink);
+  padding:14px 19px;
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+
+/* BOTTOM */
+
+.bottom{
+  position:fixed;
+  left:78px;
+  right:0;
+  bottom:0;
+  height:72px;
+  border-top:1px solid var(--line);
+  background:rgba(244,241,234,.95);
+  backdrop-filter:blur(14px);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 5vw;
+  z-index:30;
+}
+
+.bottom-context{
+  display:flex;
+  gap:12px;
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+.bottom-context b{
+  color:var(--ink);
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+}
+
+
+/* RESPONSIVE */
+
+@media(max-width:1100px){
+
+  .types{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .workspace{
+    grid-template-columns:1fr;
+  }
+
+}
+
+@media(max-width:850px){
+
+  .hero{
+    grid-template-columns:1fr;
+  }
+
+  .start-grid{
+    grid-template-columns:1fr;
+  }
+
+}
+
+@media(max-width:700px){
+
+  .rail{
+    width:58px;
+  }
+
+  .logo{
+    width:58px;
+  }
+
+  main{
+    margin-left:58px;
+  }
+
+  .page{
+    padding:25px 24px 130px;
+  }
+
+  h1{
+    font-size:72px;
+  }
+
+  .section-head{
+    grid-template-columns:1fr;
+    gap:15px;
+  }
+
+  .types{
+    grid-template-columns:1fr;
+  }
+
+  .type{
+    min-height:220px;
+  }
+
+  .path{
+    overflow-x:auto;
+  }
+
+  .path-row{
+    min-width:700px;
+  }
+
+  .cta{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .bottom{
+    left:58px;
+  }
+
+  .bottom-context{
+    display:none;
+  }
+
+}
+</style>
+</head>
+
+
+<body>
+
+
+<aside class="rail">
+
+  <div class="logo">CF</div>
+
+  <nav class="rail-nav">
+
+    <a href="#" class="active">ST</a>
+    <a href="#">PR</a>
+    <a href="#">PD</a>
+    <a href="#">TM</a>
+    <a href="#">AN</a>
+    <a href="#">AC</a>
+
+  </nav>
+
+  <div class="rail-dot"></div>
+
+</aside>
+
+
+<main>
+
+<div class="page">
+
+
+  <!-- HERO -->
+
+  <div class="breadcrumb">
+
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <span>STUDIO</span>
+    <span>/</span>
+    <strong>CREATE ANYTHING</strong>
+
+  </div>
+
+
+  <section class="hero">
+
+    <div>
+
+      <div class="eyebrow">
+        PRODUCTION GATE / 01
+      </div>
+
+      <h1>
+        Make<br>
+        <em>something.</em>
+      </h1>
+
+    </div>
+
+
+    <div class="hero-copy">
+
+      <p>
+        Cineforge does not begin with a prompt box.
+      </p>
+
+      <p>
+        Begin with the work itself. Choose what you
+        are making, then tell the system what you
+        already have.
+      </p>
+
+      <p>
+        <strong>
+          The production path follows from there.
+        </strong>
+      </p>
+
+      <div class="status">
+        <i></i>
+        Studio ready
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- WHAT -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        MAKE / 01
+      </div>
+
+      <h2 class="section-title">
+        What are we making?
+      </h2>
+
+    </div>
+
+
+    <div class="types">
+
+
+      <div
+        class="type selected"
+        onclick="selectType(this,'Film')">
+
+        <div class="type-number">01</div>
+        <div class="type-mark"></div>
+
+        <div class="type-name">
+          Film
+        </div>
+
+        <div class="type-description">
+          A complete cinematic production from
+          premise through final cut.
+        </div>
+
+        <div class="type-meta">
+          Feature / Short / Narrative
+        </div>
+
+      </div>
+
+
+      <div
+        class="type"
+        onclick="selectType(this,'Series')">
+
+        <div class="type-number">02</div>
+        <div class="type-mark"></div>
+
+        <div class="type-name">
+          Series
+        </div>
+
+        <div class="type-description">
+          Build persistent worlds, characters
+          and episodes across a season.
+        </div>
+
+        <div class="type-meta">
+          Episodes / Seasons
+        </div>
+
+      </div>
+
+
+      <div
+        class="type"
+        onclick="selectType(this,'Trailer')">
+
+        <div class="type-number">03</div>
+        <div class="type-mark"></div>
+
+        <div class="type-name">
+          Trailer
+        </div>
+
+        <div class="type-description">
+          Cut anticipation around a story,
+          release or cinematic world.
+        </div>
+
+        <div class="type-meta">
+          Teaser / Trailer
+        </div>
+
+      </div>
+
+
+      <div
+        class="type"
+        onclick="selectType(this,'Commercial')">
+
+        <div class="type-number">04</div>
+        <div class="type-mark"></div>
+
+        <div class="type-name">
+          Commercial
+        </div>
+
+        <div class="type-description">
+          Produce branded films, campaigns
+          and advertising work.
+        </div>
+
+        <div class="type-meta">
+          Brand / Campaign
+        </div>
+
+      </div>
+
+
+      <div
+        class="type"
+        onclick="selectType(this,'Documentary')">
+
+        <div class="type-number">05</div>
+        <div class="type-mark"></div>
+
+        <div class="type-name">
+          Documentary
+        </div>
+
+        <div class="type-description">
+          Build factual stories around people,
+          places, evidence and voice.
+        </div>
+
+        <div class="type-meta">
+          Documentary / Factual
+        </div>
+
+      </div>
+
+
+      <div
+        class="type"
+        onclick="selectType(this,'Music Video')">
+
+        <div class="type-number">06</div>
+        <div class="type-mark"></div>
+
+        <div class="type-name">
+          Music Video
+        </div>
+
+        <div class="type-description">
+          Turn music into a directed visual
+          performance and cinematic world.
+        </div>
+
+        <div class="type-meta">
+          Music / Performance
+        </div>
+
+      </div>
+
+
+      <div
+        class="type"
+        onclick="selectType(this,'Social Campaign')">
+
+        <div class="type-number">07</div>
+        <div class="type-mark"></div>
+
+        <div class="type-name">
+          Social Campaign
+        </div>
+
+        <div class="type-description">
+          Develop a connected family of
+          short-form pieces for distribution.
+        </div>
+
+        <div class="type-meta">
+          Social / Campaign
+        </div>
+
+      </div>
+
+
+      <div
+        class="type"
+        onclick="selectType(this,'Shorts')">
+
+        <div class="type-number">08</div>
+        <div class="type-mark"></div>
+
+        <div class="type-name">
+          Shorts
+        </div>
+
+        <div class="type-description">
+          Create concise cinematic work designed
+          for fast publishing and iteration.
+        </div>
+
+        <div class="type-meta">
+          Short-form
+        </div>
+
+      </div>
+
+
+    </div>
+
+  </section>
+
+
+  <!-- START FROM -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        MATERIAL / 02
+      </div>
+
+      <h2 class="section-title">
+        What are we starting with?
+      </h2>
+
+    </div>
+
+
+    <div class="start-grid">
+
+
+      <div
+        class="start selected"
+        onclick="selectStart(this,'Prompt')">
+
+        <div class="start-number">01</div>
+        <div class="start-check"></div>
+
+        <div class="start-name">
+          Prompt
+        </div>
+
+        <div class="start-description">
+          Begin with an idea, premise or direction.
+        </div>
+
+      </div>
+
+
+      <div
+        class="start"
+        onclick="selectStart(this,'Script')">
+
+        <div class="start-number">02</div>
+        <div class="start-check"></div>
+
+        <div class="start-name">
+          Script
+        </div>
+
+        <div class="start-description">
+          Bring an existing screenplay or script.
+        </div>
+
+      </div>
+
+
+      <div
+        class="start"
+        onclick="selectStart(this,'Scene')">
+
+        <div class="start-number">03</div>
+        <div class="start-check"></div>
+
+        <div class="start-name">
+          Scene
+        </div>
+
+        <div class="start-description">
+          Direct the production scene by scene.
+        </div>
+
+      </div>
+
+
+      <div
+        class="start"
+        onclick="selectStart(this,'Image')">
+
+        <div class="start-number">04</div>
+        <div class="start-check"></div>
+
+        <div class="start-name">
+          Image
+        </div>
+
+        <div class="start-description">
+          Turn an existing image into moving cinema.
+        </div>
+
+      </div>
+
+
+      <div
+        class="start"
+        onclick="selectStart(this,'Storyboard')">
+
+        <div class="start-number">05</div>
+        <div class="start-check"></div>
+
+        <div class="start-name">
+          Storyboard
+        </div>
+
+        <div class="start-description">
+          Bring a visual plan and build from it.
+        </div>
+
+      </div>
+
+
+      <div
+        class="start"
+        onclick="selectStart(this,'Audio')">
+
+        <div class="start-number">06</div>
+        <div class="start-check"></div>
+
+        <div class="start-name">
+          Audio
+        </div>
+
+        <div class="start-description">
+          Start from narration, dialogue or music.
+        </div>
+
+      </div>
+
+
+      <div
+        class="start"
+        onclick="selectStart(this,'Video')">
+
+        <div class="start-number">07</div>
+        <div class="start-check"></div>
+
+        <div class="start-name">
+          Video
+        </div>
+
+        <div class="start-description">
+          Extend, transform or build from footage.
+        </div>
+
+      </div>
+
+
+      <div
+        class="start"
+        onclick="selectStart(this,'Character')">
+
+        <div class="start-number">08</div>
+        <div class="start-check"></div>
+
+        <div class="start-name">
+          Character
+        </div>
+
+        <div class="start-description">
+          Establish the performer before the story.
+        </div>
+
+      </div>
+
+
+    </div>
+
+  </section>
+
+
+  <!-- CURRENT PATH -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        PRODUCTION PATH / 03
+      </div>
+
+      <h2 class="section-title">
+        One system. The right room.
+      </h2>
+
+    </div>
+
+
+    <div class="workspace">
+
+
+      <div class="workspace-main">
+
+        <div class="workspace-label">
+          CURRENT PATH
+        </div>
+
+        <div class="workspace-title" id="workspaceTitle">
+          Film
+        </div>
+
+        <div class="workspace-copy">
+
+          Your selected production will open in its
+          dedicated Cineforge workspace. The underlying
+          generation engine remains the same system;
+          only the creative room changes.
+
+        </div>
+
+
+        <div class="prompt">
+
+          <strong>Starting material</strong><br><br>
+
+          Prompt — an idea, premise or creative
+          direction will become the foundation of
+          the production.
+
+        </div>
+
+      </div>
+
+
+      <div class="workspace-side">
+
+        <h3>
+          Production profile
+        </h3>
+
+        <div class="spec-list">
+
+          <div class="spec">
+            <span>Production</span>
+            <span id="specProduction">Film</span>
+          </div>
+
+          <div class="spec">
+            <span>Starting point</span>
+            <span id="specStart">Prompt</span>
+          </div>
+
+          <div class="spec">
+            <span>Creative room</span>
+            <span id="specRoom">Film Studio</span>
+          </div>
+
+          <div class="spec">
+            <span>Continuity</span>
+            <span>Persistent</span>
+          </div>
+
+          <div class="spec">
+            <span>Output</span>
+            <span>Master</span>
+          </div>
+
+          <div class="spec">
+            <span>System</span>
+            <span>Cineforge</span>
+          </div>
+
+        </div>
+
+      </div>
+
+
+    </div>
+
+  </section>
+
+
+  <!-- OTHER PATHS -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        ROOMS / 04
+      </div>
+
+      <h2 class="section-title">
+        Every kind of work has a room.
+      </h2>
+
+    </div>
+
+
+    <div class="path">
+
+
+      <div class="path-row">
+
+        <div class="path-number">01</div>
+
+        <div class="path-name">
+          Film Studio
+        </div>
+
+        <div class="path-detail">
+          Premise → screenplay → scenes → final cut
+        </div>
+
+        <div
+          class="path-action"
+          onclick="openRoom('Film Studio')">
+          Enter →
+        </div>
+
+      </div>
+
+
+      <div class="path-row">
+
+        <div class="path-number">02</div>
+
+        <div class="path-name">
+          Writers' Room
+        </div>
+
+        <div class="path-detail">
+          Season architecture → episodes → continuity
+        </div>
+
+        <div
+          class="path-action"
+          onclick="openRoom('Writers’ Room')">
+          Enter →
+        </div>
+
+      </div>
+
+
+      <div class="path-row">
+
+        <div class="path-number">03</div>
+
+        <div class="path-name">
+          Cutting Room
+        </div>
+
+        <div class="path-detail">
+          Story → beats → rhythm → release
+        </div>
+
+        <div
+          class="path-action"
+          onclick="openRoom('Cutting Room')">
+          Enter →
+        </div>
+
+      </div>
+
+
+      <div class="path-row">
+
+        <div class="path-number">04</div>
+
+        <div class="path-name">
+          Commercial Studio
+        </div>
+
+        <div class="path-detail">
+          Brand → message → campaign → delivery
+        </div>
+
+        <div
+          class="path-action"
+          onclick="openRoom('Commercial Studio')">
+          Enter →
+        </div>
+
+      </div>
+
+
+      <div class="path-row">
+
+        <div class="path-number">05</div>
+
+        <div class="path-name">
+          Documentary Room
+        </div>
+
+        <div class="path-detail">
+          Evidence → interviews → story → master
+        </div>
+
+        <div
+          class="path-action"
+          onclick="openRoom('Documentary Room')">
+          Enter →
+        </div>
+
+      </div>
+
+
+    </div>
+
+
+    <div class="cta">
+
+      <div>
+
+        <h2>
+          Start the production.
+        </h2>
+
+        <p>
+          The next room is determined by what you
+          are making and what you already have.
+        </p>
+
+      </div>
+
+      <button
+        class="primary"
+        onclick="startProduction()">
+        Enter production
+      </button>
+
+    </div>
+
+  </section>
+
+
+</div>
+
+
+<div class="bottom">
+
+  <div class="bottom-context">
+
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <b>CREATE ANYTHING</b>
+
+  </div>
+
+
+  <div class="actions">
+
+    <button
+      class="secondary"
+      onclick="resetSelection()">
+      Reset
+    </button>
+
+    <button
+      class="primary"
+      onclick="startProduction()">
+      Enter production
+    </button>
+
+  </div>
+
+</div>
+
+</main>
+
+
+<script>
+
+let selectedType = "Film";
+let selectedStart = "Prompt";
+
+
+function selectType(element,type){
+
+  document
+    .querySelectorAll(".type")
+    .forEach(item => item.classList.remove("selected"));
+
+  element.classList.add("selected");
+
+  selectedType = type;
+
+  document.getElementById("workspaceTitle").textContent = type;
+  document.getElementById("specProduction").textContent = type;
+
+  const rooms = {
+    "Film":"Film Studio",
+    "Series":"Writers’ Room",
+    "Trailer":"Cutting Room",
+    "Commercial":"Commercial Studio",
+    "Documentary":"Documentary Room",
+    "Music Video":"Performance Studio",
+    "Social Campaign":"Campaign Studio",
+    "Shorts":"Shorts Studio"
+  };
+
+  document.getElementById("specRoom").textContent =
+    rooms[type] || "Production Studio";
+
+}
+
+
+function selectStart(element,start){
+
+  document
+    .querySelectorAll(".start")
+    .forEach(item => item.classList.remove("selected"));
+
+  element.classList.add("selected");
+
+  selectedStart = start;
+
+  document.getElementById("specStart").textContent = start;
+
+}
+
+
+function openRoom(room){
+
+  alert(
+    "Production room placeholder.\n\n" +
+    "Opening: " + room +
+    "\n\n" +
+    "The existing Cineforge engine remains untouched."
+  );
+
+}
+
+
+function startProduction(){
+
+  alert(
+    "Production entry placeholder.\n\n" +
+    "Production: " + selectedType +
+    "\n" +
+    "Starting from: " + selectedStart +
+    "\n\n" +
+    "This will connect to the existing Cineforge production engine."
+  );
+
+}
+
+
+function resetSelection(){
+
+  selectedType = "Film";
+  selectedStart = "Prompt";
+
+  document
+    .querySelectorAll(".type")
+    .forEach(item => item.classList.remove("selected"));
+
+  document
+    .querySelectorAll(".start")
+    .forEach(item => item.classList.remove("selected"));
+
+  document
+    .querySelector(".type")
+    .classList.add("selected");
+
+  document
+    .querySelector(".start")
+    .classList.add("selected");
+
+  document.getElementById("workspaceTitle").textContent = "Film";
+  document.getElementById("specProduction").textContent = "Film";
+  document.getElementById("specStart").textContent = "Prompt";
+  document.getElementById("specRoom").textContent = "Film Studio";
+
+}
+
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Cineforge — Permissions</title>
+
+<style>
+:root{
+  --paper:#f4f1ea;
+  --ink:#10100f;
+  --muted:#77736b;
+  --line:#cfc9bd;
+  --soft:#ebe7de;
+  --acid:#b7ff3c;
+  --dark:#171715;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+}
+
+button{font:inherit;cursor:pointer}
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:78px;
+  border-right:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  background:rgba(244,241,234,.96);
+  z-index:10;
+}
+
+.logo{
+  width:78px;
+  height:78px;
+  border-bottom:1px solid var(--line);
+  display:grid;
+  place-items:center;
+  font-weight:900;
+  letter-spacing:-.08em;
+}
+
+.rail-nav{
+  padding-top:25px;
+  display:flex;
+  flex-direction:column;
+  gap:11px;
+}
+
+.rail-nav a{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  text-decoration:none;
+  color:var(--muted);
+  font:10px ui-monospace,monospace;
+}
+
+.rail-nav a.active{
+  background:var(--ink);
+  color:var(--paper);
+}
+
+.rail-dot{
+  margin-top:auto;
+  margin-bottom:22px;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+main{
+  margin-left:78px;
+}
+
+.page{
+  max-width:1480px;
+  margin:auto;
+  padding:34px 6vw 150px;
+}
+
+.breadcrumb{
+  display:flex;
+  gap:11px;
+  margin-bottom:62px;
+  font:10px ui-monospace,monospace;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+.breadcrumb strong{color:var(--ink)}
+
+.hero{
+  display:grid;
+  grid-template-columns:1.35fr .65fr;
+  gap:8vw;
+  padding-bottom:72px;
+  border-bottom:1px solid var(--line);
+}
+
+.eyebrow{
+  margin-bottom:22px;
+  font:10px ui-monospace,monospace;
+  letter-spacing:.14em;
+}
+
+h1{
+  margin:0;
+  font:400 clamp(70px,9vw,142px)/.82 Georgia,serif;
+  letter-spacing:-.065em;
+}
+
+h1 em{font-style:italic}
+
+.hero-copy{
+  align-self:end;
+  max-width:440px;
+  color:#555149;
+  font-size:15px;
+  line-height:1.75;
+}
+
+.hero-copy strong{color:var(--ink)}
+
+.status{
+  margin-top:28px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.status i{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+.section{
+  padding:60px 0;
+  border-bottom:1px solid var(--line);
+}
+
+.section-head{
+  display:grid;
+  grid-template-columns:180px 1fr;
+  gap:5vw;
+  margin-bottom:42px;
+}
+
+.label{
+  font:10px ui-monospace,monospace;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.section-title{
+  margin:0;
+  font:400 42px/1.05 Georgia,serif;
+  letter-spacing:-.04em;
+}
+
+.access-table{
+  border-top:1px solid var(--ink);
+}
+
+.access-row{
+  display:grid;
+  grid-template-columns:1.3fr 1fr repeat(6,75px);
+  min-height:78px;
+  align-items:center;
+  border-bottom:1px solid var(--line);
+}
+
+.access-row.header{
+  min-height:52px;
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.access-row:hover:not(.header){
+  background:var(--soft);
+}
+
+.person{
+  font:22px Georgia,serif;
+}
+
+.role{
+  color:var(--muted);
+  font-size:12px;
+}
+
+.permission{
+  display:grid;
+  place-items:center;
+}
+
+.permission button{
+  width:28px;
+  height:28px;
+  border:1px solid var(--line);
+  background:transparent;
+  position:relative;
+}
+
+.permission button.on{
+  background:var(--ink);
+  border-color:var(--ink);
+}
+
+.permission button.on::after{
+  content:"";
+  width:6px;
+  height:10px;
+  border-right:1px solid var(--acid);
+  border-bottom:1px solid var(--acid);
+  transform:rotate(45deg);
+  position:absolute;
+  left:10px;
+  top:7px;
+}
+
+.roles{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-left:1px solid var(--line);
+  border-top:1px solid var(--line);
+}
+
+.role-card{
+  min-height:235px;
+  border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  padding:26px;
+  position:relative;
+}
+
+.role-number{
+  font:9px ui-monospace,monospace;
+  color:var(--muted);
+}
+
+.role-card h3{
+  margin:52px 0 10px;
+  font:400 28px Georgia,serif;
+}
+
+.role-card p{
+  margin:0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.65;
+}
+
+.role-count{
+  position:absolute;
+  top:24px;
+  right:24px;
+  font:26px Georgia,serif;
+}
+
+.policy{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  border:1px solid var(--line);
+}
+
+.policy-block{
+  padding:34px;
+  min-height:245px;
+}
+
+.policy-block:first-child{
+  border-right:1px solid var(--line);
+}
+
+.policy-block h3{
+  margin:0 0 14px;
+  font:400 31px Georgia,serif;
+}
+
+.policy-block p{
+  max-width:470px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+
+.policy-list{
+  margin-top:25px;
+  border-top:1px solid var(--line);
+}
+
+.policy-item{
+  display:flex;
+  justify-content:space-between;
+  padding:13px 0;
+  border-bottom:1px solid var(--line);
+  font-size:12px;
+}
+
+.policy-item span:last-child{
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+.enabled{
+  color:#4e7000;
+}
+
+.locked{
+  color:var(--muted);
+}
+
+.audit{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  border-top:1px solid var(--ink);
+}
+
+.audit-item{
+  padding:27px 24px;
+  border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+}
+
+.audit-item:last-child{
+  border-right:0;
+}
+
+.audit-time{
+  font:9px ui-monospace,monospace;
+  color:var(--muted);
+}
+
+.audit-title{
+  margin-top:25px;
+  font:21px Georgia,serif;
+}
+
+.audit-detail{
+  margin-top:8px;
+  font-size:11px;
+  color:var(--muted);
+  line-height:1.5;
+}
+
+.action-section{
+  margin-top:60px;
+  padding:36px;
+  background:var(--ink);
+  color:var(--paper);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:30px;
+}
+
+.action-section h2{
+  margin:0 0 7px;
+  font:400 34px Georgia,serif;
+}
+
+.action-section p{
+  margin:0;
+  color:#aaa69d;
+  font-size:13px;
+}
+
+.primary{
+  border:0;
+  background:var(--acid);
+  color:var(--ink);
+  padding:14px 20px;
+  font:10px ui-monospace,monospace;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.secondary{
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--ink);
+  padding:13px 18px;
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+.bottom{
+  position:fixed;
+  left:78px;
+  right:0;
+  bottom:0;
+  height:72px;
+  border-top:1px solid var(--line);
+  background:rgba(244,241,234,.95);
+  backdrop-filter:blur(14px);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 5vw;
+  z-index:20;
+}
+
+.context{
+  display:flex;
+  gap:12px;
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.context b{color:var(--ink)}
+
+.actions{
+  display:flex;
+  gap:8px;
+}
+
+@media(max-width:1050px){
+
+  .access-row{
+    grid-template-columns:1.2fr 1fr repeat(6,50px);
+  }
+
+  .roles{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .audit{
+    grid-template-columns:1fr;
+  }
+
+  .audit-item{
+    border-right:0;
+  }
+}
+
+@media(max-width:750px){
+
+  .rail{
+    width:58px;
+  }
+
+  .logo{
+    width:58px;
+  }
+
+  main{
+    margin-left:58px;
+  }
+
+  .page{
+    padding:25px 24px 130px;
+  }
+
+  .hero{
+    grid-template-columns:1fr;
+  }
+
+  h1{
+    font-size:70px;
+  }
+
+  .section-head{
+    grid-template-columns:1fr;
+    gap:15px;
+  }
+
+  .access-table{
+    overflow-x:auto;
+  }
+
+  .access-row{
+    min-width:700px;
+  }
+
+  .roles,
+  .policy{
+    grid-template-columns:1fr;
+  }
+
+  .policy-block:first-child{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .action-section{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .bottom{
+    left:58px;
+  }
+
+  .context{
+    display:none;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<aside class="rail">
+
+  <div class="logo">CF</div>
+
+  <nav class="rail-nav">
+    <a href="#">ST</a>
+    <a href="#">PR</a>
+    <a href="#">PD</a>
+    <a href="#" class="active">TM</a>
+    <a href="#">AN</a>
+    <a href="#">AC</a>
+  </nav>
+
+  <div class="rail-dot"></div>
+
+</aside>
+
+
+<main>
+
+<div class="page">
+
+  <div class="breadcrumb">
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <span>ENTERPRISE</span>
+    <span>/</span>
+    <strong>PERMISSIONS</strong>
+  </div>
+
+
+  <section class="hero">
+
+    <div>
+
+      <div class="eyebrow">
+        THE PRODUCTION AUTHORITY / 01
+      </div>
+
+      <h1>
+        Give the<br>
+        <em>work</em><br>
+        structure.
+      </h1>
+
+    </div>
+
+
+    <div class="hero-copy">
+
+      <p>
+        A serious production cannot operate on a single
+        permission level.
+      </p>
+
+      <p>
+        Directors need creative authority. Producers need
+        operational control. Editors need the cut.
+        Executives need visibility.
+      </p>
+
+      <p>
+        <strong>Cineforge keeps those responsibilities distinct.</strong>
+      </p>
+
+      <div class="status">
+        <i></i>
+        Permission system operational
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- MATRIX -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        AUTHORITY / 02
+      </div>
+
+      <h2 class="section-title">
+        One production. Different authority.
+      </h2>
+
+    </div>
+
+
+    <div class="access-table">
+
+      <div class="access-row header">
+        <div>Person</div>
+        <div>Role</div>
+        <div>View</div>
+        <div>Create</div>
+        <div>Edit</div>
+        <div>Approve</div>
+        <div>Release</div>
+        <div>Admin</div>
+      </div>
+
+
+      <div class="access-row">
+
+        <div class="person">
+          Amara Okafor
+        </div>
+
+        <div class="role">
+          Executive Producer
+        </div>
+
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button class="on"></button></div>
+
+      </div>
+
+
+      <div class="access-row">
+
+        <div class="person">
+          Daniel Mercer
+        </div>
+
+        <div class="role">
+          Director
+        </div>
+
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button></button></div>
+        <div class="permission"><button></button></div>
+
+      </div>
+
+
+      <div class="access-row">
+
+        <div class="person">
+          Sofia Laurent
+        </div>
+
+        <div class="role">
+          Head Writer
+        </div>
+
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button></button></div>
+        <div class="permission"><button></button></div>
+        <div class="permission"><button></button></div>
+
+      </div>
+
+
+      <div class="access-row">
+
+        <div class="person">
+          Maya Chen
+        </div>
+
+        <div class="role">
+          Post Production
+        </div>
+
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button></button></div>
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button></button></div>
+        <div class="permission"><button class="on"></button></div>
+        <div class="permission"><button></button></div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ROLES -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        ROLES / 03
+      </div>
+
+      <h2 class="section-title">
+        Authority follows responsibility.
+      </h2>
+
+    </div>
+
+
+    <div class="roles">
+
+      <div class="role-card">
+
+        <div class="role-number">01</div>
+        <div class="role-count">02</div>
+
+        <h3>Executive</h3>
+
+        <p>
+          Full production visibility, commercial
+          authority and final release control.
+        </p>
+
+      </div>
+
+
+      <div class="role-card">
+
+        <div class="role-number">02</div>
+        <div class="role-count">04</div>
+
+        <h3>Director</h3>
+
+        <p>
+          Creative control over scenes, performances,
+          worlds and visual direction.
+        </p>
+
+      </div>
+
+
+      <div class="role-card">
+
+        <div class="role-number">03</div>
+        <div class="role-count">05</div>
+
+        <h3>Creator</h3>
+
+        <p>
+          Creation and revision rights within assigned
+          productions and workspaces.
+        </p>
+
+      </div>
+
+
+      <div class="role-card">
+
+        <div class="role-number">04</div>
+        <div class="role-count">03</div>
+
+        <h3>Viewer</h3>
+
+        <p>
+          Read-only access for stakeholders,
+          clients and external collaborators.
+        </p>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- POLICY -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        GOVERNANCE / 04
+      </div>
+
+      <h2 class="section-title">
+        The rules protecting the production.
+      </h2>
+
+    </div>
+
+
+    <div class="policy">
+
+      <div class="policy-block">
+
+        <h3>Production controls</h3>
+
+        <p>
+          Define what can be changed, approved or
+          released without interrupting the creative flow.
+        </p>
+
+        <div class="policy-list">
+
+          <div class="policy-item">
+            <span>Require approval before release</span>
+            <span class="enabled">Enabled</span>
+          </div>
+
+          <div class="policy-item">
+            <span>Protect locked scenes</span>
+            <span class="enabled">Enabled</span>
+          </div>
+
+          <div class="policy-item">
+            <span>Require executive release</span>
+            <span class="enabled">Enabled</span>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="policy-block">
+
+        <h3>Asset controls</h3>
+
+        <p>
+          Preserve approved characters, worlds, voices,
+          music and brand material across the production.
+        </p>
+
+        <div class="policy-list">
+
+          <div class="policy-item">
+            <span>Protect approved assets</span>
+            <span class="enabled">Enabled</span>
+          </div>
+
+          <div class="policy-item">
+            <span>Restrict deletion</span>
+            <span class="enabled">Enabled</span>
+          </div>
+
+          <div class="policy-item">
+            <span>External asset sharing</span>
+            <span class="locked">Restricted</span>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- AUDIT -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        AUDIT / 05
+      </div>
+
+      <h2 class="section-title">
+        Every important decision leaves a trace.
+      </h2>
+
+    </div>
+
+
+    <div class="audit">
+
+      <div class="audit-item">
+
+        <div class="audit-time">
+          09:42 · TODAY
+        </div>
+
+        <div class="audit-title">
+          Release authority changed
+        </div>
+
+        <div class="audit-detail">
+          Executive Producer assigned final-release
+          authority to Empire of Ash.
+        </div>
+
+      </div>
+
+
+      <div class="audit-item">
+
+        <div class="audit-time">
+          08:16 · TODAY
+        </div>
+
+        <div class="audit-title">
+          Scene protection enabled
+        </div>
+
+        <div class="audit-detail">
+          Scene 27 was locked after creative approval.
+        </div>
+
+      </div>
+
+
+      <div class="audit-item">
+
+        <div class="audit-time">
+          YESTERDAY · 17:28
+        </div>
+
+        <div class="audit-title">
+          External access revoked
+        </div>
+
+        <div class="audit-detail">
+          Temporary post-production collaborator access
+          was removed.
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="action-section">
+
+      <div>
+
+        <h2>Control without friction.</h2>
+
+        <p>
+          Permission changes should protect the production,
+          not slow it down.
+        </p>
+
+      </div>
+
+      <button class="primary" onclick="savePolicy()">
+        Save policy
+      </button>
+
+    </div>
+
+  </section>
+
+</div>
+
+
+<div class="bottom">
+
+  <div class="context">
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <b>PRODUCTION AUTHORITY</b>
+  </div>
+
+  <div class="actions">
+
+    <button class="secondary" onclick="auditLog()">
+      Audit log
+    </button>
+
+    <button class="primary" onclick="savePolicy()">
+      Save changes
+    </button>
+
+  </div>
+
+</div>
+
+</main>
+
+
+<script>
+
+document.querySelectorAll(".permission button")
+.forEach(button => {
+
+  button.addEventListener("click", () => {
+    button.classList.toggle("on");
+  });
+
+});
+
+
+function savePolicy(){
+
+  alert(
+    "Permission policy placeholder.\n\n" +
+    "Production permission engine will be connected later."
+  );
+
+}
+
+
+function auditLog(){
+
+  alert(
+    "Audit log placeholder.\n\n" +
+    "Existing audit and authorization systems remain untouched."
+  );
+
+}
+
+</script>
+
+</body>
+</html>

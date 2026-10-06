@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cineforge — Revenue / The Business Desk</title>
+<style>
+:root{
+  --ink:#10100f;
+  --paper:#f4f1ea;
+  --muted:#77736b;
+  --line:#cfc9bd;
+  --acid:#b7ff3c;
+  --white:#fffdf8;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+}
+button{font:inherit}
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:82px;
+  border-right:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  z-index:5;
+  background:rgba(244,241,234,.94);
+}
+.logo{
+  font-weight:900;
+  letter-spacing:-.08em;
+  font-size:20px;
+  margin:25px 0 35px;
+}
+.rail a{
+  writing-mode:vertical-rl;
+  text-decoration:none;
+  color:var(--muted);
+  font-size:10px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  margin:18px 0;
+}
+.rail a.active{color:var(--ink)}
+.rail .dot{
+  margin-top:auto;
+  margin-bottom:26px;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+main{
+  margin-left:82px;
+  min-height:100vh;
+}
+
+.top{
+  height:76px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 48px;
+}
+.crumb{
+  font:11px ui-monospace,monospace;
+  letter-spacing:.12em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+.top button{
+  border:1px solid var(--ink);
+  background:none;
+  padding:10px 16px;
+  text-transform:uppercase;
+  font-size:10px;
+  letter-spacing:.1em;
+}
+
+.hero{
+  padding:64px 7vw 48px;
+  border-bottom:1px solid var(--line);
+  display:grid;
+  grid-template-columns:1.5fr 1fr;
+  gap:60px;
+}
+.eyebrow{
+  font:10px ui-monospace,monospace;
+  letter-spacing:.16em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+.hero h1{
+  font-family:Georgia,serif;
+  font-weight:400;
+  font-size:clamp(58px,8vw,128px);
+  line-height:.86;
+  letter-spacing:-.065em;
+  margin:18px 0 28px;
+}
+.hero p{
+  max-width:600px;
+  font-size:17px;
+  line-height:1.6;
+  color:#4e4a44;
+}
+.period{
+  align-self:end;
+  border-left:1px solid var(--line);
+  padding-left:30px;
+}
+.period strong{
+  display:block;
+  font-family:Georgia,serif;
+  font-size:38px;
+  font-weight:400;
+  margin-top:10px;
+}
+.period span{
+  font-size:11px;
+  color:var(--muted);
+}
+
+.content{
+  padding:42px 7vw 90px;
+}
+.sectionhead{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  margin-bottom:18px;
+}
+.sectionhead h2{
+  font-family:Georgia,serif;
+  font-weight:400;
+  font-size:34px;
+  margin:0;
+}
+.sectionhead span{
+  font:10px ui-monospace,monospace;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+
+.kpis{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--ink);
+  border-bottom:1px solid var(--line);
+}
+.kpi{
+  padding:24px 20px 28px;
+  border-right:1px solid var(--line);
+}
+.kpi:last-child{border:0}
+.kpi label{
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  color:var(--muted);
+}
+.kpi strong{
+  display:block;
+  font-family:Georgia,serif;
+  font-size:34px;
+  font-weight:400;
+  margin:15px 0 7px;
+}
+.up{font-size:11px}
+.positive{color:#467400}
+
+.grid{
+  display:grid;
+  grid-template-columns:1.55fr .85fr;
+  gap:26px;
+  margin-top:48px;
+}
+.panel{
+  border-top:1px solid var(--ink);
+  padding-top:16px;
+}
+.panel h3{
+  font-family:Georgia,serif;
+  font-weight:400;
+  font-size:26px;
+  margin:0 0 24px;
+}
+
+.chart{
+  height:250px;
+  position:relative;
+  border-bottom:1px solid var(--line);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 61px,
+      rgba(16,16,15,.08) 62px
+    );
+}
+svg{
+  width:100%;
+  height:100%;
+}
+.chart-note{
+  display:flex;
+  justify-content:space-between;
+  margin-top:12px;
+  font:10px ui-monospace,monospace;
+  color:var(--muted);
+}
+
+.lines{
+  border-top:1px solid var(--line);
+}
+.line{
+  display:grid;
+  grid-template-columns:1.4fr .8fr .6fr;
+  gap:15px;
+  padding:16px 0;
+  border-bottom:1px solid var(--line);
+  font-size:12px;
+}
+.line b{font-weight:600}
+.line span{color:var(--muted)}
+
+.rightstat{
+  display:flex;
+  justify-content:space-between;
+  padding:17px 0;
+  border-bottom:1px solid var(--line);
+  font-size:12px;
+}
+.rightstat strong{font-weight:500}
+
+.business{
+  margin-top:50px;
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  border-top:1px solid var(--ink);
+}
+.business article{
+  padding:22px 20px 30px;
+  border-right:1px solid var(--line);
+  min-height:170px;
+}
+.business article:last-child{border:0}
+.business h4{
+  font:10px ui-monospace,monospace;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  margin:0 0 18px;
+}
+.business strong{
+  font-family:Georgia,serif;
+  font-size:28px;
+  font-weight:400;
+}
+.business p{
+  font-size:12px;
+  line-height:1.6;
+  color:var(--muted);
+  max-width:280px;
+}
+
+.actions{
+  position:sticky;
+  bottom:0;
+  background:rgba(244,241,234,.95);
+  border-top:1px solid var(--ink);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:14px 7vw;
+  backdrop-filter:blur(12px);
+}
+.actions span{
+  font:10px ui-monospace,monospace;
+  color:var(--muted);
+}
+.actions button{
+  padding:12px 20px;
+  border:1px solid var(--ink);
+  background:var(--ink);
+  color:var(--paper);
+  text-transform:uppercase;
+  font-size:10px;
+  letter-spacing:.12em;
+}
+.actions button.secondary{
+  background:none;
+  color:var(--ink);
+  margin-right:8px;
+}
+
+@media(max-width:900px){
+  .hero{grid-template-columns:1fr}
+  .kpis{grid-template-columns:1fr 1fr}
+  .grid{grid-template-columns:1fr}
+  .business{grid-template-columns:1fr}
+  .rail{width:60px}
+  main{margin-left:60px}
+  .top{padding:0 25px}
+  .content,.hero{
+    padding-left:25px;
+    padding-right:25px;
+  }
+  .actions{
+    padding-left:25px;
+    padding-right:25px;
+  }
+}
+
+@media(max-width:560px){
+  .rail{display:none}
+  main{margin:0}
+  .top{height:62px}
+  .hero h1{font-size:58px}
+  .kpis{grid-template-columns:1fr}
+  .kpi{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+  .line{
+    grid-template-columns:1fr .7fr;
+  }
+  .line span:last-child{display:none}
+}
+</style>
+</head>
+
+<body>
+
+<aside class="rail">
+  <div class="logo">CF</div>
+  <a href="#">Studio</a>
+  <a href="#">Production</a>
+  <a href="#" class="active">Business</a>
+  <a href="#">Publishing</a>
+  <a href="#">Account</a>
+  <div class="dot"></div>
+</aside>
+
+<main>
+
+<header class="top">
+  <div class="crumb">
+    CINEFORGE / ANALYTICS / REVENUE
+  </div>
+
+  <button onclick="alert('Revenue period selector')">
+    Current period · Sep 2026
+  </button>
+</header>
+
+<section class="hero">
+
+  <div>
+    <div class="eyebrow">
+      The Business Desk · Financial control
+    </div>
+
+    <h1>
+      Know what<br>
+      the work is<br>
+      worth.
+    </h1>
+
+    <p>
+      One view of the commercial life of your productions —
+      revenue, payouts, production economics and the value
+      moving through Cineforge.
+    </p>
+  </div>
+
+  <div class="period">
+
+    <div class="eyebrow">
+      Period close
+    </div>
+
+    <strong>
+      30 Sep 2026
+    </strong>
+
+    <span>
+      Figures shown are interface prototype data until
+      connected to the live ledger.
+    </span>
+
+  </div>
+
+</section>
+
+<section class="content">
+
+  <div class="sectionhead">
+    <h2>Financial position</h2>
+    <span>September · EUR</span>
+  </div>
+
+  <div class="kpis">
+
+    <div class="kpi">
+      <label>Gross revenue</label>
+      <strong>€84,260</strong>
+      <span class="up positive">↑ 18.4% vs Aug</span>
+    </div>
+
+    <div class="kpi">
+      <label>Net revenue</label>
+      <strong>€71,904</strong>
+      <span class="up positive">↑ 14.1% vs Aug</span>
+    </div>
+
+    <div class="kpi">
+      <label>Pending</label>
+      <strong>€12,840</strong>
+      <span class="up">9 invoices / releases</span>
+    </div>
+
+    <div class="kpi">
+      <label>Forecast</label>
+      <strong>€102,600</strong>
+      <span class="up positive">October projection</span>
+    </div>
+
+  </div>
+
+  <div class="grid">
+
+    <section class="panel">
+
+      <h3>Revenue movement</h3>
+
+      <div class="chart">
+
+        <svg viewBox="0 0 900 250"
+             preserveAspectRatio="none"
+             aria-label="Revenue chart">
+
+          <path
+            d="M0 205
+               C90 190 120 170 190 182
+               S300 145 360 156
+               S455 118 520 132
+               S610 80 680 105
+               S790 45 900 58"
+            fill="none"
+            stroke="#10100f"
+            stroke-width="2.5"/>
+
+          <circle
+            cx="900"
+            cy="58"
+            r="5"
+            fill="#b7ff3c"
+            stroke="#10100f"
+            stroke-width="2"/>
+        </svg>
+
+      </div>
+
+      <div class="chart-note">
+        <span>APR</span>
+        <span>MAY</span>
+        <span>JUN</span>
+        <span>JUL</span>
+        <span>AUG</span>
+        <span>SEP</span>
+      </div>
+
+    </section>
+
+    <section class="panel">
+
+      <h3>Commercial mix</h3>
+
+      <div class="rightstat">
+        <span>Production</span>
+        <strong>€38,420</strong>
+      </div>
+
+      <div class="rightstat">
+        <span>Publishing</span>
+        <strong>€16,840</strong>
+      </div>
+
+      <div class="rightstat">
+        <span>Marketplace</span>
+        <strong>€9,260</strong>
+      </div>
+
+      <div class="rightstat">
+        <span>Subscriptions</span>
+        <strong>€7,384</strong>
+      </div>
+
+      <div class="rightstat">
+        <span>Other</span>
+        <strong>€—</strong>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="grid">
+
+    <section class="panel">
+
+      <h3>Recent commercial activity</h3>
+
+      <div class="lines">
+
+        <div class="line">
+          <b>Northstar — Feature production</b>
+          <span>Production</span>
+          <b>€18,400</b>
+        </div>
+
+        <div class="line">
+          <b>Atlas — Season package</b>
+          <span>Series</span>
+          <b>€12,800</b>
+        </div>
+
+        <div class="line">
+          <b>Meridian — Campaign</b>
+          <span>Commercial</span>
+          <b>€8,600</b>
+        </div>
+
+        <div class="line">
+          <b>Studio subscription pool</b>
+          <span>Access</span>
+          <b>€7,384</b>
+        </div>
+
+      </div>
+
+    </section>
+
+    <section class="panel">
+
+      <h3>Production economics</h3>
+
+      <div class="rightstat">
+        <span>Production cost</span>
+        <strong>€31,840</strong>
+      </div>
+
+      <div class="rightstat">
+        <span>Gross margin</span>
+        <strong>55.7%</strong>
+      </div>
+
+      <div class="rightstat">
+        <span>Avg. project value</span>
+        <strong>€7,021</strong>
+      </div>
+
+      <div class="rightstat">
+        <span>Revenue / credit</span>
+        <strong>€0.42</strong>
+      </div>
+
+      <div class="rightstat">
+        <span>Unbilled work</span>
+        <strong>€6,480</strong>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="business">
+
+    <article>
+      <h4>01 · Payouts</h4>
+      <strong>€9,240</strong>
+      <p>
+        Available for settlement after pending platform
+        and production obligations.
+      </p>
+    </article>
+
+    <article>
+      <h4>02 · Rights & licensing</h4>
+      <strong>€14,600</strong>
+      <p>
+        Projected value from current licensing and
+        distribution agreements.
+      </p>
+    </article>
+
+    <article>
+      <h4>03 · Next action</h4>
+      <strong>Close September</strong>
+      <p>
+        Review pending revenue, approve eligible payouts
+        and export the period report.
+      </p>
+    </article>
+
+  </div>
+
+</section>
+
+<div class="actions">
+
+  <span>
+    BUSINESS DESK · PROTOTYPE VIEW
+  </span>
+
+  <div>
+    <button
+      class="secondary"
+      onclick="alert('Export report')">
+      Export report
+    </button>
+
+    <button
+      onclick="alert('Payout workflow')">
+      Open payout desk
+    </button>
+  </div>
+
+</div>
+
+</main>
+
+</body>
+</html>
