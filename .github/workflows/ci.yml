@@ -83,6 +83,49 @@ jobs:
         env:
           GATEWAY_E2E: "1"
 
+  # The GPU image verifier end-to-end: a slim stand-in image is pushed to a
+  # local registry and verified by digest (must pass), then a tampered copy
+  # with one changed source file (must fail on contents).
+  gpu-image-verifier:
+    runs-on: ubuntu-latest
+    services:
+      registry:
+        image: registry:2
+        ports: ["5000:5000"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install "PyJWT[crypto]==2.9.0"
+      - name: Verified image passes
+        run: |
+          commit="$(git rev-parse HEAD)"
+          docker build -q -f apps/gpu-worker/tests/fixtures/verify/Dockerfile \
+            --build-arg SOURCE_COMMIT="$commit" -t localhost:5000/cineforge-gpu-verify:good apps/gpu-worker
+          docker push -q localhost:5000/cineforge-gpu-verify:good
+          ref="$(docker inspect --format '{{index .RepoDigests 0}}' localhost:5000/cineforge-gpu-verify:good)"
+          docker rmi -f localhost:5000/cineforge-gpu-verify:good >/dev/null
+          python3 apps/gpu-worker/scripts/verify_image.py "$ref" --expect-commit "$commit" --report good.json
+      - name: Tampered image fails
+        run: |
+          commit="$(git rev-parse HEAD)"
+          rm -rf /tmp/tampered && cp -r apps/gpu-worker /tmp/tampered
+          echo "# not from git" >> /tmp/tampered/app/server.py
+          docker build -q -f apps/gpu-worker/tests/fixtures/verify/Dockerfile \
+            --build-arg SOURCE_COMMIT="$commit" -t localhost:5000/cineforge-gpu-verify:tampered /tmp/tampered
+          docker push -q localhost:5000/cineforge-gpu-verify:tampered
+          ref="$(docker inspect --format '{{index .RepoDigests 0}}' localhost:5000/cineforge-gpu-verify:tampered)"
+          if python3 apps/gpu-worker/scripts/verify_image.py "$ref" --report bad.json; then
+            echo "tampered image was VERIFIED"; exit 1
+          fi
+          python3 -c "import json,sys; r=json.load(open('bad.json')); bad=[c['name'] for c in r['checks'] if not c['ok']]; print(bad); sys.exit(0 if any(n.startswith('contents') for n in bad) else 1)"
+      - name: Mutable references are refused
+        run: |
+          if python3 apps/gpu-worker/scripts/verify_image.py localhost:5000/cineforge-gpu-verify:good; then exit 1; fi
+
   # Migration 0026 applied to a scratch Postgres with its validation script.
   migration-0026:
     runs-on: ubuntu-latest
