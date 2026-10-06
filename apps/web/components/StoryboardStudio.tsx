@@ -26,6 +26,7 @@ import {
 import type { ShotSource } from "../lib/database.types";
 import { listAnchors } from "../lib/library";
 import { useAuth } from "./AuthProvider";
+import { Status } from "./cf/primitives";
 
 const SCENE_COUNTS = [3, 4, 5, 6, 8];
 type Anchors = { characters: { id: string; name: string }[]; worlds: { id: string; name: string }[] };
@@ -387,6 +388,7 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
               <li key={sc.key} className="border-b border-cf-line">
                 <SceneCard
                   scene={sc}
+                  live={live}
                   anchors={anchors}
                   cont={contByIndex.get(sc.index)}
                   timeline={continuity.final.timeline}
@@ -414,6 +416,7 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
  *  camera plan, dialogue/narration, music and duration. */
 function SceneCard({
   scene: s,
+  live,
   anchors,
   cont,
   timeline,
@@ -429,6 +432,7 @@ function SceneCard({
   onMove,
 }: {
   scene: SceneDraft;
+  live: boolean;
   anchors: Anchors;
   cont?: SceneContinuity;
   timeline: ProjectState["timeline"];
@@ -449,210 +453,218 @@ function SceneCard({
   const [continuity, setContinuity] = useState(false);
   const save = () => onSave();
   const patchBridge = (p: Partial<SceneDraft["bridge"]>) => onPatch({ bridge: { ...s.bridge, ...p } });
+  const n = String(s.index + 1).padStart(2, "0");
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="rounded-md bg-white/10 px-2 py-0.5 text-xs font-medium">Scene {s.index + 1}</span>
+    <article className="grid gap-px bg-cf-line xl:grid-cols-[260px_1fr]" aria-label={`Scene ${s.index + 1}`}>
+      {/* Frame column */}
+      <div className="bg-cf-bg p-5 sm:p-6">
+        <div className="flex items-start justify-between">
+          <span className="cf-display text-[44px] leading-none">{n}</span>
           <StatusBadge status={s.status} />
         </div>
-        <div className="flex items-center gap-1 text-white/40">
-          <IconBtn disabled={isFirst} onClick={() => onMove(-1)} title="Move up">↑</IconBtn>
-          <IconBtn disabled={isLast} onClick={() => onMove(1)} title="Move down">↓</IconBtn>
-          <IconBtn onClick={onRemove} title="Remove">✕</IconBtn>
+        <div className="mt-5">
+          <SeedPreview scene={s} />
+        </div>
+        <div className="mt-4 flex gap-1">
+          <IconBtn disabled={isFirst} onClick={() => onMove(-1)} title="Move scene earlier">↑</IconBtn>
+          <IconBtn disabled={isLast} onClick={() => onMove(1)} title="Move scene later">↓</IconBtn>
+          <IconBtn onClick={onRemove} title="Remove scene">✕</IconBtn>
         </div>
       </div>
 
-      <input
-        value={s.heading}
-        onChange={(e) => onPatch({ heading: e.target.value })}
-        onBlur={save}
-        placeholder="Scene title"
-        className="mt-3 w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-medium outline-none focus:border-white/30"
-      />
-      <label className="mt-3 block">
-        <span className="text-[10px] uppercase tracking-wider text-white/40">Scene prompt</span>
-        <textarea
-          value={s.script}
-          onChange={(e) => onPatch({ script: e.target.value })}
+      {/* Direction column */}
+      <div className="min-w-0 bg-cf-bg p-5 sm:p-6">
+        <input
+          value={s.heading}
+          onChange={(e) => onPatch({ heading: e.target.value })}
           onBlur={save}
-          rows={2}
-          placeholder="Describe the scene — what happens, who's there, the mood…"
-          className="mt-1 w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm outline-none focus:border-white/30"
+          placeholder="Scene title"
+          aria-label={`Scene ${s.index + 1} title`}
+          className="w-full border-0 border-b border-cf-line bg-transparent pb-2 font-serif text-[26px] tracking-[-0.03em] text-cf-fg outline-none placeholder:text-cf-dim focus:border-cf-fg"
         />
-      </label>
+        <label className="mt-5 block">
+          <Label>Scene prompt</Label>
+          <textarea
+            value={s.script}
+            onChange={(e) => onPatch({ script: e.target.value })}
+            onBlur={save}
+            rows={2}
+            placeholder="Describe the scene — what happens, who's there, the mood…"
+            className="cf-input mt-2 resize-y"
+          />
+        </label>
 
-      {/* Bible references */}
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <SelectField
-          label="Character"
-          value={s.character}
-          options={anchors.characters.map((c) => c.name)}
-          empty="No saved characters — add one in Library"
-          onChange={(v) => {
-            // Anchor visual continuity to the library asset id, not just the name.
-            const id = anchors.characters.find((c) => c.name === v)?.id ?? "";
-            onPatch({ character: v, characterId: id });
-            save();
-          }}
-        />
-        <SelectField
-          label="World"
-          value={s.world}
-          options={anchors.worlds.map((w) => w.name)}
-          empty="No saved worlds — add one in Library"
-          onChange={(v) => { onPatch({ world: v }); save(); }}
-        />
-      </div>
+        {/* Bible references */}
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <SelectField
+            label="Character"
+            value={s.character}
+            options={anchors.characters.map((c) => c.name)}
+            empty="No saved characters — cast one in Characters"
+            onChange={(v) => {
+              // Anchor visual continuity to the library asset id, not just the name.
+              const id = anchors.characters.find((c) => c.name === v)?.id ?? "";
+              onPatch({ character: v, characterId: id });
+              save();
+            }}
+          />
+          <SelectField
+            label="World"
+            value={s.world}
+            options={anchors.worlds.map((w) => w.name)}
+            empty="No saved worlds — design one in Worlds"
+            onChange={(v) => { onPatch({ world: v }); save(); }}
+          />
+        </div>
 
-      {/* Source + reference video */}
-      <div className="mt-3 grid gap-3 lg:grid-cols-2">
-        <div>
-          <Label>Source</Label>
-          <div className="mt-1.5 flex gap-2">
-            {(["text", "image"] as ShotSource[]).map((src) => (
-              <Chip key={src} active={s.source === src} onClick={() => { onPatch({ source: src }); save(); }}>
-                {src === "text" ? "Text → Video" : "Image → Video"}
-              </Chip>
+        {/* Source + reference video */}
+        <div className="mt-5 grid gap-5 lg:grid-cols-2">
+          <div>
+            <Label>Source</Label>
+            <div className="mt-2 flex gap-1.5">
+              {(["text", "image"] as ShotSource[]).map((src) => (
+                <Chip key={src} active={s.source === src} onClick={() => { onPatch({ source: src }); save(); }}>
+                  {src === "text" ? "Text → Video" : "Image → Video"}
+                </Chip>
+              ))}
+            </div>
+            {s.source === "image" && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
+                <button type="button" onClick={() => imgRef.current?.click()} className="cf-option">Upload seed frame</button>
+                <button
+                  type="button"
+                  onClick={onGenerateImage}
+                  title="No image provider is wired yet — this records a placeholder seed so the image→video path runs end to end."
+                  className="cf-option"
+                >
+                  AI seed · placeholder
+                </button>
+              </div>
+            )}
+          </div>
+          <div>
+            <Label>Reference video · motion style</Label>
+            <div className="mt-2 flex items-center gap-3">
+              <input ref={vidRef} type="file" accept="video/*" className="hidden" onChange={(e) => e.target.files?.[0] && onUploadVideo(e.target.files[0])} />
+              <button type="button" onClick={() => vidRef.current?.click()} className="cf-option">Upload video</button>
+              {s.refVideoName && <span className="truncate text-[11px] text-cf-muted">{s.refVideoName}</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* Camera plan + music */}
+        <div className="mt-5 grid gap-4 sm:grid-cols-3">
+          <SelectField label="Camera" value={s.cameraType} options={[...CAMERA_TYPES]} onChange={(v) => { onPatch({ cameraType: v }); save(); }} />
+          <SelectField label="Movement" value={s.movement} options={[...CAMERA_MOVEMENTS]} onChange={(v) => { onPatch({ movement: v }); save(); }} />
+          <SelectField label="Music" value={s.musicStyle} options={[...MUSIC_STYLES]} onChange={(v) => { onPatch({ musicStyle: v }); save(); }} />
+        </div>
+
+        {/* Dialogue / narration / scene details */}
+        <button type="button" onClick={() => setDetails((v) => !v)} aria-expanded={details} className="cf-link mt-6 block text-cf-muted hover:text-cf-fg">
+          {details ? "− Dialogue, narration, location & mood" : "+ Dialogue, narration, location & mood"}
+        </button>
+        {details && (
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <DetailField label="Dialogue" value={s.dialogue} onChange={(v) => onPatch({ dialogue: v })} onSave={save} placeholder="King: “We ride at dawn.”" />
+            <DetailField label="Narration" value={s.narration} onChange={(v) => onPatch({ narration: v })} onSave={save} placeholder="Voiceover" />
+            <DetailField label="Location" value={s.location} onChange={(v) => onPatch({ location: v })} onSave={save} placeholder="Where it takes place" />
+            <DetailField label="Mood" value={s.mood} onChange={(v) => onPatch({ mood: v })} onSave={save} placeholder="e.g. tense, melancholic" />
+          </div>
+        )}
+
+        {/* Continuity — inherited state, score, dependencies, timeline + the bridge */}
+        {cont && (
+          <div className="mt-5 border-t border-cf-line pt-4">
+            <button type="button" onClick={() => setContinuity((v) => !v)} aria-expanded={continuity} className="flex w-full items-center justify-between gap-3 text-left">
+              <span className="flex flex-wrap items-center gap-3">
+                <Label>Continuity</Label>
+                <ScoreBadge score={cont.score} />
+                {cont.dependsOn.length > 0 && <span className="cf-label">depends on {cont.dependsOn.map((d) => `S${d + 1}`).join(", ")}</span>}
+                {cont.affects.length > 0 && <span className="cf-label text-cf-dim">affects {cont.affects.map((d) => `S${d + 1}`).join(", ")}</span>}
+              </span>
+              <span className="cf-label">{continuity ? "−" : "+"}</span>
+            </button>
+
+            {continuity && (
+              <div className="mt-4 space-y-5">
+                <div className="flex flex-wrap gap-1.5">
+                  {s.character && <Tag>{s.character}{s.characterId ? ` · ${s.characterId}` : ""}</Tag>}
+                  {s.wardrobe && <Tag>Wardrobe · {s.wardrobe}</Tag>}
+                  {s.world && <Tag>{s.world}</Tag>}
+                  {s.location && <Tag>{s.location}</Tag>}
+                </div>
+
+                <div>
+                  <Label>Inherited state</Label>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {inheritedChips(cont.inherited).map((c) => (
+                      <span key={c} className="border border-cf-line px-2 py-1 text-[11px] text-cf-muted">{c}</span>
+                    ))}
+                    {inheritedChips(cont.inherited).length === 0 && <span className="text-[11px] text-cf-dim">Nothing inherited yet — this is the opening state.</span>}
+                  </div>
+                  {cont.bridgeIn?.whatCarriesForward.trim() && <p className="mt-2 text-[11px] text-cf-muted">Carried forward: {cont.bridgeIn.whatCarriesForward}</p>}
+                  {cont.notes.length > 0 && (
+                    <ul className="mt-2 list-disc pl-4 text-[11px] text-cf-warn">
+                      {cont.notes.map((note) => <li key={note}>{note}</li>)}
+                    </ul>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Scene bridge → next scene</Label>
+                  <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                    <DetailField label="What just happened" value={s.bridge.whatJustHappened} onChange={(v) => patchBridge({ whatJustHappened: v })} onSave={save} placeholder="Enemy invaded" />
+                    <DetailField label="What changes" value={s.bridge.whatChanged} onChange={(v) => patchBridge({ whatChanged: v })} onSave={save} placeholder="King loses his army" />
+                    <DetailField label="Carries forward" value={s.bridge.whatCarriesForward} onChange={(v) => patchBridge({ whatCarriesForward: v })} onSave={save} placeholder="Fear, a thirst for revenge" />
+                    <DetailField label="Next scene requires" value={s.bridge.nextSceneRequirements} onChange={(v) => patchBridge({ nextSceneRequirements: v })} onSave={save} placeholder="Emergency council meeting" />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>State this scene changes</Label>
+                  <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                    <DetailField label="Health / injuries" value={s.health} onChange={(v) => onPatch({ health: v })} onSave={save} placeholder="bandaged arm" />
+                    <DetailField label="Wardrobe / look" value={s.wardrobe} onChange={(v) => onPatch({ wardrobe: v })} onSave={save} placeholder="royal armor" />
+                    <DetailField label="Season" value={s.season} onChange={(v) => onPatch({ season: v })} onSave={save} placeholder="winter" />
+                    <DetailField label="Location status" value={s.locationStatus} onChange={(v) => onPatch({ locationStatus: v })} onSave={save} placeholder="destroyed" />
+                    <DetailField label="Goal" value={s.goal} onChange={(v) => onPatch({ goal: v })} onSave={save} placeholder="find evidence" />
+                  </div>
+                </div>
+
+                {timeline.length > 0 && (
+                  <div>
+                    <Label>Project timeline</Label>
+                    <ol className="mt-2 border-t border-cf-line">
+                      {timeline.map((t) => (
+                        <li key={t.index} className={`grid grid-cols-[40px_1fr] border-b border-cf-line py-2 text-[11px] ${t.index === s.index ? "text-cf-fg" : "text-cf-muted"}`}>
+                          <span className="font-mono text-[9px] text-cf-dim">S{t.index + 1}</span>
+                          {t.event}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Duration + generate */}
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-cf-line pt-5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Label>Clip</Label>
+            <span className="w-2" />
+            {CLIP_DURATIONS.map((d) => (
+              <Chip key={d} active={s.durationSec === d} onClick={() => { onPatch({ durationSec: d }); save(); }}>{d}s</Chip>
             ))}
           </div>
-          {s.source === "image" && (
-            <div className="mt-2 flex items-center gap-3">
-              <SeedPreview scene={s} />
-              <div className="flex flex-col gap-1.5">
-                <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
-                <button onClick={() => imgRef.current?.click()} className="rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/5">Upload image</button>
-                <button onClick={onGenerateImage} title="Generate a seed image from this scene" className="rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/5">AI seed image</button>
-              </div>
-            </div>
-          )}
-        </div>
-        <div>
-          <Label>Reference video (motion style)</Label>
-          <div className="mt-1.5 flex items-center gap-2">
-            <input ref={vidRef} type="file" accept="video/*" className="hidden" onChange={(e) => e.target.files?.[0] && onUploadVideo(e.target.files[0])} />
-            <button onClick={() => vidRef.current?.click()} className="rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/5">Upload video</button>
-            {s.refVideoName && <span className="truncate text-xs text-white/50">{s.refVideoName}</span>}
-          </div>
-        </div>
-      </div>
-
-      {/* Camera plan + music */}
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <SelectField label="Camera" value={s.cameraType} options={[...CAMERA_TYPES]} onChange={(v) => { onPatch({ cameraType: v }); save(); }} />
-        <SelectField label="Movement" value={s.movement} options={[...CAMERA_MOVEMENTS]} onChange={(v) => { onPatch({ movement: v }); save(); }} />
-        <SelectField label="Music" value={s.musicStyle} options={[...MUSIC_STYLES]} onChange={(v) => { onPatch({ musicStyle: v }); save(); }} />
-      </div>
-
-      {/* Dialogue / narration / scene details */}
-      <button onClick={() => setDetails((v) => !v)} className="mt-3 text-xs text-white/45 transition hover:text-white">
-        {details ? "▾ Hide dialogue & details" : "▸ Dialogue, narration, location & mood"}
-      </button>
-      {details && (
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          <DetailField label="Dialogue" value={s.dialogue} onChange={(v) => onPatch({ dialogue: v })} onSave={save} placeholder="King: “We ride at dawn.”" />
-          <DetailField label="Narration" value={s.narration} onChange={(v) => onPatch({ narration: v })} onSave={save} placeholder="Voiceover" />
-          <DetailField label="Location" value={s.location} onChange={(v) => onPatch({ location: v })} onSave={save} placeholder="Where it takes place" />
-          <DetailField label="Mood" value={s.mood} onChange={(v) => onPatch({ mood: v })} onSave={save} placeholder="e.g. tense, melancholic" />
-        </div>
-      )}
-
-      {/* Continuity — inherited state, score, dependencies, timeline + the bridge */}
-      {cont && (
-        <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.015] p-2.5">
-          <button onClick={() => setContinuity((v) => !v)} className="flex w-full items-center justify-between gap-2 text-xs">
-            <span className="flex flex-wrap items-center gap-2">
-              <span className="text-white/45">Continuity</span>
-              <ScoreBadge score={cont.score} />
-              {cont.dependsOn.length > 0 && (
-                <span className="text-white/40">depends on {cont.dependsOn.map((d) => `S${d + 1}`).join(", ")}</span>
-              )}
-              {cont.affects.length > 0 && <span className="text-white/30">· affects {cont.affects.map((d) => `S${d + 1}`).join(", ")}</span>}
-            </span>
-            <span className="text-white/40">{continuity ? "▾" : "▸"}</span>
+          <button type="button" onClick={onGenerate} disabled={s.status === "GENERATING"} className="cf-btn-accent">
+            {s.status === "GENERATING" ? (live ? "On the GPU…" : "Previewing…") : s.status === "READY" ? "Regenerate scene" : live ? "Generate scene" : "Preview scene"}
           </button>
-
-          {continuity && (
-            <div className="mt-2.5 space-y-3">
-              <div className="flex flex-wrap gap-1.5 text-[11px]">
-                {s.character && <Tag>✓ {s.character}{s.characterId ? ` · ${s.characterId}` : ""}</Tag>}
-                {s.wardrobe && <Tag>👗 {s.wardrobe}</Tag>}
-                {s.world && <Tag>✓ {s.world}</Tag>}
-                {s.location && <Tag>✓ {s.location}</Tag>}
-              </div>
-
-              <div>
-                <Label>Inherited state</Label>
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {inheritedChips(cont.inherited).map((c) => (
-                    <span key={c} className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[11px] text-white/60">{c}</span>
-                  ))}
-                  {inheritedChips(cont.inherited).length === 0 && <span className="text-[11px] text-white/35">Nothing inherited yet — this is the opening state.</span>}
-                </div>
-                {cont.bridgeIn?.whatCarriesForward.trim() && (
-                  <p className="mt-1 text-[11px] text-white/50">↪ Carried forward: {cont.bridgeIn.whatCarriesForward}</p>
-                )}
-                {cont.notes.length > 0 && (
-                  <ul className="mt-1 list-disc pl-4 text-[11px] text-amber-300/70">
-                    {cont.notes.map((n) => <li key={n}>{n}</li>)}
-                  </ul>
-                )}
-              </div>
-
-              <div>
-                <Label>Scene Bridge → next scene</Label>
-                <div className="mt-1 grid gap-2 sm:grid-cols-2">
-                  <DetailField label="What just happened" value={s.bridge.whatJustHappened} onChange={(v) => patchBridge({ whatJustHappened: v })} onSave={save} placeholder="Enemy invaded" />
-                  <DetailField label="What changes" value={s.bridge.whatChanged} onChange={(v) => patchBridge({ whatChanged: v })} onSave={save} placeholder="King loses his army" />
-                  <DetailField label="Carries forward" value={s.bridge.whatCarriesForward} onChange={(v) => patchBridge({ whatCarriesForward: v })} onSave={save} placeholder="Fear, a thirst for revenge" />
-                  <DetailField label="Next scene requires" value={s.bridge.nextSceneRequirements} onChange={(v) => patchBridge({ nextSceneRequirements: v })} onSave={save} placeholder="Emergency council meeting" />
-                </div>
-              </div>
-
-              <div>
-                <Label>State this scene changes</Label>
-                <div className="mt-1 grid gap-2 sm:grid-cols-2">
-                  <DetailField label="Health / injuries" value={s.health} onChange={(v) => onPatch({ health: v })} onSave={save} placeholder="bandaged arm" />
-                  <DetailField label="Wardrobe / look" value={s.wardrobe} onChange={(v) => onPatch({ wardrobe: v })} onSave={save} placeholder="royal armor" />
-                  <DetailField label="Season" value={s.season} onChange={(v) => onPatch({ season: v })} onSave={save} placeholder="winter" />
-                  <DetailField label="Location status" value={s.locationStatus} onChange={(v) => onPatch({ locationStatus: v })} onSave={save} placeholder="destroyed" />
-                  <DetailField label="Goal" value={s.goal} onChange={(v) => onPatch({ goal: v })} onSave={save} placeholder="find evidence" />
-                </div>
-              </div>
-
-              {timeline.length > 0 && (
-                <div>
-                  <Label>Project timeline</Label>
-                  <ol className="mt-1 space-y-0.5 text-[11px] text-white/55">
-                    {timeline.map((t) => (
-                      <li key={t.index} className={t.index === s.index ? "text-white/90" : undefined}>
-                        <span className="text-white/35">S{t.index + 1}</span> · {t.event}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-            </div>
-          )}
         </div>
-      )}
-
-      {/* Duration + generate */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1.5">
-          {CLIP_DURATIONS.map((d) => (
-            <Chip key={d} active={s.durationSec === d} onClick={() => { onPatch({ durationSec: d }); save(); }}>{d}s</Chip>
-          ))}
-        </div>
-        <button
-          onClick={onGenerate}
-          disabled={s.status === "GENERATING"}
-          className="rounded-lg bg-white px-5 py-2 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-50"
-        >
-          {s.status === "GENERATING" ? "Generating…" : s.status === "READY" ? "Regenerate scene" : "Generate scene"}
-        </button>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -671,12 +683,8 @@ function SelectField({
 }) {
   return (
     <label className="block">
-      <span className="text-[10px] uppercase tracking-wider text-white/40">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-lg border border-white/10 bg-[#0a0a0f] px-2.5 py-1.5 text-sm outline-none focus:border-white/30"
-      >
+      <Label>{label}</Label>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="cf-input mt-2 py-2.5">
         <option value="">{options.length === 0 && empty ? empty : `— ${label} —`}</option>
         {options.map((o) => (
           <option key={o} value={o}>{o}</option>
@@ -687,28 +695,34 @@ function SelectField({
 }
 
 function SeedPreview({ scene: s }: { scene: SceneDraft }) {
+  const frame = "relative flex aspect-video w-full items-center justify-center overflow-hidden border border-cf-line";
   if (s.seedUrl) {
-    return <img src={s.seedUrl} alt="seed" className="h-16 w-28 rounded-lg object-cover" />;
+    /* Plain <img>: a signed or local object URL next/image cannot optimise. */
+    return <img src={s.seedUrl} alt={`Seed frame for scene ${s.index + 1}`} className="aspect-video w-full object-cover" />;
   }
   if (s.seedKey) {
-    const label = s.seedKey.startsWith("generated:") ? "AI seed" : s.seedKey.startsWith("ref:") ? s.seedKey.slice(4) : "seed";
+    const label = s.seedKey.startsWith("generated:") ? "AI seed · placeholder" : s.seedKey.startsWith("ref:") ? s.seedKey.slice(4) : "Seed frame";
     return (
-      <div className="flex h-16 w-28 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/40 to-fuchsia-500/30 text-[10px] text-white/80">
-        {label}
+      <div className={`${frame} bg-cf-panel`}>
+        <span className="cf-label">{label}</span>
       </div>
     );
   }
-  return <div className="flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-white/15 text-[10px] text-white/40">no seed</div>;
+  return (
+    <div className={`${frame} border-dashed`}>
+      <span className="cf-label text-cf-dim">{s.source === "image" ? "No seed frame" : "Text → video"}</span>
+    </div>
+  );
 }
 
 /* ── continuity UI bits ─────────────────────────────────────── */
 function ScoreBadge({ score }: { score: number }) {
-  const tone = score >= 80 ? "bg-emerald-500/15 text-emerald-300" : score >= 50 ? "bg-amber-500/15 text-amber-300" : "bg-rose-500/15 text-rose-300";
-  return <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${tone}`}>{score}%</span>;
+  const tone = score >= 80 ? "text-cf-ok" : score >= 50 ? "text-cf-warn" : "text-cf-danger";
+  return <span className={`font-mono text-[10px] ${tone}`}>{score}%</span>;
 }
 
 function Tag({ children }: { children: ReactNode }) {
-  return <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-emerald-300/80">{children}</span>;
+  return <span className="border border-cf-ok/40 px-2 py-1 text-[11px] text-cf-ok">{children}</span>;
 }
 
 /** Flatten the inherited Project Memory Graph into short display chips. */
@@ -741,28 +755,17 @@ function DetailField({
 }) {
   return (
     <label className="block">
-      <span className="text-[10px] uppercase tracking-wider text-white/40">{label}</span>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onSave}
-        placeholder={placeholder}
-        className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-sm outline-none focus:border-white/30"
-      />
+      <Label>{label}</Label>
+      <input value={value} onChange={(e) => onChange(e.target.value)} onBlur={onSave} placeholder={placeholder} className="cf-input mt-2 py-2.5" />
     </label>
   );
 }
 function Label({ children }: { children: ReactNode }) {
-  return <span className="text-xs uppercase tracking-wider text-white/40">{children}</span>;
+  return <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-cf-muted">{children}</span>;
 }
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-xs transition ${
-        active ? "border-white/40 bg-white/10 text-white" : "border-white/10 text-white/60 hover:border-white/25"
-      }`}
-    >
+    <button type="button" onClick={onClick} aria-pressed={active} className="cf-option">
       {children}
     </button>
   );
@@ -770,24 +773,19 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 function IconBtn({ children, onClick, disabled, title }: { children: ReactNode; onClick: () => void; disabled?: boolean; title: string }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="flex h-6 w-6 items-center justify-center rounded-md text-sm transition hover:bg-white/10 disabled:opacity-25"
+      aria-label={title}
+      className="flex h-8 w-8 items-center justify-center border border-cf-line text-[12px] text-cf-muted transition hover:border-cf-fg hover:text-cf-fg disabled:opacity-25"
     >
       {children}
     </button>
   );
 }
 function StatusBadge({ status }: { status: string }) {
-  const cls =
-    status === "READY"
-      ? "border-emerald-400/40 text-emerald-300"
-      : status === "GENERATING"
-        ? "border-sky-400/40 text-sky-300"
-        : status === "FAILED"
-          ? "border-rose-400/40 text-rose-300"
-          : "border-white/20 text-white/50";
+  const tone = status === "READY" ? "ok" : status === "GENERATING" ? "live" : status === "FAILED" ? "danger" : "idle";
   const label = status === "PENDING" ? "Draft" : status[0] + status.slice(1).toLowerCase();
-  return <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${cls}`}>{label}</span>;
+  return <Status tone={tone}>{label}</Status>;
 }
