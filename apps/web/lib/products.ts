@@ -230,6 +230,7 @@ export const NAV: NavSection[] = [
     title: "View",
     items: [
       { label: "Creator", href: "/view/creator" },
+      { label: "Studio", href: "/view/studio" },
     ],
   },
   {

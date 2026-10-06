@@ -8,6 +8,7 @@ import { Section } from "../cf/primitives";
 
 export const VIEWS: { slug: "creator" | "studio" | "super"; role: Role; title: string; blurb: string }[] = [
   { slug: "creator", role: "creator", title: "Creator", blurb: "Your personal production environment." },
+  { slug: "studio", role: "owner", title: "Studio", blurb: "The collaborative production house." },
 ];
 
 /**
