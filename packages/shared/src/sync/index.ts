@@ -4,3 +4,4 @@ export * from "./timeline-analyzer";
 export * from "./duration-validator";
 export * from "./dialogue-aligner";
 export * from "./subtitle-sync";
+export * from "./rate-and-drift";
