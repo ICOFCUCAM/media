@@ -33,8 +33,8 @@ export function BrandPage() {
       .maybeSingle()
       .then(async ({ data }) => {
         if (!data) return;
-        setPrimary(data.primary_color);
-        setSecondary(data.secondary_color);
+        if (data.primary_color) setPrimary(data.primary_color);
+        if (data.secondary_color) setSecondary(data.secondary_color);
         setOutro(data.outro_text ?? "");
         if (data.logo_key) setLogoUrl(await signedUrl(data.logo_key));
       });
