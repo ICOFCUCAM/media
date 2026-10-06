@@ -88,14 +88,14 @@ function FilmWorkspace() {
         </div>
       )}
 
-      <nav className="mt-12 flex overflow-x-auto border-b border-t border-b-cf-line border-t-cf-fg" aria-label="Production mode">
+      <nav className="mt-12 grid grid-cols-2 border-l border-t border-cf-fg sm:grid-cols-4 xl:grid-cols-7" aria-label="Production mode">
         {STUDIO_MODES.map((m) => (
           <button
             key={m.id}
             type="button"
             onClick={() => choose(m.id)}
             aria-pressed={mode === m.id}
-            className={`flex min-w-[120px] shrink-0 items-center justify-center gap-2 border-r border-cf-line px-5 py-4 font-mono text-[9px] uppercase tracking-[0.08em] transition ${
+            className={`flex items-center justify-center gap-2 border-b border-r border-cf-line px-4 py-4 font-mono text-[9px] uppercase tracking-[0.08em] transition ${
               mode === m.id ? "bg-cf-inverse text-cf-on-inverse" : "text-cf-muted hover:text-cf-fg"
             }`}
           >
