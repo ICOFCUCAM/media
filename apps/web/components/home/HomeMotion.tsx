@@ -15,10 +15,20 @@ export function HomeMotion() {
     };
     menu?.addEventListener("click", closeMenu);
 
+    // Once the page leaves the hero, the nav becomes a solid glass bar so it
+    // never smears over the cream sections.
+    const nav = document.querySelector<HTMLElement>(".cfh .nav");
+    const onNav = () => nav?.classList.toggle("is-scrolled", window.scrollY > 60);
+    onNav();
+    window.addEventListener("scroll", onNav, { passive: true });
+
     const reveals = document.querySelectorAll<HTMLElement>(".cfh .reveal");
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       reveals.forEach((el) => el.classList.add("visible"));
-      return () => menu?.removeEventListener("click", closeMenu);
+      return () => {
+        menu?.removeEventListener("click", closeMenu);
+        window.removeEventListener("scroll", onNav);
+      };
     }
 
     const observer = new IntersectionObserver(
@@ -47,6 +57,7 @@ export function HomeMotion() {
       observer.disconnect();
       window.removeEventListener("mousemove", onMove);
       menu?.removeEventListener("click", closeMenu);
+      window.removeEventListener("scroll", onNav);
     };
   }, []);
 
