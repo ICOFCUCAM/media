@@ -10,7 +10,7 @@
  * dependencies are enforced by the queue.
  */
 import { Worker } from "bullmq";
-import { QUEUES, type FilmJob } from "@cineforge/shared";
+import { QUEUES, planCapSec, type FilmJob } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
 import { DirectorService } from "../director/director.service";
 import { moderatePrompt } from "../director/moderation";
@@ -35,8 +35,7 @@ export const filmWorker = new Worker<FilmJob>(
       // Tier length gate — authoritative (the web's locked chips are cosmetic).
       // Over-length projects are CLAMPED, not failed: the user still gets a
       // film, at their plan's ceiling, with the reason recorded.
-      const caps: Record<string, number> = { FREE: 30, CREATOR: 180, STUDIO: 600, AGENCY: 1200, ENTERPRISE: Number.MAX_SAFE_INTEGER };
-      const cap = project.user.role === "ADMIN" ? Number.MAX_SAFE_INTEGER : (caps[project.user.tier] ?? 30);
+      const cap = planCapSec(project.user.tier, project.user.role);
       if (project.targetSeconds > cap) {
         await prisma.project.update({
           where: { id: projectId },
