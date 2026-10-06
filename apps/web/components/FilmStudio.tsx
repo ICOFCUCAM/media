@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { AuthCard } from "./AuthCard";
 import { CreateStudio } from "./CreateStudio";
 import { StoryboardStudio } from "./StoryboardStudio";
 import { ScriptStudio, ImageStudio, AudioStudio, VideoStudio, HybridStudio } from "./EntrySurfaces";
 import { STUDIO_MODES, projectTypeById, type StudioMode } from "../lib/creation";
-import { PageHeader } from "./cf/primitives";
+import { StudioPage, StudioTabs } from "./cf/StudioLayout";
 import { productById } from "../lib/products";
 
 export function FilmStudio() {
@@ -36,13 +36,6 @@ function FilmWorkspace() {
   const { enabled, user } = useAuth();
   const live = enabled && !!user;
   const [mode, setMode] = useState<StudioMode>("prompt");
-  const modeBar = useRef<HTMLElement>(null);
-  // On phones the mode bar scrolls sideways — keep the chosen mode in view.
-  useEffect(() => {
-    const bar = modeBar.current;
-    const on = bar?.querySelector<HTMLElement>('[aria-pressed="true"]');
-    if (bar && on && bar.scrollWidth > bar.clientWidth) bar.scrollLeft = on.offsetLeft - 20;
-  }, [mode]);
   const [type, setType] = useState<string | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const p = productById("film")!;
@@ -68,51 +61,35 @@ function FilmWorkspace() {
   const production = type ?? "Film";
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
-      <PageHeader
-        eyebrow={`${production} production / 01`}
-        title={<>Direct<br />the <em>{type ? type.toLowerCase() : "film"}.</em></>}
-        copy={
-          <>
-            <p>From premise to final cut, Cineforge turns one creative direction into a complete production.</p>
-            <p>{MODE_BLURB[mode]}</p>
-            <p><strong>You direct. Cineforge carries the production.</strong></p>
-          </>
-        }
-        status={live ? { tone: "live", label: "Live studio · saved to your projects" } : { tone: "warn", label: enabled ? "Preview · sign in to save" : "Preview · not saved" }}
-        aside={
-          enabled && !live ? (
-            <button type="button" onClick={() => setShowAuth((v) => !v)} aria-expanded={showAuth} className="cf-link mt-5 block">
-              {showAuth ? "Hide sign in" : "Sign in to save →"}
-            </button>
-          ) : null
-        }
-      />
-
-      {showAuth && !live && (
-        <div className="border-b border-cf-line py-10">
-          <AuthCard />
-        </div>
-      )}
-
-      <nav ref={modeBar} className="relative -mx-5 mt-12 flex snap-x overflow-x-auto border-t border-cf-fg px-5 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-4 sm:border-l sm:px-0 xl:grid-cols-7" aria-label="Production mode">
-        {STUDIO_MODES.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => choose(m.id)}
-            aria-pressed={mode === m.id}
-            className={`flex shrink-0 snap-start items-center justify-center gap-2 whitespace-nowrap border-b border-r border-cf-line px-5 py-4 text-[14px] font-semibold transition sm:whitespace-normal ${
-              mode === m.id ? "bg-cf-inverse text-cf-on-inverse" : "text-cf-muted hover:text-cf-fg"
-            }`}
-          >
-            {m.label}
-            {m.status === "beta" && <span className={`text-[11px] font-medium uppercase tracking-[0.06em] ${mode === m.id ? "opacity-70" : "text-cf-warn"}`}>beta</span>}
+    <StudioPage
+      title={`Create a ${production}`}
+      badge={live ? { tone: "live", label: "Live · saved to Projects" } : { tone: "warn", label: enabled ? "Preview · sign in to save" : "Preview" }}
+      subtitle={MODE_BLURB[mode]}
+      scroll={mode !== "prompt"}
+      aside={
+        enabled && !live ? (
+          <button type="button" onClick={() => setShowAuth((v) => !v)} aria-expanded={showAuth} className="cf-link min-h-[40px]">
+            {showAuth ? "Hide sign in" : "Sign in to save"}
           </button>
-        ))}
-      </nav>
-
-      <div className="pt-10">
+        ) : null
+      }
+      tabs={
+        <>
+          {showAuth && !live && (
+            <div className="mb-5 rounded-lg border border-cf-line p-5">
+              <AuthCard />
+            </div>
+          )}
+          <StudioTabs
+            label="Production mode"
+            items={STUDIO_MODES.map((m) => ({ id: m.id, label: m.label, beta: m.status === "beta" }))}
+            value={mode}
+            onChange={choose}
+          />
+        </>
+      }
+    >
+      <div className={mode === "prompt" ? "lg:h-full" : ""}>
         {mode === "prompt" && (
           <CreateStudio
             kind="film"
@@ -133,6 +110,6 @@ function FilmWorkspace() {
         {mode === "audio" && <AudioStudio />}
         {mode === "video" && <VideoStudio />}
       </div>
-    </div>
+    </StudioPage>
   );
 }

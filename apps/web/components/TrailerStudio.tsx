@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useCreateRun } from "../lib/useCreateRun";
+import { usePlan } from "../lib/usePlan";
 import { RunPanel } from "./RunPanel";
 import type { ProjectStatus } from "../lib/demo";
-import { ActionBand, Cell, Control, PageHeader, Section, SpecList, Split } from "./cf/primitives";
-import { Pipeline, type PipelineStep } from "./cf/Pipeline";
+import { Chips, ExampleShelf, Field, StudioFooter, StudioGrid, StudioPage, UnlockRow } from "./cf/StudioLayout";
+import { NotifyToggle } from "./cf/NotifyToggle";
 
 const STAGE_LABELS: Record<ProjectStatus, string> = {
   PLANNING: "Picking beats",
@@ -19,133 +20,114 @@ const DURATIONS = [15, 30, 60, 90];
 const MUSIC = ["Epic", "Tense", "Uplifting", "Dark", "Playful"];
 const VO = ["None", "Gravelly", "Warm", "Whispered"];
 
+const EXAMPLES = [
+  { title: "Space heist", brief: "A sci-fi heist on a derelict space station." },
+  { title: "Kingdom war", brief: "An African kingdom rises against an empire — three generations, one war for independence." },
+  { title: "Noir city", brief: "A detective hunts a vanished singer through a neon city that never sleeps." },
+  { title: "Ocean myth", brief: "A fisherman's daughter follows a glowing whale beyond the edge of the map." },
+];
+
 /** The Cutting Room (docs/design/create-trailer.html) — beats, voiceover and a
  *  music sting, not a feature prompt. Runs through the shared useCreateRun. */
 export function TrailerStudio() {
-  const [subject, setSubject] = useState("A sci-fi heist on a derelict space station.");
-  const [type, setType] = useState(TYPES[0]);
+  const [subject, setSubject] = useState(EXAMPLES[0]!.brief);
+  const [type, setType] = useState(TYPES[0]!);
   const [seconds, setSeconds] = useState(30);
-  const [music, setMusic] = useState(MUSIC[1]);
-  const [vo, setVo] = useState(VO[1]);
+  const [music, setMusic] = useState(MUSIC[1]!);
+  const [vo, setVo] = useState(VO[1]!);
   const { state, running, run, reset } = useCreateRun();
+  const plan = usePlan();
+
+  // Only offer lengths this plan can run; the worker clamps regardless.
+  const lengths = DURATIONS.filter((d) => d <= plan.maxSec);
+  const effSeconds = lengths.includes(seconds) ? seconds : lengths[lengths.length - 1] ?? DURATIONS[0]!;
 
   function onCreate() {
     run({
-      prompt: `${type} trailer (${seconds}s) for: ${subject}. Music: ${music}. Voiceover: ${vo}.`,
+      prompt: `${type} trailer (${effSeconds}s) for: ${subject}. Music: ${music}. Voiceover: ${vo}.`,
       modelId: "wan-2.1",
-      targetSeconds: seconds,
+      targetSeconds: effSeconds,
     });
+    if (window.innerWidth < 1024) document.getElementById("studio-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
-      <PageHeader
-        eyebrow="Cutting room / Editorial"
-        title={<>Cut the<br /><em>trailer.</em></>}
-        copy={
+    <StudioPage
+      title="Create a Trailer"
+      subtitle="Turn a story into anticipation — set the objective, the rhythm and the sound."
+      badge={state?.live ? { tone: "live", label: "Live · saved to Projects" } : { tone: "warn", label: "Preview" }}
+    >
+      <StudioGrid
+        controls={
           <>
-            <p>Turn a story into anticipation. Choose the objective, set the rhythm and the sound, and let the cut build toward its final image.</p>
-            <p><strong>Paced for the feed, with a voiceover and a music sting.</strong></p>
+            <ExampleShelf examples={EXAMPLES} onPick={setSubject} />
+            <Field label="What should the trailer sell?" htmlFor="trailer-subject">
+              <textarea id="trailer-subject" value={subject} onChange={(e) => setSubject(e.target.value)} rows={3} className="cf-input min-h-[96px] resize-y leading-[1.6]" />
+            </Field>
+            <Field label="Objective" value={type}>
+              <Options options={TYPES} value={type} set={setType} />
+            </Field>
+            <Field label="Length" value={`${effSeconds}s`}>
+              <Chips>
+                {lengths.map((d) => (
+                  <button key={d} type="button" className="cf-option" aria-pressed={effSeconds === d} onClick={() => setSeconds(d)}>
+                    {d}s
+                  </button>
+                ))}
+              </Chips>
+            </Field>
+            <Field label="Music" value={music}>
+              <Options options={MUSIC} value={music} set={setMusic} />
+            </Field>
+            <Field label="Voiceover" value={vo}>
+              <Options options={VO} value={vo} set={setVo} />
+            </Field>
+            <UnlockRow plan={plan.name} items={lengths.length < DURATIONS.length ? [`${DURATIONS[DURATIONS.length - 1]}s cuts`] : []} />
           </>
         }
-        status={{ tone: state?.live ? "live" : "idle", label: state ? (state.live ? "Live production" : "Preview simulation") : "Cutting room open" }}
-      />
-
-      <Section label="01 — Editorial brief" title="Define the cut.">
-        <Split>
-          <Cell>
-            <div className="flex items-center justify-between">
-              <label htmlFor="trailer-subject" className="font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Source / story</label>
-              <span className="cf-label">Required</span>
-            </div>
-            <textarea id="trailer-subject" value={subject} onChange={(e) => setSubject(e.target.value)} rows={4} className="cf-input mt-2.5 resize-y p-5 leading-[1.7]" />
-            <p className="cf-label mt-3 leading-relaxed">Describe the story, film or project the trailer should sell. The Director builds the editorial arc from it.</p>
-            <div className="mt-10">
-              <Control name="Editorial objective" value={type}>
-                <Chips options={TYPES} value={type} set={setType} />
-              </Control>
-              <Control name="Length" value={`${seconds}s`}>
-                <div className="flex flex-wrap gap-1.5">
-                  {DURATIONS.map((d) => (
-                    <Chip key={d} active={seconds === d} onClick={() => setSeconds(d)}>{d}s</Chip>
-                  ))}
-                </div>
-              </Control>
-            </div>
-          </Cell>
-          <Cell>
-            <div className="cf-label">Sound</div>
-            <div className="mt-8">
-              <Control name="Music" value={music}>
-                <Chips options={MUSIC} value={music} set={setMusic} />
-              </Control>
-              <Control name="Voiceover" value={vo}>
-                <Chips options={VO} value={vo} set={setVo} />
-              </Control>
-            </div>
-            <SpecList className="mt-10" rows={[["Cut", `${type} · ${seconds}s`], ["Music", music], ["Voiceover", vo], ["Engine", "Wan 2.1"]]} />
-            <div className="mt-10">
-              <Pipeline steps={TRAILER_PIPELINE} status={state?.status} />
-            </div>
-          </Cell>
-        </Split>
-      </Section>
-
-      <section className="mt-14 border-t border-cf-fg" aria-label="Trailer preview">
-        <div className="flex items-center justify-between border-b border-cf-line py-4">
-          <span className="cf-label text-cf-fg">02 — The cut</span>
-          <span className="cf-label">{state ? STAGE_LABELS[state.status] : "Waiting for the brief"}</span>
-        </div>
-        <div className={state ? "pt-8" : ""}>
+        footer={
+          <StudioFooter
+            rows={[
+              ["Cut", `${type} · ${effSeconds}s`],
+              ["Sound", `${music} · ${vo === "None" ? "no VO" : vo}`],
+            ]}
+            note={<NotifyToggle state={state} />}
+          >
+            <button type="button" onClick={onCreate} disabled={running || !subject.trim()} className="cf-btn-accent flex-1">
+              {running ? "Cutting…" : "Cut trailer"}
+            </button>
+            <button type="button" onClick={reset} className="cf-btn-line">
+              Reset
+            </button>
+          </StudioFooter>
+        }
+        preview={
           <RunPanel
             state={state}
             stageLabels={STAGE_LABELS}
-            readyTitle="Trailer ready"
+            readyTitle="Trailer ready" fill
             artSeed={subject}
             emptyHint={
               <div>
-                <p className="cf-display text-[clamp(38px,5vw,62px)] leading-none">The cut begins here.</p>
-                <p className="cf-label mt-3">Beats, voiceover and a sting — sized for the feed</p>
+                <p className="cf-display text-[clamp(32px,4vw,52px)] leading-none">The cut begins here.</p>
+                <p className="mt-3 text-[14px] text-white/80">Beats, voiceover and a sting — sized for the feed.</p>
               </div>
             }
           />
-        </div>
-      </section>
-
-      <div className="mt-14">
-        <ActionBand title={<>Make the <em>cut.</em></>} copy={`${type} trailer · ${seconds}s · ${music} score · ${vo === "None" ? "no voiceover" : `${vo.toLowerCase()} voiceover`}.`}>
-          <button type="button" onClick={reset} className="cf-btn-line">
-            Reset
-          </button>
-          <button type="button" onClick={onCreate} disabled={running || !subject.trim()} className="cf-btn-accent">
-            {running ? "Cutting…" : "Cut trailer"}
-          </button>
-        </ActionBand>
-      </div>
-    </div>
+        }
+      />
+    </StudioPage>
   );
 }
 
-const TRAILER_PIPELINE: PipelineStep[] = [
-  { name: "Editorial beats", at: "PLANNING" },
-  { name: "Shots", at: "GENERATING" },
-  { name: "Score & voiceover", at: "RENDERING" },
-  { name: "Final cut", at: "RENDERING" },
-];
-
-function Chips({ options, value, set }: { options: string[]; value: string; set: (v: string) => void }) {
+function Options({ options, value, set }: { options: string[]; value: string; set: (v: string) => void }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <Chips>
       {options.map((o) => (
-        <Chip key={o} active={value === o} onClick={() => set(o)}>{o}</Chip>
+        <button key={o} type="button" onClick={() => set(o)} aria-pressed={value === o} className="cf-option">
+          {o}
+        </button>
       ))}
-    </div>
-  );
-}
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} aria-pressed={active} className="cf-option">
-      {children}
-    </button>
+    </Chips>
   );
 }
