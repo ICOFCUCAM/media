@@ -120,7 +120,8 @@ export function classifyVideoResult(input: {
   return { ...base, ...measured, outcome: "REQUIRES_REGENERATION", code: "DURATION_OUT_OF_TOLERANCE", message: `${what}; no safe repair within ${policyRef(policy)}` };
 }
 
-function chooseRepair(delta: Us, ratio: number, req: VideoTimingRequest, policy: SyncPolicy): TimingRepair | undefined {
+/** The safe repair for a duration deviation, if one exists (shared with the A/V sync engine). */
+export function chooseRepair(delta: Us, ratio: number, req: Pick<VideoTimingRequest, "durationUs" | "trimHandleUs">, policy: SyncPolicy): TimingRepair | undefined {
   const { maxRetimeRatio, maxTrimUs, maxHoldUs } = policy.repair;
   const retimeOk = Math.abs(1 - ratio) <= maxRetimeRatio;
   if (delta > 0n) {
