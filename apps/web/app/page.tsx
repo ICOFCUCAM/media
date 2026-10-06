@@ -3,6 +3,8 @@ import Link from "next/link";
 import "./home.css";
 import { HomeMotion } from "../components/home/HomeMotion";
 import { HomeShowreel } from "../components/home/HomeShowreel";
+import { HeroFrame } from "../components/home/HeroFrame";
+import { STUDIO_MODES } from "../lib/creation";
 import {
   NAV,
   PRODUCTS,
@@ -43,6 +45,7 @@ export default function Home() {
       <Nav />
       <main>
         <Hero />
+        <Metrics />
         <Manifesto />
         <WorldChapter />
         <Workspace />
@@ -91,6 +94,7 @@ function Hero() {
   return (
     <section className="hero">
       <div className="hero-image" />
+      <HeroFrame />
 
       <div className="hero-content">
         <div className="eyebrow hero-kicker">The film production system / 01</div>
@@ -111,10 +115,32 @@ function Hero() {
         </div>
       </div>
 
+      <a href="#studio" className="hero-scroll" aria-label="Scroll to the studio" />
+
       <div className="hero-bottom">
         <span>{IDEA_TO_AUDIENCE.join(" / ")}</span>
         <span>© {new Date().getFullYear()} Cineforge</span>
       </div>
+    </section>
+  );
+}
+
+/* ── Metrics — figures the system itself backs ─────────────────────── */
+function Metrics() {
+  const items: [string, string][] = [
+    [String(LANGUAGES.length), "languages dubbed"],
+    [String(SOCIAL_CHANNELS.length), "publish channels"],
+    [String(STUDIO_MODES.length), "ways to start a film"],
+    ["1080p", "adaptive HLS streaming"],
+  ];
+  return (
+    <section className="metrics" aria-label="Cineforge in numbers">
+      {items.map(([v, k]) => (
+        <div key={k} className="metric">
+          <div className="metric-value">{v}</div>
+          <div className="metric-label">{k}</div>
+        </div>
+      ))}
     </section>
   );
 }
