@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "./AuthProvider";
-import { AuthCard } from "./AuthCard";
+import { StudioGate } from "./cf/StudioGate";
+import { EmptyState, PageHeader, Section } from "./cf/primitives";
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
-import { SkeletonCards } from "./Skeleton";
+import { SkeletonRows } from "./Skeleton";
 
 /**
- * Music & audio library — every track the pipeline produced for your
+ * The Score Room (docs/design/score-room-music.html). Music & audio library — every track the pipeline produced for your
  * projects (scores when the music engine lands, narration today) plus the
  * Voice Lab readings, all playable in one place.
  */
@@ -22,7 +23,7 @@ interface TrackRow {
 }
 
 export function MusicLibrary() {
-  const { enabled, loading, user } = useAuth();
+  const { user } = useAuth();
   const [tracks, setTracks] = useState<TrackRow[] | null>(null);
 
   useEffect(() => {
@@ -42,50 +43,59 @@ export function MusicLibrary() {
     })();
   }, [user]);
 
+  const kinds = [...new Set((tracks ?? []).map((t) => t.kind))];
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Music & Audio</h1>
-        <p className="mt-1 text-sm text-white/55">Every track your productions generated — narration today, scores when the music engine arrives.</p>
-      </header>
-      {!enabled ? (
-        <p className="text-sm text-white/45">Connect Supabase to see your audio.</p>
-      ) : loading ? (
-        <p className="text-sm text-white/40">Loading…</p>
-      ) : !user ? (
-        <AuthCard title="Sign in to browse your audio" />
-      ) : !tracks ? (
-        <SkeletonCards cards={4} />
-      ) : tracks.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 text-sm text-white/55">
-          No tracks yet — generate a film with narration, or create readings in the <a className="underline" href="/library/voices">Voice Lab</a>.
-        </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {tracks.map((t) => (
-            <TrackCard key={t.id} row={t} />
-          ))}
-        </div>
-      )}
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="Production / The score room"
+        title={<>The score<br /><em>room.</em></>}
+        copy={
+          <>
+            <p>Music is not decoration. It establishes the emotional architecture of a film.</p>
+            <p><strong>Every track your productions generated, kept beside the scenes it was made for — narration today, scores when the music engine arrives.</strong></p>
+          </>
+        }
+        status={{ tone: tracks?.length ? "live" : "idle", label: tracks ? `${tracks.length} tracks` : "Score room" }}
+      />
+      <div className="pt-12">
+        <StudioGate signIn="Sign in to browse your audio" what="Tracks">
+          <Section label="Production audio" title={tracks ? `${String(tracks.length).padStart(2, "0")} tracks` : "Tracks"} aside={kinds.length > 0 ? <span className="cf-label">{kinds.join(" · ")}</span> : undefined}>
+            {!tracks ? (
+              <SkeletonRows rows={4} />
+            ) : tracks.length === 0 ? (
+              <EmptyState
+                title={<>Silence, <em>for now.</em></>}
+                hint="Generate a film with narration, or create readings in the Voice Room — every track lands here."
+                action={{ label: "Open the voice room", href: "/library/voices" }}
+              />
+            ) : (
+              <ol className="border-t border-cf-fg">
+                {tracks.map((t, i) => (
+                  <TrackRow key={t.id} n={i + 1} row={t} />
+                ))}
+              </ol>
+            )}
+          </Section>
+        </StudioGate>
+      </div>
     </div>
   );
 }
 
-function TrackCard({ row }: { row: TrackRow }) {
+function TrackRow({ n, row }: { n: number; row: TrackRow }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     void signedUrl(row.key).then(setUrl);
   }, [row.key]);
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-medium">{row.title}</div>
-          <div className="text-[11px] text-white/40">{row.kind.toLowerCase()} · {new Date(row.created_at).toLocaleDateString()}</div>
-        </div>
-        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/50">{row.kind}</span>
+    <li className="grid gap-3 border-b border-cf-line py-4 md:grid-cols-[36px_1fr_0.5fr_1.2fr] md:items-center">
+      <span className="font-mono text-[9px] text-cf-muted">{String(n).padStart(2, "0")}</span>
+      <div className="min-w-0">
+        <div className="truncate font-serif text-[19px]">{row.title}</div>
+        <div className="cf-label mt-1">{new Date(row.created_at).toLocaleDateString()}</div>
       </div>
-      {url && <audio controls src={url} className="mt-3 w-full" />}
-    </div>
+      <span className="cf-label">{row.kind.toLowerCase()}</span>
+      {url ? <audio controls src={url} className="h-9 w-full" aria-label={`Play ${row.kind.toLowerCase()} from ${row.title}`} /> : <span className="cf-label text-cf-dim">Signing…</span>}
+    </li>
   );
 }
