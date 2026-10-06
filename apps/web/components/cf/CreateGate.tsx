@@ -15,7 +15,6 @@ const TYPE_SCENE: Record<string, Scene> = {
   music: "stage",
   documentary: "savannah",
 };
-import { ActionBand, Section, SpecList } from "./primitives";
 
 /** Types that open inside the film studio and accept every entry mode. */
 const FILM_FAMILY = new Set(["film", "documentary", "music"]);
@@ -41,10 +40,13 @@ export function CreateGate() {
   const ownStudio = !FILM_FAMILY.has(type.id) && !!mode.studio;
 
   return (
-    <>
-      <Section label="Make / 01" title="What are we making?">
-        <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 xl:grid-cols-4" role="radiogroup" aria-label="Production type">
-          {PROJECT_TYPES.map((t, i) => {
+    <div className="space-y-7 pb-28">
+      <section aria-labelledby="gate-what">
+        <h2 id="gate-what" className="mb-3 text-[12px] font-medium uppercase tracking-[0.06em] text-cf-muted">
+          What are you making?
+        </h2>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7" role="radiogroup" aria-labelledby="gate-what">
+          {PROJECT_TYPES.map((t) => {
             const on = t.id === type.id;
             return (
               <button
@@ -53,80 +55,67 @@ export function CreateGate() {
                 role="radio"
                 aria-checked={on}
                 onClick={() => setType(t)}
-                className={`group relative min-h-[220px] overflow-hidden text-left text-white outline-offset-[-3px] transition ${on ? "outline outline-[3px] outline-cf-accent" : ""}`}
+                className={`group relative h-[150px] overflow-hidden rounded-lg text-left text-white outline-offset-[-3px] transition ${on ? "outline outline-[3px] outline-cf-accent" : ""}`}
               >
                 <span className="absolute inset-0 transition duration-500 group-hover:scale-[1.04]" aria-hidden>
                   <CinemaArt seed={`${t.title} ${t.blurb}`} scene={TYPE_SCENE[t.id]} className="h-full w-full" />
                 </span>
-                <span className={`absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10 transition ${on ? "" : "group-hover:from-black/75"}`} aria-hidden />
-                <span className="relative flex h-full min-h-[220px] flex-col p-6">
-                  <span className="flex items-center justify-between">
-                    <span className="font-mono text-[11px] text-white/70">{String(i + 1).padStart(2, "0")}</span>
-                    <span className={`h-2.5 w-2.5 rounded-full ${on ? "bg-cf-accent" : "border border-white/50"}`} aria-hidden />
+                <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" aria-hidden />
+                <span className="relative flex h-full flex-col justify-end p-3.5">
+                  <span className={`absolute right-3 top-3 h-2.5 w-2.5 rounded-full ${on ? "bg-cf-accent" : "border border-white/50"}`} aria-hidden />
+                  <span className="font-display text-[18px] font-semibold leading-tight">{t.title}</span>
+                  <span className="mt-1 line-clamp-2 text-[12px] leading-snug text-white/75">{t.blurb}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {ownStudio ? (
+        <p className="rounded-lg border border-cf-line bg-cf-panel px-4 py-3.5 text-[14px] text-cf-muted">
+          <span className="text-cf-fg">{type.title}</span> has its own studio — you start from a written brief there.
+        </p>
+      ) : (
+        <section aria-labelledby="gate-from">
+          <h2 id="gate-from" className="mb-3 text-[12px] font-medium uppercase tracking-[0.06em] text-cf-muted">
+            What are you starting with?
+          </h2>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5" role="radiogroup" aria-labelledby="gate-from">
+            {CREATION_MODES.map((m) => {
+              const on = m.id === mode.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setMode(m)}
+                  className={`flex min-h-[92px] flex-col rounded-lg border p-3.5 text-left transition ${
+                    on ? "border-cf-accent bg-cf-soft" : "border-cf-line bg-cf-panel hover:border-cf-line2"
+                  }`}
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="text-[15px] font-semibold">{m.title}</span>
+                    {m.status !== "live" && <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-cf-warn">{m.status}</span>}
                   </span>
-                  <span className="mt-auto pt-10 font-display font-semibold text-[30px] leading-none tracking-[-0.04em]">{t.title}</span>
-                  <span className="mt-3 text-[12px] leading-relaxed text-white/75">{t.blurb}</span>
-                </span>
-              </button>
-            );
-          })}
-          {PROJECT_TYPES.length % 4 !== 0 && (
-            <div className="relative hidden overflow-hidden xl:block" style={{ gridColumn: `span ${4 - (PROJECT_TYPES.length % 4)}` }} aria-hidden>
-              <CinemaArt seed="Your next production" scene="studio" letterbox className="h-full w-full opacity-60" hud={{ tag: "Next in the archive" }} />
-            </div>
-          )}
-        </div>
-      </Section>
+                  <span className="mt-1 line-clamp-2 text-[12px] leading-snug text-cf-muted">{m.blurb}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
-      <Section label="Material / 02" title="What are we starting with?">
-        <div className="grid gap-px border border-cf-line bg-cf-line md:grid-cols-2 xl:grid-cols-5" role="radiogroup" aria-label="Starting material">
-          {CREATION_MODES.map((m, i) => {
-            const on = m.id === mode.id;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => setMode(m)}
-                className={`flex min-h-[170px] flex-col p-5 text-left outline-offset-[-3px] transition ${on ? "bg-cf-soft outline outline-[3px] outline-cf-accent" : "bg-cf-bg hover:bg-cf-soft"}`}
-              >
-                <span className="flex items-center justify-between font-sans text-[11px] font-medium uppercase tracking-[0.06em]">
-                  <span className="opacity-60">{String(i + 1).padStart(2, "0")}</span>
-                  {m.status !== "live" && <span className={on ? "text-cf-accent" : "text-cf-warn"}>{m.status}</span>}
-                </span>
-                <span className="mt-auto pt-8 font-display font-semibold text-[21px] leading-tight tracking-[-0.03em]">{m.title}</span>
-                <span className="mt-2 text-[11px] leading-relaxed opacity-60">{m.blurb}</span>
-              </button>
-            );
-          })}
-        </div>
-      </Section>
-
-      <Section label="Path / 03" title="The production path.">
-        <div className="grid gap-10 lg:grid-cols-[0.65fr_1.35fr]">
-          <SpecList
-            rows={[
-              ["Production", type.title],
-              ["Starting from", mode.title],
-              ["Opens in", ownStudio ? `${type.title} studio` : mode.studio ? "Director's room" : "Production library"],
-              ["Route", href],
-            ]}
-          />
-          <ActionBand
-            title={<>Enter <em>production.</em></>}
-            copy={
-              ownStudio
-                ? `${type.title} work has its own studio — it starts from a written brief there.`
-                : "Your material becomes the production brief. The studio takes it from there."
-            }
-          >
-            <Link href={href} className="cf-btn-accent">
-              Begin {type.title.toLowerCase()} →
-            </Link>
-          </ActionBand>
-        </div>
-      </Section>
-    </>
+      <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-cf-line2 bg-cf-panel/95 p-3 pl-5 shadow-[0_20px_50px_rgba(0,0,0,.45)] backdrop-blur">
+        <span className="text-[14px] text-cf-muted">
+          <span className="font-semibold text-cf-fg">{type.title}</span>
+          {ownStudio ? ` · opens the ${type.title.toLowerCase()} studio` : ` · from ${mode.title.replace(/ → .*/, "").toLowerCase()} · ${mode.studio ? "opens the director's room" : "opens the library"}`}
+        </span>
+        <Link href={href} className="cf-btn-accent">
+          Begin {type.title.toLowerCase()} →
+        </Link>
+      </div>
+    </div>
   );
 }
