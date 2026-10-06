@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import { StudioGate } from "./cf/StudioGate";
+import { CinemaArt } from "./cf/CinemaArt";
 import { Cell, EmptyState, PageHeader, Section, SpecList, Split } from "./cf/primitives";
 import { createCharacter, listCharacters, type CharacterWithOrigin } from "../lib/library";
 import { getSupabase } from "../lib/supabase";
@@ -128,11 +129,9 @@ export function CharacterLibrary() {
                         /* Plain <img>: a signed, short-lived storage URL. */
                         <img src={portraits[c.id]} alt={`Portrait of ${c.name}`} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <span className="cf-label text-cf-dim">No portrait yet</span>
-                        </div>
+                        <CinemaArt seed={`${c.name} ${c.appearance ?? ""}`} scene="figure" className="h-full w-full" hud={{ tag: "Portrait renders on first use" }} />
                       )}
-                      <span className="absolute left-4 top-4 font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                      <span className="absolute left-4 top-4 font-mono text-[11px] text-white/80">{String(i + 1).padStart(2, "0")}</span>
                     </div>
                     <div className="flex flex-1 flex-col p-5">
                       <div className="flex items-baseline justify-between gap-3">

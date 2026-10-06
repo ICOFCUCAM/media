@@ -8,6 +8,7 @@ import { listProjects, type ProjectRow } from "../../../lib/projects";
 import { getSupabase } from "../../../lib/supabase";
 import { fmtDuration } from "../../../lib/system";
 import { EmptyState, PageHeader, Section, SpecList, Status } from "../../../components/cf/primitives";
+import { CinemaArt } from "../../../components/cf/CinemaArt";
 
 const STAGE_LABEL: Record<string, string> = {
   DRAFT: "Draft",
@@ -132,12 +133,15 @@ export default function ProjectsPage() {
                 {shown.map((p, i) => (
                   <li key={p.id} className="group grid grid-cols-[36px_1fr_auto] items-center gap-4 border-b border-cf-line py-4 md:grid-cols-[36px_1.6fr_0.6fr_0.6fr_1fr_0.6fr_40px]">
                     <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
-                    <Link href={`/projects/${p.id}`} className="min-w-0">
-                      <span className="block truncate font-display font-semibold text-[20px] tracking-[-0.02em] group-hover:underline group-hover:decoration-cf-line group-hover:underline-offset-4">
-                        {p.title}
-                      </span>
-                      <span className="cf-label mt-1 block md:hidden">
-                        {MODE_LABEL[p.mode] ?? p.mode} · {fmtDuration(p.target_seconds)} · {STAGE_LABEL[p.status] ?? p.status}
+                    <Link href={`/projects/${p.id}`} className="flex min-w-0 items-center gap-4">
+                      <CinemaArt seed={p.title} className="hidden aspect-video w-28 shrink-0 rounded sm:block" />
+                      <span className="min-w-0">
+                        <span className="block truncate font-display font-semibold text-[20px] tracking-[-0.02em] group-hover:underline group-hover:decoration-cf-line group-hover:underline-offset-4">
+                          {p.title}
+                        </span>
+                        <span className="cf-label mt-1 block md:hidden">
+                          {MODE_LABEL[p.mode] ?? p.mode} · {fmtDuration(p.target_seconds)} · {STAGE_LABEL[p.status] ?? p.status}
+                        </span>
                       </span>
                     </Link>
                     <span className="cf-label hidden md:block">{MODE_LABEL[p.mode] ?? p.mode}</span>

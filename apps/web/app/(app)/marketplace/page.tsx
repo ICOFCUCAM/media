@@ -2,6 +2,16 @@ import Link from "next/link";
 import { MARKETPLACE_CATEGORIES } from "../../../lib/products";
 import { MarketplaceVoices } from "../../../components/MarketplaceVoices";
 import { PageHeader, Section, Status } from "../../../components/cf/primitives";
+import { CinemaArt, type Scene } from "../../../components/cf/CinemaArt";
+
+/** How each catalogue is pictured until real listings fill it. */
+const CATEGORY_SCENE: Record<string, Scene> = {
+  films: "kingdom",
+  characters: "figure",
+  voices: "stage",
+  worlds: "forest",
+  templates: "studio",
+};
 
 export const metadata = { title: "Marketplace — Cineforge" };
 
@@ -34,15 +44,19 @@ export default function MarketplacePage() {
       <MarketplaceVoices />
 
       <Section label="Catalogues" title="What the exchange will carry.">
-        <ol className="border-t border-cf-fg">
+        <ol className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {MARKETPLACE_CATEGORIES.map((c, i) => {
             const open = c.id === "voices";
             return (
-              <li key={c.id} className="grid gap-3 border-b border-cf-line py-5 md:grid-cols-[44px_1fr_1.4fr_auto] md:items-center">
-                <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
-                <span className="font-display font-semibold text-[22px] tracking-[-0.02em]">{c.name}</span>
-                <span className="text-[13px] text-cf-muted">{c.blurb}</span>
-                <Status tone={open ? "live" : "idle"}>{open ? "Open · community" : "Not open yet"}</Status>
+              <li key={c.id} className={`overflow-hidden rounded-lg border bg-cf-panel ${open ? "border-cf-accent" : "border-cf-line"}`}>
+                <CinemaArt seed={`${c.name} ${c.blurb}`} scene={CATEGORY_SCENE[c.id]} className="aspect-[4/3]" hud={{ tag: String(i + 1).padStart(2, "0") }} />
+                <div className="p-4">
+                  <div className="font-display font-semibold text-[20px] tracking-[-0.02em]">{c.name}</div>
+                  <p className="mt-2 min-h-[3.2em] text-[13px] leading-snug text-cf-muted">{c.blurb}</p>
+                  <div className="mt-4">
+                    <Status tone={open ? "live" : "idle"}>{open ? "Open · community" : "Not open yet"}</Status>
+                  </div>
+                </div>
               </li>
             );
           })}

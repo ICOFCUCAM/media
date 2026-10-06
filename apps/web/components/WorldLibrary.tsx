@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import { StudioGate } from "./cf/StudioGate";
+import { CinemaArt } from "./cf/CinemaArt";
 import { Cell, Control, EmptyState, PageHeader, Section, SpecList, Split } from "./cf/primitives";
 import { createLocation, listLocations, LOCATION_KINDS, type LocationWithOrigin } from "../lib/library";
 import type { LocationKind } from "../lib/database.types";
@@ -98,8 +99,9 @@ export function WorldLibrary() {
             ) : (
               <ol className="border-t border-cf-fg">
                 {items.map((l, i) => (
-                  <li key={l.id} className="grid gap-4 border-b border-cf-line py-6 md:grid-cols-[36px_1fr_1.4fr_auto] md:items-start">
+                  <li key={l.id} className="grid gap-4 border-b border-cf-line py-6 md:grid-cols-[36px_200px_1fr_1.4fr_auto] md:items-start">
                     <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                    <CinemaArt seed={`${l.kind} ${l.name} ${l.description ?? ""}`} letterbox className="aspect-video rounded-md" hud={{ tag: l.kind }} />
                     <div>
                       <h3 className="font-display font-semibold text-[26px] leading-none tracking-[-0.03em]">{l.name}</h3>
                       <span className="cf-label mt-2 block">

@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "./AuthProvider";
 import { StudioGate } from "./cf/StudioGate";
+import { CinemaArt, type Scene } from "./cf/CinemaArt";
+
+/** How each asset category is pictured until it has real reference art. */
+const CATEGORY_SCENE: Record<string, Scene> = { prop: "interior", vehicle: "city", creature: "forest", logo: "studio", brand: "studio", object: "interior" };
 import { Cell, Control, EmptyState, PageHeader, Section, SpecList, Split } from "./cf/primitives";
 import { createAsset, listAssets, ASSET_CATEGORIES, type AssetCategory, type AssetRow } from "../lib/library";
 
@@ -118,13 +122,13 @@ export function AssetLibrary({ children }: { children?: ReactNode }) {
             ) : (
               <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 xl:grid-cols-3">
                 {shown.map((a, i) => (
-                  <article key={a.id} className="flex min-h-[200px] flex-col bg-cf-bg p-5">
-                    <div className="flex justify-between">
+                  <article key={a.id} className="flex min-h-[200px] flex-col bg-cf-bg">
+                    <CinemaArt seed={`${a.name} ${a.description ?? ""}`} scene={CATEGORY_SCENE[a.category]} className="aspect-video" hud={{ tag: a.category }} />
+                    <div className="flex flex-1 flex-col p-5">
                       <span className="font-mono text-[11px] text-cf-muted">A / {String(i + 1).padStart(3, "0")}</span>
-                      <span className="cf-label">{a.category}</span>
+                      <h3 className="mt-3 font-display font-semibold text-[24px] leading-tight tracking-[-0.03em]">{a.name}</h3>
+                      <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-cf-muted">{a.description}</p>
                     </div>
-                    <h3 className="mt-auto pt-10 font-display font-semibold text-[24px] leading-tight tracking-[-0.03em]">{a.name}</h3>
-                    <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-cf-muted">{a.description}</p>
                   </article>
                 ))}
               </div>
