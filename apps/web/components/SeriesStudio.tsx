@@ -83,29 +83,29 @@ export function SeriesStudio() {
             </div>
             <ol>
               {episodes.map((e, i) => (
-                <li key={e.key} className="grid grid-cols-[36px_1fr_auto] gap-x-4 border-b border-cf-line py-5">
+                <li key={e.key} className="grid grid-cols-[28px_minmax(0,1fr)] gap-x-4 border-b border-cf-line py-5 sm:grid-cols-[36px_minmax(0,1fr)_auto]">
                   <span className="pt-1 font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
                   <div className="min-w-0">
                     <input
                       value={e.title}
                       onChange={(ev) => patch(e.key, { title: ev.target.value })}
                       aria-label={`Episode ${i + 1} title`}
-                      className="w-full border-0 bg-transparent font-display font-semibold text-[22px] tracking-[-0.02em] text-cf-fg outline-none focus:underline focus:decoration-cf-line focus:underline-offset-8"
+                      className="w-full border-0 bg-transparent py-1.5 font-display font-semibold text-[22px] tracking-[-0.02em] text-cf-fg outline-none focus:underline focus:decoration-cf-line focus:underline-offset-8"
                     />
                     <input
                       value={e.logline}
                       onChange={(ev) => patch(e.key, { logline: ev.target.value })}
                       placeholder="Logline — what happens this episode"
                       aria-label={`Episode ${i + 1} logline`}
-                      className="mt-1.5 w-full border-0 bg-transparent text-[13px] text-cf-muted outline-none placeholder:text-cf-dim focus:text-cf-fg"
+                      className="w-full border-0 bg-transparent py-2.5 text-[13px] text-cf-muted outline-none placeholder:text-cf-dim focus:text-cf-fg"
                     />
                   </div>
-                  <div className="flex items-start gap-2">
+                  <div className="col-start-2 mt-3 flex items-start gap-2 sm:col-start-auto sm:mt-0">
                     <select
                       value={e.minutes}
                       onChange={(ev) => patch(e.key, { minutes: Number(ev.target.value) })}
                       aria-label={`Episode ${i + 1} runtime`}
-                      className="border border-cf-line bg-cf-panel px-2 py-2 font-mono text-[12px] uppercase text-cf-fg outline-none focus:border-cf-fg"
+                      className="min-h-[40px] rounded-md border border-cf-line2 bg-cf-panel px-2 py-2 text-[13px] text-cf-fg outline-none focus:border-cf-accent"
                     >
                       {[5, 10, 20, 30, 45].map((m) => (
                         <option key={m} value={m}>{m} min</option>
@@ -115,7 +115,7 @@ export function SeriesStudio() {
                       type="button"
                       onClick={() => removeEp(e.key)}
                       aria-label={`Remove episode ${i + 1}`}
-                      className="flex h-[34px] w-[34px] items-center justify-center border border-cf-line text-cf-muted transition hover:border-cf-fg hover:text-cf-fg"
+                      className="flex h-10 w-10 items-center justify-center rounded-md border border-cf-line2 text-cf-muted transition hover:border-cf-fg hover:text-cf-fg"
                     >
                       ×
                     </button>
@@ -131,11 +131,11 @@ export function SeriesStudio() {
           <Cell>
             <div className="cf-label">Season architecture</div>
             <div className="mt-8 flex items-center justify-between border-b border-t border-cf-line py-4">
-              <span className="text-[11px] text-cf-muted">Season</span>
-              <div className="inline-flex items-center border border-cf-line">
-                <button type="button" onClick={() => setSeasons(Math.max(1, seasons - 1))} aria-label="Previous season" className="px-3 py-1.5 text-cf-muted hover:text-cf-fg">−</button>
-                <span className="w-8 text-center font-mono text-[11px]" aria-live="polite">{seasons}</span>
-                <button type="button" onClick={() => setSeasons(seasons + 1)} aria-label="Next season" className="px-3 py-1.5 text-cf-muted hover:text-cf-fg">+</button>
+              <span className="cf-label">Season</span>
+              <div className="inline-flex items-center rounded-md border border-cf-line2">
+                <button type="button" onClick={() => setSeasons(Math.max(1, seasons - 1))} aria-label="Previous season" className="h-10 w-10 text-[16px] text-cf-muted hover:text-cf-fg">−</button>
+                <span className="w-8 text-center font-mono text-[13px]" aria-live="polite">{seasons}</span>
+                <button type="button" onClick={() => setSeasons(seasons + 1)} aria-label="Next season" className="h-10 w-10 text-[16px] text-cf-muted hover:text-cf-fg">+</button>
               </div>
             </div>
             <div className="border-b border-cf-line py-6">

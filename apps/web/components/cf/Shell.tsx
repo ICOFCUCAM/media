@@ -151,7 +151,7 @@ function Navigator({ section, pathname }: { section: NavSection; pathname: strin
   const { role, setRole } = useRole();
   const { profile } = useAuth();
   return (
-    <aside className="hidden w-[232px] shrink-0 flex-col border-r border-cf-line bg-cf-soft/40 lg:flex" aria-label={`${section.title} pages`}>
+    <aside className="hidden w-[232px] shrink-0 flex-col border-r border-cf-line bg-cf-soft/40 xl:flex" aria-label={`${section.title} pages`}>
       <div className="flex h-[78px] items-end border-b border-cf-line px-6 pb-5">
         <div>
           <div className="cf-label">Cineforge</div>
@@ -213,7 +213,7 @@ function Topbar({ crumbs, onMenu, menuRef }: { crumbs: string[]; onMenu: () => v
   return (
     <header className="flex h-[64px] shrink-0 items-center justify-between gap-4 border-b border-cf-line bg-cf-bg px-5 sm:px-8 lg:h-[78px] lg:px-10">
       <div className="flex min-w-0 items-center gap-4">
-        <button ref={menuRef} type="button" onClick={onMenu} className="cf-btn-line px-3 py-2 lg:hidden" aria-label="Open the studio index" aria-haspopup="dialog">
+        <button ref={menuRef} type="button" onClick={onMenu} className="cf-btn-line px-3 py-2 xl:hidden" aria-label="Open the studio index" aria-haspopup="dialog">
           Index
         </button>
         <nav aria-label="Breadcrumb" className="min-w-0 truncate font-sans text-[12px] font-medium uppercase tracking-[0.06em] text-cf-muted">
@@ -261,7 +261,7 @@ function Account() {
   return (
     <div className="flex items-center gap-3 sm:gap-5">
       {profile && (
-        <Link href="/pricing" className="hidden font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-muted hover:text-cf-fg sm:inline lg:hidden xl:inline">
+        <Link href="/pricing" className="hidden font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-muted hover:text-cf-fg sm:inline">
           {profile.tier} · {msToCredits(profile.creditsMs).toLocaleString()} credits
         </Link>
       )}
@@ -285,7 +285,7 @@ function Drawer({ sections, pathname, onClose }: { sections: NavSection[]; pathn
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[90] flex lg:hidden" role="dialog" aria-modal="true" aria-label="Studio index">
+    <div className="fixed inset-0 z-[90] flex xl:hidden" role="dialog" aria-modal="true" aria-label="Studio index">
       <div className="flex w-full max-w-[420px] flex-col overflow-y-auto bg-cf-bg">
         <div className="flex h-[64px] items-center justify-between border-b border-cf-line px-5">
           <Link href="/" className="font-display text-[16px] font-extrabold tracking-[-0.04em]">CINEFORGE</Link>
@@ -304,7 +304,7 @@ function Drawer({ sections, pathname, onClose }: { sections: NavSection[]; pathn
                     key={item.href}
                     href={item.href}
                     aria-current={on ? "page" : undefined}
-                    className={`block py-2 font-display font-semibold text-[20px] tracking-[-0.02em] ${on ? "text-cf-fg" : "text-cf-muted"}`}
+                    className={`block py-2.5 font-display font-semibold text-[20px] tracking-[-0.02em] ${on ? "text-cf-fg" : "text-cf-muted"}`}
                   >
                     {item.label}
                   </Link>
@@ -328,7 +328,7 @@ function Drawer({ sections, pathname, onClose }: { sections: NavSection[]; pathn
                 type="button"
                 onClick={() => setRole(r.id as Role)}
                 aria-pressed={role === r.id}
-                className={`py-2.5 font-sans text-[11px] font-medium uppercase tracking-[0.06em] ${role === r.id ? "bg-cf-inverse text-cf-on-inverse" : "text-cf-muted"}`}
+                className={`min-h-[44px] py-2.5 font-sans text-[12px] font-medium uppercase tracking-[0.06em] ${role === r.id ? "bg-cf-inverse text-cf-on-inverse" : "text-cf-muted"}`}
               >
                 {r.id === "owner" ? "Studio" : r.id === "admin" ? "Super" : "Creator"}
               </button>

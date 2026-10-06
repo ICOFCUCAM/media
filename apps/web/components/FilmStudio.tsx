@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { AuthCard } from "./AuthCard";
 import { CreateStudio } from "./CreateStudio";
@@ -36,6 +36,13 @@ function FilmWorkspace() {
   const { enabled, user } = useAuth();
   const live = enabled && !!user;
   const [mode, setMode] = useState<StudioMode>("prompt");
+  const modeBar = useRef<HTMLElement>(null);
+  // On phones the mode bar scrolls sideways — keep the chosen mode in view.
+  useEffect(() => {
+    const bar = modeBar.current;
+    const on = bar?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (bar && on && bar.scrollWidth > bar.clientWidth) bar.scrollLeft = on.offsetLeft - 20;
+  }, [mode]);
   const [type, setType] = useState<string | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const p = productById("film")!;
@@ -88,14 +95,14 @@ function FilmWorkspace() {
         </div>
       )}
 
-      <nav className="mt-12 grid grid-cols-2 border-l border-t border-cf-fg sm:grid-cols-4 xl:grid-cols-7" aria-label="Production mode">
+      <nav ref={modeBar} className="relative -mx-5 mt-12 flex snap-x overflow-x-auto border-t border-cf-fg px-5 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-4 sm:border-l sm:px-0 xl:grid-cols-7" aria-label="Production mode">
         {STUDIO_MODES.map((m) => (
           <button
             key={m.id}
             type="button"
             onClick={() => choose(m.id)}
             aria-pressed={mode === m.id}
-            className={`flex items-center justify-center gap-2 border-b border-r border-cf-line px-4 py-4 text-[14px] font-semibold transition ${
+            className={`flex shrink-0 snap-start items-center justify-center gap-2 whitespace-nowrap border-b border-r border-cf-line px-5 py-4 text-[14px] font-semibold transition sm:whitespace-normal ${
               mode === m.id ? "bg-cf-inverse text-cf-on-inverse" : "text-cf-muted hover:text-cf-fg"
             }`}
           >
