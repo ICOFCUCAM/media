@@ -1,43 +1,45 @@
 # Cineforge design references
 
-Static HTML designs for the redesign of every Cineforge surface. Each file
-is the visual spec for one page. The containers, type and spacing are
-followed exactly; the page's real data and handlers come from the existing
-components listed below.
+Static HTML designs for every Cineforge surface. They are **visual specs, not
+the application**: each one was re-implemented in the existing Next.js app on
+the shared design system (`apps/web/components/cf`, tokens in
+`apps/web/app/globals.css`), wired to the existing engines. Demo content in
+these files was used only to understand the interface; the app renders real
+data, and where a backend does not exist yet the UI says so instead of
+pretending.
 
-| Design | App route | Component(s) it restyles | Status |
-|---|---|---|---|
-| `homepage.html` | `/` | `app/page.tsx`, `app/home.css` | **Implemented** |
-| `create-anything.html` | `/create` | `CreateStudio.tsx` | Pending |
-| `create-film.html` (`create-film-v1.html` = earlier draft) | `/create/film` | `FilmStudio.tsx` | Pending |
-| `create-series.html` | `/create/series` | `SeriesStudio.tsx` | Pending |
-| `writers-room-series.html` | `/create/series` (writing step) | `SeriesStudio.tsx` | Pending |
-| `create-trailer.html` | `/create/trailer` | `TrailerStudio.tsx` | Pending |
-| `create-shorts.html` | `/create/shorts` | `ShortsStudio.tsx` | Pending |
-| `short-form-studio.html` | `/create/shorts` (studio step) | `ShortsStudio.tsx` | Pending |
-| `create-advert.html` | `/create/advert` | `app/(app)/create/advert/page.tsx` | Pending |
-| `commercial-studio.html` | `/create/advert` (studio step) | `app/(app)/create/advert/page.tsx` | Pending |
-| `storyboard.html` | storyboard mode inside create | `StoryboardStudio.tsx` | Pending |
-| `cutting-room.html` | `/projects/[id]` (edit) | `app/(app)/projects/[id]/page.tsx` | Pending |
-| `production-archive.html` (`production-archive-v1.html` = earlier draft) | `/projects` | `app/(app)/projects/page.tsx` | Pending |
-| `casting-room-characters.html` | `/library/characters` | `CharacterLibrary.tsx` | Pending |
-| `production-design-worlds.html` | `/library/worlds` | `WorldLibrary.tsx` | Pending |
-| `asset-archive.html` | `/library/assets` | `AssetLibrary.tsx` | Pending |
-| `voice-room.html` | `/library/voices` | `VoiceLab.tsx` | Pending |
-| `score-room-music.html` | `/library/music` | `MusicLibrary.tsx` | Pending |
-| `distribution-desk-publish.html` | `/publish` | `SocialLaunchpad.tsx` | Pending |
-| `screening-room.html` | `/publish/streaming` | `StreamingChannel.tsx` | Pending |
-| `exchange-marketplace.html` | `/marketplace` | `MarketplaceVoices.tsx` | Pending |
-| `access-pricing.html` | `/pricing` | `PricingPage.tsx` | Pending |
-| `analytics-revenue.html` | `/analytics/revenue` | `analytics/AnalyticsSection.tsx` | Pending |
-| `analytics-audience.html` | `/analytics/audience` | `analytics/AnalyticsSection.tsx` | Pending |
-| `analytics-performance.html` | `/analytics/performance` | `analytics/AnalyticsSection.tsx` | Pending |
-| `enterprise-teams.html` | `/enterprise/teams` | `enterprise/TeamsPage.tsx` | Pending |
-| `enterprise-permissions.html` | `/enterprise/permissions` | `enterprise/PermissionsPage.tsx` | Pending |
-| `enterprise-brand.html` | `/enterprise/brand` | `enterprise/BrandPage.tsx` | Pending |
-| `view-creator.html` | app shell, role = Creator | `Sidebar.tsx`, `RoleContext.tsx`, `(app)/layout.tsx` | Pending |
-| `view-studio.html` | app shell, role = Studio Owner | `Sidebar.tsx`, `RoleContext.tsx` | Pending |
-| `view-super-admin.html` | app shell, role = Super Admin | `Sidebar.tsx`, `RoleContext.tsx`, `/admin` | Pending |
+Room: **paper** = `.cf-light`, **dark** = `.cf-dark` (chosen per route in
+`components/cf/nav.ts`).
+
+| Design | Route | Engine it dresses | Room | Notes |
+|---|---|---|---|---|
+| `homepage.html` | `/` | `app/page.tsx`, `app/home.css` | institution black | Live showreel, real products, plans |
+| `create-anything.html` | `/create` | `PROJECT_TYPES`, `CREATION_MODES` → `components/cf/CreateGate.tsx` | paper | Resolves (type, material) to the real studio route |
+| `create-film.html` (`-v1` = earlier draft) | `/create/film?mode=…` | `FilmStudio` → `CreateStudio`, `HybridStudio`, `ScriptStudio`, `StoryboardStudio`, `ImageStudio`, `AudioStudio`, `VideoStudio`; `useCreateRun`, `RunPanel` | paper | `?mode=` read and written; `?type=` labels doc / music productions |
+| `storyboard.html` | `/create/film?mode=storyboard` | `StoryboardStudio` (Supabase persistence, Realtime scene status, Continuity Engine) | dark board in paper room | AI seed image labelled as placeholder |
+| `create-series.html`, `writers-room-series.html` | `/create/series` | `SeriesStudio` | paper | Premise, seasons, episodes, outline → `useCreateRun` |
+| `create-trailer.html` | `/create/trailer` | `TrailerStudio` | paper | Demo beat timings not reproduced |
+| `create-shorts.html`, `short-form-studio.html` | `/create/shorts` | `ShortsStudio` (`SHORT_PLATFORMS`) | paper | |
+| `create-advert.html`, `commercial-studio.html` | `/create/advert` | `CreateStudio` + `AD_PRESETS` | paper | |
+| `production-archive.html` (`-v1` = earlier draft) | `/projects` | `listProjects` + Realtime board | paper | Filters use real fields (state, mode) |
+| `cutting-room.html` | `/projects/[id]` | `SupabaseRun` attach mode + `RunPanel` | dark | |
+| `casting-room-characters.html` | `/library/characters` | `CharacterLibrary` | dark | |
+| `production-design-worlds.html` | `/library/worlds` | `WorldLibrary` | dark | |
+| `asset-archive.html` | `/library/assets` | `AssetLibrary` + `GeneratedMedia` | dark | |
+| `voice-room.html` | `/library/voices` | `VoiceLab` | paper | |
+| `score-room-music.html` | `/library/music` | `MusicLibrary` | paper | No music engine yet — stated |
+| `distribution-desk-publish.html` | `/publish` | `SocialLaunchpad` | paper | |
+| `screening-room.html` | `/publish/streaming` | `StreamingChannel` | paper + dark stage | Channel modal / access toggles have no backend — not reproduced |
+| `exchange-marketplace.html` | `/marketplace` | `MarketplaceVoices` | paper | Only community voices trade today; paid catalogues marked not open |
+| `access-pricing.html` | `/pricing` | `PricingPage` (Stripe checkout edge function) | paper | |
+| `analytics-revenue.html`, `-audience`, `-performance` | `/analytics/[section]` | `AnalyticsSection` + `Charts` | paper | |
+| `enterprise-teams.html` | `/enterprise/teams` | `TeamsPage` | paper | |
+| `enterprise-permissions.html` | `/enterprise/permissions` | `PermissionsPage` | paper | |
+| `enterprise-brand.html` | `/enterprise/brand` | `BrandPage` | paper | |
+| `view-creator.html` | `/view/creator` | `CreatorView` (RoleContext) | paper | New route — the VIEW family |
+| `view-studio.html` | `/view/studio` | `StudioView` | paper | |
+| `view-super-admin.html` | `/view/super` | `SuperView` (`admin_list_users`, `SUBSYSTEMS`) | paper | Admin-only data; no invented platform figures |
+| — | `/admin`, `/admin/users`, `/admin/moderation`, `/admin/credits` | existing admin components | paper | Restyled to the Super context |
 
 Original upload names: homepage = `preview(12)`, then `preview(14)`–`preview(44)`
 in the order create-film-v1, storyboard, writers-room, casting-room,
