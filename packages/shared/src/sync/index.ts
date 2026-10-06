@@ -7,3 +7,4 @@ export * from "./subtitle-sync";
 export * from "./rate-and-drift";
 export * from "./cue-validators";
 export * from "./loudness";
+export * from "./repair-planner";
