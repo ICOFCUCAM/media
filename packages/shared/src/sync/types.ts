@@ -80,6 +80,10 @@ export interface MediaFacts {
   trailingUs?: Us;
   /** Measured A/V offset vs the planned placement (+ = audio late). */
   offsetUs?: Us;
+  /** Black-picture intervals inside the clip, relative to its start (blackdetect). */
+  blackIntervals?: Array<{ startUs: Us; endUs: Us }>;
+  /** Frozen-picture intervals inside the clip, relative to its start (freezedetect). */
+  freezeIntervals?: Array<{ startUs: Us; endUs: Us }>;
 }
 
 /** The analysis input: one timeline version plus measured media facts. */
