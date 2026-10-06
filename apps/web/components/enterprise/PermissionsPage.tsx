@@ -1,3 +1,5 @@
+import { PageHeader, Section } from "../cf/primitives";
+
 /** Permissions — the truthful access matrix: what each role can do TODAY,
  *  mapped to real enforcement (RLS owner policies, ADMIN role checks,
  *  tier gates). Informational by design until per-seat roles ship. */
@@ -14,43 +16,60 @@ const MATRIX: { capability: string; owner: boolean; producer: boolean; editor: b
   { capability: "View analytics", owner: true, producer: true, editor: true, viewer: true, admin: true, enforced: "RLS owner reads" },
 ];
 
+const ROLE_COLS = ["Owner", "Producer", "Editor", "Viewer", "Admin"] as const;
+
 export function PermissionsPage() {
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Permissions</h1>
-        <p className="mt-1 text-sm text-white/55">
-          What each role can do, and where it's enforced. Owner/Admin are live today; per-seat Producer/Editor/Viewer
-          activate as team members accept invites.
-        </p>
-      </header>
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="Enterprise / Permissions"
+        title={<>Who may<br /><em>do what.</em></>}
+        copy={
+          <>
+            <p>What each role can do, and where it is enforced — row-level security, admin role checks and plan gates.</p>
+            <p><strong>Owner and Admin are live today; Producer, Editor and Viewer activate as team members accept invites.</strong></p>
+          </>
+        }
+        status={{ tone: "live", label: "Owner · Admin enforced" }}
+      />
 
-      <div className="overflow-x-auto rounded-xl border border-white/10">
-        <table className="w-full min-w-[640px] text-sm">
-          <thead className="bg-white/[0.03] text-left text-xs uppercase tracking-wider text-white/40">
-            <tr>
-              <th className="px-4 py-2.5 font-medium">Capability</th>
-              {["Owner", "Producer", "Editor", "Viewer", "Admin"].map((h) => (
-                <th key={h} className="px-3 py-2.5 text-center font-medium">{h}</th>
-              ))}
-              <th className="px-4 py-2.5 font-medium">Enforced by</th>
-            </tr>
-          </thead>
-          <tbody>
-            {MATRIX.map((r) => (
-              <tr key={r.capability} className="border-t border-white/5">
-                <td className="px-4 py-2.5 text-white/75">{r.capability}</td>
-                {[r.owner, r.producer, r.editor, r.viewer, r.admin].map((v, i) => (
-                  <td key={i} className="px-3 py-2.5 text-center">
-                    {v ? <span className="text-emerald-300">✓</span> : <span className="text-white/15">—</span>}
-                  </td>
+      <Section label="Access matrix" title="Capabilities.">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] border-t border-cf-fg text-left">
+            <caption className="sr-only">Capabilities by role and where each is enforced</caption>
+            <thead>
+              <tr className="border-b border-cf-line">
+                <th scope="col" className="cf-label py-4 pr-4 font-normal">Capability</th>
+                {ROLE_COLS.map((h) => (
+                  <th key={h} scope="col" className="cf-label px-3 py-4 text-center font-normal">
+                    {h}
+                  </th>
                 ))}
-                <td className="px-4 py-2.5 text-[11px] text-white/40">{r.enforced}</td>
+                <th scope="col" className="cf-label py-4 pl-4 font-normal">Enforced by</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {MATRIX.map((r) => (
+                <tr key={r.capability} className="border-b border-cf-line">
+                  <th scope="row" className="py-4 pr-4 text-left font-serif text-[17px] font-normal">{r.capability}</th>
+                  {[r.owner, r.producer, r.editor, r.viewer, r.admin].map((v, i) => (
+                    <td key={i} className="px-3 py-4 text-center">
+                      {v ? (
+                        <span className="inline-block h-2 w-2 rounded-full bg-cf-fg" aria-label="Allowed" />
+                      ) : (
+                        <span className="text-cf-dim" aria-label="Not allowed">
+                          —
+                        </span>
+                      )}
+                    </td>
+                  ))}
+                  <td className="py-4 pl-4 font-mono text-[10px] text-cf-muted">{r.enforced}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
     </div>
   );
 }
