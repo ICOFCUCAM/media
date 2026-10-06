@@ -2,7 +2,7 @@
 
 /*
  * Cineforge homepage — "The Film Production System".
- * Container design ported 1:1 from preview(12).html. Every selector is scoped
+ * Container design ported 1:1 from docs/design/homepage.html. Every selector is scoped
  * under .cfh so the generic class names (.section, .container, .primary …)
  * never collide with Tailwind or the studio app.
  */

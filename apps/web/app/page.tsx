@@ -14,7 +14,7 @@ import {
 
 /*
  * Cineforge homepage — "The Film Production System".
- * Layout and containers follow preview(12).html exactly (styles in ./home.css,
+ * Layout and containers follow docs/design/homepage.html exactly (styles in ./home.css,
  * scoped under .cfh); every section is wired to the real studio routes and
  * product data in lib/products.
  */
