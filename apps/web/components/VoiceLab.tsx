@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { StudioGate } from "./cf/StudioGate";
+import { CinemaArt } from "./cf/CinemaArt";
 import { Control, EmptyState, PageHeader, Section, Status } from "./cf/primitives";
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
@@ -474,9 +475,7 @@ function AvatarCard({ row, onDelete }: { row: AvatarRow; onDelete: () => void })
       {url ? (
         <video controls src={url} className="aspect-video w-full bg-black" aria-label={`Avatar video: ${row.title}`} />
       ) : (
-        <div className="flex aspect-video items-center justify-center border border-dashed border-cf-line">
-          <span className="cf-label">{row.status === "FAILED" ? "Failed" : "The worker is rendering"}</span>
-        </div>
+        <CinemaArt seed={row.title} scene="figure" className="aspect-video w-full rounded-md" hud={{ tag: row.status === "FAILED" ? "Failed" : "The worker is rendering" }} />
       )}
       <div className="mt-3 flex items-center justify-between gap-2">
         <div className="truncate font-display font-semibold text-[17px]">{row.title}</div>

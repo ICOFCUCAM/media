@@ -30,6 +30,7 @@ import { listAnchors } from "../lib/library";
 import { subscribeProject, type ProjectRow } from "../lib/projects";
 import { useAuth } from "./AuthProvider";
 import { Status } from "./cf/primitives";
+import { CinemaArt } from "./cf/CinemaArt";
 
 const SCENE_COUNTS = [3, 4, 5, 6, 8];
 type Anchors = { characters: { id: string; name: string }[]; worlds: { id: string; name: string }[] };
@@ -758,23 +759,27 @@ function SelectField({
 }
 
 function SeedPreview({ scene: s }: { scene: SceneDraft }) {
-  const frame = "relative flex aspect-video w-full items-center justify-center overflow-hidden border border-cf-line";
   if (s.seedUrl) {
     /* Plain <img>: a signed or local object URL next/image cannot optimise. */
     return <img src={s.seedUrl} alt={`Seed frame for scene ${s.index + 1}`} className="aspect-video w-full object-cover" />;
   }
   if (s.seedKey) {
     const label = s.seedKey.startsWith("generated:") ? "AI seed · painted at render" : s.seedKey.startsWith("ref:") ? s.seedKey.slice(4) : "Seed frame";
-    return (
-      <div className={`${frame} bg-cf-panel`}>
-        <span className="cf-label">{label}</span>
-      </div>
-    );
+    return <SceneStill scene={s} tag={label} />;
   }
+  return <SceneStill scene={s} tag={s.source === "image" ? "No seed frame yet" : "Text → video"} />;
+}
+
+/** A drawn still for a scene with no footage yet, read from its own words. */
+function SceneStill({ scene: s, tag }: { scene: SceneDraft; tag: string }) {
+  const seed = [s.heading, s.location, s.script].filter(Boolean).join(" ") || `scene ${s.index + 1}`;
   return (
-    <div className={`${frame} border-dashed`}>
-      <span className="cf-label text-cf-dim">{s.source === "image" ? "No seed frame" : "Text → video"}</span>
-    </div>
+    <CinemaArt
+      seed={seed}
+      letterbox
+      className="aspect-video w-full rounded-md border border-cf-line"
+      hud={{ tag, slug: s.heading || `Scene ${String(s.index + 1).padStart(2, "0")}` }}
+    />
   );
 }
 

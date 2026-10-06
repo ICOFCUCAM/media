@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { CinemaArt } from "./CinemaArt";
 
 /*
  * Cineforge visual primitives — the editorial vocabulary shared by every
@@ -163,22 +164,37 @@ export function EmptyState({
   title,
   hint,
   action,
+  seed,
   className = "",
 }: {
   title: ReactNode;
   hint?: ReactNode;
   action?: { label: string; href: string };
+  /** Seeds the backdrop still; defaults to the title text. */
+  seed?: string;
   className?: string;
 }) {
+  const artSeed = seed ?? textOf(title);
   return (
-    <div className={`flex min-h-[260px] flex-col items-center justify-center border border-dashed border-cf-line px-6 py-12 text-center ${className}`}>
-      <p className="cf-display text-[clamp(26px,3vw,38px)] leading-[1.05] [&_em]:italic">{title}</p>
-      {hint && <p className="cf-label mt-3 max-w-md leading-relaxed">{hint}</p>}
-      {action && (
-        <Link href={action.href} className="cf-btn-ink mt-7">
-          {action.label}
-        </Link>
-      )}
-    </div>
+    <CinemaArt seed={artSeed || "empty"} letterbox className={`cf-dark min-h-[300px] rounded-lg border border-cf-line ${className}`}>
+      <div className="flex h-full flex-col items-center justify-center bg-gradient-to-t from-black/80 via-black/50 to-black/30 px-6 py-12 text-center text-white">
+        <p className="cf-display text-[clamp(26px,3vw,38px)] leading-[1.05] [&_em]:italic">{title}</p>
+        {hint && <p className="mt-3 max-w-md text-[14px] leading-relaxed text-white/80">{hint}</p>}
+        {action && (
+          <Link href={action.href} className="cf-btn-accent mt-7">
+            {action.label}
+          </Link>
+        )}
+      </div>
+    </CinemaArt>
   );
+}
+
+/** Plain text of a small ReactNode (strings, numbers, nested fragments). */
+function textOf(node: ReactNode): string {
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textOf).join("");
+  if (typeof node === "object" && "props" in node) return textOf((node.props as { children?: ReactNode }).children);
+  return "";
 }
