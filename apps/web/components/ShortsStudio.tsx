@@ -17,10 +17,10 @@ const STAGE_LABELS: Record<ProjectStatus, string> = {
 };
 
 const EXAMPLES = [
-  { title: "Tiny chef", brief: "A tiny chef plates a miniature gourmet dish" },
-  { title: "City at night", brief: "A neon city wakes up in reverse — rain falling upwards" },
-  { title: "Dance stage", brief: "One dancer, one spotlight, a beat drop that lights the whole stage" },
-  { title: "Wild sunrise", brief: "Sunrise over the savannah as a lion walks straight at the camera" },
+  { title: "Tiny chef", tags: "Food · Satisfying", brief: "A tiny chef plates a miniature gourmet dish" },
+  { title: "City at night", tags: "Surreal · Urban", brief: "A neon city wakes up in reverse — rain falling upwards" },
+  { title: "Dance stage", tags: "Music · Performance", brief: "One dancer, one spotlight, a beat drop that lights the whole stage" },
+  { title: "Wild sunrise", tags: "Nature · Wildlife", brief: "Sunrise over the savannah as a lion walks straight at the camera" },
 ];
 
 /** The Short-Form Cutting Room (docs/design/create-shorts.html) — platform-first,
@@ -62,7 +62,7 @@ export function ShortsStudio() {
       <StudioGrid
         controls={
           <>
-            <ExampleShelf examples={EXAMPLES} onPick={setHook} />
+            <ExampleShelf examples={EXAMPLES} value={hook} onPick={setHook} />
             <Field label="Platform" value={`${platform.aspect} · up to ${Math.max(...platform.durations)}s`}>
               <Chips>
                 {SHORT_PLATFORMS.map((p) => (

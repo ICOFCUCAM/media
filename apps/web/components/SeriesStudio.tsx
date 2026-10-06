@@ -66,7 +66,7 @@ export function SeriesStudio() {
       <StudioGrid
         controls={
           <>
-            <ExampleShelf examples={EXAMPLES} onPick={setPremise} />
+            <ExampleShelf examples={EXAMPLES} value={premise} onPick={setPremise} />
             <Field label="Premise" htmlFor="series-premise">
               <textarea id="series-premise" value={premise} onChange={(e) => setPremise(e.target.value)} rows={3} className="cf-input min-h-[96px] resize-y leading-[1.6]" />
             </Field>
@@ -167,9 +167,9 @@ export function SeriesStudio() {
 }
 
 const EXAMPLES = [
-  { title: "Megacity thriller", brief: "A political thriller set in a near-future megacity, following a journalist uncovering a conspiracy." },
-  { title: "Royal dynasty", brief: "A royal dynasty fractures when the youngest heir refuses the throne and joins the rebels." },
-  { title: "Island mystery", brief: "Strangers wash ashore on an island that rewrites itself every night — and only one of them remembers." },
-  { title: "Space colony", brief: "The first colony ship wakes up a century early, orbiting a planet that was supposed to be empty." },
+  { title: "Megacity thriller", tags: "Political · Thriller", brief: "A political thriller set in a near-future megacity, following a journalist uncovering a conspiracy." },
+  { title: "Royal dynasty", tags: "Period · Drama", brief: "A royal dynasty fractures when the youngest heir refuses the throne and joins the rebels." },
+  { title: "Island mystery", tags: "Mystery · Survival", brief: "Strangers wash ashore on an island that rewrites itself every night — and only one of them remembers." },
+  { title: "Space colony", tags: "Sci-Fi · Drama", brief: "The first colony ship wakes up a century early, orbiting a planet that was supposed to be empty." },
 ];
 

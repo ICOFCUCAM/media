@@ -21,10 +21,10 @@ const MUSIC = ["Epic", "Tense", "Uplifting", "Dark", "Playful"];
 const VO = ["None", "Gravelly", "Warm", "Whispered"];
 
 const EXAMPLES = [
-  { title: "Space heist", brief: "A sci-fi heist on a derelict space station." },
-  { title: "Kingdom war", brief: "An African kingdom rises against an empire — three generations, one war for independence." },
-  { title: "Noir city", brief: "A detective hunts a vanished singer through a neon city that never sleeps." },
-  { title: "Ocean myth", brief: "A fisherman's daughter follows a glowing whale beyond the edge of the map." },
+  { title: "Space heist", tags: "Sci-Fi · Heist", brief: "A sci-fi heist on a derelict space station." },
+  { title: "Kingdom war", tags: "Epic · War · Drama", brief: "An African kingdom rises against an empire — three generations, one war for independence." },
+  { title: "Noir city", tags: "Noir · Mystery", brief: "A detective hunts a vanished singer through a neon city that never sleeps." },
+  { title: "Ocean myth", tags: "Fantasy · Adventure", brief: "A fisherman's daughter follows a glowing whale beyond the edge of the map." },
 ];
 
 /** The Cutting Room (docs/design/create-trailer.html) — beats, voiceover and a
@@ -60,7 +60,7 @@ export function TrailerStudio() {
       <StudioGrid
         controls={
           <>
-            <ExampleShelf examples={EXAMPLES} onPick={setSubject} />
+            <ExampleShelf examples={EXAMPLES} value={subject} onPick={setSubject} />
             <Field label="What should the trailer sell?" htmlFor="trailer-subject">
               <textarea id="trailer-subject" value={subject} onChange={(e) => setSubject(e.target.value)} rows={3} className="cf-input min-h-[96px] resize-y leading-[1.6]" />
             </Field>

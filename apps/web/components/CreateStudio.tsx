@@ -1,15 +1,16 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { estimateMs, fmtDuration, MODELS, modelAllowed } from "../lib/system";
+import { estimateMs, fmtDuration, MODELS, modelAllowed, planScenes, planShots } from "../lib/system";
 import type { ProjectStatus } from "../lib/demo";
 import { useCreateRun } from "../lib/useCreateRun";
 import { useAuth } from "./AuthProvider";
 import { MAX_FILM_SEC, RESOLUTIONS, DEFAULT_RES, resolutionAllowed, type Resolution } from "../lib/plans";
 import { RunPanel } from "./RunPanel";
 import type { ShortPlatform } from "../lib/products";
-import { Chips, ExampleShelf, Field, StudioFooter, StudioGrid, StudioPage, UnlockRow } from "./cf/StudioLayout";
+import { Chips, ExampleShelf, Field, StudioFooter, StudioGrid, StudioPage, UnlockRow, type Example } from "./cf/StudioLayout";
 import { NotifyToggle } from "./cf/NotifyToggle";
+import { ClockIcon, ConfigCard, EngineIcon, FormatIcon } from "./cf/ConfigCard";
 
 const STAGE_LABEL: Record<ProjectStatus, string> = {
   PLANNING: "Writing",
@@ -31,7 +32,7 @@ export interface CreateStudioProps {
   /** Production label for the specification (e.g. "Documentary"); defaults from kind. */
   production?: string;
   /** One-tap starting briefs; defaults by kind. */
-  examples?: { title: string; brief: string }[];
+  examples?: Example[];
   /** Render without the outer container/header (when nested under a workspace). */
   embedded?: boolean;
 }
@@ -106,18 +107,20 @@ export function CreateStudio(props: CreateStudioProps) {
     ...(models.length < MODELS.length ? ["the cinematic engine"] : []),
   ];
   const examples = props.examples ?? EXAMPLES[props.kind] ?? [];
+  const aspect = props.platforms?.find((p) => p.id === platform)?.aspect ?? "16:9";
+  const resRange = formats.length > 1 ? `${RES_SHORT[formats[0]!.id]}–${RES_SHORT[formats[formats.length - 1]!.id]}` : RES_SHORT[formats[0]?.id ?? effectiveRes];
 
   const controls = (
     <>
-      {examples.length > 0 && <ExampleShelf examples={examples} onPick={setPrompt} />}
+      {examples.length > 0 && <ExampleShelf examples={examples} value={prompt} onPick={setPrompt} />}
 
-      <Field label="What do you want to make?" htmlFor={`brief-${props.kind}`}>
+      <Field label={`Describe your ${noun}`} htmlFor={`brief-${props.kind}`}>
         <textarea
           id={`brief-${props.kind}`}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          rows={4}
-          className="cf-input min-h-[112px] resize-y leading-[1.6]"
+          rows={3}
+          className="cf-input min-h-[92px] resize-y leading-[1.6]"
         />
       </Field>
 
@@ -133,34 +136,53 @@ export function CreateStudio(props: CreateStudioProps) {
         </Field>
       )}
 
-      <Field label={props.kind === "series" ? "Total runtime" : "Length"} value={fmtDuration(effSeconds)}>
-        <Chips>
-          {runnable.map((d) => (
-            <button key={d.value} type="button" className="cf-option" aria-pressed={effSeconds === d.value} onClick={() => setSeconds(d.value)}>
-              {d.label}
-            </button>
-          ))}
-        </Chips>
-      </Field>
-
-      <Field label="Quality" value={quality}>
-        <Chips>
-          {models.map((m) => (
-            <button key={m.id} type="button" className="cf-option" aria-pressed={modelId === m.id} onClick={() => setModelId(m.id)}>
-              {m.klass === "premium" ? "Cinematic" : "Standard"} · {m.name}
-            </button>
-          ))}
-        </Chips>
-      </Field>
-
-      <Field label="Format" value={RESOLUTIONS.find((r) => r.id === effectiveRes)?.note}>
-        <Chips>
-          {formats.map((r) => (
-            <button key={r.id} type="button" className="cf-option" aria-pressed={effectiveRes === r.id} title={r.note} onClick={() => setResolution(r.id)}>
-              {r.label}
-            </button>
-          ))}
-        </Chips>
+      <Field label="Configure">
+        <div className="cf-config-host">
+          <div className="cf-config-grid">
+            <ConfigCard
+              tone="length"
+              icon={<ClockIcon />}
+              label={props.kind === "series" ? "Total runtime" : "Length"}
+              main={fmtLong(effSeconds)}
+              secondary={
+                runnable.length < durations.length
+                  ? effSeconds === allowedMax
+                    ? "Maximum for your plan"
+                    : `Up to ${fmtLong(allowedMax)} on your plan`
+                  : "Final runtime"
+              }
+              meta={`${planScenes(effSeconds)} scenes · ${planShots(effSeconds)} shots`}
+              options={runnable.map((d) => ({ value: String(d.value), label: d.label }))}
+              value={String(effSeconds)}
+              onChange={(v) => setSeconds(Number(v))}
+              hint={runnable.length === 1 ? "Longer lengths open on higher plans" : undefined}
+            />
+            <ConfigCard
+              tone="engine"
+              icon={<EngineIcon />}
+              label="Quality & engine"
+              main={quality}
+              secondary={engineLine(model?.name ?? modelId)}
+              meta={`${quality === "Cinematic" ? "Cinematic motion" : "Fast production"} · ${resRange}`}
+              options={models.map((m) => ({ value: m.id, label: `${m.klass === "premium" ? "Cinematic" : "Standard"} — ${m.name}` }))}
+              value={modelId}
+              onChange={setModelId}
+              hint={models.length === 1 ? "The cinematic engine is part of the Studio plan" : undefined}
+            />
+            <ConfigCard
+              tone="format"
+              icon={<FormatIcon />}
+              label="Format"
+              main={RES_SHORT[effectiveRes]}
+              secondary={RES_QUALITY[effectiveRes]}
+              meta={`MP4 · ${aspect}`}
+              options={formats.map((r) => ({ value: r.id, label: `${r.label} — ${r.note}` }))}
+              value={effectiveRes}
+              onChange={(v) => setResolution(v as Resolution)}
+              hint={formats.length === 1 ? "Higher formats open on higher plans" : undefined}
+            />
+          </div>
+        </div>
       </Field>
 
       <UnlockRow plan={isAdmin ? "Admin" : tier.charAt(0) + tier.slice(1).toLowerCase()} items={unlocks} />
@@ -237,18 +259,42 @@ function EmptyHint({ noun }: { noun: string }) {
 }
 
 /** Starting briefs per studio — one tap fills the brief. */
-const EXAMPLES: Partial<Record<CreateStudioProps["kind"], { title: string; brief: string }[]>> = {
+const EXAMPLES: Partial<Record<CreateStudioProps["kind"], Example[]>> = {
   film: [
-    { title: "Kingdom epic", brief: "An epic about an African kingdom fighting for its independence, told over three generations." },
-    { title: "Neon noir", brief: "A neon-noir detective story in a rain-soaked megacity, where a missing hologram singer holds the key to a conspiracy." },
-    { title: "Ocean voyage", brief: "Two sisters sail a wooden boat across the ocean to find the island their grandmother described in her letters." },
-    { title: "Savannah drought", brief: "A documentary-style story of a savannah village and its herd surviving the longest drought in living memory." },
-    { title: "Space station", brief: "A sci-fi thriller aboard a failing space station, where the last engineer must choose who boards the only escape pod." },
+    { title: "Kingdom epic", tags: "Epic · Historical · Drama", brief: "An epic about an African kingdom fighting for its independence, told over three generations." },
+    { title: "Neon noir", tags: "Thriller · Sci-Fi · Urban", brief: "A neon-noir detective story in a rain-soaked megacity, where a missing hologram singer holds the key to a conspiracy." },
+    { title: "Ocean voyage", tags: "Adventure · Drama", brief: "Two sisters sail a wooden boat across the ocean to find the island their grandmother described in her letters." },
+    { title: "Savannah drought", tags: "Documentary · Nature", brief: "A documentary-style story of a savannah village and its herd surviving the longest drought in living memory." },
+    { title: "Space station", tags: "Sci-Fi · Thriller", brief: "A sci-fi thriller aboard a failing space station, where the last engineer must choose who boards the only escape pod." },
   ],
   advert: [
-    { title: "Product launch", brief: "A 15-second launch spot for wireless earbuds: night city, bass drop, slow-motion reveal, end on the logo and 'Hear everything.'" },
-    { title: "Food delivery", brief: "A warm 15-second advert for a food delivery app: family dinner arrives in the rain, smiles, end card 'Dinner, sorted.'" },
-    { title: "Fitness app", brief: "An energetic 15-second ad for a fitness app: sunrise runs, quick cuts, coach voiceover, end on 'Start today.'" },
-    { title: "Coffee brand", brief: "A cosy 15-second coffee advert: morning light, steam, a sleepy studio waking up, end card 'Your first good idea.'" },
+    { title: "Product launch", tags: "Tech · Launch spot", brief: "A 15-second launch spot for wireless earbuds: night city, bass drop, slow-motion reveal, end on the logo and 'Hear everything.'" },
+    { title: "Food delivery", tags: "Lifestyle · Warm", brief: "A warm 15-second advert for a food delivery app: family dinner arrives in the rain, smiles, end card 'Dinner, sorted.'" },
+    { title: "Fitness app", tags: "Sport · Energetic", brief: "An energetic 15-second ad for a fitness app: sunrise runs, quick cuts, coach voiceover, end on 'Start today.'" },
+    { title: "Coffee brand", tags: "Lifestyle · Cosy", brief: "A cosy 15-second coffee advert: morning light, steam, a sleepy studio waking up, end card 'Your first good idea.'" },
   ],
+};
+
+/* ── card copy helpers ──────────────────────────────────────── */
+/** "30 seconds", "2 minutes", "1 min 30 s". */
+function fmtLong(sec: number): string {
+  if (sec < 60) return `${sec} seconds`;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  if (s) return `${m} min ${s} s`;
+  return m === 1 ? "1 minute" : `${m} minutes`;
+}
+
+/** "Wan 2.1 · own GPU" → "Wan 2.1 · GPU rendering"; cloud engines say so. */
+function engineLine(name: string): string {
+  const [engine, host] = name.split(" · ");
+  return `${engine} · ${host?.includes("GPU") ? "GPU rendering" : "cloud rendering"}`;
+}
+
+const RES_SHORT: Record<Resolution, string> = { "480p": "480p", "720p": "720p", "1080p": "1080p", "4k": "4K" };
+const RES_QUALITY: Record<Resolution, string> = {
+  "480p": "Draft quality",
+  "720p": "HD quality",
+  "1080p": "Full HD master",
+  "4k": "4K upscaled master",
 };

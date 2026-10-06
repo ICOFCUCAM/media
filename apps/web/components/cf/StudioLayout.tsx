@@ -42,7 +42,7 @@ export function StudioPage({
               <h1 className="font-display text-[26px] font-semibold leading-tight tracking-[-0.03em] sm:text-[30px]">{title}</h1>
               {badge && <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone}`}>{badge.label}</span>}
             </div>
-            {subtitle && <p className="mt-1.5 max-w-3xl text-[14px] leading-snug text-cf-muted">{subtitle}</p>}
+            {subtitle && <p className="mt-1.5 max-w-3xl text-[14px] leading-snug text-cf-muted lg:[@media(max-height:820px)]:hidden">{subtitle}</p>}
           </div>
           {aside && <div className="shrink-0">{aside}</div>}
         </div>
@@ -97,9 +97,9 @@ export function StudioTabs<T extends string>({
  */
 export function StudioGrid({ controls, footer, preview }: { controls: ReactNode; footer: ReactNode; preview: ReactNode }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:h-full lg:grid-cols-[minmax(360px,440px)_minmax(0,1fr)]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:h-full lg:grid-cols-[minmax(400px,36%)_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-col rounded-lg border border-cf-line bg-cf-panel lg:min-h-0">
-        <div className="space-y-6 p-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">{controls}</div>
+        <div className="space-y-5 p-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">{controls}</div>
         <div className="sticky bottom-0 z-20 rounded-b-lg border-t border-cf-line bg-cf-panel/95 p-4 backdrop-blur lg:static">{footer}</div>
       </div>
       <div className="min-w-0 lg:min-h-0 lg:overflow-y-auto" id="studio-preview">
@@ -172,24 +172,36 @@ export function StudioFooter({ rows, children, note }: { rows: [ReactNode, React
   );
 }
 
-/** One-tap starting points that fill the brief. */
-export function ExampleShelf({ examples, onPick }: { examples: { title: string; brief: string }[]; onPick: (brief: string) => void }) {
+/** A starting brief: a title, a short genre line and the brief it fills in. */
+export type Example = { title: string; tags?: string; brief: string };
+
+/**
+ * One-tap starting points that fill the brief — cinematic mini presets. The
+ * card whose brief is currently in the editor reads as selected.
+ */
+export function ExampleShelf({ examples, value, onPick }: { examples: Example[]; value?: string; onPick: (brief: string) => void }) {
   return (
     <div>
       <div className="mb-2 text-[12px] font-medium uppercase tracking-[0.06em] text-cf-muted">Start from an example</div>
-      <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [mask-image:linear-gradient(to_right,black_88%,transparent)] [scrollbar-width:none]">
-        {examples.map((e) => (
-          <button
-            key={e.title}
-            type="button"
-            onClick={() => onPick(e.brief)}
-            className="group flex min-h-[40px] shrink-0 items-center gap-2 rounded-md border border-cf-line2 bg-cf-bg py-1 pl-1 pr-3 text-left text-[13px] font-medium text-cf-fg transition hover:border-cf-accent"
-            title={e.brief}
-          >
-            <CinemaArt seed={e.brief} scene={sceneFor(e.brief)} className="h-7 w-11 shrink-0 rounded" />
-            {e.title}
-          </button>
-        ))}
+      <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-2 pt-0.5 [mask-image:linear-gradient(to_right,black_88%,transparent)] [scrollbar-width:none]">
+        {examples.map((e) => {
+          const on = value?.trim() === e.brief;
+          return (
+            <button key={e.title} type="button" onClick={() => onPick(e.brief)} aria-pressed={on} className="cf-preset" title={e.brief}>
+              <span className="cf-preset-thumb">
+                <CinemaArt seed={e.brief} scene={sceneFor(e.brief)} className="h-full w-full" />
+                <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" aria-hidden />
+              </span>
+              <span className="cf-config-check" aria-hidden>
+                <svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2.5 6.2 5 8.5l4.5-5" />
+                </svg>
+              </span>
+              <span className="cf-preset-title">{e.title}</span>
+              {e.tags && <span className="cf-preset-tags">{e.tags}</span>}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
