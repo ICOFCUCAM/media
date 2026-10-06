@@ -112,16 +112,16 @@ export function MasterShot({ className = "", focus = "xMidYMid", idPrefix = "ms"
 
       {/* Sky, sun and the light coming through it */}
       <rect width={W} height={H} fill={`url(#${p}-sky)`} />
-      <circle cx="1040" cy="500" r="560" fill={`url(#${p}-sun)`} />
+      <circle className="ms-sun" cx="1040" cy="500" r="560" fill={`url(#${p}-sun)`} />
       <circle cx="1040" cy="500" r="66" fill="#fff4d8" />
-      <g opacity="0.16" fill="#ffe2b0" filter={`url(#${p}-b10)`}>
+      <g className="ms-rays" opacity="0.16" fill="#ffe2b0" filter={`url(#${p}-b10)`}>
         <path d="M1040 500 L520 900 L690 900 Z" />
         <path d="M1040 500 L860 900 L960 900 Z" />
         <path d="M1040 500 L1180 900 L1330 900 Z" />
         <path d="M1040 500 L1460 900 L1600 860 Z" />
       </g>
       {/* High cloud bands */}
-      <g fill="#ffd2a0" opacity="0.18" filter={`url(#${p}-b10)`}>
+      <g className="ms-clouds" fill="#ffd2a0" opacity="0.18" filter={`url(#${p}-b10)`}>
         <ellipse cx="420" cy="250" rx="380" ry="16" />
         <ellipse cx="1240" cy="300" rx="420" ry="12" />
         <ellipse cx="900" cy="380" rx="520" ry="9" />
@@ -132,7 +132,7 @@ export function MasterShot({ className = "", focus = "xMidYMid", idPrefix = "ms"
       <path d="M0 660 L140 630 L300 646 L460 618 L640 640 L1300 640 L1440 612 L1600 630 L1600 900 L0 900 Z" fill="#6e3428" opacity="0.75" />
 
       {/* Sky craft with light trails */}
-      <g>
+      <g className="ms-craft">
         <path d="M250 300 L420 318" stroke="#ffe0a8" strokeOpacity="0.35" strokeWidth="1.2" />
         <ellipse cx="428" cy="319" rx="13" ry="3.2" fill="#2a1812" />
         <path d="M1330 210 L1460 196" stroke="#ffe0a8" strokeOpacity="0.3" strokeWidth="1" />
@@ -181,8 +181,8 @@ export function MasterShot({ className = "", focus = "xMidYMid", idPrefix = "ms"
         <path d="M760 560 L1320 560 L1320 584 Q1290 568 1260 584 Q1230 568 1200 584 Q1170 568 1140 584 Q1110 568 1080 584 Q1050 568 1020 584 Q990 568 960 584 Q930 568 900 584 Q870 568 840 584 Q810 568 780 584 Q770 576 760 584 Z" />
       </g>
       {/* Light slit and ring of light on the spire */}
-      <rect x="1038.5" y="276" width="3" height="250" fill="#e9ff9a" opacity="0.7" filter={`url(#${p}-glow)`} />
-      <ellipse cx="1040" cy="236" rx="86" ry="15" fill="none" stroke="#ffd98a" strokeWidth="2.4" filter={`url(#${p}-glow)`} />
+      <rect className="ms-slit" x="1038.5" y="276" width="3" height="250" fill="#e9ff9a" opacity="0.7" filter={`url(#${p}-glow)`} />
+      <ellipse className="ms-ring" cx="1040" cy="236" rx="86" ry="15" fill="none" stroke="#ffd98a" strokeWidth="2.4" strokeDasharray="40 14" filter={`url(#${p}-glow)`} />
       <ellipse cx="1040" cy="236" rx="120" ry="22" fill="none" stroke="#ffd98a" strokeOpacity="0.35" strokeWidth="1" />
       {/* Lit windows */}
       <g fill="#ffcf7a">
@@ -207,7 +207,7 @@ export function MasterShot({ className = "", focus = "xMidYMid", idPrefix = "ms"
       <g fill="#140b08" stroke="#ffb46c" strokeOpacity="0.6" strokeWidth="1" color="#140b08">
         {/* War banner */}
         <path d="M206 704 L210 548" stroke="#140b08" strokeWidth="3.2" />
-        <path d="M210 552 C240 540 262 562 292 552 C284 572 290 588 296 598 C268 606 244 586 210 598 Z" fill="#7d1e17" />
+        <path d="M210 552 C240 540 262 562 292 552 C284 572 290 588 296 598 C268 606 244 586 210 598 Z" fill="#7d1e17" className="ms-banner" />
         <Figure x={250} y={706} h={92} spear shield />
         <Figure x={420} y={712} h={96} spear shield />
         <Figure x={470} y={716} h={88} spear />
@@ -233,7 +233,7 @@ export function MasterShot({ className = "", focus = "xMidYMid", idPrefix = "ms"
       <circle cx="364" cy="530" r="3.5" fill="#e9ff9a" filter={`url(#${p}-glow)`} />
 
       {/* Dust in the light */}
-      <g fill="#ffe2b0">
+      <g className="ms-dust" fill="#ffe2b0">
         {DUST.map((d, i) => (
           <circle key={i} cx={d.x} cy={d.y} r={d.r} opacity={d.o} />
         ))}
