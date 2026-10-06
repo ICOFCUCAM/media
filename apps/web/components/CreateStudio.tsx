@@ -236,7 +236,7 @@ export function CreateStudio(props: CreateStudioProps) {
           <span className="cf-label">{state ? (state.live ? "Live production" : "Preview simulation") : "Waiting for direction"}</span>
         </div>
         <div className={state ? "pt-8" : ""}>
-          <RunPanel state={state} stageLabels={STAGE_LABEL} readyTitle="Your cut is ready" emptyHint={<EmptyHint noun={noun} />} />
+          <RunPanel state={state} stageLabels={STAGE_LABEL} readyTitle="Your cut is ready" artSeed={prompt} emptyHint={<EmptyHint noun={noun} />} />
         </div>
         {state && (state.characters.length > 0 || state.locations.length > 0) && (
           <div className="mt-10">

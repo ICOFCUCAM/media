@@ -7,6 +7,7 @@ import { fmtDuration } from "../lib/system";
 import type { DemoState, LiveScene, LiveShot, ProjectStatus } from "../lib/demo";
 import { HlsPlayer } from "./HlsPlayer";
 import { Status } from "./cf/primitives";
+import { CinemaArt } from "./cf/CinemaArt";
 
 const STAGES: ProjectStatus[] = ["PLANNING", "GENERATING", "RENDERING", "READY"];
 
@@ -22,6 +23,7 @@ export function RunPanel({
   emptyHint,
   readyTitle = "Your cut is ready",
   fileLink = true,
+  artSeed,
 }: {
   state: DemoState | null;
   stageLabels: Record<ProjectStatus, string>;
@@ -29,13 +31,16 @@ export function RunPanel({
   readyTitle?: string;
   /** Link a live run to its production file (off on the file page itself). */
   fileLink?: boolean;
+  /** The brief — the waiting preview draws a still that follows it. */
+  artSeed?: string;
 }) {
   if (!state) {
     return (
-      <div className="cf-dark relative flex min-h-[22rem] items-center justify-center overflow-hidden px-6 text-center">
-        <div className="pointer-events-none absolute h-[70%] w-[60%] rotate-[-12deg] rounded-[50%] border border-cf-line" aria-hidden />
-        <div className="relative">{emptyHint ?? <p className="cf-display text-[44px]">Set it up and press Create.</p>}</div>
-      </div>
+      <CinemaArt seed={artSeed || "cineforge"} className="cf-dark min-h-[22rem] rounded-lg sm:aspect-[21/9]" letterbox motion hud={{ tag: "Preview frame" }}>
+        <div className="flex h-full items-center justify-center bg-gradient-to-t from-black/75 via-black/35 to-black/20 px-6 text-center text-white">
+          <div>{emptyHint ?? <p className="cf-display text-[44px]">Set it up and press Create.</p>}</div>
+        </div>
+      </CinemaArt>
     );
   }
 

@@ -168,6 +168,7 @@ export function SeriesStudio() {
             state={state}
             stageLabels={STAGE_LABELS}
             readyTitle="Season ready"
+            artSeed={premise}
             emptyHint={
               <div>
                 <p className="cf-display text-[clamp(38px,5vw,62px)] leading-none">The season begins here.</p>

@@ -116,6 +116,7 @@ export default function ProjectCommandCenter({ params }: { params: { id: string 
               state={state}
               stageLabels={STAGE_LABELS}
               readyTitle="Film ready"
+              artSeed={project?.title}
               fileLink={false}
               emptyHint={<p className="cf-display text-[40px] leading-none">Opening the production console…</p>}
             />

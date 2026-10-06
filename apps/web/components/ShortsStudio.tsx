@@ -133,6 +133,7 @@ export function ShortsStudio() {
             state={state}
             stageLabels={STAGE_LABELS}
             readyTitle="Ready to post"
+            artSeed={hook}
             emptyHint={
               <div>
                 <p className="cf-display text-[clamp(38px,5vw,62px)] leading-none">Stop the scroll.</p>

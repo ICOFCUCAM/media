@@ -101,6 +101,7 @@ export function TrailerStudio() {
             state={state}
             stageLabels={STAGE_LABELS}
             readyTitle="Trailer ready"
+            artSeed={subject}
             emptyHint={
               <div>
                 <p className="cf-display text-[clamp(38px,5vw,62px)] leading-none">The cut begins here.</p>
