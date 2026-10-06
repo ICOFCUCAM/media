@@ -1,0 +1,1762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cineforge — Create Advert</title>
+
+<style>
+:root{
+  --bg:#f1f0eb;
+  --paper:#faf9f5;
+  --ink:#11110f;
+  --muted:#77746c;
+  --line:#d7d4cb;
+  --soft:#e7e4dc;
+  --dark:#151513;
+  --accent:#b8ff4d;
+}
+
+*{box-sizing:border-box}
+
+html,body{
+  margin:0;
+  min-height:100%;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+}
+
+body{
+  overflow-x:hidden;
+}
+
+.shell{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:76px 1fr;
+}
+
+/* ================================
+   RAIL
+================================ */
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:76px;
+  background:#11110f;
+  color:#fff;
+  z-index:50;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.logo{
+  width:76px;
+  height:76px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-bottom:1px solid #292925;
+  font-weight:800;
+  font-size:14px;
+  letter-spacing:-.06em;
+}
+
+.logo span{
+  color:var(--accent);
+}
+
+.rail-nav{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  padding-top:22px;
+}
+
+.rail-item{
+  width:48px;
+  height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#77776f;
+  font-family:monospace;
+  font-size:10px;
+  text-decoration:none;
+  position:relative;
+}
+
+.rail-item:hover{
+  color:#fff;
+}
+
+.rail-item.active{
+  color:#fff;
+}
+
+.rail-item.active::before{
+  content:"";
+  position:absolute;
+  left:0;
+  width:3px;
+  height:22px;
+  background:var(--accent);
+}
+
+.rail-bottom{
+  margin-top:auto;
+  padding-bottom:20px;
+}
+
+.avatar{
+  width:32px;
+  height:32px;
+  border:1px solid #41413c;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:monospace;
+  font-size:9px;
+  color:#aaa79f;
+}
+
+/* ================================
+   MAIN
+================================ */
+
+.main{
+  grid-column:2;
+  min-width:0;
+}
+
+.topline{
+  height:76px;
+  padding:0 42px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid var(--line);
+}
+
+.crumb{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-family:monospace;
+  font-size:9px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:#858279;
+}
+
+.crumb strong{
+  color:var(--ink);
+  font-weight:500;
+}
+
+.top-right{
+  display:flex;
+  align-items:center;
+  gap:20px;
+}
+
+.preview{
+  font-family:monospace;
+  font-size:9px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:#77746c;
+}
+
+.status{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  font-family:monospace;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#999;
+}
+
+/* ================================
+   HERO
+================================ */
+
+.hero{
+  padding:74px 58px 58px;
+  border-bottom:1px solid var(--line);
+  position:relative;
+}
+
+.hero::after{
+  content:"COMMERCIAL / 01";
+  position:absolute;
+  top:77px;
+  right:55px;
+  font-family:monospace;
+  font-size:9px;
+  letter-spacing:.18em;
+  color:#aaa79f;
+}
+
+.kicker{
+  margin-bottom:26px;
+  font-family:monospace;
+  font-size:9px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:#7d7a72;
+}
+
+h1{
+  margin:0;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:clamp(65px,8vw,128px);
+  line-height:.82;
+  letter-spacing:-.075em;
+  font-weight:400;
+}
+
+h1 em{
+  font-style:italic;
+}
+
+.hero-copy{
+  max-width:620px;
+  margin-top:38px;
+  color:#66635b;
+  font-size:16px;
+  line-height:1.7;
+}
+
+/* ================================
+   WORKSPACE
+================================ */
+
+.workspace{
+  padding:34px 42px 120px;
+}
+
+.section-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding-bottom:13px;
+  margin-bottom:18px;
+  border-bottom:1px solid var(--line);
+}
+
+.section-head span{
+  font-family:monospace;
+  font-size:9px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#7d7a72;
+}
+
+.section-head strong{
+  font-size:11px;
+  font-weight:500;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.4fr) minmax(330px,.72fr);
+  gap:20px;
+}
+
+.panel{
+  background:var(--paper);
+  border:1px solid var(--line);
+}
+
+.panel-head{
+  height:62px;
+  padding:0 22px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.panel-title{
+  font-size:12px;
+  font-weight:600;
+}
+
+.panel-code{
+  font-family:monospace;
+  font-size:9px;
+  color:#98958d;
+}
+
+/* ================================
+   BRAND BRIEF
+================================ */
+
+.brief{
+  padding:24px;
+}
+
+.label{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:9px;
+}
+
+.label span{
+  font-family:monospace;
+  font-size:9px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:#7e7b72;
+}
+
+textarea{
+  width:100%;
+  min-height:145px;
+  resize:vertical;
+  padding:18px;
+  background:#f6f4ee;
+  border:1px solid var(--line);
+  outline:none;
+  color:var(--ink);
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:21px;
+  line-height:1.4;
+}
+
+textarea:focus{
+  border-color:#99968d;
+  background:#fcfbf8;
+}
+
+.helper{
+  margin-top:10px;
+  font-size:11px;
+  line-height:1.5;
+  color:#89867e;
+}
+
+/* ================================
+   PRODUCT / BRAND
+================================ */
+
+.brand-fields{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:26px;
+}
+
+.field{
+  padding:15px;
+  border:1px solid var(--line);
+  background:#f6f4ee;
+}
+
+.field.full{
+  grid-column:1/-1;
+}
+
+.field label{
+  display:block;
+  margin-bottom:8px;
+  font-family:monospace;
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:#858279;
+}
+
+.field input,
+.field select{
+  width:100%;
+  border:0;
+  background:transparent;
+  outline:none;
+  font-size:13px;
+  color:var(--ink);
+}
+
+/* ================================
+   OBJECTIVE
+================================ */
+
+.objective{
+  margin-top:26px;
+}
+
+.objective-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  border:1px solid var(--line);
+}
+
+.objective-option{
+  min-height:76px;
+  padding:15px;
+  border-right:1px solid var(--line);
+  cursor:pointer;
+  position:relative;
+}
+
+.objective-option:last-child{
+  border-right:0;
+}
+
+.objective-option:hover{
+  background:#eeece5;
+}
+
+.objective-option.selected{
+  background:#e9e7df;
+}
+
+.objective-option.selected::after{
+  content:"";
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  height:3px;
+  background:var(--ink);
+}
+
+.objective-name{
+  font-size:12px;
+  font-weight:600;
+}
+
+.objective-meta{
+  margin-top:7px;
+  font-family:monospace;
+  font-size:8px;
+  color:#88857c;
+  text-transform:uppercase;
+}
+
+/* ================================
+   CAMPAIGN MESSAGE
+================================ */
+
+.message{
+  margin-top:26px;
+}
+
+.message-box{
+  padding:18px;
+  border:1px solid var(--line);
+  background:#f6f4ee;
+}
+
+.message-input{
+  width:100%;
+  border:0;
+  border-bottom:1px solid #cfcac1;
+  padding:4px 0 12px;
+  background:transparent;
+  outline:none;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:23px;
+}
+
+.message-note{
+  margin-top:10px;
+  font-size:10px;
+  color:#88857d;
+}
+
+/* ================================
+   RIGHT PANEL
+================================ */
+
+.control{
+  padding:22px;
+  border-bottom:1px solid var(--line);
+}
+
+.control:last-child{
+  border-bottom:0;
+}
+
+.control-title{
+  margin-bottom:15px;
+  font-family:monospace;
+  font-size:9px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#858279;
+}
+
+/* LENGTH */
+
+.lengths{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+}
+
+.length{
+  padding:10px 13px;
+  border:1px solid var(--line);
+  background:#f6f4ee;
+  cursor:pointer;
+  font-family:monospace;
+  font-size:9px;
+}
+
+.length.selected{
+  background:var(--ink);
+  color:#fff;
+  border-color:var(--ink);
+}
+
+/* AUDIENCE */
+
+.audience{
+  display:flex;
+  flex-direction:column;
+}
+
+.audience-option{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 0;
+  border-bottom:1px solid #e2dfd7;
+  cursor:pointer;
+}
+
+.audience-option:last-child{
+  border-bottom:0;
+}
+
+.audience-name{
+  font-size:11px;
+}
+
+.mark{
+  width:19px;
+  height:19px;
+  border:1px solid #aaa79f;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:monospace;
+  font-size:8px;
+}
+
+.audience-option.selected .mark{
+  background:var(--ink);
+  color:#fff;
+  border-color:var(--ink);
+}
+
+/* STYLE */
+
+.styles{
+  display:flex;
+  flex-direction:column;
+}
+
+.style{
+  padding:12px 0;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom:1px solid #e2dfd7;
+  cursor:pointer;
+}
+
+.style:last-child{
+  border-bottom:0;
+}
+
+.style-name{
+  font-size:11px;
+}
+
+.style.selected .mark{
+  background:var(--ink);
+  color:#fff;
+}
+
+/* DELIVERY */
+
+.delivery-list{
+  display:flex;
+  flex-direction:column;
+}
+
+.delivery-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 0;
+  border-bottom:1px solid #e2dfd7;
+}
+
+.delivery-row:last-child{
+  border-bottom:0;
+}
+
+.delivery-label{
+  font-size:10px;
+  color:#77746b;
+}
+
+.delivery-value{
+  font-family:monospace;
+  font-size:9px;
+}
+
+/* ================================
+   COMMERCIAL FRAME
+================================ */
+
+.preview-section{
+  margin-top:20px;
+}
+
+.commercial-stage{
+  min-height:480px;
+  background:#151513;
+  position:relative;
+  overflow:hidden;
+  color:#fff;
+}
+
+.commercial-image{
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(
+      110deg,
+      rgba(255,255,255,.05),
+      transparent 45%,
+      rgba(255,255,255,.025)
+    );
+}
+
+.safe-frame{
+  position:absolute;
+  inset:11%;
+  border:1px solid rgba(255,255,255,.14);
+}
+
+.safe-frame::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:0;
+  bottom:0;
+  width:1px;
+  background:rgba(255,255,255,.08);
+}
+
+.commercial-copy{
+  position:absolute;
+  left:7%;
+  bottom:14%;
+  max-width:540px;
+}
+
+.commercial-copy .eyebrow{
+  font-family:monospace;
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.16em;
+  color:#999991;
+}
+
+.commercial-copy h2{
+  margin:10px 0 0;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:52px;
+  line-height:.92;
+  font-weight:400;
+  letter-spacing:-.055em;
+}
+
+.end-card{
+  position:absolute;
+  right:7%;
+  bottom:14%;
+  text-align:right;
+}
+
+.end-card .brand{
+  font-size:15px;
+  font-weight:700;
+  letter-spacing:.08em;
+}
+
+.end-card .tag{
+  margin-top:7px;
+  font-family:monospace;
+  font-size:8px;
+  color:#92928b;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+/* TIMELINE */
+
+.timeline{
+  height:76px;
+  padding:12px 18px;
+  background:#1b1b18;
+  border-top:1px solid #30302c;
+}
+
+.ruler{
+  display:flex;
+  justify-content:space-between;
+  color:#66665f;
+  font-family:monospace;
+  font-size:7px;
+}
+
+.track{
+  display:flex;
+  height:30px;
+  gap:2px;
+  margin-top:8px;
+}
+
+.clip{
+  flex:1;
+  background:#41413b;
+}
+
+.clip:nth-child(2){flex:1.4}
+.clip:nth-child(3){flex:.7}
+.clip:nth-child(4){flex:1.15}
+.clip:nth-child(5){flex:.9}
+
+/* ================================
+   ACTION
+================================ */
+
+.action{
+  position:sticky;
+  bottom:0;
+  z-index:20;
+  margin:0 -42px;
+  padding:17px 42px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:rgba(241,240,235,.94);
+  backdrop-filter:blur(15px);
+  border-top:1px solid var(--line);
+}
+
+.action-left{
+  display:flex;
+  gap:18px;
+}
+
+.action-left span{
+  font-family:monospace;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:#77746b;
+}
+
+.actions{
+  display:flex;
+  gap:9px;
+}
+
+.btn{
+  height:44px;
+  padding:0 22px;
+  border:1px solid var(--ink);
+  background:transparent;
+  cursor:pointer;
+  font-family:monospace;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.btn:hover{
+  background:#e6e3db;
+}
+
+.btn.accent{
+  background:var(--accent);
+  border-color:var(--accent);
+}
+
+.btn.accent:hover{
+  background:#c7ff70;
+}
+
+/* ================================
+   RESPONSIVE
+================================ */
+
+@media(max-width:1050px){
+
+  .grid{
+    grid-template-columns:1fr;
+  }
+
+}
+
+@media(max-width:720px){
+
+  .shell{
+    grid-template-columns:1fr;
+  }
+
+  .rail{
+    width:100%;
+    height:58px;
+    inset:auto 0 0;
+    flex-direction:row;
+    justify-content:space-between;
+    padding:0 12px;
+  }
+
+  .logo{
+    width:50px;
+    height:58px;
+    border:0;
+  }
+
+  .rail-nav{
+    flex-direction:row;
+    padding:0;
+  }
+
+  .rail-item{
+    width:40px;
+    height:42px;
+  }
+
+  .rail-bottom{
+    display:none;
+  }
+
+  .main{
+    grid-column:1;
+    padding-bottom:58px;
+  }
+
+  .topline{
+    padding:0 20px;
+  }
+
+  .hero{
+    padding:56px 22px 48px;
+  }
+
+  .hero::after{
+    display:none;
+  }
+
+  h1{
+    font-size:68px;
+  }
+
+  .workspace{
+    padding:24px 18px 100px;
+  }
+
+  .brand-fields{
+    grid-template-columns:1fr;
+  }
+
+  .field.full{
+    grid-column:auto;
+  }
+
+  .objective-grid{
+    grid-template-columns:1fr;
+  }
+
+  .objective-option{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .objective-option:last-child{
+    border-bottom:0;
+  }
+
+  .action{
+    margin:0 -18px;
+    padding:13px 18px;
+  }
+
+  .action-left{
+    display:none;
+  }
+
+  .actions{
+    width:100%;
+  }
+
+  .btn{
+    flex:1;
+  }
+
+}
+</style>
+</head>
+
+<body>
+
+<div class="shell">
+
+  <!-- NAVIGATION -->
+
+  <aside class="rail">
+
+    <div class="logo">
+      CF<span>.</span>
+    </div>
+
+    <nav class="rail-nav">
+      <a class="rail-item">01</a>
+      <a class="rail-item">02</a>
+      <a class="rail-item">03</a>
+      <a class="rail-item">04</a>
+      <a class="rail-item active">05</a>
+      <a class="rail-item">06</a>
+    </nav>
+
+    <div class="rail-bottom">
+      <div class="avatar">JM</div>
+    </div>
+
+  </aside>
+
+
+  <main class="main">
+
+    <!-- TOP BAR -->
+
+    <header class="topline">
+
+      <div class="crumb">
+        <span>CINEFORGE</span>
+        <span>/</span>
+        <span>STUDIO</span>
+        <span>/</span>
+        <strong>CREATE ADVERT</strong>
+      </div>
+
+      <div class="top-right">
+
+        <span class="preview">
+          Preview
+        </span>
+
+        <span class="status">
+          <span class="dot"></span>
+          Preview environment
+        </span>
+
+      </div>
+
+    </header>
+
+
+    <!-- HERO -->
+
+    <section class="hero">
+
+      <div class="kicker">
+        Commercial Studio / Brand Film
+      </div>
+
+      <h1>
+        Make the<br>
+        <em>case.</em>
+      </h1>
+
+      <p class="hero-copy">
+        Build a commercial that gives a product, service or idea a reason
+        to matter. From the first frame to the final brand signature,
+        every decision serves the message.
+      </p>
+
+    </section>
+
+
+    <!-- WORKSPACE -->
+
+    <section class="workspace">
+
+      <div class="section-head">
+        <span>01 — Commercial Brief</span>
+        <strong>Define the campaign</strong>
+      </div>
+
+
+      <div class="grid">
+
+        <!-- LEFT -->
+
+        <section class="panel">
+
+          <div class="panel-head">
+
+            <div class="panel-title">
+              Brand direction
+            </div>
+
+            <div class="panel-code">
+              COM-01
+            </div>
+
+          </div>
+
+
+          <div class="brief">
+
+            <div class="label">
+              <span>Creative brief</span>
+              <span>Required</span>
+            </div>
+
+
+            <textarea id="briefText">Introduce a new premium mobility service that gives people a faster, safer and more intelligent way to move through the city.</textarea>
+
+
+            <div class="helper">
+              Describe what is being promoted, why it matters and what the
+              audience should understand or feel when the film ends.
+            </div>
+
+
+            <!-- BRAND FIELDS -->
+
+            <div class="brand-fields">
+
+              <div class="field">
+
+                <label>
+                  Brand
+                </label>
+
+                <input
+                  value="Cineforge Mobility"
+                >
+
+              </div>
+
+
+              <div class="field">
+
+                <label>
+                  Product
+                </label>
+
+                <input
+                  value="Urban One"
+                >
+
+              </div>
+
+
+              <div class="field">
+
+                <label>
+                  Market
+                </label>
+
+                <input
+                  value="Europe"
+                >
+
+              </div>
+
+
+              <div class="field">
+
+                <label>
+                  Audience
+                </label>
+
+                <input
+                  value="Urban professionals"
+                >
+
+              </div>
+
+
+              <div class="field full">
+
+                <label>
+                  Primary promise
+                </label>
+
+                <input
+                  value="Move through the city without compromising time."
+                >
+
+              </div>
+
+            </div>
+
+
+            <!-- OBJECTIVE -->
+
+            <div class="objective">
+
+              <div class="label">
+                <span>Campaign objective</span>
+                <span>Choose one</span>
+              </div>
+
+
+              <div class="objective-grid">
+
+                <div class="objective-option selected">
+
+                  <div class="objective-name">
+                    Launch
+                  </div>
+
+                  <div class="objective-meta">
+                    Introduce something new
+                  </div>
+
+                </div>
+
+
+                <div class="objective-option">
+
+                  <div class="objective-name">
+                    Brand
+                  </div>
+
+                  <div class="objective-meta">
+                    Build recognition
+                  </div>
+
+                </div>
+
+
+                <div class="objective-option">
+
+                  <div class="objective-name">
+                    Conversion
+                  </div>
+
+                  <div class="objective-meta">
+                    Drive action
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <!-- MESSAGE -->
+
+            <div class="message">
+
+              <div class="label">
+                <span>Campaign message</span>
+                <span>Final thought</span>
+              </div>
+
+
+              <div class="message-box">
+
+                <input
+                  class="message-input"
+                  value="Move differently."
+                >
+
+                <div class="message-note">
+                  The final line becomes the anchor of the commercial's
+                  closing sequence and brand signature.
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- RIGHT -->
+
+        <aside class="panel">
+
+
+          <!-- LENGTH -->
+
+          <div class="control">
+
+            <div class="control-title">
+              Commercial length
+            </div>
+
+            <div class="lengths">
+
+              <button class="length">
+                15 sec
+              </button>
+
+              <button class="length">
+                30 sec
+              </button>
+
+              <button class="length selected">
+                60 sec
+              </button>
+
+              <button class="length">
+                90 sec
+              </button>
+
+              <button class="length">
+                120 sec
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <!-- AUDIENCE -->
+
+          <div class="control">
+
+            <div class="control-title">
+              Audience emphasis
+            </div>
+
+            <div class="audience">
+
+              <div class="audience-option selected">
+
+                <span class="audience-name">
+                  Urban professionals
+                </span>
+
+                <span class="mark">
+                  ✓
+                </span>
+
+              </div>
+
+
+              <div class="audience-option">
+
+                <span class="audience-name">
+                  Families
+                </span>
+
+                <span class="mark">
+                  —
+                </span>
+
+              </div>
+
+
+              <div class="audience-option">
+
+                <span class="audience-name">
+                  Enterprise
+                </span>
+
+                <span class="mark">
+                  —
+                </span>
+
+              </div>
+
+
+              <div class="audience-option">
+
+                <span class="audience-name">
+                  General public
+                </span>
+
+                <span class="mark">
+                  —
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- STYLE -->
+
+          <div class="control">
+
+            <div class="control-title">
+              Commercial character
+            </div>
+
+            <div class="styles">
+
+              <div class="style selected">
+
+                <span class="style-name">
+                  Premium cinematic
+                </span>
+
+                <span class="mark">
+                  ✓
+                </span>
+
+              </div>
+
+
+              <div class="style">
+
+                <span class="style-name">
+                  Documentary
+                </span>
+
+                <span class="mark">
+                  —
+                </span>
+
+              </div>
+
+
+              <div class="style">
+
+                <span class="style-name">
+                  Product focused
+                </span>
+
+                <span class="mark">
+                  —
+                </span>
+
+              </div>
+
+
+              <div class="style">
+
+                <span class="style-name">
+                  Human story
+                </span>
+
+                <span class="mark">
+                  —
+                </span>
+
+              </div>
+
+
+              <div class="style">
+
+                <span class="style-name">
+                  High energy
+                </span>
+
+                <span class="mark">
+                  —
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- DELIVERY -->
+
+          <div class="control">
+
+            <div class="control-title">
+              Master delivery
+            </div>
+
+            <div class="delivery-list">
+
+              <div class="delivery-row">
+
+                <span class="delivery-label">
+                  Master
+                </span>
+
+                <span class="delivery-value">
+                  1080p FHD
+                </span>
+
+              </div>
+
+
+              <div class="delivery-row">
+
+                <span class="delivery-label">
+                  Format
+                </span>
+
+                <span class="delivery-value">
+                  16 : 9
+                </span>
+
+              </div>
+
+
+              <div class="delivery-row">
+
+                <span class="delivery-label">
+                  Audio
+                </span>
+
+                <span class="delivery-value">
+                  Stereo
+                </span>
+
+              </div>
+
+
+              <div class="delivery-row">
+
+                <span class="delivery-label">
+                  End card
+                </span>
+
+                <span class="delivery-value">
+                  Brand lockup
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </aside>
+
+      </div>
+
+
+      <!-- COMMERCIAL PREVIEW -->
+
+      <div class="preview-section">
+
+        <div class="section-head">
+
+          <span>
+            02 — Commercial Preview
+          </span>
+
+          <strong>
+            60 seconds / 16 : 9
+          </strong>
+
+        </div>
+
+
+        <div class="panel">
+
+          <div class="commercial-stage">
+
+            <div class="commercial-image"></div>
+
+            <div class="safe-frame"></div>
+
+
+            <div class="commercial-copy">
+
+              <div class="eyebrow">
+                Cineforge Mobility / Urban One
+              </div>
+
+              <h2>
+                Move<br>
+                differently.
+              </h2>
+
+            </div>
+
+
+            <div class="end-card">
+
+              <div class="brand">
+                URBAN ONE
+              </div>
+
+              <div class="tag">
+                A new way forward
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div class="timeline">
+
+            <div class="ruler">
+              <span>00:00</span>
+              <span>00:15</span>
+              <span>00:30</span>
+              <span>00:45</span>
+              <span>01:00</span>
+            </div>
+
+            <div class="track">
+
+              <div class="clip"></div>
+              <div class="clip"></div>
+              <div class="clip"></div>
+              <div class="clip"></div>
+              <div class="clip"></div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ACTION -->
+
+      <div class="action">
+
+        <div class="action-left">
+
+          <span>
+            COMMERCIAL / 60 SEC
+          </span>
+
+          <span>
+            Campaign ready
+          </span>
+
+        </div>
+
+
+        <div class="actions">
+
+          <button
+            class="btn"
+            id="reset"
+          >
+            Reset
+          </button>
+
+          <button
+            class="btn accent"
+            id="create"
+          >
+            Create advert
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+</div>
+
+
+<script>
+
+/*
+  CINEFORGE — CREATE ADVERT
+
+  This is the presentation layer.
+
+  Keep the actual production engine and backend
+  integration intact when this page is connected.
+*/
+
+
+/* OBJECTIVE */
+
+document
+  .querySelectorAll(".objective-option")
+  .forEach(option=>{
+
+    option.addEventListener("click",()=>{
+
+      document
+        .querySelectorAll(".objective-option")
+        .forEach(x =>
+          x.classList.remove("selected")
+        );
+
+      option.classList.add("selected");
+
+    });
+
+  });
+
+
+/* LENGTH */
+
+document
+  .querySelectorAll(".length")
+  .forEach(button=>{
+
+    button.addEventListener("click",()=>{
+
+      document
+        .querySelectorAll(".length")
+        .forEach(x =>
+          x.classList.remove("selected")
+        );
+
+      button.classList.add("selected");
+
+    });
+
+  });
+
+
+/* AUDIENCE */
+
+document
+  .querySelectorAll(".audience-option")
+  .forEach(option=>{
+
+    option.addEventListener("click",()=>{
+
+      document
+        .querySelectorAll(".audience-option")
+        .forEach(x=>{
+
+          x.classList.remove("selected");
+
+          const mark =
+            x.querySelector(".mark");
+
+          if(mark){
+            mark.textContent="—";
+          }
+
+        });
+
+      option.classList.add("selected");
+
+      const mark =
+        option.querySelector(".mark");
+
+      if(mark){
+        mark.textContent="✓";
+      }
+
+    });
+
+  });
+
+
+/* COMMERCIAL STYLE */
+
+document
+  .querySelectorAll(".style")
+  .forEach(option=>{
+
+    option.addEventListener("click",()=>{
+
+      document
+        .querySelectorAll(".style")
+        .forEach(x=>{
+
+          x.classList.remove("selected");
+
+          const mark =
+            x.querySelector(".mark");
+
+          if(mark){
+            mark.textContent="—";
+          }
+
+        });
+
+      option.classList.add("selected");
+
+      const mark =
+        option.querySelector(".mark");
+
+      if(mark){
+        mark.textContent="✓";
+      }
+
+    });
+
+  });
+
+
+/* CREATE */
+
+document
+  .getElementById("create")
+  .addEventListener("click",function(){
+
+    const original =
+      this.textContent;
+
+    this.textContent =
+      "Production queued";
+
+    const status =
+      document.querySelector(
+        ".action-left span:last-child"
+      );
+
+    status.textContent =
+      "Preparing commercial production";
+
+    setTimeout(()=>{
+
+      this.textContent =
+        original;
+
+      status.textContent =
+        "Campaign ready";
+
+    },1800);
+
+  });
+
+
+/* RESET */
+
+document
+  .getElementById("reset")
+  .addEventListener("click",()=>{
+
+    location.reload();
+
+  });
+
+</script>
+
+</body>
+</html>

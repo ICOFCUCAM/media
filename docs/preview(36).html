@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Cineforge — Studio View</title>
+
+<style>
+:root{
+  --paper:#f4f1ea;
+  --ink:#10100f;
+  --muted:#77736b;
+  --line:#cfc9bd;
+  --soft:#ebe7de;
+  --acid:#b7ff3c;
+  --white:#fbfaf6;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+}
+
+button{font:inherit;cursor:pointer}
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:78px;
+  border-right:1px solid var(--line);
+  background:rgba(244,241,234,.97);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  z-index:30;
+}
+
+.logo{
+  width:78px;
+  height:78px;
+  display:grid;
+  place-items:center;
+  border-bottom:1px solid var(--line);
+  font-weight:900;
+  letter-spacing:-.08em;
+}
+
+.rail-nav{
+  padding-top:25px;
+  display:flex;
+  flex-direction:column;
+  gap:11px;
+}
+
+.rail-nav a{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  color:var(--muted);
+  text-decoration:none;
+  font:10px ui-monospace,monospace;
+}
+
+.rail-nav a.active{
+  background:var(--ink);
+  color:var(--paper);
+}
+
+.rail-dot{
+  margin-top:auto;
+  margin-bottom:22px;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+main{
+  margin-left:78px;
+}
+
+.page{
+  width:min(1500px,100%);
+  margin:auto;
+  padding:34px 6vw 150px;
+}
+
+.breadcrumb{
+  display:flex;
+  gap:11px;
+  margin-bottom:62px;
+  color:var(--muted);
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.breadcrumb strong{color:var(--ink)}
+
+.hero{
+  display:grid;
+  grid-template-columns:1.35fr .65fr;
+  gap:8vw;
+  padding-bottom:72px;
+  border-bottom:1px solid var(--line);
+}
+
+.eyebrow{
+  margin-bottom:22px;
+  font:10px ui-monospace,monospace;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+
+h1{
+  margin:0;
+  font:400 clamp(70px,9vw,145px)/.82 Georgia,serif;
+  letter-spacing:-.065em;
+}
+
+h1 em{font-style:italic}
+
+.hero-copy{
+  align-self:end;
+  max-width:440px;
+  color:#555149;
+  font-size:15px;
+  line-height:1.75;
+}
+
+.hero-copy strong{color:var(--ink)}
+
+.identity{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-top:28px;
+  font:10px ui-monospace,monospace;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+.identity i{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+
+/* VIEW SWITCHER */
+
+.context{
+  margin-top:42px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  border-top:1px solid var(--ink);
+  border-bottom:1px solid var(--line);
+}
+
+.context-item{
+  min-height:160px;
+  padding:26px;
+  border-right:1px solid var(--line);
+  position:relative;
+  cursor:pointer;
+}
+
+.context-item:last-child{
+  border-right:0;
+}
+
+.context-item:hover{
+  background:var(--soft);
+}
+
+.context-item.active{
+  background:var(--ink);
+  color:var(--paper);
+}
+
+.context-number{
+  font:9px ui-monospace,monospace;
+  opacity:.6;
+}
+
+.context-name{
+  margin-top:42px;
+  font:31px Georgia,serif;
+}
+
+.context-description{
+  margin-top:7px;
+  font-size:11px;
+  color:var(--muted);
+}
+
+.context-item.active .context-description{
+  color:#aaa69d;
+}
+
+.current{
+  position:absolute;
+  top:23px;
+  right:23px;
+  width:7px;
+  height:7px;
+  background:var(--acid);
+  border-radius:50%;
+}
+
+
+/* SECTIONS */
+
+.section{
+  padding:60px 0;
+  border-bottom:1px solid var(--line);
+}
+
+.section-head{
+  display:grid;
+  grid-template-columns:180px 1fr;
+  gap:5vw;
+  margin-bottom:42px;
+}
+
+.label{
+  color:var(--muted);
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.section-title{
+  margin:0;
+  font:400 42px/1.05 Georgia,serif;
+  letter-spacing:-.04em;
+}
+
+
+/* PRODUCTION BOARD */
+
+.board{
+  border-top:1px solid var(--ink);
+}
+
+.board-row{
+  display:grid;
+  grid-template-columns:80px 1.4fr 1fr 150px 120px 100px;
+  align-items:center;
+  min-height:96px;
+  border-bottom:1px solid var(--line);
+}
+
+.board-row:not(.header):hover{
+  background:var(--soft);
+}
+
+.board-row.header{
+  min-height:48px;
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.number{
+  color:var(--muted);
+  font:10px ui-monospace,monospace;
+}
+
+.production-name{
+  font:24px Georgia,serif;
+}
+
+.type{
+  color:var(--muted);
+  font-size:12px;
+}
+
+.progress{
+  width:100px;
+  height:3px;
+  background:var(--line);
+}
+
+.progress span{
+  display:block;
+  height:100%;
+  background:var(--ink);
+}
+
+.stage{
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+.state{
+  justify-self:end;
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+.state i{
+  display:inline-block;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--acid);
+  margin-right:6px;
+}
+
+
+/* DEPARTMENTS */
+
+.departments{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--ink);
+  border-left:1px solid var(--line);
+}
+
+.department{
+  min-height:240px;
+  padding:26px;
+  border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  position:relative;
+}
+
+.department-number{
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+}
+
+.department-count{
+  position:absolute;
+  right:23px;
+  top:21px;
+  font:27px Georgia,serif;
+}
+
+.department h3{
+  margin:72px 0 10px;
+  font:400 29px Georgia,serif;
+}
+
+.department p{
+  margin:0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.65;
+}
+
+
+/* HOUSE HEALTH */
+
+.health{
+  display:grid;
+  grid-template-columns:1.15fr .85fr;
+  gap:1px;
+  background:var(--line);
+  border:1px solid var(--line);
+}
+
+.health-main,
+.health-side{
+  background:var(--paper);
+  padding:34px;
+}
+
+.health-main{
+  min-height:340px;
+}
+
+.health-number{
+  font:400 92px Georgia,serif;
+  letter-spacing:-.07em;
+}
+
+.health-label{
+  margin-top:-5px;
+  font:9px ui-monospace,monospace;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.health-bar{
+  margin-top:45px;
+  height:5px;
+  background:var(--line);
+}
+
+.health-bar span{
+  display:block;
+  width:87%;
+  height:100%;
+  background:var(--ink);
+}
+
+.health-copy{
+  margin-top:25px;
+  max-width:470px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+
+.health-side{
+  min-height:340px;
+}
+
+.health-side h3{
+  margin:0 0 18px;
+  font:400 30px Georgia,serif;
+}
+
+.health-list{
+  border-top:1px solid var(--line);
+}
+
+.health-row{
+  display:flex;
+  justify-content:space-between;
+  padding:15px 0;
+  border-bottom:1px solid var(--line);
+  font-size:12px;
+}
+
+.health-row span:last-child{
+  font:10px ui-monospace,monospace;
+}
+
+
+/* ATTENTION */
+
+.attention{
+  border-top:1px solid var(--ink);
+}
+
+.attention-row{
+  display:grid;
+  grid-template-columns:1.2fr 1fr 140px 120px;
+  align-items:center;
+  min-height:78px;
+  border-bottom:1px solid var(--line);
+}
+
+.attention-row:hover{
+  background:var(--soft);
+}
+
+.attention-name{
+  font:20px Georgia,serif;
+}
+
+.attention-detail{
+  color:var(--muted);
+  font-size:11px;
+}
+
+.attention-level{
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+.attention-action{
+  justify-self:end;
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+
+/* CTA */
+
+.cta{
+  margin-top:60px;
+  padding:38px;
+  background:var(--ink);
+  color:var(--paper);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:30px;
+}
+
+.cta h2{
+  margin:0 0 8px;
+  font:400 35px Georgia,serif;
+}
+
+.cta p{
+  margin:0;
+  color:#aaa69d;
+  font-size:13px;
+}
+
+.primary{
+  border:0;
+  background:var(--acid);
+  color:var(--ink);
+  padding:14px 20px;
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.secondary{
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--ink);
+  padding:13px 18px;
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+
+/* BOTTOM */
+
+.bottom{
+  position:fixed;
+  left:78px;
+  right:0;
+  bottom:0;
+  height:72px;
+  border-top:1px solid var(--line);
+  background:rgba(244,241,234,.95);
+  backdrop-filter:blur(14px);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 5vw;
+  z-index:20;
+}
+
+.bottom-context{
+  display:flex;
+  gap:12px;
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.bottom-context b{
+  color:var(--ink);
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+}
+
+
+@media(max-width:1050px){
+
+  .board{
+    overflow-x:auto;
+  }
+
+  .board-row{
+    min-width:850px;
+  }
+
+  .departments{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .attention{
+    overflow-x:auto;
+  }
+
+  .attention-row{
+    min-width:700px;
+  }
+
+}
+
+@media(max-width:850px){
+
+  .hero{
+    grid-template-columns:1fr;
+  }
+
+  .health{
+    grid-template-columns:1fr;
+  }
+
+}
+
+@media(max-width:700px){
+
+  .rail{
+    width:58px;
+  }
+
+  .logo{
+    width:58px;
+  }
+
+  main{
+    margin-left:58px;
+  }
+
+  .page{
+    padding:25px 24px 130px;
+  }
+
+  h1{
+    font-size:70px;
+  }
+
+  .context{
+    grid-template-columns:1fr;
+  }
+
+  .context-item{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .section-head{
+    grid-template-columns:1fr;
+    gap:15px;
+  }
+
+  .departments{
+    grid-template-columns:1fr;
+  }
+
+  .cta{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .bottom{
+    left:58px;
+  }
+
+  .bottom-context{
+    display:none;
+  }
+}
+</style>
+</head>
+
+
+<body>
+
+<aside class="rail">
+
+  <div class="logo">CF</div>
+
+  <nav class="rail-nav">
+    <a href="#">ST</a>
+    <a href="#">PR</a>
+    <a href="#">PD</a>
+    <a href="#">TM</a>
+    <a href="#" class="active">AN</a>
+    <a href="#">AC</a>
+  </nav>
+
+  <div class="rail-dot"></div>
+
+</aside>
+
+
+<main>
+
+<div class="page">
+
+
+  <!-- HERO -->
+
+  <div class="breadcrumb">
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <span>VIEWING AS</span>
+    <span>/</span>
+    <strong>STUDIO</strong>
+  </div>
+
+
+  <section class="hero">
+
+    <div>
+
+      <div class="eyebrow">
+        OPERATING CONTEXT / 02
+      </div>
+
+      <h1>
+        Run the<br>
+        <em>house.</em>
+      </h1>
+
+    </div>
+
+
+    <div class="hero-copy">
+
+      <p>
+        Studio mode gives the production house a
+        single view of the work.
+      </p>
+
+      <p>
+        Productions, departments, people, approvals
+        and delivery move together without forcing
+        every collaborator into the same interface.
+      </p>
+
+      <p>
+        <strong>
+          The studio sees the whole picture.
+        </strong>
+      </p>
+
+      <div class="identity">
+        <i></i>
+        Current context · Studio
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- CONTEXT -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        CONTEXT / 01
+      </div>
+
+      <h2 class="section-title">
+        Choose the perspective of the house.
+      </h2>
+
+    </div>
+
+
+    <div class="context">
+
+      <div
+        class="context-item"
+        onclick="switchContext('Creator')">
+
+        <div class="context-number">01</div>
+
+        <div class="context-name">
+          Creator
+        </div>
+
+        <div class="context-description">
+          Your personal production environment.
+        </div>
+
+      </div>
+
+
+      <div class="context-item active">
+
+        <div class="context-number">02</div>
+
+        <div class="current"></div>
+
+        <div class="context-name">
+          Studio
+        </div>
+
+        <div class="context-description">
+          The collaborative production house.
+        </div>
+
+      </div>
+
+
+      <div
+        class="context-item"
+        onclick="switchContext('Super')">
+
+        <div class="context-number">03</div>
+
+        <div class="context-name">
+          Super
+        </div>
+
+        <div class="context-description">
+          Full system administration and oversight.
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- PRODUCTIONS -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        PRODUCTIONS / 02
+      </div>
+
+      <h2 class="section-title">
+        Everything currently moving.
+      </h2>
+
+    </div>
+
+
+    <div class="board">
+
+      <div class="board-row header">
+
+        <div>#</div>
+        <div>Production</div>
+        <div>Format</div>
+        <div>Progress</div>
+        <div>Stage</div>
+        <div>Status</div>
+
+      </div>
+
+
+      <div class="board-row">
+
+        <div class="number">001</div>
+
+        <div class="production-name">
+          Empire of Ash
+        </div>
+
+        <div class="type">
+          Feature
+        </div>
+
+        <div>
+          <div class="progress">
+            <span style="width:74%"></span>
+          </div>
+        </div>
+
+        <div class="stage">
+          Production
+        </div>
+
+        <div class="state">
+          <i></i>On track
+        </div>
+
+      </div>
+
+
+      <div class="board-row">
+
+        <div class="number">002</div>
+
+        <div class="production-name">
+          The Last Horizon
+        </div>
+
+        <div class="type">
+          Series
+        </div>
+
+        <div>
+          <div class="progress">
+            <span style="width:61%"></span>
+          </div>
+        </div>
+
+        <div class="stage">
+          Story
+        </div>
+
+        <div class="state">
+          <i></i>On track
+        </div>
+
+      </div>
+
+
+      <div class="board-row">
+
+        <div class="number">003</div>
+
+        <div class="production-name">
+          Northern Light
+        </div>
+
+        <div class="type">
+          Documentary
+        </div>
+
+        <div>
+          <div class="progress">
+            <span style="width:88%"></span>
+          </div>
+        </div>
+
+        <div class="stage">
+          Finishing
+        </div>
+
+        <div class="state">
+          <i></i>Ready
+        </div>
+
+      </div>
+
+
+      <div class="board-row">
+
+        <div class="number">004</div>
+
+        <div class="production-name">
+          The Long Road
+        </div>
+
+        <div class="type">
+          Commercial
+        </div>
+
+        <div>
+          <div class="progress">
+            <span style="width:43%"></span>
+          </div>
+        </div>
+
+        <div class="stage">
+          Editorial
+        </div>
+
+        <div class="state">
+          <i></i>Active
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- DEPARTMENTS -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        DEPARTMENTS / 03
+      </div>
+
+      <h2 class="section-title">
+        The house, by craft.
+      </h2>
+
+    </div>
+
+
+    <div class="departments">
+
+
+      <div class="department">
+
+        <div class="department-number">01</div>
+        <div class="department-count">06</div>
+
+        <h3>Production</h3>
+
+        <p>
+          Schedules, budgets, approvals, delivery
+          and operational responsibility.
+        </p>
+
+      </div>
+
+
+      <div class="department">
+
+        <div class="department-number">02</div>
+        <div class="department-count">04</div>
+
+        <h3>Creative</h3>
+
+        <p>
+          Direction, visual development, characters,
+          worlds and creative decisions.
+        </p>
+
+      </div>
+
+
+      <div class="department">
+
+        <div class="department-number">03</div>
+        <div class="department-count">05</div>
+
+        <h3>Story</h3>
+
+        <p>
+          Writing, story development, continuity
+          and narrative architecture.
+        </p>
+
+      </div>
+
+
+      <div class="department">
+
+        <div class="department-number">04</div>
+        <div class="department-count">03</div>
+
+        <h3>Post</h3>
+
+        <p>
+          Editorial, finishing, sound, mastering
+          and final delivery.
+        </p>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- HEALTH -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        HOUSE HEALTH / 04
+      </div>
+
+      <h2 class="section-title">
+        Know when the house is moving well.
+      </h2>
+
+    </div>
+
+
+    <div class="health">
+
+      <div class="health-main">
+
+        <div class="health-number">
+          87
+        </div>
+
+        <div class="health-label">
+          Production health
+        </div>
+
+        <div class="health-bar">
+          <span></span>
+        </div>
+
+        <div class="health-copy">
+
+          Most active productions are moving within
+          schedule. Two approvals require attention
+          before the next production stage.
+
+        </div>
+
+      </div>
+
+
+      <div class="health-side">
+
+        <h3>
+          House position
+        </h3>
+
+        <div class="health-list">
+
+          <div class="health-row">
+            <span>Active productions</span>
+            <span>18</span>
+          </div>
+
+          <div class="health-row">
+            <span>On schedule</span>
+            <span>83%</span>
+          </div>
+
+          <div class="health-row">
+            <span>Ready to release</span>
+            <span>07</span>
+          </div>
+
+          <div class="health-row">
+            <span>Pending approval</span>
+            <span>02</span>
+          </div>
+
+          <div class="health-row">
+            <span>Active collaborators</span>
+            <span>18</span>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ATTENTION -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        ATTENTION / 05
+      </div>
+
+      <h2 class="section-title">
+        What the house needs now.
+      </h2>
+
+    </div>
+
+
+    <div class="attention">
+
+      <div class="attention-row">
+
+        <div class="attention-name">
+          Empire of Ash · Scene 27
+        </div>
+
+        <div class="attention-detail">
+          Director approval required
+        </div>
+
+        <div class="attention-level">
+          Creative
+        </div>
+
+        <div class="attention-action">
+          Review →
+        </div>
+
+      </div>
+
+
+      <div class="attention-row">
+
+        <div class="attention-name">
+          Northern Light · Master
+        </div>
+
+        <div class="attention-detail">
+          Executive release required
+        </div>
+
+        <div class="attention-level">
+          Release
+        </div>
+
+        <div class="attention-action">
+          Review →
+        </div>
+
+      </div>
+
+
+      <div class="attention-row">
+
+        <div class="attention-name">
+          The Last Horizon · Episode 07
+        </div>
+
+        <div class="attention-detail">
+          Story continuity review
+        </div>
+
+        <div class="attention-level">
+          Story
+        </div>
+
+        <div class="attention-action">
+          Review →
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="cta">
+
+      <div>
+
+        <h2>
+          Keep the production moving.
+        </h2>
+
+        <p>
+          Open the production board and work from the
+          decisions that matter most.
+        </p>
+
+      </div>
+
+      <button
+        class="primary"
+        onclick="openProductionBoard()">
+        Open production board
+      </button>
+
+    </div>
+
+  </section>
+
+
+</div>
+
+
+<div class="bottom">
+
+  <div class="bottom-context">
+
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <b>STUDIO VIEW</b>
+
+  </div>
+
+
+  <div class="actions">
+
+    <button
+      class="secondary"
+      onclick="switchContext('Creator')">
+      Creator
+    </button>
+
+    <button
+      class="primary"
+      onclick="openProductionBoard()">
+      Production board
+    </button>
+
+  </div>
+
+</div>
+
+</main>
+
+
+<script>
+
+function switchContext(name){
+
+  alert(
+    "Context switch placeholder.\n\n" +
+    "Switching Cineforge to: " +
+    name +
+    "\n\n" +
+    "The existing production engines remain untouched."
+  );
+
+}
+
+
+function openProductionBoard(){
+
+  alert(
+    "Production board placeholder.\n\n" +
+    "This will connect to the existing Cineforge production system."
+  );
+
+}
+
+</script>
+
+</body>
+</html>

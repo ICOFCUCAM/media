@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Cineforge — The Exchange</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+
+:root{
+  --ink:#11120f;
+  --paper:#f3f1eb;
+  --paper2:#e8e6df;
+  --line:rgba(17,18,15,.14);
+  --muted:#74756f;
+  --soft:#a1a19a;
+  --green:#b9f36c;
+  --white:#faf9f5;
+}
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+}
+
+button,
+input,
+select{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+.app{
+  min-height:100vh;
+}
+
+/* ==========================================
+   RAIL
+========================================== */
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:78px;
+  background:#11120f;
+  z-index:50;
+  color:white;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.brand{
+  height:78px;
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-bottom:1px solid rgba(255,255,255,.1);
+}
+
+.brand-mark{
+  width:28px;
+  height:28px;
+  border:2px solid var(--green);
+  border-radius:50%;
+  position:relative;
+}
+
+.brand-mark:after{
+  content:"";
+  position:absolute;
+  width:9px;
+  height:9px;
+  background:var(--green);
+  border-radius:50%;
+  left:7px;
+  top:7px;
+}
+
+.rail-nav{
+  padding-top:22px;
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+}
+
+.rail-button{
+  width:42px;
+  height:42px;
+  background:none;
+  color:#777972;
+  border:1px solid transparent;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.rail-button:hover,
+.rail-button.active{
+  color:white;
+  border-color:rgba(255,255,255,.17);
+  background:rgba(255,255,255,.05);
+}
+
+.rail-icon{
+  width:17px;
+  height:17px;
+  border:1px solid currentColor;
+}
+
+.rail-bottom{
+  margin-top:auto;
+  padding-bottom:22px;
+}
+
+.avatar{
+  width:32px;
+  height:32px;
+  background:#292b26;
+  border-radius:50%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  color:#aaa;
+  font:10px "DM Mono";
+}
+
+/* ==========================================
+   MAIN
+========================================== */
+
+.main{
+  margin-left:78px;
+}
+
+.topbar{
+  height:78px;
+  padding:0 42px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.crumb{
+  font:10px "DM Mono";
+  letter-spacing:.14em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+
+.crumb strong{
+  color:var(--ink);
+  font-weight:500;
+}
+
+.top-actions{
+  display:flex;
+  gap:8px;
+}
+
+.small-button{
+  height:35px;
+  padding:0 14px;
+  background:transparent;
+  border:1px solid var(--line);
+  font-size:11px;
+}
+
+.small-button:hover{
+  background:var(--paper2);
+}
+
+.small-button.dark{
+  background:var(--ink);
+  color:white;
+  border-color:var(--ink);
+}
+
+/* ==========================================
+   HERO
+========================================== */
+
+.hero{
+  padding:76px 42px 62px;
+  border-bottom:1px solid var(--line);
+  display:grid;
+  grid-template-columns:1.2fr .8fr;
+  gap:80px;
+}
+
+.eyebrow{
+  font:10px "DM Mono";
+  letter-spacing:.17em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:21px;
+}
+
+.hero h1{
+  font-family:Manrope;
+  font-size:clamp(65px,9vw,122px);
+  line-height:.84;
+  letter-spacing:-.08em;
+  font-weight:700;
+}
+
+.hero h1 em{
+  font-family:Georgia,serif;
+  font-weight:400;
+}
+
+.hero-copy{
+  align-self:end;
+  max-width:455px;
+}
+
+.hero-copy p{
+  font-size:15px;
+  line-height:1.75;
+  color:#5e5f5a;
+}
+
+.system-status{
+  display:flex;
+  gap:9px;
+  align-items:center;
+  margin-top:27px;
+  font:9px "DM Mono";
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+
+.status-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#8bd14d;
+}
+
+/* ==========================================
+   MARKETPLACE
+========================================== */
+
+.marketplace{
+  padding:38px 42px 120px;
+}
+
+.section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  margin-bottom:23px;
+}
+
+.section-label{
+  font:9px "DM Mono";
+  letter-spacing:.15em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+.section-title{
+  margin-top:8px;
+  font:28px Manrope;
+  letter-spacing:-.05em;
+}
+
+/* ==========================================
+   FEATURED EXCHANGE
+========================================== */
+
+.featured{
+  background:#11120f;
+  color:white;
+  min-height:510px;
+  display:grid;
+  grid-template-columns:1.1fr .9fr;
+  position:relative;
+  overflow:hidden;
+}
+
+.featured:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 28% 45%,rgba(185,243,108,.13),transparent 25%),
+    linear-gradient(120deg,#191b17,#080908);
+}
+
+.featured-visual{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:50px;
+}
+
+.art{
+  width:100%;
+  max-width:650px;
+  aspect-ratio:16/10;
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.14);
+  background:
+    radial-gradient(circle at 65% 35%,#6e775e,transparent 14%),
+    linear-gradient(145deg,#3e4739,#121510 68%);
+}
+
+.art:before{
+  content:"";
+  position:absolute;
+  left:27%;
+  bottom:-7%;
+  width:45%;
+  height:95%;
+  background:linear-gradient(160deg,#a8b59d,#30372e);
+  clip-path:polygon(50% 0,100% 100%,0 100%);
+  opacity:.48;
+}
+
+.art:after{
+  content:"";
+  position:absolute;
+  inset:15px;
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.featured-info{
+  position:relative;
+  padding:70px 60px 60px 15px;
+  max-width:560px;
+}
+
+.featured-info .eyebrow{
+  color:#858780;
+}
+
+.featured-info h2{
+  font:55px/.92 Manrope;
+  letter-spacing:-.065em;
+  margin-bottom:23px;
+}
+
+.featured-info p{
+  color:#a2a39d;
+  line-height:1.7;
+  font-size:13px;
+  margin-bottom:27px;
+}
+
+.creator{
+  border-top:1px solid rgba(255,255,255,.13);
+  border-bottom:1px solid rgba(255,255,255,.13);
+  padding:16px 0;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.creator-name{
+  font-size:12px;
+}
+
+.creator-role{
+  color:#777a73;
+  font:9px "DM Mono";
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.featured-button{
+  margin-top:25px;
+  height:42px;
+  padding:0 20px;
+  background:var(--green);
+  border:0;
+  color:#111;
+  font-size:11px;
+}
+
+/* ==========================================
+   CATEGORIES
+========================================== */
+
+.categories{
+  margin-top:68px;
+  border-top:1px solid var(--line);
+}
+
+.category{
+  min-height:95px;
+  display:grid;
+  grid-template-columns:60px 1fr auto;
+  gap:20px;
+  align-items:center;
+  border-bottom:1px solid var(--line);
+  padding:0 20px;
+  transition:.2s;
+}
+
+.category:hover{
+  background:#e8e6df;
+}
+
+.category-number{
+  font:10px "DM Mono";
+  color:#999a94;
+}
+
+.category h3{
+  font:21px Manrope;
+  letter-spacing:-.035em;
+}
+
+.category p{
+  font-size:11px;
+  color:#777873;
+  margin-top:5px;
+}
+
+.category-count{
+  font:9px "DM Mono";
+  color:#7d7e77;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+/* ==========================================
+   LISTINGS
+========================================== */
+
+.listings{
+  margin-top:70px;
+}
+
+.listing-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  margin-bottom:23px;
+}
+
+.listing-header h2{
+  font:31px Manrope;
+  letter-spacing:-.05em;
+}
+
+.filters{
+  display:flex;
+  gap:6px;
+}
+
+.filter{
+  height:32px;
+  border:1px solid var(--line);
+  background:transparent;
+  padding:0 12px;
+  font:9px "DM Mono";
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.filter.active{
+  background:var(--ink);
+  color:white;
+  border-color:var(--ink);
+}
+
+.listing-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--line);
+  border-left:1px solid var(--line);
+}
+
+.listing{
+  min-height:340px;
+  border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  padding:14px;
+  transition:.2s;
+}
+
+.listing:hover{
+  background:#ebe9e2;
+}
+
+.listing-image{
+  aspect-ratio:4/3;
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 65% 30%,#9b9e91,transparent 17%),
+    linear-gradient(140deg,#4b5147,#181a16);
+}
+
+.listing:nth-child(2) .listing-image{
+  background:
+    radial-gradient(circle at 40% 40%,#b1a797,transparent 17%),
+    linear-gradient(140deg,#655f53,#171714);
+}
+
+.listing:nth-child(3) .listing-image{
+  background:
+    radial-gradient(circle at 55% 35%,#888e9d,transparent 20%),
+    linear-gradient(140deg,#363c48,#101215);
+}
+
+.listing:nth-child(4) .listing-image{
+  background:
+    radial-gradient(circle at 40% 35%,#a49d84,transparent 20%),
+    linear-gradient(140deg,#514d3f,#131411);
+}
+
+.listing-image:after{
+  content:"";
+  position:absolute;
+  inset:12px;
+  border:1px solid rgba(255,255,255,.1);
+}
+
+.listing-info{
+  padding:18px 2px 5px;
+}
+
+.listing-type{
+  font:8px "DM Mono";
+  text-transform:uppercase;
+  letter-spacing:.13em;
+  color:#888983;
+}
+
+.listing h4{
+  font:18px Manrope;
+  letter-spacing:-.035em;
+  margin-top:8px;
+}
+
+.listing-meta{
+  display:flex;
+  justify-content:space-between;
+  margin-top:14px;
+  font-size:10px;
+  color:#777873;
+}
+
+.price{
+  color:var(--ink);
+  font-family:"DM Mono";
+}
+
+/* ==========================================
+   CREATOR EXCHANGE
+========================================== */
+
+.exchange{
+  margin-top:70px;
+  border-top:1px solid var(--line);
+  padding-top:32px;
+}
+
+.exchange-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  border:1px solid var(--line);
+}
+
+.exchange-block{
+  min-height:250px;
+  padding:30px;
+}
+
+.exchange-block:first-child{
+  border-right:1px solid var(--line);
+}
+
+.exchange-block h2{
+  font:34px Manrope;
+  letter-spacing:-.055em;
+  margin-top:25px;
+}
+
+.exchange-block p{
+  margin-top:13px;
+  max-width:430px;
+  color:#6e6f69;
+  font-size:12px;
+  line-height:1.7;
+}
+
+.exchange-link{
+  display:inline-block;
+  margin-top:27px;
+  font:10px "DM Mono";
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  border-bottom:1px solid var(--ink);
+  padding-bottom:5px;
+}
+
+/* ==========================================
+   ACTION BAR
+========================================== */
+
+.actionbar{
+  position:fixed;
+  left:78px;
+  right:0;
+  bottom:0;
+  height:72px;
+  z-index:40;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 42px;
+  background:rgba(244,242,236,.94);
+  backdrop-filter:blur(16px);
+  border-top:1px solid var(--line);
+}
+
+.action-info{
+  display:flex;
+  gap:34px;
+}
+
+.action-item{
+  font:9px "DM Mono";
+  color:#777873;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.action-item strong{
+  display:block;
+  margin-top:5px;
+  color:var(--ink);
+  font-size:10px;
+  font-weight:500;
+}
+
+.action-buttons{
+  display:flex;
+  gap:8px;
+}
+
+.action-button{
+  height:40px;
+  padding:0 19px;
+  border:1px solid var(--ink);
+  background:transparent;
+  font-size:11px;
+}
+
+.action-button.primary{
+  background:var(--ink);
+  color:white;
+}
+
+/* ==========================================
+   MODAL
+========================================== */
+
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(8,9,7,.68);
+  backdrop-filter:blur(8px);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:100;
+}
+
+.modal.open{
+  display:flex;
+}
+
+.modal-panel{
+  width:min(610px,calc(100% - 40px));
+  background:var(--paper);
+  padding:35px;
+}
+
+.modal-head{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:30px;
+}
+
+.modal-head h2{
+  font:31px Manrope;
+  letter-spacing:-.05em;
+}
+
+.close{
+  border:0;
+  background:none;
+  font-size:22px;
+}
+
+.field{
+  margin-bottom:19px;
+}
+
+.field label{
+  display:block;
+  font:9px "DM Mono";
+  color:#777873;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  margin-bottom:8px;
+}
+
+.field input,
+.field select{
+  width:100%;
+  height:44px;
+  border:1px solid var(--line);
+  background:#e9e7e0;
+  padding:0 12px;
+  outline:none;
+}
+
+.modal-footer{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:27px;
+}
+
+/* ==========================================
+   RESPONSIVE
+========================================== */
+
+@media(max-width:1050px){
+
+  .hero{
+    grid-template-columns:1fr;
+    gap:35px;
+  }
+
+  .featured{
+    grid-template-columns:1fr;
+  }
+
+  .featured-info{
+    padding:0 45px 50px;
+  }
+
+  .listing-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+}
+
+@media(max-width:700px){
+
+  .rail{
+    display:none;
+  }
+
+  .main{
+    margin-left:0;
+  }
+
+  .topbar{
+    padding:0 20px;
+  }
+
+  .hero,
+  .marketplace{
+    padding-left:20px;
+    padding-right:20px;
+  }
+
+  .hero h1{
+    font-size:64px;
+  }
+
+  .featured-visual{
+    padding:20px;
+  }
+
+  .featured-info{
+    padding:10px 25px 40px;
+  }
+
+  .featured-info h2{
+    font-size:42px;
+  }
+
+  .listing-grid{
+    grid-template-columns:1fr;
+  }
+
+  .exchange-grid{
+    grid-template-columns:1fr;
+  }
+
+  .exchange-block:first-child{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .actionbar{
+    left:0;
+    padding:0 15px;
+  }
+
+  .action-info{
+    display:none;
+  }
+
+  .action-buttons{
+    width:100%;
+  }
+
+  .action-button{
+    flex:1;
+  }
+
+}
+
+</style>
+</head>
+
+
+<body>
+
+<div class="app">
+
+<!-- ==========================================
+     RAIL
+========================================== -->
+
+<aside class="rail">
+
+  <div class="brand">
+    <div class="brand-mark"></div>
+  </div>
+
+  <nav class="rail-nav">
+
+    <button class="rail-button">
+      <span class="rail-icon"></span>
+    </button>
+
+    <button class="rail-button">
+      <span class="rail-icon" style="border-radius:50%"></span>
+    </button>
+
+    <button class="rail-button active">
+      <span class="rail-icon" style="transform:rotate(45deg)"></span>
+    </button>
+
+    <button class="rail-button">
+      <span class="rail-icon" style="border-radius:4px"></span>
+    </button>
+
+  </nav>
+
+  <div class="rail-bottom">
+    <div class="avatar">CM</div>
+  </div>
+
+</aside>
+
+
+<main class="main">
+
+<!-- ==========================================
+     TOPBAR
+========================================== -->
+
+<header class="topbar">
+
+  <div class="crumb">
+    CINEFORGE / PUBLISHING / <strong>MARKETPLACE</strong>
+  </div>
+
+  <div class="top-actions">
+
+    <button class="small-button" id="browseBtn">
+      Browse exchange
+    </button>
+
+    <button class="small-button dark" id="sellBtn">
+      + List material
+    </button>
+
+  </div>
+
+</header>
+
+
+<!-- ==========================================
+     HERO
+========================================== -->
+
+<section class="hero">
+
+  <div>
+
+    <div class="eyebrow">
+      CINEFORGE / THE EXCHANGE
+    </div>
+
+    <h1>
+      The<br>
+      <em>Exchange.</em>
+    </h1>
+
+  </div>
+
+
+  <div class="hero-copy">
+
+    <p>
+      A professional marketplace for the material behind
+      great productions. Discover worlds, characters, voices,
+      music, environments and finished creative work — then
+      bring them into the next production.
+    </p>
+
+    <div class="system-status">
+      <span class="status-dot"></span>
+      Exchange operational
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- ==========================================
+     MARKETPLACE
+========================================== -->
+
+<section class="marketplace">
+
+
+  <div class="section-head">
+
+    <div>
+
+      <div class="section-label">
+        FEATURED MATERIAL
+      </div>
+
+      <div class="section-title">
+        Selected from the exchange
+      </div>
+
+    </div>
+
+    <div class="section-label">
+      CURATED / CINEFORGE
+    </div>
+
+  </div>
+
+
+<!-- FEATURED -->
+
+<div class="featured">
+
+  <div class="featured-visual">
+
+    <div class="art"></div>
+
+  </div>
+
+
+  <div class="featured-info">
+
+    <div class="eyebrow">
+      WORLD / PRODUCTION DESIGN
+    </div>
+
+    <h2>
+      Northern Kingdom.
+    </h2>
+
+    <p>
+      A complete cinematic world system containing
+      environments, architectural references, atmospheric
+      studies, location plates and visual-development material.
+      Built for productions that need continuity from the first
+      frame to the final cut.
+    </p>
+
+
+    <div class="creator">
+
+      <div>
+
+        <div class="creator-name">
+          Cineforge Worldworks
+        </div>
+
+        <div class="creator-role">
+          Production design studio
+        </div>
+
+      </div>
+
+      <div>
+        WORLD / 01
+      </div>
+
+    </div>
+
+
+    <button class="featured-button" id="viewFeatured">
+      View world →
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- CATEGORIES -->
+
+<section class="categories">
+
+  <div class="category">
+
+    <div class="category-number">01</div>
+
+    <div>
+      <h3>Worlds</h3>
+      <p>Locations, environments, visual systems and complete worlds.</p>
+    </div>
+
+    <div class="category-count">284 listings</div>
+
+  </div>
+
+
+  <div class="category">
+
+    <div class="category-number">02</div>
+
+    <div>
+      <h3>Characters</h3>
+      <p>Designed characters and production-ready character systems.</p>
+    </div>
+
+    <div class="category-count">512 listings</div>
+
+  </div>
+
+
+  <div class="category">
+
+    <div class="category-number">03</div>
+
+    <div>
+      <h3>Voices</h3>
+      <p>Performance voices, narration and licensed voice systems.</p>
+    </div>
+
+    <div class="category-count">176 listings</div>
+
+  </div>
+
+
+  <div class="category">
+
+    <div class="category-number">04</div>
+
+    <div>
+      <h3>Music</h3>
+      <p>Scores, themes, stems and production-ready compositions.</p>
+    </div>
+
+    <div class="category-count">643 listings</div>
+
+  </div>
+
+
+  <div class="category">
+
+    <div class="category-number">05</div>
+
+    <div>
+      <h3>Assets</h3>
+      <p>Props, references, footage, imagery and production material.</p>
+    </div>
+
+    <div class="category-count">1,204 listings</div>
+
+  </div>
+
+</section>
+
+
+<!-- LISTINGS -->
+
+<section class="listings">
+
+  <div class="listing-header">
+
+    <div>
+
+      <div class="section-label">
+        CURRENT EXCHANGE
+      </div>
+
+      <h2>
+        Material ready for production.
+      </h2>
+
+    </div>
+
+
+    <div class="filters">
+
+      <button class="filter active">
+        All
+      </button>
+
+      <button class="filter">
+        Worlds
+      </button>
+
+      <button class="filter">
+        Characters
+      </button>
+
+      <button class="filter">
+        Music
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <div class="listing-grid">
+
+
+    <article class="listing">
+
+      <div class="listing-image"></div>
+
+      <div class="listing-info">
+
+        <div class="listing-type">
+          Environment
+        </div>
+
+        <h4>
+          Royal City
+        </h4>
+
+        <div class="listing-meta">
+          <span>Production ready</span>
+          <span class="price">€240</span>
+        </div>
+
+      </div>
+
+    </article>
+
+
+    <article class="listing">
+
+      <div class="listing-image"></div>
+
+      <div class="listing-info">
+
+        <div class="listing-type">
+          Character
+        </div>
+
+        <h4>
+          The Chancellor
+        </h4>
+
+        <div class="listing-meta">
+          <span>Character system</span>
+          <span class="price">€180</span>
+        </div>
+
+      </div>
+
+    </article>
+
+
+    <article class="listing">
+
+      <div class="listing-image"></div>
+
+      <div class="listing-info">
+
+        <div class="listing-type">
+          Score
+        </div>
+
+        <h4>
+          After the Storm
+        </h4>
+
+        <div class="listing-meta">
+          <span>Full score</span>
+          <span class="price">€95</span>
+        </div>
+
+      </div>
+
+    </article>
+
+
+    <article class="listing">
+
+      <div class="listing-image"></div>
+
+      <div class="listing-info">
+
+        <div class="listing-type">
+          World
+        </div>
+
+        <h4>
+          Old Continent
+        </h4>
+
+        <div class="listing-meta">
+          <span>World system</span>
+          <span class="price">€420</span>
+        </div>
+
+      </div>
+
+    </article>
+
+
+  </div>
+
+</section>
+
+
+<!-- CREATOR / BUYER -->
+
+<section class="exchange">
+
+  <div class="exchange-grid">
+
+
+    <div class="exchange-block">
+
+      <div class="section-label">
+        FOR CREATORS
+      </div>
+
+      <h2>
+        Put your work<br>
+        into production.
+      </h2>
+
+      <p>
+        License worlds, characters, music, voices and production
+        material without separating them from the creative
+        context in which they were made.
+      </p>
+
+      <span class="exchange-link">
+        Start listing →
+      </span>
+
+    </div>
+
+
+    <div class="exchange-block">
+
+      <div class="section-label">
+        FOR PRODUCTIONS
+      </div>
+
+      <h2>
+        Find what the<br>
+        next scene needs.
+      </h2>
+
+      <p>
+        Search production-ready material and bring it directly
+        into your Cineforge workspace when the project requires
+        something that already exists.
+      </p>
+
+      <span class="exchange-link">
+        Browse material →
+      </span>
+
+    </div>
+
+
+  </div>
+
+</section>
+
+
+</section>
+
+</main>
+
+</div>
+
+
+<!-- ==========================================
+     ACTION BAR
+========================================== -->
+
+<div class="actionbar">
+
+  <div class="action-info">
+
+    <div class="action-item">
+      Exchange
+      <strong>Open</strong>
+    </div>
+
+    <div class="action-item">
+      Listings
+      <strong>2,819</strong>
+    </div>
+
+    <div class="action-item">
+      Categories
+      <strong>05</strong>
+    </div>
+
+    <div class="action-item">
+      Status
+      <strong>Operational</strong>
+    </div>
+
+  </div>
+
+
+  <div class="action-buttons">
+
+    <button class="action-button" id="myListings">
+      My listings
+    </button>
+
+    <button class="action-button primary" id="listMaterial">
+      List material →
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- ==========================================
+     LIST MATERIAL MODAL
+========================================== -->
+
+<div class="modal" id="modal">
+
+  <div class="modal-panel">
+
+    <div class="modal-head">
+
+      <div>
+
+        <div class="eyebrow">
+          THE EXCHANGE
+        </div>
+
+        <h2>
+          List material.
+        </h2>
+
+      </div>
+
+      <button class="close" id="closeModal">
+        ×
+      </button>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Material name
+      </label>
+
+      <input
+        id="materialName"
+        value="Untitled production material"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Category
+      </label>
+
+      <select>
+
+        <option>World</option>
+        <option>Character</option>
+        <option>Voice</option>
+        <option>Music</option>
+        <option>Asset</option>
+
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Licensing
+      </label>
+
+      <select>
+
+        <option>Commercial license</option>
+        <option>Production license</option>
+        <option>Royalty-free</option>
+        <option>Custom agreement</option>
+
+      </select>
+
+    </div>
+
+
+    <div class="modal-footer">
+
+      <button
+        class="small-button"
+        id="cancel"
+      >
+        Cancel
+      </button>
+
+      <button
+        class="small-button dark"
+        id="create"
+      >
+        Continue
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+/*
+====================================================
+VISUAL PROTOTYPE HANDLERS
+
+These are intentionally temporary.
+
+The actual Cineforge marketplace handlers,
+authentication, database calls, licensing,
+asset ingestion and production integration will
+be connected after all pages have been redesigned.
+====================================================
+*/
+
+const modal = document.getElementById("modal");
+
+document.getElementById("sellBtn").onclick = () => {
+  modal.classList.add("open");
+};
+
+document.getElementById("listMaterial").onclick = () => {
+  modal.classList.add("open");
+};
+
+document.getElementById("closeModal").onclick = () => {
+  modal.classList.remove("open");
+};
+
+document.getElementById("cancel").onclick = () => {
+  modal.classList.remove("open");
+};
+
+modal.addEventListener("click",event=>{
+  if(event.target === modal){
+    modal.classList.remove("open");
+  }
+});
+
+
+document.getElementById("create").onclick = () => {
+
+  const name =
+    document.getElementById("materialName").value ||
+    "Untitled material";
+
+  modal.classList.remove("open");
+
+  alert(
+    "Visual prototype: '" +
+    name +
+    "' would now enter the Cineforge marketplace workflow."
+  );
+
+};
+
+
+document.getElementById("viewFeatured").onclick = () => {
+
+  alert(
+    "Visual prototype: the selected world would open in its marketplace detail view."
+  );
+
+};
+
+
+document.getElementById("browseBtn").onclick = () => {
+
+  window.scrollTo({
+    top:document.querySelector(".listings").offsetTop - 30,
+    behavior:"smooth"
+  });
+
+};
+
+
+document.getElementById("myListings").onclick = () => {
+
+  alert(
+    "Visual prototype: creator marketplace inventory would open here."
+  );
+
+};
+
+
+/* Filter interaction */
+
+document.querySelectorAll(".filter").forEach(filter => {
+
+  filter.addEventListener("click",()=>{
+
+    document
+      .querySelectorAll(".filter")
+      .forEach(item=>item.classList.remove("active"));
+
+    filter.classList.add("active");
+
+  });
+
+});
+
+
+/* Rail interaction */
+
+document.querySelectorAll(".rail-button").forEach(button => {
+
+  button.addEventListener("click",()=>{
+
+    document
+      .querySelectorAll(".rail-button")
+      .forEach(item=>item.classList.remove("active"));
+
+    button.classList.add("active");
+
+  });
+
+});
+
+</script>
+
+</body>
+</html>

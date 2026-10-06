@@ -1,0 +1,2096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Cineforge — The Commercial Studio</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+
+:root{
+  --bg:#080908;
+  --panel:#0d0f0d;
+  --panel2:#111311;
+  --line:rgba(255,255,255,.085);
+  --line2:rgba(255,255,255,.16);
+  --text:#f0f1eb;
+  --muted:#969a94;
+  --dim:#626761;
+  --acid:#d8ff43;
+  --cream:#e9e9df;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+html,body{
+  margin:0;
+  min-height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter,Arial,sans-serif;
+}
+
+button,
+input,
+textarea{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+/* ==========================================
+   SHELL
+========================================== */
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:74px;
+  background:#070807;
+  border-right:1px solid var(--line);
+  z-index:50;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.logo{
+  width:74px;
+  height:82px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.logo-mark{
+  width:27px;
+  height:27px;
+  border:2px solid var(--text);
+  border-radius:50%;
+  position:relative;
+}
+
+.logo-mark:after{
+  content:"";
+  position:absolute;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--acid);
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+}
+
+.rail-menu{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding-top:24px;
+}
+
+.rail-button{
+  width:42px;
+  height:42px;
+  border:1px solid transparent;
+  background:none;
+  color:var(--dim);
+  border-radius:7px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.rail-button:hover,
+.rail-button.active{
+  color:var(--text);
+  border-color:var(--line2);
+  background:rgba(255,255,255,.04);
+}
+
+.grid-icon{
+  display:grid;
+  grid-template-columns:repeat(2,6px);
+  gap:3px;
+}
+
+.grid-icon i{
+  width:6px;
+  height:6px;
+  border:1px solid currentColor;
+}
+
+.film-icon{
+  width:17px;
+  height:15px;
+  border:1px solid currentColor;
+  position:relative;
+}
+
+.film-icon:before,
+.film-icon:after{
+  content:"";
+  position:absolute;
+  left:3px;
+  right:3px;
+  height:1px;
+  background:currentColor;
+}
+
+.film-icon:before{
+  top:4px;
+}
+
+.film-icon:after{
+  bottom:4px;
+}
+
+.cut-icon{
+  width:18px;
+  height:18px;
+  position:relative;
+}
+
+.cut-icon:before,
+.cut-icon:after{
+  content:"";
+  position:absolute;
+  width:15px;
+  height:1px;
+  left:1px;
+  background:currentColor;
+}
+
+.cut-icon:before{
+  top:5px;
+  transform:rotate(30deg);
+}
+
+.cut-icon:after{
+  top:12px;
+  transform:rotate(-30deg);
+}
+
+.box-icon{
+  width:17px;
+  height:17px;
+  border:1px solid currentColor;
+}
+
+.user-icon{
+  width:17px;
+  height:17px;
+  border:1px solid currentColor;
+  border-radius:50%;
+}
+
+.rail-bottom{
+  margin-top:auto;
+  padding-bottom:20px;
+}
+
+.main{
+  margin-left:74px;
+  min-height:100vh;
+}
+
+.topbar{
+  height:82px;
+  padding:0 42px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.breadcrumb{
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--dim);
+}
+
+.breadcrumb span{
+  color:var(--muted);
+}
+
+.system{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.system-dot{
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+/* ==========================================
+   HERO
+========================================== */
+
+.hero{
+  position:relative;
+  min-height:590px;
+  padding:82px 7vw 65px;
+  border-bottom:1px solid var(--line);
+  overflow:hidden;
+}
+
+.hero:before{
+  content:"";
+  position:absolute;
+  width:750px;
+  height:750px;
+  border:1px solid rgba(255,255,255,.035);
+  border-radius:50%;
+  right:-320px;
+  top:-300px;
+}
+
+.hero:after{
+  content:"COMMERCIAL PRODUCTION";
+  position:absolute;
+  right:7vw;
+  bottom:65px;
+  color:var(--dim);
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  letter-spacing:.16em;
+}
+
+.eyebrow{
+  color:var(--acid);
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.18em;
+  margin-bottom:27px;
+}
+
+.hero h1{
+  margin:0;
+  max-width:1050px;
+  font-family:Manrope,sans-serif;
+  font-size:clamp(70px,10vw,150px);
+  line-height:.79;
+  letter-spacing:-.08em;
+  font-weight:700;
+}
+
+.hero h1 em{
+  font-family:Georgia,serif;
+  font-style:italic;
+  font-weight:400;
+}
+
+.hero-copy{
+  max-width:600px;
+  margin-top:43px;
+  color:var(--muted);
+  font-size:15px;
+  line-height:1.75;
+}
+
+.hero-meta{
+  display:flex;
+  gap:43px;
+  margin-top:48px;
+}
+
+.meta{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.meta label{
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.13em;
+}
+
+.meta span{
+  color:var(--cream);
+  font-size:11px;
+}
+
+/* ==========================================
+   PRODUCTION GRID
+========================================== */
+
+.production{
+  display:grid;
+  grid-template-columns:300px minmax(0,1fr) 300px;
+  min-height:770px;
+}
+
+.panel{
+  min-width:0;
+  border-right:1px solid var(--line);
+}
+
+.panel:last-child{
+  border-right:0;
+}
+
+.panel-head{
+  height:64px;
+  padding:0 25px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.panel-title{
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.13em;
+  color:var(--muted);
+}
+
+.panel-code{
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:8px;
+}
+
+/* ==========================================
+   LEFT — BRAND BRIEF
+========================================== */
+
+.left-body{
+  padding:30px 25px 130px;
+}
+
+.section{
+  margin-bottom:31px;
+}
+
+.label{
+  display:block;
+  margin-bottom:13px;
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.13em;
+}
+
+.input,
+textarea{
+  width:100%;
+  background:none;
+  border:0;
+  border-bottom:1px solid var(--line2);
+  outline:none;
+  color:var(--text);
+  padding:0 0 12px;
+  font-size:12px;
+}
+
+textarea{
+  resize:none;
+  min-height:82px;
+  line-height:1.65;
+}
+
+.input:focus,
+textarea:focus{
+  border-color:var(--acid);
+}
+
+.choice-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.choice{
+  border:1px solid var(--line);
+  background:none;
+  color:var(--muted);
+  padding:9px 11px;
+  font-size:9px;
+}
+
+.choice:hover{
+  border-color:var(--line2);
+  color:var(--text);
+}
+
+.choice.active{
+  border-color:var(--acid);
+  color:var(--acid);
+  background:rgba(216,255,67,.045);
+}
+
+.divider{
+  height:1px;
+  background:var(--line);
+  margin:35px 0;
+}
+
+.objective{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+
+.objective-item{
+  padding:13px 0;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  color:var(--muted);
+  font-size:10px;
+}
+
+.objective-item.active{
+  color:var(--text);
+}
+
+.objective-item i{
+  width:6px;
+  height:6px;
+  border:1px solid currentColor;
+  border-radius:50%;
+}
+
+.objective-item.active i{
+  background:var(--acid);
+  border-color:var(--acid);
+}
+
+/* ==========================================
+   CENTER — COMMERCIAL FRAME
+========================================== */
+
+.center{
+  background:
+    radial-gradient(
+      circle at 50% 25%,
+      rgba(216,255,67,.035),
+      transparent 34%
+    ),
+    #090a09;
+}
+
+.center-body{
+  padding:40px 42px 140px;
+}
+
+.canvas{
+  position:relative;
+  aspect-ratio:16/9;
+  border:1px solid var(--line);
+  background:
+    linear-gradient(
+      135deg,
+      #171a17,
+      #080a09 65%
+    );
+  overflow:hidden;
+}
+
+.canvas-glow{
+  position:absolute;
+  width:50%;
+  height:70%;
+  left:25%;
+  top:12%;
+  border-radius:50%;
+  background:rgba(216,255,67,.055);
+  filter:blur(55px);
+}
+
+.canvas-grid{
+  position:absolute;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+  background-size:52px 52px;
+}
+
+.canvas-label{
+  position:absolute;
+  top:16px;
+  left:16px;
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  color:rgba(255,255,255,.36);
+  letter-spacing:.12em;
+}
+
+.canvas-code{
+  position:absolute;
+  top:16px;
+  right:16px;
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  color:rgba(255,255,255,.36);
+}
+
+.ad-message{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  flex-direction:column;
+  padding:50px;
+}
+
+.ad-message small{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  color:var(--acid);
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  margin-bottom:17px;
+}
+
+.ad-message h2{
+  max-width:620px;
+  margin:0;
+  font-family:Manrope,sans-serif;
+  font-size:clamp(30px,4vw,62px);
+  line-height:.93;
+  letter-spacing:-.06em;
+  font-weight:600;
+}
+
+.ad-message p{
+  max-width:450px;
+  margin:20px auto 0;
+  color:rgba(255,255,255,.42);
+  font-size:10px;
+  line-height:1.6;
+}
+
+.canvas-footer{
+  position:absolute;
+  bottom:17px;
+  left:17px;
+  right:17px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-family:"DM Mono",monospace;
+  color:rgba(255,255,255,.32);
+  font-size:7px;
+}
+
+.timeline{
+  margin-top:25px;
+}
+
+.timeline-head{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:9px;
+}
+
+.timeline-head span{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  color:var(--dim);
+}
+
+.track{
+  height:62px;
+  display:flex;
+  gap:3px;
+}
+
+.segment{
+  flex:1;
+  border:1px solid var(--line);
+  background:#131513;
+  position:relative;
+}
+
+.segment:nth-child(2){
+  background:#191b18;
+}
+
+.segment:nth-child(3){
+  background:#111411;
+}
+
+.segment:nth-child(4){
+  background:#1a1c19;
+}
+
+.segment:nth-child(5){
+  background:#121512;
+}
+
+.segment span{
+  position:absolute;
+  left:6px;
+  bottom:6px;
+  font-family:"DM Mono",monospace;
+  color:rgba(255,255,255,.3);
+  font-size:6px;
+}
+
+/* ==========================================
+   RIGHT — CAMPAIGN
+========================================== */
+
+.right-body{
+  padding:30px 25px 130px;
+}
+
+.readout{
+  padding:13px 0;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.readout span{
+  color:var(--muted);
+  font-size:10px;
+}
+
+.readout strong{
+  color:var(--cream);
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  font-weight:400;
+  text-align:right;
+}
+
+.tone{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.tone button{
+  border:1px solid var(--line);
+  background:none;
+  color:var(--muted);
+  padding:8px 10px;
+  font-size:9px;
+}
+
+.tone button.active{
+  color:var(--acid);
+  border-color:var(--acid);
+}
+
+.score{
+  margin-top:24px;
+  border-top:1px solid var(--line);
+  padding-top:20px;
+}
+
+.score-label{
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:8px;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  margin-bottom:12px;
+}
+
+.bars{
+  height:80px;
+  display:flex;
+  align-items:flex-end;
+  gap:4px;
+}
+
+.bars i{
+  flex:1;
+  background:rgba(216,255,67,.45);
+  min-height:5px;
+}
+
+.bars i:nth-child(1){height:20%}
+.bars i:nth-child(2){height:35%}
+.bars i:nth-child(3){height:28%}
+.bars i:nth-child(4){height:52%}
+.bars i:nth-child(5){height:45%}
+.bars i:nth-child(6){height:70%}
+.bars i:nth-child(7){height:58%}
+.bars i:nth-child(8){height:90%}
+.bars i:nth-child(9){height:76%}
+.bars i:nth-child(10){height:45%}
+.bars i:nth-child(11){height:65%}
+.bars i:nth-child(12){height:35%}
+
+.note{
+  margin-top:28px;
+  padding-top:18px;
+  border-top:1px solid var(--line);
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:8px;
+  line-height:1.7;
+}
+
+/* ==========================================
+   ACTION BAR
+========================================== */
+
+.action{
+  position:fixed;
+  left:74px;
+  right:0;
+  bottom:0;
+  height:82px;
+  z-index:40;
+  background:rgba(8,9,8,.95);
+  backdrop-filter:blur(18px);
+  border-top:1px solid var(--line2);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 42px;
+}
+
+.summary{
+  display:flex;
+  gap:31px;
+}
+
+.summary-item{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+
+.summary-item label{
+  font-family:"DM Mono",monospace;
+  color:var(--dim);
+  font-size:7px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+.summary-item span{
+  color:var(--muted);
+  font-size:10px;
+}
+
+.actions{
+  display:flex;
+  gap:9px;
+}
+
+.reset{
+  height:42px;
+  padding:0 20px;
+  border:1px solid var(--line2);
+  background:none;
+  color:var(--muted);
+  font-size:10px;
+}
+
+.create{
+  height:42px;
+  padding:0 25px;
+  border:1px solid var(--acid);
+  background:var(--acid);
+  color:#080908;
+  font-size:10px;
+  font-weight:600;
+}
+
+.create:hover{
+  box-shadow:0 10px 35px rgba(216,255,67,.13);
+}
+
+/* ==========================================
+   TEMPORARY PRODUCTION OVERLAY
+========================================== */
+
+.overlay{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(4,5,4,.82);
+  backdrop-filter:blur(15px);
+}
+
+.overlay.show{
+  display:flex;
+}
+
+.production-box{
+  width:min(620px,calc(100vw - 40px));
+  background:#0c0e0c;
+  border:1px solid var(--line2);
+  padding:40px;
+}
+
+.production-top{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:44px;
+}
+
+.kicker{
+  color:var(--acid);
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.16em;
+}
+
+.percent{
+  color:var(--dim);
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+}
+
+.production-title{
+  font-family:Manrope,sans-serif;
+  font-size:35px;
+  letter-spacing:-.05em;
+  margin-bottom:10px;
+}
+
+.production-copy{
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.65;
+  margin-bottom:32px;
+}
+
+.progress{
+  height:2px;
+  background:var(--line);
+}
+
+.progress-bar{
+  width:0;
+  height:100%;
+  background:var(--acid);
+  transition:width .5s ease;
+}
+
+.stages{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-top:17px;
+}
+
+.stage{
+  color:var(--dim);
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.stage.active{
+  color:var(--acid);
+}
+
+.close{
+  width:100%;
+  height:40px;
+  margin-top:33px;
+  border:1px solid var(--line2);
+  background:none;
+  color:var(--muted);
+  font-size:9px;
+}
+
+/* ==========================================
+   RESPONSIVE
+========================================== */
+
+@media(max-width:1100px){
+
+  .production{
+    grid-template-columns:280px minmax(0,1fr);
+  }
+
+  .right{
+    display:none;
+  }
+
+}
+
+@media(max-width:760px){
+
+  .rail{
+    display:none;
+  }
+
+  .main{
+    margin-left:0;
+  }
+
+  .topbar{
+    padding:0 20px;
+  }
+
+  .hero{
+    padding:60px 25px;
+  }
+
+  .hero h1{
+    font-size:65px;
+  }
+
+  .hero-meta{
+    gap:22px;
+    flex-wrap:wrap;
+  }
+
+  .production{
+    display:block;
+  }
+
+  .panel{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .center-body{
+    padding:25px;
+  }
+
+  .action{
+    left:0;
+    padding:0 18px;
+  }
+
+  .summary{
+    display:none;
+  }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- =========================================
+     RAIL
+========================================= -->
+
+<aside class="rail">
+
+  <div class="logo">
+    <div class="logo-mark"></div>
+  </div>
+
+  <div class="rail-menu">
+
+    <button class="rail-button">
+      <div class="grid-icon">
+        <i></i><i></i><i></i><i></i>
+      </div>
+    </button>
+
+    <button class="rail-button active">
+      <div class="film-icon"></div>
+    </button>
+
+    <button class="rail-button">
+      <div class="cut-icon"></div>
+    </button>
+
+    <button class="rail-button">
+      <div class="box-icon"></div>
+    </button>
+
+  </div>
+
+  <div class="rail-bottom">
+    <button class="rail-button">
+      <div class="user-icon"></div>
+    </button>
+  </div>
+
+</aside>
+
+
+<!-- =========================================
+     MAIN
+========================================= -->
+
+<main class="main">
+
+<header class="topbar">
+
+  <div class="breadcrumb">
+    CINEFORGE / <span>STUDIO / COMMERCIAL</span>
+  </div>
+
+  <div class="system">
+    <i class="system-dot"></i>
+    production system
+  </div>
+
+</header>
+
+
+<!-- =========================================
+     HERO
+========================================= -->
+
+<section class="hero">
+
+  <div class="eyebrow">
+    Commercial production / 05
+  </div>
+
+  <h1>
+    The Commercial<br>
+    <em>Studio.</em>
+  </h1>
+
+  <p class="hero-copy">
+    Advertising is compressed cinema.
+    A brand, a proposition and a feeling must become
+    one precise visual idea. Build the campaign first.
+    Then make the film.
+  </p>
+
+  <div class="hero-meta">
+
+    <div class="meta">
+      <label>Production</label>
+      <span>Commercial</span>
+    </div>
+
+    <div class="meta">
+      <label>Campaign</label>
+      <span id="heroCampaign">Brand film</span>
+    </div>
+
+    <div class="meta">
+      <label>Duration</label>
+      <span id="heroDuration">30 sec</span>
+    </div>
+
+    <div class="meta">
+      <label>Stage</label>
+      <span>Blueprint</span>
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =========================================
+     PRODUCTION
+========================================= -->
+
+<section class="production">
+
+
+<!-- =========================================
+     LEFT
+========================================= -->
+
+<aside class="panel left">
+
+  <div class="panel-head">
+
+    <span class="panel-title">
+      01 / Brand brief
+    </span>
+
+    <span class="panel-code">
+      BRIEF
+    </span>
+
+  </div>
+
+
+  <div class="left-body">
+
+
+    <div class="section">
+
+      <label class="label">
+        Brand / client
+      </label>
+
+      <input
+        class="input"
+        id="brand"
+        value="Astra"
+      >
+
+    </div>
+
+
+    <div class="section">
+
+      <label class="label">
+        What are we selling?
+      </label>
+
+      <textarea id="product">A new electric vehicle built for long-distance travel.</textarea>
+
+    </div>
+
+
+    <div class="section">
+
+      <label class="label">
+        Campaign
+      </label>
+
+      <div class="choice-grid">
+
+        <button
+          class="choice active"
+          data-campaign="Brand film"
+        >
+          Brand film
+        </button>
+
+        <button
+          class="choice"
+          data-campaign="Product launch"
+        >
+          Product launch
+        </button>
+
+        <button
+          class="choice"
+          data-campaign="Product spot"
+        >
+          Product spot
+        </button>
+
+        <button
+          class="choice"
+          data-campaign="Social campaign"
+        >
+          Social campaign
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div class="section">
+
+      <label class="label">
+        Duration
+      </label>
+
+      <div class="choice-grid">
+
+        <button
+          class="choice duration active"
+          data-duration="15"
+        >
+          15s
+        </button>
+
+        <button
+          class="choice duration"
+          data-duration="30"
+        >
+          30s
+        </button>
+
+        <button
+          class="choice duration"
+          data-duration="60"
+        >
+          60s
+        </button>
+
+        <button
+          class="choice duration"
+          data-duration="90"
+        >
+          90s
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div class="divider"></div>
+
+
+    <div class="section">
+
+      <label class="label">
+        Campaign objective
+      </label>
+
+      <div class="objective">
+
+        <button class="objective-item active">
+          <span>Introduce the brand</span>
+          <i></i>
+        </button>
+
+        <button class="objective-item">
+          <span>Launch the product</span>
+          <i></i>
+        </button>
+
+        <button class="objective-item">
+          <span>Drive consideration</span>
+          <i></i>
+        </button>
+
+        <button class="objective-item">
+          <span>Convert attention</span>
+          <i></i>
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</aside>
+
+
+<!-- =========================================
+     CENTER
+========================================= -->
+
+<section class="panel center">
+
+  <div class="panel-head">
+
+    <span class="panel-title">
+      02 / Commercial frame
+    </span>
+
+    <span class="panel-code">
+      16:9 MASTER
+    </span>
+
+  </div>
+
+
+  <div class="center-body">
+
+    <div class="canvas">
+
+      <div class="canvas-glow"></div>
+
+      <div class="canvas-grid"></div>
+
+      <span class="canvas-label">
+        CINEFORGE / COMMERCIAL BLUEPRINT
+      </span>
+
+      <span class="canvas-code">
+        FRAME 001
+      </span>
+
+
+      <div class="ad-message">
+
+        <small>
+          THE IDEA
+        </small>
+
+        <h2 id="adHeadline">
+          Go further than the road.
+        </h2>
+
+        <p id="adSubline">
+          A cinematic product story built around distance,
+          movement and possibility.
+        </p>
+
+      </div>
+
+
+      <div class="canvas-footer">
+
+        <span>
+          00:00:00:00
+        </span>
+
+        <span>
+          ASTRA / MASTER
+        </span>
+
+      </div>
+
+    </div>
+
+
+    <div class="timeline">
+
+      <div class="timeline-head">
+
+        <span>
+          Commercial structure
+        </span>
+
+        <span id="timelineDuration">
+          00:30
+        </span>
+
+      </div>
+
+
+      <div class="track">
+
+        <div class="segment">
+          <span>HOOK</span>
+        </div>
+
+        <div class="segment">
+          <span>WORLD</span>
+        </div>
+
+        <div class="segment">
+          <span>PRODUCT</span>
+        </div>
+
+        <div class="segment">
+          <span>PROOF</span>
+        </div>
+
+        <div class="segment">
+          <span>BRAND</span>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =========================================
+     RIGHT
+========================================= -->
+
+<aside class="panel right">
+
+  <div class="panel-head">
+
+    <span class="panel-title">
+      03 / Direction
+    </span>
+
+    <span class="panel-code">
+      CREATIVE
+    </span>
+
+  </div>
+
+
+  <div class="right-body">
+
+
+    <div class="section">
+
+      <label class="label">
+        Creative tone
+      </label>
+
+      <div class="tone">
+
+        <button class="active">
+          Cinematic
+        </button>
+
+        <button>
+          Premium
+        </button>
+
+        <button>
+          Human
+        </button>
+
+        <button>
+          Bold
+        </button>
+
+        <button>
+          Minimal
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div class="section">
+
+      <label class="label">
+        Core proposition
+      </label>
+
+      <textarea
+        id="proposition"
+      >Freedom to travel further, without compromise.</textarea>
+
+    </div>
+
+
+    <div class="section">
+
+      <label class="label">
+        Audience
+      </label>
+
+      <input
+        class="input"
+        id="audience"
+        value="Modern long-distance travellers"
+      >
+
+    </div>
+
+
+    <div class="section">
+
+      <label class="label">
+        Delivery
+      </label>
+
+      <div class="readout">
+        <span>Master</span>
+        <strong>1080P</strong>
+      </div>
+
+      <div class="readout">
+        <span>Frame</span>
+        <strong>16:9</strong>
+      </div>
+
+      <div class="readout">
+        <span>Frame rate</span>
+        <strong>24 FPS</strong>
+      </div>
+
+      <div class="readout">
+        <span>Audio</span>
+        <strong>STEREO</strong>
+      </div>
+
+    </div>
+
+
+    <div class="score">
+
+      <div class="score-label">
+        Attention curve
+      </div>
+
+      <div class="bars">
+        <i></i>
+        <i></i>
+        <i></i>
+        <i></i>
+        <i></i>
+        <i></i>
+        <i></i>
+        <i></i>
+        <i></i>
+        <i></i>
+        <i></i>
+        <i></i>
+      </div>
+
+    </div>
+
+
+    <div class="note">
+      The commercial is treated as a
+      complete piece of cinema — not
+      merely a resized product video.
+    </div>
+
+  </div>
+
+</aside>
+
+
+</section>
+
+</main>
+
+
+<!-- =========================================
+     ACTION BAR
+========================================= -->
+
+<div class="action">
+
+  <div class="summary">
+
+    <div class="summary-item">
+      <label>Brand</label>
+      <span id="summaryBrand">Astra</span>
+    </div>
+
+    <div class="summary-item">
+      <label>Campaign</label>
+      <span id="summaryCampaign">Brand film</span>
+    </div>
+
+    <div class="summary-item">
+      <label>Duration</label>
+      <span id="summaryDuration">30 sec</span>
+    </div>
+
+    <div class="summary-item">
+      <label>Master</label>
+      <span>1080p / 24fps</span>
+    </div>
+
+  </div>
+
+
+  <div class="actions">
+
+    <button
+      class="reset"
+      id="reset"
+    >
+      Reset
+    </button>
+
+    <button
+      class="create"
+      id="create"
+    >
+      Create commercial →
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- =========================================
+     TEMPORARY PRODUCTION FLOW
+========================================= -->
+
+<div
+  class="overlay"
+  id="overlay"
+>
+
+  <div class="production-box">
+
+    <div class="production-top">
+
+      <span class="kicker">
+        Cineforge / Commercial Production
+      </span>
+
+      <span
+        class="percent"
+        id="percent"
+      >
+        00%
+      </span>
+
+    </div>
+
+
+    <div
+      class="production-title"
+      id="productionTitle"
+    >
+      Developing the idea
+    </div>
+
+
+    <div
+      class="production-copy"
+      id="productionCopy"
+    >
+      Turning the brand proposition into a cinematic commercial concept.
+    </div>
+
+
+    <div class="progress">
+
+      <div
+        class="progress-bar"
+        id="progress"
+      ></div>
+
+    </div>
+
+
+    <div class="stages">
+
+      <div
+        class="stage active"
+        id="stage1"
+      >
+        Developing idea
+      </div>
+
+      <div
+        class="stage"
+        id="stage2"
+      >
+        Building scenes
+      </div>
+
+      <div
+        class="stage"
+        id="stage3"
+      >
+        Finishing master
+      </div>
+
+      <div
+        class="stage"
+        id="stage4"
+      >
+        Commercial ready
+      </div>
+
+    </div>
+
+
+    <button
+      class="close"
+      id="close"
+    >
+      Close preview
+    </button>
+
+  </div>
+
+</div>
+
+
+<script>
+
+/* ==========================================
+   STATE
+========================================== */
+
+let campaign = "Brand film";
+let duration = 30;
+
+
+/* ==========================================
+   ELEMENTS
+========================================== */
+
+const campaignButtons =
+  document.querySelectorAll("[data-campaign]");
+
+const durationButtons =
+  document.querySelectorAll("[data-duration]");
+
+const brand =
+  document.getElementById("brand");
+
+const product =
+  document.getElementById("product");
+
+const proposition =
+  document.getElementById("proposition");
+
+const create =
+  document.getElementById("create");
+
+const reset =
+  document.getElementById("reset");
+
+const overlay =
+  document.getElementById("overlay");
+
+const progress =
+  document.getElementById("progress");
+
+const percent =
+  document.getElementById("percent");
+
+const productionTitle =
+  document.getElementById("productionTitle");
+
+const productionCopy =
+  document.getElementById("productionCopy");
+
+const stages =
+  document.querySelectorAll(".stage");
+
+
+/* ==========================================
+   CAMPAIGN
+========================================== */
+
+campaignButtons.forEach(button => {
+
+  button.addEventListener("click",() => {
+
+    campaignButtons.forEach(item =>
+      item.classList.remove("active")
+    );
+
+    button.classList.add("active");
+
+    campaign =
+      button.dataset.campaign;
+
+    document.getElementById(
+      "heroCampaign"
+    ).textContent = campaign;
+
+    document.getElementById(
+      "summaryCampaign"
+    ).textContent = campaign;
+
+  });
+
+});
+
+
+/* ==========================================
+   DURATION
+========================================== */
+
+durationButtons.forEach(button => {
+
+  button.addEventListener("click",() => {
+
+    durationButtons.forEach(item =>
+      item.classList.remove("active")
+    );
+
+    button.classList.add("active");
+
+    duration =
+      Number(button.dataset.duration);
+
+    updateDuration();
+
+  });
+
+});
+
+
+function updateDuration(){
+
+  const value =
+    String(duration).padStart(2,"0");
+
+  document.getElementById(
+    "heroDuration"
+  ).textContent =
+    duration + " sec";
+
+  document.getElementById(
+    "summaryDuration"
+  ).textContent =
+    duration + " sec";
+
+  document.getElementById(
+    "timelineDuration"
+  ).textContent =
+    "00:" + value;
+
+}
+
+
+/* ==========================================
+   BRAND
+========================================== */
+
+brand.addEventListener("input",() => {
+
+  document.getElementById(
+    "summaryBrand"
+  ).textContent =
+    brand.value || "Untitled brand";
+
+});
+
+
+/* ==========================================
+   PROPOSITION → FRAME
+========================================== */
+
+proposition.addEventListener("input",() => {
+
+  document.getElementById(
+    "adHeadline"
+  ).textContent =
+    proposition.value ||
+    "Your proposition becomes the film.";
+
+});
+
+
+/* ==========================================
+   CREATIVE TONE
+========================================== */
+
+document
+  .querySelectorAll(".tone button")
+  .forEach(button => {
+
+    button.addEventListener("click",() => {
+
+      document
+        .querySelectorAll(".tone button")
+        .forEach(item =>
+          item.classList.remove("active")
+        );
+
+      button.classList.add("active");
+
+    });
+
+  });
+
+
+/* ==========================================
+   OBJECTIVE
+========================================== */
+
+document
+  .querySelectorAll(".objective-item")
+  .forEach(button => {
+
+    button.addEventListener("click",() => {
+
+      document
+        .querySelectorAll(".objective-item")
+        .forEach(item =>
+          item.classList.remove("active")
+        );
+
+      button.classList.add("active");
+
+    });
+
+  });
+
+
+/* ==========================================
+   TEMPORARY PRODUCTION HANDLER
+========================================== */
+
+let timer;
+
+create.addEventListener("click",() => {
+
+  overlay.classList.add("show");
+
+  let value = 0;
+
+  clearInterval(timer);
+
+  timer = setInterval(() => {
+
+    value += 2;
+
+    progress.style.width =
+      value + "%";
+
+    percent.textContent =
+      String(value).padStart(2,"0") + "%";
+
+
+    if(value < 30){
+
+      productionTitle.textContent =
+        "Developing the idea";
+
+      productionCopy.textContent =
+        "Turning the brand proposition into a cinematic commercial concept.";
+
+      activateStage(0);
+
+    }
+
+    else if(value < 65){
+
+      productionTitle.textContent =
+        "Building scenes";
+
+      productionCopy.textContent =
+        "Constructing the visual world, product moments and narrative progression.";
+
+      activateStage(1);
+
+    }
+
+    else if(value < 88){
+
+      productionTitle.textContent =
+        "Finishing master";
+
+      productionCopy.textContent =
+        "Assembling picture, sound, brand treatment and final commercial delivery.";
+
+      activateStage(2);
+
+    }
+
+    else{
+
+      productionTitle.textContent =
+        "Commercial ready";
+
+      productionCopy.textContent =
+        "The visual prototype is complete. The real Cineforge production engine will take over here.";
+
+      activateStage(3);
+
+    }
+
+
+    if(value >= 100){
+
+      clearInterval(timer);
+
+      create.textContent =
+        "Commercial ready";
+
+    }
+
+  },70);
+
+});
+
+
+function activateStage(index){
+
+  stages.forEach((stage,i) => {
+
+    stage.classList.toggle(
+      "active",
+      i === index
+    );
+
+  });
+
+}
+
+
+/* ==========================================
+   CLOSE
+========================================== */
+
+document
+  .getElementById("close")
+  .addEventListener("click",() => {
+
+    overlay.classList.remove("show");
+
+  });
+
+
+/* ==========================================
+   RESET
+========================================== */
+
+reset.addEventListener("click",() => {
+
+  brand.value = "Astra";
+
+  product.value =
+    "A new electric vehicle built for long-distance travel.";
+
+  proposition.value =
+    "Freedom to travel further, without compromise.";
+
+  campaign = "Brand film";
+  duration = 30;
+
+  campaignButtons.forEach(button => {
+
+    button.classList.toggle(
+      "active",
+      button.dataset.campaign === campaign
+    );
+
+  });
+
+  durationButtons.forEach(button => {
+
+    button.classList.toggle(
+      "active",
+      Number(button.dataset.duration) === duration
+    );
+
+  });
+
+  document.getElementById(
+    "heroCampaign"
+  ).textContent = campaign;
+
+  document.getElementById(
+    "summaryCampaign"
+  ).textContent = campaign;
+
+  document.getElementById(
+    "summaryBrand"
+  ).textContent = brand.value;
+
+  document.getElementById(
+    "adHeadline"
+  ).textContent =
+    "Go further than the road.";
+
+  updateDuration();
+
+});
+
+
+updateDuration();
+
+</script>
+
+</body>
+</html>

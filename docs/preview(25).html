@@ -1,0 +1,1777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Cineforge — The Score Room</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono&family=Inter:wght@400;500;600&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#f4f3ee;
+  --panel:#ebeae4;
+  --panel2:#e3e2dc;
+  --ink:#10110f;
+  --muted:#777871;
+  --line:#d2d1ca;
+  --line-dark:#b7b6ae;
+  --white:#faf9f5;
+  --accent:#c7f000;
+  --rail:76px;
+  --sidebar:250px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+  min-height:100vh;
+}
+
+button,input,select{font:inherit}
+button{cursor:pointer}
+
+.app{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:var(--rail) var(--sidebar) 1fr;
+}
+
+/* RAIL */
+
+.rail{
+  border-right:1px solid var(--line);
+  background:#f0efe9;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:space-between;
+  padding:20px 0;
+}
+
+.logo{
+  width:34px;
+  height:34px;
+  border:2px solid var(--ink);
+  border-radius:50%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font:800 13px Manrope;
+}
+
+.rail-icons{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.rail-btn{
+  width:42px;
+  height:42px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:#777871;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.rail-btn:hover,
+.rail-btn.active{
+  background:var(--ink);
+  color:white;
+}
+
+.rail-btn svg{
+  width:17px;
+  height:17px;
+}
+
+.profile-dot{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  background:#c9c8c1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-size:10px;
+  font-weight:700;
+}
+
+/* SIDEBAR */
+
+.sidebar{
+  background:#f0efe9;
+  border-right:1px solid var(--line);
+  padding:26px 20px;
+  overflow:auto;
+}
+
+.brand{
+  font:800 15px Manrope;
+  letter-spacing:-.03em;
+  margin-bottom:42px;
+}
+
+.section{
+  margin-bottom:28px;
+}
+
+.section-label{
+  font:9px "DM Mono";
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:#96968e;
+  margin-bottom:9px;
+}
+
+.nav{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.nav-item{
+  width:100%;
+  border:0;
+  background:transparent;
+  text-align:left;
+  padding:9px 10px;
+  border-radius:7px;
+  color:#666760;
+  font-size:12px;
+}
+
+.nav-item:hover{
+  background:#e5e4de;
+  color:var(--ink);
+}
+
+.nav-item.active{
+  background:var(--ink);
+  color:white;
+}
+
+.view-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 9px;
+  color:#6c6d67;
+  font-size:11px;
+}
+
+.view-row.active{
+  color:var(--ink);
+  font-weight:600;
+}
+
+.view-dot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#b8b8b1;
+}
+
+.view-row.active .view-dot{
+  background:var(--accent);
+}
+
+/* MAIN */
+
+.main{
+  min-width:0;
+  padding:30px 42px 150px;
+}
+
+.breadcrumb{
+  display:flex;
+  gap:9px;
+  font:9px "DM Mono";
+  letter-spacing:.08em;
+  color:#898981;
+  text-transform:uppercase;
+  margin-bottom:45px;
+}
+
+.breadcrumb span:last-child{
+  color:var(--ink);
+}
+
+.hero{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:35px;
+  margin-bottom:48px;
+}
+
+.hero h1{
+  font:700 clamp(54px,7vw,105px)/.86 Manrope;
+  letter-spacing:-.075em;
+}
+
+.hero-copy{
+  width:320px;
+  font-size:13px;
+  line-height:1.65;
+  color:#696a63;
+}
+
+.hero-copy strong{
+  color:var(--ink);
+}
+
+/* SCORE ROOM */
+
+.score-room{
+  border-top:1px solid var(--ink);
+  display:grid;
+  grid-template-columns:260px minmax(420px,1fr) 310px;
+  min-height:650px;
+}
+
+/* TRACK LIST */
+
+.track-list{
+  border-right:1px solid var(--line);
+  padding:20px 0;
+}
+
+.list-head{
+  display:flex;
+  justify-content:space-between;
+  padding:0 18px 15px;
+}
+
+.track{
+  padding:14px 18px;
+  display:grid;
+  grid-template-columns:31px 1fr auto;
+  gap:10px;
+  border-top:1px solid transparent;
+  border-bottom:1px solid transparent;
+  transition:.18s;
+}
+
+.track:hover{
+  background:#e9e8e2;
+}
+
+.track.active{
+  background:var(--ink);
+  color:white;
+}
+
+.track-number{
+  font:9px "DM Mono";
+  color:#888981;
+  padding-top:2px;
+}
+
+.track.active .track-number{
+  color:#aaa;
+}
+
+.track-name{
+  font-size:12px;
+  font-weight:600;
+}
+
+.track-meta{
+  font-size:9px;
+  color:#888981;
+  margin-top:4px;
+}
+
+.track.active .track-meta{
+  color:#aaa;
+}
+
+.track-time{
+  font:9px "DM Mono";
+  color:#888981;
+}
+
+.track.active .track-time{
+  color:#aaa;
+}
+
+.add-track{
+  margin:18px;
+  width:calc(100% - 36px);
+  border:1px dashed var(--line-dark);
+  background:transparent;
+  padding:12px;
+  font-size:11px;
+  color:#666760;
+}
+
+/* CENTER */
+
+.score-stage{
+  padding:30px;
+  min-width:0;
+}
+
+.stage-top{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:26px;
+}
+
+.mono{
+  font:9px "DM Mono";
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+.muted{
+  color:#85867e;
+}
+
+/* ORCHESTRAL FIELD */
+
+.music-field{
+  height:265px;
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  background:#eeede8;
+  position:relative;
+  overflow:hidden;
+}
+
+.staff{
+  position:absolute;
+  left:0;
+  right:0;
+  height:1px;
+  background:#d0cfc8;
+}
+
+.staff:nth-child(1){top:55px}
+.staff:nth-child(2){top:83px}
+.staff:nth-child(3){top:111px}
+.staff:nth-child(4){top:139px}
+.staff:nth-child(5){top:167px}
+
+.note{
+  position:absolute;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#111;
+  transform:rotate(-12deg);
+}
+
+.note:after{
+  content:"";
+  position:absolute;
+  width:1px;
+  height:27px;
+  background:#111;
+  right:-1px;
+  bottom:4px;
+}
+
+.n1{left:8%;top:135px}
+.n2{left:14%;top:97px}
+.n3{left:20%;top:152px}
+.n4{left:27%;top:77px}
+.n5{left:34%;top:124px}
+.n6{left:42%;top:105px}
+.n7{left:50%;top:157px}
+.n8{left:57%;top:88px}
+.n9{left:64%;top:135px}
+.n10{left:72%;top:72px}
+.n11{left:79%;top:120px}
+.n12{left:87%;top:93px}
+.n13{left:93%;top:145px}
+
+.playhead{
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:38%;
+  width:1px;
+  background:#111;
+}
+
+.playhead:before{
+  content:"";
+  position:absolute;
+  top:0;
+  left:-4px;
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  background:#111;
+}
+
+/* SCORE TITLE */
+
+.score-title{
+  margin-top:27px;
+  font:600 34px Manrope;
+  letter-spacing:-.05em;
+}
+
+.score-description{
+  margin-top:8px;
+  font-size:12px;
+  line-height:1.6;
+  color:#777871;
+  max-width:600px;
+}
+
+.controls{
+  margin-top:27px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+
+.play{
+  width:48px;
+  height:48px;
+  border:0;
+  border-radius:50%;
+  background:var(--ink);
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.control{
+  height:38px;
+  padding:0 15px;
+  background:var(--white);
+  border:1px solid var(--line);
+  font-size:10px;
+  border-radius:5px;
+}
+
+.time{
+  margin-left:auto;
+  font:10px "DM Mono";
+  color:#777871;
+}
+
+/* TIMELINE */
+
+.timeline{
+  margin-top:38px;
+  border-top:1px solid var(--line);
+  padding-top:18px;
+}
+
+.timeline-label{
+  margin-bottom:10px;
+}
+
+.timeline-track{
+  height:48px;
+  background:#e6e5df;
+  position:relative;
+  overflow:hidden;
+}
+
+.timeline-section{
+  position:absolute;
+  top:6px;
+  bottom:6px;
+  background:#191a17;
+  opacity:.88;
+}
+
+.ts1{left:2%;width:21%}
+.ts2{left:25%;width:17%}
+.ts3{left:44%;width:25%}
+.ts4{left:71%;width:26%}
+
+/* INSPECTOR */
+
+.inspector{
+  border-left:1px solid var(--line);
+  padding:20px;
+}
+
+.inspector-title{
+  font:9px "DM Mono";
+  color:#85867e;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  margin-bottom:20px;
+}
+
+.field{
+  border-top:1px solid var(--line);
+  padding:14px 0;
+}
+
+.field-label{
+  font:8px "DM Mono";
+  letter-spacing:.09em;
+  color:#898a83;
+  text-transform:uppercase;
+  margin-bottom:7px;
+}
+
+.field-value{
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+}
+
+.arrow{
+  color:#888981;
+}
+
+.tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+}
+
+.tag{
+  border:1px solid var(--line-dark);
+  background:transparent;
+  padding:6px 8px;
+  font:8px "DM Mono";
+}
+
+.tag.active{
+  background:var(--ink);
+  border-color:var(--ink);
+  color:white;
+}
+
+.range{
+  height:2px;
+  background:#c5c4bd;
+  margin-top:12px;
+  position:relative;
+}
+
+.range-fill{
+  width:62%;
+  height:2px;
+  background:#111;
+}
+
+.range-dot{
+  position:absolute;
+  top:-3px;
+  left:62%;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#111;
+}
+
+/* SCORE LIBRARY */
+
+.library{
+  margin-top:58px;
+  border-top:1px solid var(--ink);
+  padding-top:22px;
+}
+
+.library-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  margin-bottom:22px;
+}
+
+.library-title{
+  font:600 26px Manrope;
+  letter-spacing:-.045em;
+}
+
+.library-sub{
+  margin-top:5px;
+  font-size:11px;
+  color:#7c7d76;
+}
+
+.score-cards{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-left:1px solid var(--line);
+}
+
+.score-card{
+  min-height:175px;
+  padding:18px;
+  border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  position:relative;
+  transition:.18s;
+}
+
+.score-card:hover{
+  background:#e9e8e2;
+}
+
+.album{
+  width:55px;
+  height:55px;
+  border:1px solid #aaa9a2;
+  margin-bottom:34px;
+  position:relative;
+  overflow:hidden;
+  background:#d9d8d1;
+}
+
+.album:before,
+.album:after{
+  content:"";
+  position:absolute;
+  border:1px solid #666;
+  border-radius:50%;
+}
+
+.album:before{
+  width:80px;
+  height:80px;
+  left:-13px;
+  top:-13px;
+}
+
+.album:after{
+  width:28px;
+  height:28px;
+  left:13px;
+  top:13px;
+}
+
+.score-name{
+  font-size:12px;
+  font-weight:600;
+}
+
+.score-meta{
+  margin-top:5px;
+  font:8px "DM Mono";
+  color:#85867e;
+}
+
+.card-arrow{
+  position:absolute;
+  top:18px;
+  right:18px;
+}
+
+/* ACTION */
+
+.action-bar{
+  position:fixed;
+  left:calc(var(--rail) + var(--sidebar));
+  right:0;
+  bottom:0;
+  height:72px;
+  background:rgba(244,243,238,.94);
+  backdrop-filter:blur(15px);
+  border-top:1px solid var(--ink);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 34px;
+  z-index:20;
+}
+
+.action-info{
+  display:flex;
+  gap:26px;
+}
+
+.action-stat{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+
+.action-stat span:first-child{
+  font:8px "DM Mono";
+  color:#85867e;
+  text-transform:uppercase;
+}
+
+.action-stat span:last-child{
+  font-size:11px;
+  font-weight:600;
+}
+
+.action-buttons{
+  display:flex;
+  gap:8px;
+}
+
+.secondary,
+.primary{
+  height:42px;
+  padding:0 19px;
+  font-size:10px;
+}
+
+.secondary{
+  background:transparent;
+  border:1px solid var(--line-dark);
+}
+
+.primary{
+  background:var(--ink);
+  border:1px solid var(--ink);
+  color:white;
+}
+
+/* MODAL */
+
+.modal{
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(10,11,9,.45);
+  backdrop-filter:blur(5px);
+  z-index:100;
+}
+
+.modal.open{
+  display:flex;
+}
+
+.modal-box{
+  width:min(570px,calc(100% - 40px));
+  background:var(--bg);
+  border:1px solid #aaa9a1;
+  padding:30px;
+  box-shadow:0 30px 80px rgba(0,0,0,.2);
+}
+
+.modal-head{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:25px;
+}
+
+.modal h2{
+  font:600 30px Manrope;
+  letter-spacing:-.05em;
+}
+
+.close{
+  border:0;
+  background:transparent;
+  font-size:20px;
+}
+
+.modal-field{
+  margin-bottom:18px;
+}
+
+.modal-field label{
+  display:block;
+  margin-bottom:7px;
+  font:8px "DM Mono";
+  color:#81827a;
+  text-transform:uppercase;
+}
+
+.modal-field input,
+.modal-field select{
+  width:100%;
+  height:44px;
+  border:1px solid var(--line);
+  background:#ebeae4;
+  padding:0 12px;
+  outline:none;
+}
+
+.modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:25px;
+}
+
+/* RESPONSIVE */
+
+@media(max-width:1200px){
+
+  .score-room{
+    grid-template-columns:220px 1fr;
+  }
+
+  .inspector{
+    display:none;
+  }
+
+  .score-cards{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+
+@media(max-width:900px){
+
+  .app{
+    grid-template-columns:var(--rail) 1fr;
+  }
+
+  .sidebar{
+    display:none;
+  }
+
+  .main{
+    padding:24px;
+  }
+
+  .action-bar{
+    left:var(--rail);
+  }
+
+  .hero{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .hero-copy{
+    width:auto;
+  }
+}
+
+@media(max-width:650px){
+
+  :root{
+    --rail:58px;
+  }
+
+  .main{
+    padding:20px 15px 130px;
+  }
+
+  .hero h1{
+    font-size:58px;
+  }
+
+  .score-room{
+    grid-template-columns:1fr;
+  }
+
+  .track-list{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .score-stage{
+    padding:20px 0;
+  }
+
+  .score-cards{
+    grid-template-columns:1fr;
+  }
+
+  .action-bar{
+    left:0;
+    padding:0 15px;
+  }
+
+  .action-info{
+    display:none;
+  }
+
+  .action-buttons{
+    margin-left:auto;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<!-- =====================================================
+     RAIL
+====================================================== -->
+
+<aside class="rail">
+
+  <div class="logo">C</div>
+
+  <div class="rail-icons">
+
+    <button class="rail-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+    </button>
+
+    <button class="rail-btn active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <rect x="4" y="5" width="16" height="14" rx="2"/>
+        <path d="M8 9h8M8 13h5"/>
+      </svg>
+    </button>
+
+    <button class="rail-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M5 19 19 5"/>
+        <path d="M7 5h12v12"/>
+      </svg>
+    </button>
+
+    <button class="rail-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M5 19V9M12 19V5M19 19v-7"/>
+      </svg>
+    </button>
+
+  </div>
+
+  <div class="profile-dot">JM</div>
+
+</aside>
+
+
+<!-- =====================================================
+     SIDEBAR
+====================================================== -->
+
+<aside class="sidebar">
+
+  <div class="brand">CINEFORGE</div>
+
+  <section class="section">
+
+    <div class="section-label">Studio</div>
+
+    <nav class="nav">
+      <button class="nav-item">Create Anything</button>
+      <button class="nav-item">Create Film</button>
+      <button class="nav-item">Create Series</button>
+      <button class="nav-item">Create Trailer</button>
+      <button class="nav-item">Create Shorts</button>
+      <button class="nav-item">Create Advert</button>
+    </nav>
+
+  </section>
+
+
+  <section class="section">
+
+    <div class="section-label">Production</div>
+
+    <nav class="nav">
+      <button class="nav-item">Projects</button>
+      <button class="nav-item">Characters</button>
+      <button class="nav-item">Worlds</button>
+      <button class="nav-item">Assets</button>
+      <button class="nav-item">Voices</button>
+      <button class="nav-item active">Music</button>
+    </nav>
+
+  </section>
+
+
+  <section class="section">
+
+    <div class="section-label">Publishing</div>
+
+    <nav class="nav">
+      <button class="nav-item">Social Distribution</button>
+      <button class="nav-item">Streaming</button>
+      <button class="nav-item">Marketplace</button>
+    </nav>
+
+  </section>
+
+
+  <section class="section">
+
+    <div class="section-label">Account</div>
+
+    <nav class="nav">
+      <button class="nav-item">Plans & Credits</button>
+    </nav>
+
+  </section>
+
+
+  <section class="section">
+
+    <div class="section-label">Analytics</div>
+
+    <nav class="nav">
+      <button class="nav-item">Revenue</button>
+      <button class="nav-item">Audience</button>
+      <button class="nav-item">Performance</button>
+    </nav>
+
+  </section>
+
+
+  <section class="section">
+
+    <div class="section-label">Enterprise</div>
+
+    <nav class="nav">
+      <button class="nav-item">Teams</button>
+      <button class="nav-item">Permissions</button>
+      <button class="nav-item">Brand Assets</button>
+    </nav>
+
+  </section>
+
+
+  <section>
+
+    <div class="section-label">Viewing as</div>
+
+    <div class="view-row active">
+      <span class="view-dot"></span>
+      Creator
+    </div>
+
+    <div class="view-row">
+      <span class="view-dot"></span>
+      Studio
+    </div>
+
+    <div class="view-row">
+      <span class="view-dot"></span>
+      Super
+    </div>
+
+  </section>
+
+</aside>
+
+
+<!-- =====================================================
+     MAIN
+====================================================== -->
+
+<main class="main">
+
+  <div class="breadcrumb">
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <span>PRODUCTION</span>
+    <span>/</span>
+    <span>MUSIC</span>
+  </div>
+
+
+  <section class="hero">
+
+    <h1>The Score<br>Room.</h1>
+
+    <div class="hero-copy">
+      <strong>Music is not decoration.</strong>
+      <br><br>
+      It establishes the emotional architecture of a film.
+      Compose, arrange and preserve the score alongside
+      the scenes it was written to serve.
+    </div>
+
+  </section>
+
+
+  <!-- ===================================================
+       SCORE ROOM
+  ==================================================== -->
+
+  <section class="score-room">
+
+
+    <!-- TRACK LIST -->
+
+    <aside class="track-list">
+
+      <div class="list-head">
+        <span class="mono">Production score</span>
+        <span class="mono muted">06</span>
+      </div>
+
+
+      <div class="track active" data-title="Arrival">
+
+        <div class="track-number">01</div>
+
+        <div>
+          <div class="track-name">Arrival</div>
+          <div class="track-meta">Opening theme</div>
+        </div>
+
+        <div class="track-time">02:41</div>
+
+      </div>
+
+
+      <div class="track" data-title="The Kingdom">
+
+        <div class="track-number">02</div>
+
+        <div>
+          <div class="track-name">The Kingdom</div>
+          <div class="track-meta">World theme</div>
+        </div>
+
+        <div class="track-time">03:18</div>
+
+      </div>
+
+
+      <div class="track" data-title="Crossing">
+
+        <div class="track-number">03</div>
+
+        <div>
+          <div class="track-name">Crossing</div>
+          <div class="track-meta">Journey</div>
+        </div>
+
+        <div class="track-time">04:06</div>
+
+      </div>
+
+
+      <div class="track" data-title="The Reckoning">
+
+        <div class="track-number">04</div>
+
+        <div>
+          <div class="track-name">The Reckoning</div>
+          <div class="track-meta">Conflict</div>
+        </div>
+
+        <div class="track-time">03:52</div>
+
+      </div>
+
+
+      <div class="track" data-title="After the Fire">
+
+        <div class="track-number">05</div>
+
+        <div>
+          <div class="track-name">After the Fire</div>
+          <div class="track-meta">Resolution</div>
+        </div>
+
+        <div class="track-time">02:59</div>
+
+      </div>
+
+
+      <div class="track" data-title="Home">
+
+        <div class="track-number">06</div>
+
+        <div>
+          <div class="track-name">Home</div>
+          <div class="track-meta">End credits</div>
+        </div>
+
+        <div class="track-time">04:14</div>
+
+      </div>
+
+
+      <button class="add-track" id="addTrack">
+        + Add composition
+      </button>
+
+    </aside>
+
+
+    <!-- SCORE STAGE -->
+
+    <section class="score-stage">
+
+      <div class="stage-top">
+        <span class="mono muted">Selected composition / 01</span>
+        <span class="mono muted">Original score</span>
+      </div>
+
+
+      <div class="music-field">
+
+        <div class="staff"></div>
+        <div class="staff"></div>
+        <div class="staff"></div>
+        <div class="staff"></div>
+        <div class="staff"></div>
+
+        <div class="note n1"></div>
+        <div class="note n2"></div>
+        <div class="note n3"></div>
+        <div class="note n4"></div>
+        <div class="note n5"></div>
+        <div class="note n6"></div>
+        <div class="note n7"></div>
+        <div class="note n8"></div>
+        <div class="note n9"></div>
+        <div class="note n10"></div>
+        <div class="note n11"></div>
+        <div class="note n12"></div>
+        <div class="note n13"></div>
+
+        <div class="playhead"></div>
+
+      </div>
+
+
+      <div class="score-title" id="scoreTitle">
+        Arrival
+      </div>
+
+      <div class="score-description">
+        A restrained orchestral opening that introduces the world
+        before the first line of dialogue. Low strings, distant
+        percussion and a slowly expanding harmonic field.
+      </div>
+
+
+      <div class="controls">
+
+        <button class="play" id="playBtn">
+
+          <svg width="15" height="15" viewBox="0 0 24 24"
+               fill="currentColor">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+
+        </button>
+
+        <button class="control">Generate variation</button>
+        <button class="control">Open arrangement</button>
+
+        <div class="time">
+          00:00 / 02:41
+        </div>
+
+      </div>
+
+
+      <div class="timeline">
+
+        <div class="timeline-label mono muted">
+          Scene placement
+        </div>
+
+        <div class="timeline-track">
+
+          <div class="timeline-section ts1"></div>
+          <div class="timeline-section ts2"></div>
+          <div class="timeline-section ts3"></div>
+          <div class="timeline-section ts4"></div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- INSPECTOR -->
+
+    <aside class="inspector">
+
+      <div class="inspector-title">
+        Score direction
+      </div>
+
+
+      <div class="field">
+
+        <div class="field-label">Composition</div>
+
+        <div class="field-value">
+          Arrival
+          <span class="arrow">↗</span>
+        </div>
+
+      </div>
+
+
+      <div class="field">
+
+        <div class="field-label">Genre</div>
+
+        <div class="tags">
+          <button class="tag active">Cinematic</button>
+          <button class="tag">Orchestral</button>
+          <button class="tag">Ambient</button>
+          <button class="tag">Electronic</button>
+        </div>
+
+      </div>
+
+
+      <div class="field">
+
+        <div class="field-label">Instrumentation</div>
+
+        <div class="tags">
+          <button class="tag active">Strings</button>
+          <button class="tag active">Percussion</button>
+          <button class="tag">Brass</button>
+          <button class="tag">Choir</button>
+          <button class="tag">Synth</button>
+        </div>
+
+      </div>
+
+
+      <div class="field">
+
+        <div class="field-label">Intensity</div>
+
+        <div class="field-value">
+          Controlled
+        </div>
+
+        <div class="range">
+          <div class="range-fill"></div>
+          <div class="range-dot"></div>
+        </div>
+
+      </div>
+
+
+      <div class="field">
+
+        <div class="field-label">Tempo</div>
+
+        <div class="field-value">
+          76 BPM
+          <span class="arrow">⌄</span>
+        </div>
+
+      </div>
+
+
+      <div class="field">
+
+        <div class="field-label">Emotional direction</div>
+
+        <div class="tags">
+          <button class="tag active">Anticipation</button>
+          <button class="tag">Wonder</button>
+          <button class="tag">Tension</button>
+          <button class="tag">Loss</button>
+        </div>
+
+      </div>
+
+
+      <div class="field">
+
+        <div class="field-label">Scene relationship</div>
+
+        <div class="field-value">
+          Opening sequence
+          <span class="arrow">↗</span>
+        </div>
+
+      </div>
+
+
+      <div class="field">
+
+        <div class="field-label">Continuity</div>
+
+        <div class="field-value">
+          Theme preserved
+          <span>●</span>
+        </div>
+
+      </div>
+
+    </aside>
+
+  </section>
+
+
+  <!-- ===================================================
+       SCORE LIBRARY
+  ==================================================== -->
+
+  <section class="library">
+
+    <div class="library-head">
+
+      <div>
+
+        <div class="library-title">
+          Score Library
+        </div>
+
+        <div class="library-sub">
+          Themes, compositions and musical worlds created for your productions.
+        </div>
+
+      </div>
+
+      <div class="mono muted">
+        24 compositions
+      </div>
+
+    </div>
+
+
+    <div class="score-cards">
+
+      <div class="score-card">
+        <div class="album"></div>
+        <div class="score-name">Arrival</div>
+        <div class="score-meta">ORIGINAL · 02:41</div>
+        <div class="card-arrow">↗</div>
+      </div>
+
+
+      <div class="score-card">
+        <div class="album"></div>
+        <div class="score-name">The Kingdom</div>
+        <div class="score-meta">THEME · 03:18</div>
+        <div class="card-arrow">↗</div>
+      </div>
+
+
+      <div class="score-card">
+        <div class="album"></div>
+        <div class="score-name">Crossing</div>
+        <div class="score-meta">JOURNEY · 04:06</div>
+        <div class="card-arrow">↗</div>
+      </div>
+
+
+      <div class="score-card">
+        <div class="album"></div>
+        <div class="score-name">The Reckoning</div>
+        <div class="score-meta">CONFLICT · 03:52</div>
+        <div class="card-arrow">↗</div>
+      </div>
+
+
+      <div class="score-card">
+        <div class="album"></div>
+        <div class="score-name">After the Fire</div>
+        <div class="score-meta">RESOLUTION · 02:59</div>
+        <div class="card-arrow">↗</div>
+      </div>
+
+
+      <div class="score-card">
+        <div class="album"></div>
+        <div class="score-name">Home</div>
+        <div class="score-meta">END CREDITS · 04:14</div>
+        <div class="card-arrow">↗</div>
+      </div>
+
+
+      <div class="score-card">
+        <div class="album"></div>
+        <div class="score-name">Northern Light</div>
+        <div class="score-meta">AMBIENT · 05:21</div>
+        <div class="card-arrow">↗</div>
+      </div>
+
+
+      <div class="score-card">
+        <div class="album"></div>
+        <div class="score-name">First Dawn</div>
+        <div class="score-meta">OPENING · 02:18</div>
+        <div class="card-arrow">↗</div>
+      </div>
+
+    </div>
+
+  </section>
+
+</main>
+
+</div>
+
+
+<!-- =====================================================
+     ACTION BAR
+====================================================== -->
+
+<div class="action-bar">
+
+  <div class="action-info">
+
+    <div class="action-stat">
+      <span>Selected</span>
+      <span id="selectedScore">Arrival</span>
+    </div>
+
+    <div class="action-stat">
+      <span>Runtime</span>
+      <span>02:41</span>
+    </div>
+
+    <div class="action-stat">
+      <span>Placement</span>
+      <span>Opening sequence</span>
+    </div>
+
+  </div>
+
+
+  <div class="action-buttons">
+
+    <button class="secondary" id="resetBtn">
+      Reset
+    </button>
+
+    <button class="primary" id="saveBtn">
+      Save score direction →
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     ADD COMPOSITION
+====================================================== -->
+
+<div class="modal" id="modal">
+
+  <div class="modal-box">
+
+    <div class="modal-head">
+
+      <h2>New composition.</h2>
+
+      <button class="close" id="closeModal">×</button>
+
+    </div>
+
+
+    <div class="modal-field">
+
+      <label>Composition title</label>
+
+      <input
+        id="trackName"
+        placeholder="Theme, cue or composition name"
+      >
+
+    </div>
+
+
+    <div class="modal-field">
+
+      <label>Purpose</label>
+
+      <select>
+        <option>Scene score</option>
+        <option>Character theme</option>
+        <option>World theme</option>
+        <option>Trailer</option>
+        <option>Opening</option>
+        <option>End credits</option>
+      </select>
+
+    </div>
+
+
+    <div class="modal-field">
+
+      <label>Direction</label>
+
+      <select>
+        <option>Cinematic orchestral</option>
+        <option>Ambient cinematic</option>
+        <option>Electronic cinematic</option>
+        <option>Hybrid orchestral</option>
+      </select>
+
+    </div>
+
+
+    <div class="modal-actions">
+
+      <button class="secondary" id="cancelModal">
+        Cancel
+      </button>
+
+      <button class="primary" id="createTrack">
+        Add composition
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+/* TRACK SELECTION */
+
+const tracks=document.querySelectorAll(".track");
+const scoreTitle=document.getElementById("scoreTitle");
+const selectedScore=document.getElementById("selectedScore");
+
+tracks.forEach(track=>{
+
+  track.addEventListener("click",()=>{
+
+    tracks.forEach(t=>t.classList.remove("active"));
+
+    track.classList.add("active");
+
+    const title=track.dataset.title;
+
+    scoreTitle.textContent=title;
+    selectedScore.textContent=title;
+
+  });
+
+});
+
+
+/* TAGS */
+
+document.querySelectorAll(".tag").forEach(tag=>{
+
+  tag.addEventListener("click",()=>{
+
+    tag.classList.toggle("active");
+
+  });
+
+});
+
+
+/* PLAY */
+
+const playBtn=document.getElementById("playBtn");
+
+let playing=false;
+
+playBtn.addEventListener("click",()=>{
+
+  playing=!playing;
+
+  playBtn.innerHTML=playing
+    ? `<span style="font-size:13px">Ⅱ</span>`
+    : `
+      <svg width="15" height="15" viewBox="0 0 24 24"
+           fill="currentColor">
+        <path d="M8 5v14l11-7z"/>
+      </svg>
+    `;
+
+});
+
+
+/* MODAL */
+
+const modal=document.getElementById("modal");
+
+document.getElementById("addTrack").onclick=()=>{
+  modal.classList.add("open");
+};
+
+document.getElementById("closeModal").onclick=()=>{
+  modal.classList.remove("open");
+};
+
+document.getElementById("cancelModal").onclick=()=>{
+  modal.classList.remove("open");
+};
+
+
+/* CREATE */
+
+document.getElementById("createTrack").onclick=()=>{
+
+  const name=document
+    .getElementById("trackName")
+    .value
+    .trim();
+
+  if(!name){
+
+    document.getElementById("trackName").focus();
+
+    return;
+
+  }
+
+  alert(
+    `Visual prototype: "${name}" would now be created through the real Cineforge music engine.`
+  );
+
+  modal.classList.remove("open");
+
+};
+
+
+/* SAVE */
+
+document.getElementById("saveBtn").onclick=()=>{
+
+  alert(
+    "Visual prototype: score direction would now be persisted to the Cineforge production system."
+  );
+
+};
+
+
+/* RESET */
+
+document.getElementById("resetBtn").onclick=()=>{
+
+  tracks.forEach((track,index)=>{
+
+    track.classList.toggle("active",index===0);
+
+  });
+
+  scoreTitle.textContent="Arrival";
+  selectedScore.textContent="Arrival";
+
+};
+
+
+/* NAV */
+
+document.querySelectorAll(".nav-item").forEach(item=>{
+
+  item.addEventListener("click",()=>{
+
+    document
+      .querySelectorAll(".nav-item")
+      .forEach(i=>i.classList.remove("active"));
+
+    item.classList.add("active");
+
+  });
+
+});
+
+</script>
+
+</body>
+</html>

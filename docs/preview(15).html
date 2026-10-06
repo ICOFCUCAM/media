@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cineforge — Storyboard</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root{
+  --black:#080808;
+  --black2:#0c0c0c;
+  --black3:#121212;
+  --panel:#101010;
+  --line:rgba(255,255,255,.10);
+  --line2:rgba(255,255,255,.055);
+  --white:#f1efe9;
+  --muted:#898781;
+  --dim:#565550;
+  --green:#baff3b;
+  --warm:#d7d0c2;
+  --serif:Georgia,"Times New Roman",serif;
+}
+
+*{box-sizing:border-box}
+
+html,body{
+  margin:0;
+  min-height:100%;
+  background:var(--black);
+  color:var(--white);
+  font-family:Inter,sans-serif;
+}
+
+body{overflow-x:hidden}
+
+button,input,textarea,select{font:inherit}
+
+button{cursor:pointer}
+
+.cineforge{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:76px 1fr;
+}
+
+/* =====================================================
+   RAIL
+===================================================== */
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:76px;
+  background:#070707;
+  border-right:1px solid var(--line);
+  z-index:50;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.logo{
+  width:76px;
+  height:86px;
+  border-bottom:1px solid var(--line);
+  display:grid;
+  place-items:center;
+}
+
+.logo-mark{
+  width:27px;
+  height:27px;
+  border:1px solid var(--white);
+  border-radius:50%;
+  position:relative;
+}
+
+.logo-mark:after{
+  content:"";
+  position:absolute;
+  width:7px;
+  height:7px;
+  background:var(--green);
+  border-radius:50%;
+  left:9px;
+  top:9px;
+}
+
+.rail-main{
+  flex:1;
+  width:100%;
+  padding-top:20px;
+}
+
+.rail-button{
+  width:100%;
+  height:62px;
+  border:0;
+  background:transparent;
+  color:var(--dim);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  transition:.2s;
+}
+
+.rail-button:hover,
+.rail-button.active{
+  color:var(--white);
+}
+
+.rail-icon{
+  width:18px;
+  height:18px;
+  border:1px solid currentColor;
+}
+
+.rail-button.active .rail-icon{
+  border-color:var(--green);
+}
+
+.rail-label{
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.rail-bottom{
+  width:100%;
+  border-top:1px solid var(--line);
+  padding:18px 0;
+}
+
+/* =====================================================
+   MAIN
+===================================================== */
+
+.main{
+  grid-column:2;
+  min-width:0;
+}
+
+.topbar{
+  height:86px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 42px;
+}
+
+.breadcrumb{
+  display:flex;
+  gap:13px;
+  align-items:center;
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  color:var(--muted);
+}
+
+.breadcrumb strong{
+  color:var(--white);
+  font-weight:500;
+}
+
+.separator{
+  color:var(--dim);
+}
+
+.top-actions{
+  display:flex;
+  align-items:center;
+  gap:20px;
+}
+
+.system-state{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  color:var(--muted);
+}
+
+.dot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 12px rgba(186,255,59,.45);
+}
+
+.signin{
+  color:var(--white);
+  text-decoration:none;
+  font-size:12px;
+}
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+.page-header{
+  padding:72px 6vw 58px;
+  border-bottom:1px solid var(--line);
+}
+
+.eyebrow{
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:27px;
+}
+
+.title{
+  margin:0;
+  font-family:Manrope,sans-serif;
+  font-size:clamp(62px,8vw,128px);
+  line-height:.84;
+  letter-spacing:-.075em;
+  font-weight:700;
+}
+
+.title em{
+  font-family:var(--serif);
+  font-weight:400;
+}
+
+.intro{
+  max-width:610px;
+  margin-top:35px;
+  color:var(--muted);
+  font-size:15px;
+  line-height:1.7;
+}
+
+/* =====================================================
+   WORKSPACE
+===================================================== */
+
+.workspace{
+  display:grid;
+  grid-template-columns:205px minmax(0,1fr) 300px;
+  min-height:850px;
+}
+
+/* =====================================================
+   LEFT PRODUCTION NAV
+===================================================== */
+
+.project-nav{
+  border-right:1px solid var(--line);
+  padding:28px 0;
+}
+
+.nav-heading{
+  padding:0 25px 19px;
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  letter-spacing:.17em;
+  color:var(--dim);
+  text-transform:uppercase;
+}
+
+.nav-item{
+  width:100%;
+  padding:14px 25px;
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  display:flex;
+  justify-content:space-between;
+  text-align:left;
+  position:relative;
+  font-size:12px;
+}
+
+.nav-item:hover{
+  color:var(--white);
+}
+
+.nav-item.active{
+  color:var(--white);
+  background:rgba(255,255,255,.035);
+}
+
+.nav-item.active:before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:2px;
+  background:var(--green);
+}
+
+.nav-num{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  color:var(--dim);
+}
+
+/* =====================================================
+   BOARD
+===================================================== */
+
+.board{
+  min-width:0;
+}
+
+.board-toolbar{
+  min-height:70px;
+  border-bottom:1px solid var(--line);
+  padding:0 30px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.scene-info{
+  display:flex;
+  align-items:center;
+  gap:18px;
+}
+
+.scene-number{
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  color:var(--green);
+  letter-spacing:.12em;
+}
+
+.scene-name{
+  font-family:var(--serif);
+  font-size:18px;
+}
+
+.toolbar-actions{
+  display:flex;
+  gap:8px;
+}
+
+.tool{
+  background:transparent;
+  border:1px solid var(--line);
+  color:var(--muted);
+  padding:9px 12px;
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.tool:hover{
+  color:var(--white);
+  border-color:rgba(255,255,255,.25);
+}
+
+/* =====================================================
+   STORYBOARD CANVAS
+===================================================== */
+
+.storyboard{
+  padding:34px;
+  background:
+    linear-gradient(
+      rgba(255,255,255,.015) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255,255,255,.015) 1px,
+      transparent 1px
+    );
+  background-size:42px 42px;
+}
+
+.board-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  margin-bottom:26px;
+}
+
+.board-label{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+.board-counter{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  color:var(--dim);
+}
+
+.shot-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
+}
+
+.shot{
+  position:relative;
+  min-width:0;
+  background:#0d0d0d;
+  border:1px solid var(--line);
+  transition:.25s ease;
+}
+
+.shot:hover{
+  border-color:rgba(255,255,255,.28);
+  transform:translateY(-2px);
+}
+
+.shot.selected{
+  border-color:var(--green);
+}
+
+.shot-image{
+  position:relative;
+  aspect-ratio:16/10;
+  overflow:hidden;
+  background:
+    radial-gradient(
+      circle at 58% 40%,
+      rgba(116,135,113,.35),
+      transparent 24%
+    ),
+    linear-gradient(
+      130deg,
+      #171717,
+      #24251f 52%,
+      #0a0a0a
+    );
+}
+
+.shot-image:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 49.7%,
+      rgba(255,255,255,.06) 50%,
+      transparent 50.3%
+    );
+}
+
+.shot-image:after{
+  content:"";
+  position:absolute;
+  width:34%;
+  aspect-ratio:1;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:50%;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+}
+
+.shot:nth-child(2) .shot-image{
+  background:
+    linear-gradient(
+      135deg,
+      #1c1915,
+      #312c21 48%,
+      #0b0b0b
+    );
+}
+
+.shot:nth-child(3) .shot-image{
+  background:
+    radial-gradient(
+      ellipse at 30% 45%,
+      rgba(94,109,127,.34),
+      transparent 25%
+    ),
+    linear-gradient(
+      120deg,
+      #0b0c0f,
+      #202329,
+      #080808
+    );
+}
+
+.shot:nth-child(4) .shot-image{
+  background:
+    radial-gradient(
+      circle at 50% 35%,
+      rgba(163,131,87,.30),
+      transparent 28%
+    ),
+    linear-gradient(
+      145deg,
+      #17120e,
+      #282016,
+      #080808
+    );
+}
+
+.shot:nth-child(5) .shot-image{
+  background:
+    linear-gradient(
+      150deg,
+      #151818,
+      #252b28,
+      #080909
+    );
+}
+
+.shot:nth-child(6) .shot-image{
+  background:
+    radial-gradient(
+      ellipse at 70% 45%,
+      rgba(109,130,99,.27),
+      transparent 25%
+    ),
+    linear-gradient(
+      120deg,
+      #101310,
+      #252a23,
+      #070707
+    );
+}
+
+.shot-number{
+  position:absolute;
+  top:10px;
+  left:11px;
+  z-index:3;
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  color:white;
+  background:rgba(0,0,0,.55);
+  padding:5px 6px;
+}
+
+.shot-duration{
+  position:absolute;
+  bottom:10px;
+  right:10px;
+  z-index:3;
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  color:white;
+  background:rgba(0,0,0,.55);
+  padding:5px 6px;
+}
+
+.shot-meta{
+  padding:14px;
+}
+
+.shot-title{
+  font-size:11px;
+  color:var(--white);
+}
+
+.shot-description{
+  margin-top:7px;
+  font-size:9px;
+  line-height:1.45;
+  color:var(--muted);
+}
+
+.shot-specs{
+  margin-top:13px;
+  display:flex;
+  gap:12px;
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  color:var(--dim);
+  text-transform:uppercase;
+}
+
+/* Add shot */
+
+.add-shot{
+  min-height:80px;
+  border:1px dashed rgba(255,255,255,.13);
+  background:transparent;
+  color:var(--dim);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  transition:.2s;
+}
+
+.add-shot:hover{
+  color:var(--white);
+  border-color:rgba(255,255,255,.3);
+}
+
+/* =====================================================
+   TIMELINE
+===================================================== */
+
+.timeline{
+  margin-top:36px;
+  border-top:1px solid var(--line);
+  padding-top:20px;
+}
+
+.timeline-head{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:13px;
+}
+
+.timeline-title{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  letter-spacing:.15em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+
+.timeline-time{
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  color:var(--dim);
+}
+
+.timeline-track{
+  height:58px;
+  display:flex;
+  gap:3px;
+}
+
+.timeline-segment{
+  flex:1;
+  min-width:20px;
+  border:1px solid rgba(255,255,255,.08);
+  background:#161616;
+  position:relative;
+}
+
+.timeline-segment.active{
+  background:#20261b;
+  border-color:rgba(186,255,59,.35);
+}
+
+.timeline-segment span{
+  position:absolute;
+  left:7px;
+  bottom:7px;
+  font-family:"DM Mono",monospace;
+  font-size:6px;
+  color:var(--dim);
+}
+
+/* =====================================================
+   INSPECTOR
+===================================================== */
+
+.inspector{
+  border-left:1px solid var(--line);
+  background:#0b0b0b;
+}
+
+.inspector-head{
+  min-height:70px;
+  border-bottom:1px solid var(--line);
+  padding:0 25px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.inspector-title{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  letter-spacing:.17em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+
+.inspector-body{
+  padding:25px;
+}
+
+.field{
+  padding:18px 0;
+  border-bottom:1px solid var(--line2);
+}
+
+.field:first-child{
+  padding-top:0;
+}
+
+.field-label{
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--dim);
+  margin-bottom:9px;
+}
+
+.field-value{
+  font-size:12px;
+  color:var(--white);
+}
+
+.field-note{
+  margin-top:5px;
+  color:var(--muted);
+  font-size:9px;
+}
+
+.select{
+  width:100%;
+  background:#111;
+  border:1px solid var(--line);
+  color:var(--white);
+  padding:11px;
+  outline:none;
+}
+
+.text-input{
+  width:100%;
+  background:transparent;
+  border:0;
+  border-bottom:1px solid var(--line);
+  color:var(--white);
+  padding:7px 0;
+  outline:none;
+}
+
+.text-input:focus{
+  border-color:var(--green);
+}
+
+/* =====================================================
+   DIRECTOR NOTES
+===================================================== */
+
+.notes{
+  margin-top:28px;
+}
+
+.notes-title{
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--dim);
+  margin-bottom:12px;
+}
+
+.notes textarea{
+  width:100%;
+  min-height:100px;
+  resize:vertical;
+  background:#101010;
+  border:1px solid var(--line);
+  outline:0;
+  color:var(--white);
+  padding:12px;
+  font-size:10px;
+  line-height:1.5;
+}
+
+/* =====================================================
+   BOTTOM ACTION
+===================================================== */
+
+.action-bar{
+  position:sticky;
+  bottom:0;
+  z-index:30;
+  min-height:88px;
+  background:rgba(8,8,8,.94);
+  backdrop-filter:blur(20px);
+  border-top:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:17px 42px;
+}
+
+.action-left{
+  display:flex;
+  gap:30px;
+  align-items:center;
+}
+
+.action-stat{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+
+.action-label{
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  letter-spacing:.12em;
+  color:var(--dim);
+  text-transform:uppercase;
+}
+
+.action-value{
+  font-family:"DM Mono",monospace;
+  font-size:11px;
+}
+
+.generate{
+  min-width:205px;
+  min-height:50px;
+  border:0;
+  background:var(--green);
+  color:#080808;
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  transition:.2s;
+}
+
+.generate:hover{
+  background:#d4ff79;
+}
+
+.generate.running{
+  background:#252b20;
+  color:var(--green);
+}
+
+/* =====================================================
+   TOAST
+===================================================== */
+
+.toast{
+  position:fixed;
+  right:28px;
+  bottom:112px;
+  background:#171717;
+  border:1px solid var(--line);
+  padding:14px 17px;
+  font-size:11px;
+  transform:translateY(20px);
+  opacity:0;
+  pointer-events:none;
+  transition:.3s;
+  z-index:100;
+}
+
+.toast.show{
+  transform:translateY(0);
+  opacity:1;
+}
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media(max-width:1250px){
+
+  .workspace{
+    grid-template-columns:180px minmax(0,1fr);
+  }
+
+  .inspector{
+    display:none;
+  }
+
+}
+
+@media(max-width:900px){
+
+  .cineforge{
+    grid-template-columns:1fr;
+  }
+
+  .rail{
+    top:auto;
+    bottom:0;
+    width:100%;
+    height:65px;
+    flex-direction:row;
+    border-right:0;
+    border-top:1px solid var(--line);
+  }
+
+  .logo,
+  .rail-bottom{
+    display:none;
+  }
+
+  .rail-main{
+    display:flex;
+    padding:0;
+  }
+
+  .rail-button{
+    height:65px;
+  }
+
+  .main{
+    grid-column:1;
+    padding-bottom:65px;
+  }
+
+  .workspace{
+    display:block;
+  }
+
+  .project-nav{
+    display:none;
+  }
+
+  .shot-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .page-header{
+    padding:55px 25px 45px;
+  }
+
+}
+
+@media(max-width:580px){
+
+  .topbar{
+    padding:0 20px;
+  }
+
+  .breadcrumb span:not(.separator){
+    display:none;
+  }
+
+  .system-state{
+    display:none;
+  }
+
+  .storyboard{
+    padding:20px;
+  }
+
+  .shot-grid{
+    grid-template-columns:1fr;
+  }
+
+  .board-toolbar{
+    padding:0 20px;
+  }
+
+  .action-bar{
+    padding:14px 20px;
+  }
+
+  .action-left{
+    gap:12px;
+  }
+
+  .generate{
+    min-width:150px;
+  }
+
+}
+</style>
+</head>
+
+<body>
+
+<div class="cineforge">
+
+<!-- =====================================================
+     RAIL
+===================================================== -->
+
+<aside class="rail">
+
+  <div class="logo">
+    <div class="logo-mark"></div>
+  </div>
+
+  <div class="rail-main">
+
+    <button class="rail-button active">
+      <div class="rail-icon"></div>
+      <div class="rail-label">Make</div>
+    </button>
+
+    <button class="rail-button">
+      <div class="rail-icon"></div>
+      <div class="rail-label">Story</div>
+    </button>
+
+    <button class="rail-button">
+      <div class="rail-icon"></div>
+      <div class="rail-label">Archive</div>
+    </button>
+
+    <button class="rail-button">
+      <div class="rail-icon"></div>
+      <div class="rail-label">Release</div>
+    </button>
+
+  </div>
+
+  <div class="rail-bottom">
+
+    <button class="rail-button">
+      <div class="rail-icon"></div>
+      <div class="rail-label">System</div>
+    </button>
+
+  </div>
+
+</aside>
+
+
+<!-- =====================================================
+     MAIN
+===================================================== -->
+
+<main class="main">
+
+<header class="topbar">
+
+  <div class="breadcrumb">
+
+    <span>CINEFORGE</span>
+    <span class="separator">/</span>
+    <span>THE STUDIO</span>
+    <span class="separator">/</span>
+    <strong>STORYBOARD</strong>
+
+  </div>
+
+  <div class="top-actions">
+
+    <div class="system-state">
+      <span class="dot"></span>
+      Production system ready
+    </div>
+
+    <a href="#" class="signin">Sign in</a>
+
+  </div>
+
+</header>
+
+
+<!-- =====================================================
+     HEADER
+===================================================== -->
+
+<section class="page-header">
+
+  <div class="eyebrow">
+    CINEFORGE PRODUCTION SYSTEM · FILM 001
+  </div>
+
+  <h1 class="title">
+    The Director's<br>
+    <em>Board.</em>
+  </h1>
+
+  <p class="intro">
+    Shape the film one shot at a time. Compose the frame,
+    direct the camera, establish movement and build the
+    sequence before production begins.
+  </p>
+
+</section>
+
+
+<!-- =====================================================
+     WORKSPACE
+===================================================== -->
+
+<section class="workspace">
+
+
+<!-- LEFT NAV -->
+
+<nav class="project-nav">
+
+  <div class="nav-heading">
+    Production
+  </div>
+
+  <button class="nav-item">
+    <span>Vision</span>
+    <span class="nav-num">01</span>
+  </button>
+
+  <button class="nav-item">
+    <span>Story</span>
+    <span class="nav-num">02</span>
+  </button>
+
+  <button class="nav-item">
+    <span>Cast</span>
+    <span class="nav-num">03</span>
+  </button>
+
+  <button class="nav-item">
+    <span>World</span>
+    <span class="nav-num">04</span>
+  </button>
+
+  <button class="nav-item active">
+    <span>Scenes</span>
+    <span class="nav-num">05</span>
+  </button>
+
+  <button class="nav-item">
+    <span>Sound</span>
+    <span class="nav-num">06</span>
+  </button>
+
+  <button class="nav-item">
+    <span>Finish</span>
+    <span class="nav-num">07</span>
+  </button>
+
+</nav>
+
+
+<!-- BOARD -->
+
+<section class="board">
+
+
+<div class="board-toolbar">
+
+  <div class="scene-info">
+
+    <div class="scene-number">
+      SCENE 01
+    </div>
+
+    <div class="scene-name">
+      The Kingdom
+    </div>
+
+  </div>
+
+  <div class="toolbar-actions">
+
+    <button class="tool" id="zoomOut">−</button>
+    <button class="tool" id="zoomIn">+</button>
+    <button class="tool" id="focusBoard">Focus</button>
+
+  </div>
+
+</div>
+
+
+<div class="storyboard">
+
+  <div class="board-header">
+
+    <div class="board-label">
+      Shot sequence
+    </div>
+
+    <div class="board-counter" id="shotCounter">
+      06 SHOTS
+    </div>
+
+  </div>
+
+
+  <!-- SHOT GRID -->
+
+  <div class="shot-grid" id="shotGrid">
+
+
+    <article class="shot selected" data-shot="1">
+
+      <div class="shot-image">
+
+        <span class="shot-number">01</span>
+        <span class="shot-duration">04.2s</span>
+
+      </div>
+
+      <div class="shot-meta">
+
+        <div class="shot-title">
+          Establishing frame
+        </div>
+
+        <div class="shot-description">
+          The kingdom emerges beyond the horizon.
+        </div>
+
+        <div class="shot-specs">
+          <span>WIDE</span>
+          <span>STATIC</span>
+          <span>DAY</span>
+        </div>
+
+      </div>
+
+    </article>
+
+
+    <article class="shot" data-shot="2">
+
+      <div class="shot-image">
+
+        <span class="shot-number">02</span>
+        <span class="shot-duration">03.8s</span>
+
+      </div>
+
+      <div class="shot-meta">
+
+        <div class="shot-title">
+          Procession
+        </div>
+
+        <div class="shot-description">
+          Citizens move toward the palace gates.
+        </div>
+
+        <div class="shot-specs">
+          <span>MEDIUM</span>
+          <span>TRACK</span>
+          <span>DAY</span>
+        </div>
+
+      </div>
+
+    </article>
+
+
+    <article class="shot" data-shot="3">
+
+      <div class="shot-image">
+
+        <span class="shot-number">03</span>
+        <span class="shot-duration">02.9s</span>
+
+      </div>
+
+      <div class="shot-meta">
+
+        <div class="shot-title">
+          The arrival
+        </div>
+
+        <div class="shot-description">
+          A stranger steps from the carriage.
+        </div>
+
+        <div class="shot-specs">
+          <span>MEDIUM</span>
+          <span>PUSH</span>
+          <span>DAY</span>
+        </div>
+
+      </div>
+
+    </article>
+
+
+    <article class="shot" data-shot="4">
+
+      <div class="shot-image">
+
+        <span class="shot-number">04</span>
+        <span class="shot-duration">04.6s</span>
+
+      </div>
+
+      <div class="shot-meta">
+
+        <div class="shot-title">
+          The palace
+        </div>
+
+        <div class="shot-description">
+          The ruler watches from the balcony.
+        </div>
+
+        <div class="shot-specs">
+          <span>LOW</span>
+          <span>STATIC</span>
+          <span>GOLDEN</span>
+        </div>
+
+      </div>
+
+    </article>
+
+
+    <article class="shot" data-shot="5">
+
+      <div class="shot-image">
+
+        <span class="shot-number">05</span>
+        <span class="shot-duration">03.4s</span>
+
+      </div>
+
+      <div class="shot-meta">
+
+        <div class="shot-title">
+          The warning
+        </div>
+
+        <div class="shot-description">
+          The messenger delivers the first news of war.
+        </div>
+
+        <div class="shot-specs">
+          <span>CLOSE</span>
+          <span>HANDHELD</span>
+          <span>INT</span>
+        </div>
+
+      </div>
+
+    </article>
+
+
+    <article class="shot" data-shot="6">
+
+      <div class="shot-image">
+
+        <span class="shot-number">06</span>
+        <span class="shot-duration">05.1s</span>
+
+      </div>
+
+      <div class="shot-meta">
+
+        <div class="shot-title">
+          Into the night
+        </div>
+
+        <div class="shot-description">
+          The kingdom prepares for what comes next.
+        </div>
+
+        <div class="shot-specs">
+          <span>WIDE</span>
+          <span>CRANE</span>
+          <span>NIGHT</span>
+        </div>
+
+      </div>
+
+    </article>
+
+
+    <button class="add-shot" id="addShot">
+      + Add shot
+    </button>
+
+  </div>
+
+
+  <!-- TIMELINE -->
+
+  <div class="timeline">
+
+    <div class="timeline-head">
+
+      <div class="timeline-title">
+        Sequence timeline
+      </div>
+
+      <div class="timeline-time">
+        00:00 — 00:24
+      </div>
+
+    </div>
+
+    <div class="timeline-track">
+
+      <div class="timeline-segment active">
+        <span>01</span>
+      </div>
+
+      <div class="timeline-segment">
+        <span>02</span>
+      </div>
+
+      <div class="timeline-segment">
+        <span>03</span>
+      </div>
+
+      <div class="timeline-segment">
+        <span>04</span>
+      </div>
+
+      <div class="timeline-segment">
+        <span>05</span>
+      </div>
+
+      <div class="timeline-segment">
+        <span>06</span>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+</section>
+
+
+<!-- =====================================================
+     INSPECTOR
+===================================================== -->
+
+<aside class="inspector">
+
+  <div class="inspector-head">
+
+    <div class="inspector-title">
+      Shot direction
+    </div>
+
+    <div class="dot"></div>
+
+  </div>
+
+
+  <div class="inspector-body">
+
+
+    <div class="field">
+
+      <div class="field-label">
+        Shot
+      </div>
+
+      <div class="field-value" id="selectedShot">
+        01 · Establishing frame
+      </div>
+
+    </div>
+
+
+    <div class="field">
+
+      <div class="field-label">
+        Camera
+      </div>
+
+      <select class="select" id="camera">
+
+        <option>Wide</option>
+        <option>Medium</option>
+        <option>Close</option>
+        <option>Extreme Close</option>
+        <option>Over Shoulder</option>
+        <option>Aerial</option>
+
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <div class="field-label">
+        Movement
+      </div>
+
+      <select class="select" id="movement">
+
+        <option>Static</option>
+        <option>Push In</option>
+        <option>Pull Out</option>
+        <option>Tracking</option>
+        <option>Crane</option>
+        <option>Handheld</option>
+        <option>Orbit</option>
+
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <div class="field-label">
+        Lens
+      </div>
+
+      <select class="select">
+
+        <option>24mm</option>
+        <option>35mm</option>
+        <option selected>50mm</option>
+        <option>85mm</option>
+        <option>135mm</option>
+
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <div class="field-label">
+        Lighting
+      </div>
+
+      <select class="select">
+
+        <option>Natural daylight</option>
+        <option>Golden hour</option>
+        <option>Overcast</option>
+        <option>Low key</option>
+        <option>Moonlight</option>
+        <option>Studio</option>
+
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <div class="field-label">
+        Duration
+      </div>
+
+      <input
+        class="text-input"
+        value="4.2 seconds"
+      >
+
+    </div>
+
+
+    <div class="notes">
+
+      <div class="notes-title">
+        Director's notes
+      </div>
+
+      <textarea placeholder="Describe performance, atmosphere, blocking or anything the camera should understand..."></textarea>
+
+    </div>
+
+  </div>
+
+</aside>
+
+
+</section>
+
+
+<!-- =====================================================
+     ACTION BAR
+===================================================== -->
+
+<footer class="action-bar">
+
+  <div class="action-left">
+
+    <div class="action-stat">
+
+      <div class="action-label">
+        Scenes
+      </div>
+
+      <div class="action-value">
+        01
+      </div>
+
+    </div>
+
+    <div class="action-stat">
+
+      <div class="action-label">
+        Shots
+      </div>
+
+      <div class="action-value" id="bottomShots">
+        06
+      </div>
+
+    </div>
+
+    <div class="action-stat">
+
+      <div class="action-label">
+        Estimated runtime
+      </div>
+
+      <div class="action-value">
+        00:24
+      </div>
+
+    </div>
+
+  </div>
+
+  <button class="generate" id="generateBtn">
+    Generate sequence →
+  </button>
+
+</footer>
+
+
+</main>
+
+</div>
+
+
+<div class="toast" id="toast"></div>
+
+
+<script>
+
+/* =====================================================
+   CINEFORGE STORYBOARD
+===================================================== */
+
+const toast = document.getElementById("toast");
+const shotGrid = document.getElementById("shotGrid");
+const selectedShot = document.getElementById("selectedShot");
+const bottomShots = document.getElementById("bottomShots");
+
+let shotCount = 6;
+let running = false;
+
+
+/* =====================================================
+   TOAST
+===================================================== */
+
+function showToast(message){
+
+  toast.textContent = message;
+  toast.classList.add("show");
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+  }, 2400);
+
+}
+
+
+/* =====================================================
+   SHOT SELECTION
+===================================================== */
+
+function selectShot(shot){
+
+  document.querySelectorAll(".shot")
+    .forEach(item => item.classList.remove("selected"));
+
+  shot.classList.add("selected");
+
+  const number =
+    shot.querySelector(".shot-number")?.textContent || "01";
+
+  const title =
+    shot.querySelector(".shot-title")?.textContent || "Untitled";
+
+  selectedShot.textContent =
+    `${number} · ${title.trim()}`;
+
+}
+
+
+document.querySelectorAll(".shot").forEach(shot => {
+
+  shot.addEventListener("click", () => {
+    selectShot(shot);
+  });
+
+});
+
+
+/* =====================================================
+   ADD SHOT
+===================================================== */
+
+document.getElementById("addShot")
+  .addEventListener("click", () => {
+
+    shotCount++;
+
+    const shot = document.createElement("article");
+
+    shot.className = "shot";
+
+    shot.dataset.shot = shotCount;
+
+    shot.innerHTML = `
+
+      <div class="shot-image">
+
+        <span class="shot-number">
+          ${String(shotCount).padStart(2,"0")}
+        </span>
+
+        <span class="shot-duration">
+          04.0s
+        </span>
+
+      </div>
+
+      <div class="shot-meta">
+
+        <div class="shot-title">
+          New shot
+        </div>
+
+        <div class="shot-description">
+          Define the action and composition for this shot.
+        </div>
+
+        <div class="shot-specs">
+          <span>MEDIUM</span>
+          <span>STATIC</span>
+          <span>DAY</span>
+        </div>
+
+      </div>
+    `;
+
+    shot.addEventListener("click", () => {
+      selectShot(shot);
+    });
+
+    shotGrid.insertBefore(
+      shot,
+      document.getElementById("addShot")
+    );
+
+    bottomShots.textContent =
+      String(shotCount).padStart(2,"0");
+
+    document.getElementById("shotCounter")
+      .textContent =
+      `${String(shotCount).padStart(2,"0")} SHOTS`;
+
+    showToast(`Shot ${shotCount} added.`);
+
+  });
+
+
+/* =====================================================
+   TOOLBAR
+===================================================== */
+
+document.getElementById("zoomIn")
+  .addEventListener("click", () => {
+
+    document.querySelector(".storyboard").style.zoom = "1.08";
+
+    showToast("Storyboard enlarged.");
+
+  });
+
+
+document.getElementById("zoomOut")
+  .addEventListener("click", () => {
+
+    document.querySelector(".storyboard").style.zoom = "0.94";
+
+    showToast("Storyboard reduced.");
+
+  });
+
+
+document.getElementById("focusBoard")
+  .addEventListener("click", () => {
+
+    document.querySelector(".storyboard")
+      .scrollIntoView({
+        behavior:"smooth",
+        block:"center"
+      });
+
+  });
+
+
+/* =====================================================
+   NAVIGATION
+===================================================== */
+
+document.querySelectorAll(".nav-item")
+  .forEach(item => {
+
+    item.addEventListener("click", () => {
+
+      document.querySelectorAll(".nav-item")
+        .forEach(i => i.classList.remove("active"));
+
+      item.classList.add("active");
+
+    });
+
+  });
+
+
+/* =====================================================
+   RAIL
+===================================================== */
+
+document.querySelectorAll(".rail-button")
+  .forEach(button => {
+
+    button.addEventListener("click", () => {
+
+      document.querySelectorAll(".rail-button")
+        .forEach(b => b.classList.remove("active"));
+
+      button.classList.add("active");
+
+    });
+
+  });
+
+
+/* =====================================================
+   GENERATE
+===================================================== */
+
+document.getElementById("generateBtn")
+  .addEventListener("click", () => {
+
+    if(running) return;
+
+    running = true;
+
+    const button =
+      document.getElementById("generateBtn");
+
+    button.classList.add("running");
+
+    button.textContent =
+      "Preparing sequence…";
+
+    showToast(
+      "Storyboard sequence prepared for production."
+    );
+
+    setTimeout(() => {
+
+      button.textContent =
+        "Sequence ready →";
+
+      showToast(
+        "Sequence ready for Cineforge generation."
+      );
+
+    },1800);
+
+  });
+
+</script>
+
+</body>
+</html>

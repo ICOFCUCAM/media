@@ -1,0 +1,2016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Cineforge — The Short Form Studio</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+
+:root{
+  --black:#080908;
+  --deep:#0b0d0b;
+  --panel:#101210;
+  --panel2:#141614;
+  --line:rgba(255,255,255,.085);
+  --line2:rgba(255,255,255,.16);
+  --white:#f0f1ec;
+  --muted:#969a94;
+  --dim:#616661;
+  --acid:#d8ff43;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+html,body{
+  margin:0;
+  min-height:100%;
+  background:var(--black);
+  color:var(--white);
+  font-family:Inter,sans-serif;
+}
+
+button,
+input,
+textarea{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+.app{
+  min-height:100vh;
+}
+
+/* =========================================
+   RAIL
+========================================= */
+
+.rail{
+  position:fixed;
+  left:0;
+  top:0;
+  bottom:0;
+  width:74px;
+  border-right:1px solid var(--line);
+  background:#070807;
+  z-index:20;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.logo{
+  width:74px;
+  height:82px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.logo-mark{
+  width:27px;
+  height:27px;
+  border:2px solid var(--white);
+  border-radius:50%;
+  position:relative;
+}
+
+.logo-mark:after{
+  content:"";
+  position:absolute;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--acid);
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+}
+
+.rail-menu{
+  padding-top:24px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.rail-button{
+  width:42px;
+  height:42px;
+  border:1px solid transparent;
+  background:none;
+  color:var(--dim);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:7px;
+}
+
+.rail-button:hover{
+  border-color:var(--line);
+  color:var(--white);
+  background:rgba(255,255,255,.025);
+}
+
+.rail-button.active{
+  border-color:var(--line2);
+  color:var(--white);
+  background:rgba(255,255,255,.05);
+}
+
+.grid-icon{
+  display:grid;
+  grid-template-columns:repeat(2,6px);
+  gap:3px;
+}
+
+.grid-icon span{
+  width:6px;
+  height:6px;
+  border:1px solid currentColor;
+}
+
+.film-icon{
+  width:17px;
+  height:15px;
+  border:1px solid currentColor;
+  position:relative;
+}
+
+.film-icon:before,
+.film-icon:after{
+  content:"";
+  position:absolute;
+  left:3px;
+  right:3px;
+  height:1px;
+  background:currentColor;
+}
+
+.film-icon:before{
+  top:4px;
+}
+
+.film-icon:after{
+  bottom:4px;
+}
+
+.cut-icon{
+  width:18px;
+  height:18px;
+  position:relative;
+}
+
+.cut-icon:before,
+.cut-icon:after{
+  content:"";
+  position:absolute;
+  width:15px;
+  height:1px;
+  background:currentColor;
+  left:1px;
+}
+
+.cut-icon:before{
+  top:5px;
+  transform:rotate(28deg);
+}
+
+.cut-icon:after{
+  top:12px;
+  transform:rotate(-28deg);
+}
+
+.box-icon{
+  width:17px;
+  height:17px;
+  border:1px solid currentColor;
+}
+
+.user-icon{
+  width:17px;
+  height:17px;
+  border:1px solid currentColor;
+  border-radius:50%;
+}
+
+.rail-bottom{
+  margin-top:auto;
+  padding-bottom:20px;
+}
+
+/* =========================================
+   MAIN
+========================================= */
+
+.main{
+  margin-left:74px;
+  min-height:100vh;
+}
+
+.topbar{
+  height:82px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 42px;
+}
+
+.breadcrumb{
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--dim);
+}
+
+.breadcrumb span{
+  color:var(--muted);
+}
+
+.system{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--dim);
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.system-dot{
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+/* =========================================
+   HERO
+========================================= */
+
+.hero{
+  min-height:610px;
+  padding:82px 7vw 70px;
+  border-bottom:1px solid var(--line);
+  position:relative;
+  overflow:hidden;
+}
+
+.hero:before{
+  content:"";
+  position:absolute;
+  width:650px;
+  height:650px;
+  border:1px solid rgba(255,255,255,.035);
+  border-radius:50%;
+  right:-210px;
+  top:-260px;
+}
+
+.hero:after{
+  content:"SHORT FORM / VERTICAL";
+  position:absolute;
+  right:7vw;
+  bottom:70px;
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  letter-spacing:.16em;
+  color:var(--dim);
+}
+
+.eyebrow{
+  color:var(--acid);
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  margin-bottom:27px;
+}
+
+.hero h1{
+  margin:0;
+  font-family:Manrope,sans-serif;
+  font-size:clamp(68px,10vw,150px);
+  font-weight:700;
+  line-height:.8;
+  letter-spacing:-.075em;
+  max-width:1000px;
+}
+
+.hero h1 em{
+  font-family:Georgia,serif;
+  font-style:italic;
+  font-weight:400;
+}
+
+.hero-description{
+  max-width:570px;
+  margin-top:43px;
+  font-size:15px;
+  line-height:1.75;
+  color:var(--muted);
+}
+
+.hero-data{
+  display:flex;
+  gap:45px;
+  margin-top:52px;
+}
+
+.data{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.data label{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  color:var(--dim);
+}
+
+.data span{
+  font-size:11px;
+  color:var(--white);
+}
+
+/* =========================================
+   PRODUCTION AREA
+========================================= */
+
+.production{
+  display:grid;
+  grid-template-columns:310px minmax(0,1fr) 290px;
+  min-height:750px;
+}
+
+.panel{
+  border-right:1px solid var(--line);
+  min-width:0;
+}
+
+.panel:last-child{
+  border-right:0;
+}
+
+.panel-header{
+  height:64px;
+  padding:0 25px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.panel-title{
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+.panel-number{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  color:var(--dim);
+}
+
+/* =========================================
+   LEFT / DESTINATION
+========================================= */
+
+.left-body{
+  padding:30px 25px 130px;
+}
+
+.section{
+  margin-bottom:33px;
+}
+
+.section-label{
+  display:block;
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--dim);
+  margin-bottom:14px;
+}
+
+/* platform */
+
+.platforms{
+  display:flex;
+  flex-direction:column;
+}
+
+.platform{
+  padding:16px 0;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:none;
+  border-left:0;
+  border-right:0;
+  border-top:0;
+  color:var(--muted);
+  text-align:left;
+}
+
+.platform:hover{
+  color:var(--white);
+}
+
+.platform.active{
+  color:var(--white);
+}
+
+.platform-name{
+  font-size:12px;
+}
+
+.platform-meta{
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+
+.platform-ratio{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  color:var(--dim);
+}
+
+.platform-mark{
+  width:6px;
+  height:6px;
+  border:1px solid currentColor;
+  border-radius:50%;
+}
+
+.platform.active .platform-mark{
+  background:var(--acid);
+  border-color:var(--acid);
+}
+
+/* length */
+
+.lengths{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+}
+
+.length{
+  min-width:49px;
+  height:38px;
+  border:1px solid var(--line);
+  background:none;
+  color:var(--muted);
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+}
+
+.length:hover{
+  color:var(--white);
+  border-color:var(--line2);
+}
+
+.length.active{
+  border-color:var(--acid);
+  color:var(--acid);
+  background:rgba(216,255,67,.045);
+}
+
+/* =========================================
+   CENTER / FRAME
+========================================= */
+
+.center{
+  background:
+    radial-gradient(
+      circle at 50% 35%,
+      rgba(216,255,67,.035),
+      transparent 35%
+    ),
+    #090a09;
+}
+
+.center-body{
+  padding:42px;
+  padding-bottom:140px;
+}
+
+.frame-stage{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:590px;
+  border:1px solid var(--line);
+  background:#0d0f0d;
+  position:relative;
+  overflow:hidden;
+}
+
+.frame-stage:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 49.9%,
+      rgba(255,255,255,.035) 50%,
+      transparent 50.1%
+    ),
+    linear-gradient(
+      0deg,
+      transparent 49.9%,
+      rgba(255,255,255,.035) 50%,
+      transparent 50.1%
+    );
+}
+
+.frame{
+  height:510px;
+  aspect-ratio:9 / 16;
+  background:
+    radial-gradient(
+      circle at 45% 30%,
+      rgba(216,255,67,.10),
+      transparent 25%
+    ),
+    linear-gradient(
+      155deg,
+      #1b211d,
+      #080a09 65%
+    );
+  border:1px solid rgba(255,255,255,.16);
+  position:relative;
+  box-shadow:
+    0 40px 100px rgba(0,0,0,.5);
+  overflow:hidden;
+}
+
+.frame-light{
+  position:absolute;
+  width:130%;
+  height:42%;
+  left:-15%;
+  bottom:-15%;
+  border-radius:50%;
+  background:rgba(255,255,255,.035);
+  filter:blur(30px);
+}
+
+.frame-lines{
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 49.5%,
+      rgba(255,255,255,.09) 50%,
+      transparent 50.5%
+    ),
+    linear-gradient(
+      0deg,
+      transparent 49.5%,
+      rgba(255,255,255,.09) 50%,
+      transparent 50.5%
+    );
+  opacity:.35;
+}
+
+.frame-top{
+  position:absolute;
+  left:13px;
+  right:13px;
+  top:13px;
+  display:flex;
+  justify-content:space-between;
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  color:rgba(255,255,255,.4);
+  letter-spacing:.1em;
+}
+
+.frame-message{
+  position:absolute;
+  left:20px;
+  right:20px;
+  bottom:32px;
+}
+
+.frame-hook{
+  font-family:Manrope,sans-serif;
+  font-size:24px;
+  font-weight:600;
+  line-height:1.02;
+  letter-spacing:-.05em;
+}
+
+.frame-sub{
+  margin-top:10px;
+  font-family:"DM Mono",monospace;
+  color:rgba(255,255,255,.42);
+  font-size:7px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.frame-bottom{
+  position:absolute;
+  left:20px;
+  right:20px;
+  bottom:15px;
+  height:1px;
+  background:rgba(255,255,255,.16);
+}
+
+.frame-time{
+  position:absolute;
+  right:20px;
+  bottom:21px;
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  color:rgba(255,255,255,.4);
+}
+
+/* timeline */
+
+.timeline{
+  margin-top:27px;
+}
+
+.timeline-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:9px;
+}
+
+.timeline-top span{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  color:var(--dim);
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.timeline-track{
+  height:46px;
+  display:flex;
+  gap:3px;
+}
+
+.clip{
+  flex:1;
+  border:1px solid var(--line);
+  background:#151715;
+  position:relative;
+}
+
+.clip:nth-child(2){
+  background:#1a1d19;
+}
+
+.clip:nth-child(3){
+  background:#121613;
+}
+
+.clip:nth-child(4){
+  background:#181a17;
+}
+
+.clip:nth-child(5){
+  background:#101310;
+}
+
+.clip span{
+  position:absolute;
+  bottom:5px;
+  left:5px;
+  font-family:"DM Mono",monospace;
+  font-size:6px;
+  color:rgba(255,255,255,.3);
+}
+
+/* =========================================
+   RIGHT / POST
+========================================= */
+
+.right-body{
+  padding:29px 25px 130px;
+}
+
+.readout{
+  padding:13px 0;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.readout span{
+  font-size:10px;
+  color:var(--muted);
+}
+
+.readout strong{
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  font-weight:400;
+  color:var(--white);
+  text-align:right;
+}
+
+.input{
+  width:100%;
+  border:0;
+  border-bottom:1px solid var(--line2);
+  background:none;
+  outline:none;
+  padding:0 0 12px;
+  color:var(--white);
+  font-size:12px;
+}
+
+.input:focus{
+  border-color:var(--acid);
+}
+
+textarea.input{
+  min-height:80px;
+  resize:none;
+  line-height:1.6;
+}
+
+.hashtags{
+  color:var(--acid);
+  line-height:1.7;
+}
+
+.note{
+  margin-top:30px;
+  border-top:1px solid var(--line);
+  padding-top:18px;
+  color:var(--dim);
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  line-height:1.7;
+}
+
+/* =========================================
+   ACTION
+========================================= */
+
+.action{
+  position:fixed;
+  left:74px;
+  right:0;
+  bottom:0;
+  height:82px;
+  z-index:30;
+  background:rgba(8,9,8,.94);
+  backdrop-filter:blur(20px);
+  border-top:1px solid var(--line2);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 42px;
+}
+
+.summary{
+  display:flex;
+  gap:30px;
+}
+
+.summary-item{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+
+.summary-item label{
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  color:var(--dim);
+  text-transform:uppercase;
+  letter-spacing:.11em;
+}
+
+.summary-item span{
+  font-size:10px;
+  color:var(--muted);
+}
+
+.action-buttons{
+  display:flex;
+  gap:9px;
+}
+
+.reset{
+  height:42px;
+  padding:0 19px;
+  border:1px solid var(--line2);
+  color:var(--muted);
+  background:none;
+  font-size:10px;
+}
+
+.create{
+  height:42px;
+  padding:0 25px;
+  background:var(--acid);
+  border:1px solid var(--acid);
+  color:#080908;
+  font-weight:600;
+  font-size:10px;
+}
+
+.create:hover{
+  box-shadow:0 10px 35px rgba(216,255,67,.12);
+}
+
+/* =========================================
+   PRODUCTION OVERLAY
+========================================= */
+
+.overlay{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(4,5,4,.82);
+  backdrop-filter:blur(15px);
+}
+
+.overlay.show{
+  display:flex;
+}
+
+.production-panel{
+  width:min(600px,calc(100vw - 40px));
+  border:1px solid var(--line2);
+  background:#0c0e0c;
+  padding:38px;
+}
+
+.production-header{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:45px;
+}
+
+.kicker{
+  color:var(--acid);
+  font-family:"DM Mono",monospace;
+  font-size:8px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+
+.percent{
+  font-family:"DM Mono",monospace;
+  font-size:9px;
+  color:var(--dim);
+}
+
+.production-title{
+  font-family:Manrope,sans-serif;
+  font-size:35px;
+  letter-spacing:-.045em;
+  margin-bottom:10px;
+}
+
+.production-copy{
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.65;
+  margin-bottom:32px;
+}
+
+.progress{
+  height:2px;
+  background:var(--line);
+}
+
+.progress-bar{
+  width:0;
+  height:100%;
+  background:var(--acid);
+  transition:width .5s ease;
+}
+
+.stages{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-top:17px;
+}
+
+.stage{
+  font-family:"DM Mono",monospace;
+  font-size:7px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--dim);
+}
+
+.stage.active{
+  color:var(--acid);
+}
+
+.close{
+  width:100%;
+  height:40px;
+  margin-top:32px;
+  border:1px solid var(--line2);
+  background:none;
+  color:var(--muted);
+  font-size:9px;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media(max-width:1100px){
+
+  .production{
+    grid-template-columns:280px minmax(0,1fr);
+  }
+
+  .right{
+    display:none;
+  }
+
+}
+
+@media(max-width:760px){
+
+  .rail{
+    display:none;
+  }
+
+  .main{
+    margin-left:0;
+  }
+
+  .topbar{
+    padding:0 20px;
+  }
+
+  .hero{
+    padding:60px 25px;
+  }
+
+  .hero h1{
+    font-size:65px;
+  }
+
+  .hero-data{
+    gap:22px;
+    flex-wrap:wrap;
+  }
+
+  .production{
+    display:block;
+  }
+
+  .panel{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .center-body{
+    padding:25px;
+  }
+
+  .frame{
+    height:430px;
+  }
+
+  .action{
+    left:0;
+    padding:0 18px;
+  }
+
+  .summary{
+    display:none;
+  }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<!-- ======================================
+     RAIL
+====================================== -->
+
+<aside class="rail">
+
+  <div class="logo">
+    <div class="logo-mark"></div>
+  </div>
+
+  <div class="rail-menu">
+
+    <button class="rail-button">
+      <div class="grid-icon">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </button>
+
+    <button class="rail-button active">
+      <div class="film-icon"></div>
+    </button>
+
+    <button class="rail-button">
+      <div class="cut-icon"></div>
+    </button>
+
+    <button class="rail-button">
+      <div class="box-icon"></div>
+    </button>
+
+  </div>
+
+  <div class="rail-bottom">
+    <button class="rail-button">
+      <div class="user-icon"></div>
+    </button>
+  </div>
+
+</aside>
+
+
+<!-- ======================================
+     MAIN
+====================================== -->
+
+<main class="main">
+
+  <header class="topbar">
+
+    <div class="breadcrumb">
+      CINEFORGE / <span>STUDIO / SHORT FORM</span>
+    </div>
+
+    <div class="system">
+      <span class="system-dot"></span>
+      production system
+    </div>
+
+  </header>
+
+
+  <!-- ====================================
+       HERO
+  ===================================== -->
+
+  <section class="hero">
+
+    <div class="eyebrow">
+      Short-form production / 04
+    </div>
+
+    <h1>
+      The Short<br>
+      Form <em>Studio.</em>
+    </h1>
+
+    <p class="hero-description">
+      One idea. One vertical frame. One chance to stop the scroll.
+      Build the hook, compose the frame and prepare the story
+      for the destination before the render begins.
+    </p>
+
+    <div class="hero-data">
+
+      <div class="data">
+        <label>Destinations</label>
+        <span>06 platforms</span>
+      </div>
+
+      <div class="data">
+        <label>Format</label>
+        <span>9:16 vertical</span>
+      </div>
+
+      <div class="data">
+        <label>Current</label>
+        <span id="heroPlatform">TikTok</span>
+      </div>
+
+      <div class="data">
+        <label>Duration</label>
+        <span id="heroDuration">5 sec</span>
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ====================================
+       PRODUCTION
+  ===================================== -->
+
+  <section class="production">
+
+
+    <!-- LEFT -->
+    <aside class="panel left">
+
+      <div class="panel-header">
+
+        <span class="panel-title">
+          01 / Destination
+        </span>
+
+        <span class="panel-number">
+          FEED
+        </span>
+
+      </div>
+
+
+      <div class="left-body">
+
+
+        <!-- PLATFORM -->
+
+        <div class="section">
+
+          <span class="section-label">
+            Choose destination
+          </span>
+
+          <div class="platforms">
+
+            <button
+              class="platform active"
+              data-platform="TikTok"
+              data-ratio="9:16"
+              data-durations="5,10,15,30,60"
+            >
+              <span class="platform-name">
+                TikTok
+              </span>
+
+              <span class="platform-meta">
+                <span class="platform-ratio">9:16</span>
+                <i class="platform-mark"></i>
+              </span>
+            </button>
+
+
+            <button
+              class="platform"
+              data-platform="YouTube Shorts"
+              data-ratio="9:16"
+              data-durations="15,30,60"
+            >
+              <span class="platform-name">
+                YouTube Shorts
+              </span>
+
+              <span class="platform-meta">
+                <span class="platform-ratio">9:16</span>
+                <i class="platform-mark"></i>
+              </span>
+            </button>
+
+
+            <button
+              class="platform"
+              data-platform="Instagram Reels"
+              data-ratio="9:16"
+              data-durations="15,30,60,90"
+            >
+              <span class="platform-name">
+                Instagram Reels
+              </span>
+
+              <span class="platform-meta">
+                <span class="platform-ratio">9:16</span>
+                <i class="platform-mark"></i>
+              </span>
+            </button>
+
+
+            <button
+              class="platform"
+              data-platform="Facebook Reels"
+              data-ratio="9:16"
+              data-durations="15,30,60"
+            >
+              <span class="platform-name">
+                Facebook Reels
+              </span>
+
+              <span class="platform-meta">
+                <span class="platform-ratio">9:16</span>
+                <i class="platform-mark"></i>
+              </span>
+            </button>
+
+
+            <button
+              class="platform"
+              data-platform="Snapchat"
+              data-ratio="9:16"
+              data-durations="10,30,60"
+            >
+              <span class="platform-name">
+                Snapchat
+              </span>
+
+              <span class="platform-meta">
+                <span class="platform-ratio">9:16</span>
+                <i class="platform-mark"></i>
+              </span>
+            </button>
+
+
+            <button
+              class="platform"
+              data-platform="Pinterest"
+              data-ratio="9:16"
+              data-durations="15,30,60"
+            >
+              <span class="platform-name">
+                Pinterest
+              </span>
+
+              <span class="platform-meta">
+                <span class="platform-ratio">9:16</span>
+                <i class="platform-mark"></i>
+              </span>
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <!-- LENGTH -->
+
+        <div class="section">
+
+          <span class="section-label">
+            Length
+          </span>
+
+          <div class="lengths" id="lengths"></div>
+
+        </div>
+
+
+      </div>
+
+    </aside>
+
+
+    <!-- CENTER -->
+    <section class="panel center">
+
+      <div class="panel-header">
+
+        <span class="panel-title">
+          02 / Frame
+        </span>
+
+        <span class="panel-number">
+          9:16
+        </span>
+
+      </div>
+
+
+      <div class="center-body">
+
+        <div class="frame-stage">
+
+          <div class="frame">
+
+            <div class="frame-lines"></div>
+
+            <div class="frame-light"></div>
+
+            <div class="frame-top">
+
+              <span>
+                CINEFORGE / SHORT
+              </span>
+
+              <span id="framePlatform">
+                TIKTOK
+              </span>
+
+            </div>
+
+
+            <div class="frame-message">
+
+              <div class="frame-hook" id="frameHook">
+                A tiny chef plates a miniature gourmet dish
+              </div>
+
+              <div class="frame-sub">
+                HOOK / FIRST TWO SECONDS
+              </div>
+
+            </div>
+
+            <div class="frame-bottom"></div>
+
+            <div class="frame-time" id="frameTime">
+              00:05
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="timeline">
+
+          <div class="timeline-top">
+
+            <span>
+              Short sequence
+            </span>
+
+            <span id="timelineDuration">
+              00:05
+            </span>
+
+          </div>
+
+
+          <div class="timeline-track">
+
+            <div class="clip">
+              <span>HOOK</span>
+            </div>
+
+            <div class="clip">
+              <span>01</span>
+            </div>
+
+            <div class="clip">
+              <span>02</span>
+            </div>
+
+            <div class="clip">
+              <span>03</span>
+            </div>
+
+            <div class="clip">
+              <span>END</span>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- RIGHT -->
+    <aside class="panel right">
+
+      <div class="panel-header">
+
+        <span class="panel-title">
+          03 / Publishing
+        </span>
+
+        <span class="panel-number">
+          COPY
+        </span>
+
+      </div>
+
+
+      <div class="right-body">
+
+
+        <div class="section">
+
+          <span class="section-label">
+            Hook / first 2 seconds
+          </span>
+
+          <input
+            id="hook"
+            class="input"
+            value="A tiny chef plates a miniature gourmet dish"
+          >
+
+        </div>
+
+
+        <div class="section">
+
+          <span class="section-label">
+            Caption
+          </span>
+
+          <textarea
+            id="caption"
+            class="input"
+            placeholder="On-screen / post caption"
+          ></textarea>
+
+        </div>
+
+
+        <div class="section">
+
+          <span class="section-label">
+            Hashtags
+          </span>
+
+          <input
+            id="hashtags"
+            class="input hashtags"
+            value="#oddlysatisfying #foodart #miniature"
+          >
+
+        </div>
+
+
+        <div class="section">
+
+          <span class="section-label">
+            Delivery
+          </span>
+
+          <div class="readout">
+            <span>Platform</span>
+            <strong id="deliveryPlatform">TikTok</strong>
+          </div>
+
+          <div class="readout">
+            <span>Aspect</span>
+            <strong>9:16</strong>
+          </div>
+
+          <div class="readout">
+            <span>Duration</span>
+            <strong id="deliveryDuration">5 SEC</strong>
+          </div>
+
+          <div class="readout">
+            <span>Output</span>
+            <strong>VERTICAL</strong>
+          </div>
+
+        </div>
+
+
+        <div class="note">
+          CINEFORGE prepares the short for the
+          destination selected at the beginning
+          of the production.
+        </div>
+
+      </div>
+
+    </aside>
+
+  </section>
+
+</main>
+
+</div>
+
+
+<!-- ======================================
+     ACTION BAR
+====================================== -->
+
+<div class="action">
+
+  <div class="summary">
+
+    <div class="summary-item">
+      <label>Destination</label>
+      <span id="summaryPlatform">TikTok</span>
+    </div>
+
+    <div class="summary-item">
+      <label>Format</label>
+      <span>9:16</span>
+    </div>
+
+    <div class="summary-item">
+      <label>Length</label>
+      <span id="summaryDuration">5 sec</span>
+    </div>
+
+  </div>
+
+
+  <div class="action-buttons">
+
+    <button class="reset" id="reset">
+      Reset
+    </button>
+
+    <button class="create" id="create">
+      Create for TikTok →
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- ======================================
+     TEMPORARY PRODUCTION OVERLAY
+====================================== -->
+
+<div class="overlay" id="overlay">
+
+  <div class="production-panel">
+
+    <div class="production-header">
+
+      <span class="kicker">
+        Cineforge / Production
+      </span>
+
+      <span class="percent" id="percent">
+        00%
+      </span>
+
+    </div>
+
+
+    <div class="production-title" id="productionTitle">
+      Hook & script
+    </div>
+
+    <div class="production-copy" id="productionCopy">
+      Building the opening moment and preparing the short-form structure.
+    </div>
+
+
+    <div class="progress">
+
+      <div
+        class="progress-bar"
+        id="progress"
+      ></div>
+
+    </div>
+
+
+    <div class="stages">
+
+      <div
+        class="stage active"
+        id="stage1"
+      >
+        Hook & script
+      </div>
+
+      <div
+        class="stage"
+        id="stage2"
+      >
+        Generating clip
+      </div>
+
+      <div
+        class="stage"
+        id="stage3"
+      >
+        Captioning & export
+      </div>
+
+      <div
+        class="stage"
+        id="stage4"
+      >
+        Ready to post
+      </div>
+
+    </div>
+
+
+    <button
+      class="close"
+      id="close"
+    >
+      Close preview
+    </button>
+
+  </div>
+
+</div>
+
+
+<script>
+
+/* =========================================
+   STATE
+========================================= */
+
+let platform = "TikTok";
+let duration = 5;
+
+
+/* =========================================
+   ELEMENTS
+========================================= */
+
+const platformButtons =
+  document.querySelectorAll(".platform");
+
+const lengths =
+  document.getElementById("lengths");
+
+const hook =
+  document.getElementById("hook");
+
+const frameHook =
+  document.getElementById("frameHook");
+
+const create =
+  document.getElementById("create");
+
+const reset =
+  document.getElementById("reset");
+
+const overlay =
+  document.getElementById("overlay");
+
+const progress =
+  document.getElementById("progress");
+
+const percent =
+  document.getElementById("percent");
+
+const productionTitle =
+  document.getElementById("productionTitle");
+
+const productionCopy =
+  document.getElementById("productionCopy");
+
+const stages =
+  document.querySelectorAll(".stage");
+
+
+/* =========================================
+   PLATFORM
+========================================= */
+
+function setPlatform(button){
+
+  platform =
+    button.dataset.platform;
+
+  platformButtons.forEach(item => {
+    item.classList.remove("active");
+  });
+
+  button.classList.add("active");
+
+  const available =
+    button.dataset.durations
+      .split(",")
+      .map(Number);
+
+  if(!available.includes(duration)){
+    duration = available[0];
+  }
+
+  buildLengths(available);
+  updateUI();
+
+}
+
+
+/* =========================================
+   LENGTHS
+========================================= */
+
+function buildLengths(values){
+
+  lengths.innerHTML = "";
+
+  values.forEach(value => {
+
+    const button =
+      document.createElement("button");
+
+    button.className =
+      "length" +
+      (value === duration ? " active" : "");
+
+    button.textContent =
+      value + "s";
+
+    button.addEventListener("click",() => {
+
+      duration = value;
+
+      document
+        .querySelectorAll(".length")
+        .forEach(item =>
+          item.classList.remove("active")
+        );
+
+      button.classList.add("active");
+
+      updateUI();
+
+    });
+
+    lengths.appendChild(button);
+
+  });
+
+}
+
+
+/* =========================================
+   UI
+========================================= */
+
+function updateUI(){
+
+  const padded =
+    String(duration).padStart(2,"0");
+
+  document.getElementById(
+    "heroPlatform"
+  ).textContent = platform;
+
+  document.getElementById(
+    "heroDuration"
+  ).textContent = duration + " sec";
+
+  document.getElementById(
+    "framePlatform"
+  ).textContent =
+    platform.toUpperCase();
+
+  document.getElementById(
+    "frameTime"
+  ).textContent =
+    "00:" + padded;
+
+  document.getElementById(
+    "timelineDuration"
+  ).textContent =
+    "00:" + padded;
+
+  document.getElementById(
+    "deliveryPlatform"
+  ).textContent =
+    platform;
+
+  document.getElementById(
+    "deliveryDuration"
+  ).textContent =
+    duration + " SEC";
+
+  document.getElementById(
+    "summaryPlatform"
+  ).textContent =
+    platform;
+
+  document.getElementById(
+    "summaryDuration"
+  ).textContent =
+    duration + " sec";
+
+  create.textContent =
+    "Create for " + platform + " →";
+
+}
+
+
+/* =========================================
+   HOOK LIVE PREVIEW
+========================================= */
+
+hook.addEventListener("input",() => {
+
+  frameHook.textContent =
+    hook.value ||
+    "Your opening moment";
+
+});
+
+
+/* =========================================
+   PLATFORM EVENTS
+========================================= */
+
+platformButtons.forEach(button => {
+
+  button.addEventListener(
+    "click",
+    () => setPlatform(button)
+  );
+
+});
+
+
+/* =========================================
+   TEMPORARY PRODUCTION FLOW
+========================================= */
+
+let timer;
+
+create.addEventListener("click",() => {
+
+  overlay.classList.add("show");
+
+  let value = 0;
+
+  clearInterval(timer);
+
+  timer = setInterval(() => {
+
+    value += 2;
+
+    progress.style.width =
+      value + "%";
+
+    percent.textContent =
+      String(value).padStart(2,"0") + "%";
+
+
+    if(value < 30){
+
+      productionTitle.textContent =
+        "Hook & script";
+
+      productionCopy.textContent =
+        "Building the opening moment and preparing the short-form structure.";
+
+      activateStage(0);
+
+    }
+
+    else if(value < 65){
+
+      productionTitle.textContent =
+        "Generating clip";
+
+      productionCopy.textContent =
+        "Creating the vertical sequence and composing the visual rhythm for the selected feed.";
+
+      activateStage(1);
+
+    }
+
+    else if(value < 88){
+
+      productionTitle.textContent =
+        "Captioning & export";
+
+      productionCopy.textContent =
+        "Preparing captions, metadata and the final destination-specific output.";
+
+      activateStage(2);
+
+    }
+
+    else{
+
+      productionTitle.textContent =
+        "Ready to post";
+
+      productionCopy.textContent =
+        "The visual prototype is complete. The real Cineforge production engine will take over here.";
+
+      activateStage(3);
+
+    }
+
+
+    if(value >= 100){
+
+      clearInterval(timer);
+
+      create.textContent =
+        "Short ready";
+
+    }
+
+  },70);
+
+});
+
+
+function activateStage(index){
+
+  stages.forEach(
+    (stage,i) => {
+      stage.classList.toggle(
+        "active",
+        i === index
+      );
+    }
+  );
+
+}
+
+
+/* =========================================
+   RESET
+========================================= */
+
+reset.addEventListener("click",() => {
+
+  platform = "TikTok";
+  duration = 5;
+
+  platformButtons.forEach(button => {
+
+    button.classList.toggle(
+      "active",
+      button.dataset.platform === "TikTok"
+    );
+
+  });
+
+  hook.value =
+    "A tiny chef plates a miniature gourmet dish";
+
+  frameHook.textContent =
+    hook.value;
+
+  buildLengths([5,10,15,30,60]);
+
+  updateUI();
+
+});
+
+
+/* =========================================
+   CLOSE
+========================================= */
+
+document
+  .getElementById("close")
+  .addEventListener("click",() => {
+
+    overlay.classList.remove("show");
+
+  });
+
+
+/* =========================================
+   INITIALISE
+========================================= */
+
+buildLengths([5,10,15,30,60]);
+
+updateUI();
+
+</script>
+
+</body>
+</html>

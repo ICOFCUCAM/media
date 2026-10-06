@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cineforge — The Writers’ Room</title>
+
+<style>
+:root{
+  --ink:#0a0b0a;
+  --paper:#f2f0e9;
+  --muted:#92928b;
+  --line:rgba(242,240,233,.12);
+  --line-dark:rgba(10,11,10,.14);
+  --signal:#b8ff3d;
+  --white:#fff;
+}
+
+*{box-sizing:border-box}
+
+html,body{
+  margin:0;
+  min-height:100%;
+  background:var(--ink);
+  color:var(--paper);
+  font-family:Inter,Arial,sans-serif;
+}
+
+body{
+  overflow-x:hidden;
+}
+
+button,input,textarea,select{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+.shell{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:74px 1fr;
+}
+
+/* =========================================================
+   RAIL
+========================================================= */
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:74px;
+  border-right:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  z-index:20;
+  background:rgba(10,11,10,.96);
+}
+
+.brand{
+  width:74px;
+  height:74px;
+  display:grid;
+  place-items:center;
+  border-bottom:1px solid var(--line);
+  font-weight:900;
+  letter-spacing:-.08em;
+  font-size:17px;
+}
+
+.rail-nav{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  padding-top:20px;
+}
+
+.rail-btn{
+  width:42px;
+  height:42px;
+  border:1px solid transparent;
+  background:none;
+  color:#777;
+  display:grid;
+  place-items:center;
+  font-size:11px;
+  transition:.2s;
+}
+
+.rail-btn:hover,
+.rail-btn.active{
+  color:var(--paper);
+  border-color:var(--line);
+}
+
+.rail-btn.active::after{
+  content:"";
+  width:4px;
+  height:4px;
+  background:var(--signal);
+  border-radius:50%;
+  position:absolute;
+  left:7px;
+}
+
+.rail-bottom{
+  margin-top:auto;
+  padding-bottom:20px;
+}
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+main{
+  margin-left:74px;
+  min-width:0;
+}
+
+.topbar{
+  height:74px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 42px;
+}
+
+.crumb{
+  font:10px "DM Mono",monospace;
+  letter-spacing:.15em;
+  color:#777;
+  text-transform:uppercase;
+}
+
+.crumb strong{
+  color:var(--paper);
+  font-weight:400;
+}
+
+.top-actions{
+  display:flex;
+  align-items:center;
+  gap:20px;
+}
+
+.status{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font:9px "DM Mono",monospace;
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  color:#777;
+}
+
+.status i{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--signal);
+}
+
+.preview{
+  border:1px solid var(--line);
+  background:none;
+  color:var(--paper);
+  padding:9px 14px;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+/* =========================================================
+   HERO
+========================================================= */
+
+.hero{
+  padding:72px 7vw 64px;
+  border-bottom:1px solid var(--line);
+  position:relative;
+}
+
+.eyebrow{
+  font:10px "DM Mono",monospace;
+  color:var(--signal);
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  margin-bottom:30px;
+}
+
+.hero h1{
+  margin:0;
+  font-family:Georgia,"Times New Roman",serif;
+  font-weight:400;
+  font-size:clamp(58px,9vw,145px);
+  letter-spacing:-.065em;
+  line-height:.82;
+  max-width:1000px;
+}
+
+.hero h1 span{
+  display:block;
+  font-family:Inter,Arial,sans-serif;
+  font-size:.72em;
+  font-weight:800;
+  letter-spacing:-.07em;
+}
+
+.hero-copy{
+  max-width:580px;
+  margin:44px 0 0 auto;
+  color:#aaa9a2;
+  font-size:15px;
+  line-height:1.7;
+}
+
+.hero-index{
+  position:absolute;
+  right:44px;
+  top:46px;
+  font:10px "DM Mono",monospace;
+  color:#555;
+}
+
+/* =========================================================
+   WRITERS ROOM
+========================================================= */
+
+.workspace{
+  display:grid;
+  grid-template-columns:270px minmax(0,1fr) 310px;
+  min-height:760px;
+}
+
+.panel{
+  border-right:1px solid var(--line);
+  min-width:0;
+}
+
+.panel:last-child{
+  border-right:0;
+}
+
+.panel-head{
+  height:58px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 22px;
+}
+
+.panel-title{
+  font:9px "DM Mono",monospace;
+  text-transform:uppercase;
+  letter-spacing:.16em;
+  color:#777;
+}
+
+.panel-number{
+  font:9px "DM Mono",monospace;
+  color:#555;
+}
+
+/* LEFT */
+.room-nav{
+  padding:25px 22px;
+}
+
+.room-label{
+  font:9px "DM Mono",monospace;
+  color:#555;
+  text-transform:uppercase;
+  letter-spacing:.16em;
+  margin-bottom:16px;
+}
+
+.room-link{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:13px 0;
+  border-bottom:1px solid rgba(242,240,233,.07);
+  color:#777;
+  font-size:12px;
+  transition:.2s;
+}
+
+.room-link:hover,
+.room-link.active{
+  color:var(--paper);
+}
+
+.room-link.active .dot{
+  background:var(--signal);
+}
+
+.dot{
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:#333;
+}
+
+.season{
+  margin-top:42px;
+}
+
+.season-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:15px;
+}
+
+.season-name{
+  font-family:Georgia,serif;
+  font-size:20px;
+}
+
+.season-actions{
+  display:flex;
+  gap:5px;
+}
+
+.small-btn{
+  width:28px;
+  height:28px;
+  border:1px solid var(--line);
+  background:none;
+  color:#888;
+}
+
+.episode{
+  padding:15px 0;
+  border-top:1px solid rgba(242,240,233,.08);
+  cursor:pointer;
+}
+
+.episode.active{
+  color:var(--paper);
+}
+
+.episode-top{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:5px;
+}
+
+.ep-no{
+  font:9px "DM Mono",monospace;
+  color:var(--signal);
+}
+
+.ep-time{
+  font:9px "DM Mono",monospace;
+  color:#555;
+}
+
+.ep-title{
+  font-family:Georgia,serif;
+  font-size:14px;
+}
+
+.ep-desc{
+  color:#666;
+  font-size:10px;
+  margin-top:6px;
+  line-height:1.45;
+}
+
+/* CENTER */
+
+.writer{
+  padding:42px 48px;
+  min-width:0;
+}
+
+.writer-meta{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  margin-bottom:30px;
+}
+
+.writer-kicker{
+  font:9px "DM Mono",monospace;
+  text-transform:uppercase;
+  color:#666;
+  letter-spacing:.15em;
+}
+
+.writer-page{
+  font:10px "DM Mono",monospace;
+  color:#555;
+}
+
+.series-title{
+  font-family:Georgia,serif;
+  font-size:46px;
+  line-height:1;
+  letter-spacing:-.045em;
+  margin:0 0 10px;
+}
+
+.series-sub{
+  color:#777;
+  font-size:11px;
+}
+
+.script{
+  margin-top:50px;
+}
+
+.script-block{
+  margin-bottom:38px;
+}
+
+.script-label{
+  font:9px "DM Mono",monospace;
+  color:#555;
+  letter-spacing:.15em;
+  text-transform:uppercase;
+  margin-bottom:12px;
+}
+
+.script-heading{
+  font:700 13px Inter,sans-serif;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+
+.script-text{
+  color:#c8c6bd;
+  font-family:Georgia,serif;
+  font-size:17px;
+  line-height:1.72;
+  max-width:720px;
+}
+
+.dialogue{
+  max-width:500px;
+  margin-left:12%;
+}
+
+.character{
+  font:10px "DM Mono",monospace;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#aaa;
+  margin-bottom:5px;
+}
+
+.dialogue p{
+  margin:0;
+  font-family:Georgia,serif;
+  font-size:16px;
+  line-height:1.65;
+}
+
+.scene-rule{
+  height:1px;
+  background:var(--line);
+  margin:45px 0;
+}
+
+.continue{
+  display:flex;
+  justify-content:center;
+  padding:20px 0 5px;
+}
+
+.continue button{
+  border:1px solid var(--line);
+  background:none;
+  color:#888;
+  padding:10px 18px;
+  text-transform:uppercase;
+  letter-spacing:.13em;
+  font:9px "DM Mono",monospace;
+}
+
+/* RIGHT */
+
+.inspector{
+  padding:24px;
+}
+
+.field{
+  padding:19px 0;
+  border-bottom:1px solid rgba(242,240,233,.08);
+}
+
+.field label{
+  display:block;
+  font:9px "DM Mono",monospace;
+  color:#555;
+  text-transform:uppercase;
+  letter-spacing:.15em;
+  margin-bottom:9px;
+}
+
+.field input,
+.field textarea,
+.field select{
+  width:100%;
+  background:transparent;
+  border:0;
+  outline:0;
+  color:var(--paper);
+  padding:0;
+  font-size:12px;
+}
+
+.field textarea{
+  min-height:76px;
+  resize:vertical;
+  line-height:1.6;
+}
+
+.select-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.field select{
+  border:1px solid var(--line);
+  padding:10px;
+  color:#aaa;
+}
+
+.continuity{
+  margin-top:28px;
+  padding:18px;
+  border:1px solid var(--line);
+}
+
+.continuity-head{
+  display:flex;
+  justify-content:space-between;
+  font:9px "DM Mono",monospace;
+  text-transform:uppercase;
+  letter-spacing:.13em;
+}
+
+.continuity-value{
+  color:var(--signal);
+}
+
+.continuity p{
+  color:#666;
+  font-size:10px;
+  line-height:1.55;
+  margin:12px 0 0;
+}
+
+/* =========================================================
+   FOOTER ACTION
+========================================================= */
+
+.action-bar{
+  position:sticky;
+  bottom:0;
+  z-index:10;
+  border-top:1px solid var(--line);
+  background:rgba(10,11,10,.96);
+  min-height:82px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 42px;
+  backdrop-filter:blur(12px);
+}
+
+.production-stats{
+  display:flex;
+  gap:32px;
+}
+
+.stat{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+
+.stat-label{
+  font:8px "DM Mono",monospace;
+  color:#555;
+  text-transform:uppercase;
+  letter-spacing:.14em;
+}
+
+.stat-value{
+  font:11px "DM Mono",monospace;
+  color:#bbb;
+}
+
+.primary{
+  border:1px solid var(--signal);
+  background:var(--signal);
+  color:#090a08;
+  padding:14px 24px;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.primary:hover{
+  filter:brightness(.92);
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media(max-width:1100px){
+  .workspace{
+    grid-template-columns:230px minmax(0,1fr);
+  }
+
+  .workspace .panel:last-child{
+    display:none;
+  }
+
+  .writer{
+    padding:36px;
+  }
+}
+
+@media(max-width:760px){
+  .shell{
+    display:block;
+  }
+
+  .rail{
+    display:none;
+  }
+
+  main{
+    margin-left:0;
+  }
+
+  .topbar{
+    padding:0 20px;
+  }
+
+  .hero{
+    padding:54px 24px;
+  }
+
+  .hero h1{
+    font-size:65px;
+  }
+
+  .hero-copy{
+    margin-left:0;
+  }
+
+  .workspace{
+    display:block;
+  }
+
+  .panel{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .writer{
+    padding:35px 24px;
+  }
+
+  .dialogue{
+    margin-left:0;
+  }
+
+  .production-stats{
+    display:none;
+  }
+
+  .action-bar{
+    padding:0 20px;
+    justify-content:flex-end;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="shell">
+
+  <!-- =====================================================
+       RAIL
+  ====================================================== -->
+
+  <aside class="rail">
+
+    <div class="brand">CF</div>
+
+    <nav class="rail-nav">
+      <button class="rail-btn" title="Create">01</button>
+      <button class="rail-btn active" title="Story">02</button>
+      <button class="rail-btn" title="Cast">03</button>
+      <button class="rail-btn" title="World">04</button>
+      <button class="rail-btn" title="Scenes">05</button>
+      <button class="rail-btn" title="Sound">06</button>
+      <button class="rail-btn" title="Finish">07</button>
+    </nav>
+
+    <div class="rail-bottom">
+      <button class="rail-btn" title="Account">◎</button>
+    </div>
+
+  </aside>
+
+
+  <main>
+
+    <!-- ===================================================
+         TOP BAR
+    ==================================================== -->
+
+    <header class="topbar">
+
+      <div class="crumb">
+        CINEFORGE / STUDIO /
+        <strong>CREATE SERIES</strong>
+      </div>
+
+      <div class="top-actions">
+
+        <div class="status">
+          <i></i>
+          WRITERS' ROOM · READY
+        </div>
+
+        <button class="preview">
+          Preview
+        </button>
+
+      </div>
+
+    </header>
+
+
+    <!-- ===================================================
+         HERO
+    ==================================================== -->
+
+    <section class="hero">
+
+      <div class="hero-index">
+        SERIES / 02
+      </div>
+
+      <div class="eyebrow">
+        Long-form production system
+      </div>
+
+      <h1>
+        The
+        <span>Writers' Room.</span>
+      </h1>
+
+      <div class="hero-copy">
+        Build a living series rather than a collection of disconnected
+        episodes. Establish the world, preserve character continuity,
+        shape the season and let every episode inherit the story that
+        came before it.
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         WRITERS ROOM
+    ==================================================== -->
+
+    <section class="workspace">
+
+
+      <!-- LEFT: SERIES STRUCTURE -->
+
+      <aside class="panel">
+
+        <div class="panel-head">
+          <div class="panel-title">Series architecture</div>
+          <div class="panel-number">01</div>
+        </div>
+
+        <div class="room-nav">
+
+          <div class="room-label">Production</div>
+
+          <div class="room-link active">
+            <span>Story</span>
+            <span class="dot"></span>
+          </div>
+
+          <div class="room-link">
+            <span>Characters</span>
+            <span class="dot"></span>
+          </div>
+
+          <div class="room-link">
+            <span>World</span>
+            <span class="dot"></span>
+          </div>
+
+          <div class="room-link">
+            <span>Season Arc</span>
+            <span class="dot"></span>
+          </div>
+
+          <div class="room-link">
+            <span>Episodes</span>
+            <span class="dot"></span>
+          </div>
+
+
+          <div class="season">
+
+            <div class="season-row">
+
+              <div class="season-name">
+                Season 01
+              </div>
+
+              <div class="season-actions">
+                <button class="small-btn">−</button>
+                <button class="small-btn">+</button>
+              </div>
+
+            </div>
+
+
+            <div class="episode active" data-episode="1">
+
+              <div class="episode-top">
+                <span class="ep-no">EP 01</span>
+                <span class="ep-time">10:00</span>
+              </div>
+
+              <div class="ep-title">
+                The First Signal
+              </div>
+
+              <div class="ep-desc">
+                A journalist discovers the first fracture in
+                the official story.
+              </div>
+
+            </div>
+
+
+            <div class="episode" data-episode="2">
+
+              <div class="episode-top">
+                <span class="ep-no">EP 02</span>
+                <span class="ep-time">10:00</span>
+              </div>
+
+              <div class="ep-title">
+                The Witness
+              </div>
+
+              <div class="ep-desc">
+                An unexpected witness changes the investigation.
+              </div>
+
+            </div>
+
+
+            <div class="episode" data-episode="3">
+
+              <div class="episode-top">
+                <span class="ep-no">EP 03</span>
+                <span class="ep-time">10:00</span>
+              </div>
+
+              <div class="ep-title">
+                The Pattern
+              </div>
+
+              <div class="ep-desc">
+                Three apparently unrelated events reveal a pattern.
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </aside>
+
+
+      <!-- CENTER: WRITING SURFACE -->
+
+      <section class="panel">
+
+        <div class="panel-head">
+
+          <div class="panel-title">
+            Episode screenplay
+          </div>
+
+          <div class="panel-number">
+            01 / 03
+          </div>
+
+        </div>
+
+
+        <article class="writer">
+
+          <div class="writer-meta">
+
+            <div>
+
+              <div class="writer-kicker">
+                Season 01 · Episode 01
+              </div>
+
+              <h2 class="series-title">
+                The First Signal
+              </h2>
+
+              <div class="series-sub">
+                10 minute episode · Draft 04
+              </div>
+
+            </div>
+
+            <div class="writer-page">
+              PAGE 001
+            </div>
+
+          </div>
+
+
+          <div class="script">
+
+            <div class="script-block">
+
+              <div class="script-label">
+                Cold Open
+              </div>
+
+              <div class="script-heading">
+                EXT. MEGACITY — NIGHT
+              </div>
+
+              <p class="script-text">
+                Rain turns the avenues into mirrors. Thousands
+                of windows burn above the city while a silent
+                surveillance aircraft crosses the skyline.
+              </p>
+
+            </div>
+
+
+            <div class="script-block">
+
+              <div class="script-label">
+                Scene 02
+              </div>
+
+              <div class="script-heading">
+                INT. NEWSROOM — 02:17 A.M.
+              </div>
+
+              <p class="script-text">
+                The newsroom is almost empty. A single monitor
+                remains illuminated at the far end of the room.
+                Mara stops walking.
+              </p>
+
+            </div>
+
+
+            <div class="dialogue">
+
+              <div class="character">
+                MARA
+              </div>
+
+              <p>
+                That's not a power outage.
+              </p>
+
+            </div>
+
+
+            <div class="dialogue" style="margin-top:26px">
+
+              <div class="character">
+                ELIAS
+              </div>
+
+              <p>
+                Then what is it?
+              </p>
+
+            </div>
+
+
+            <div class="script-block" style="margin-top:40px">
+
+              <div class="script-label">
+                Direction
+              </div>
+
+              <p class="script-text">
+                Mara looks toward the window. Across the city,
+                one building after another goes dark.
+              </p>
+
+            </div>
+
+
+            <div class="scene-rule"></div>
+
+
+            <div class="script-block">
+
+              <div class="script-label">
+                Story Intelligence
+              </div>
+
+              <p class="script-text">
+                The blackout is not the event. It is the first
+                visible consequence of something that has already
+                happened.
+              </p>
+
+            </div>
+
+
+            <div class="continue">
+              <button id="continueWriting">
+                Continue writing →
+              </button>
+            </div>
+
+          </div>
+
+        </article>
+
+      </section>
+
+
+      <!-- RIGHT: STORY INSPECTOR -->
+
+      <aside class="panel">
+
+        <div class="panel-head">
+          <div class="panel-title">Story inspector</div>
+          <div class="panel-number">03</div>
+        </div>
+
+        <div class="inspector">
+
+
+          <div class="field">
+
+            <label>Series premise</label>
+
+            <textarea>
+A political thriller set in a near-future megacity, following a journalist uncovering a conspiracy.
+            </textarea>
+
+          </div>
+
+
+          <div class="field">
+
+            <label>Episode title</label>
+
+            <input
+              value="The First Signal"
+            >
+
+          </div>
+
+
+          <div class="field">
+
+            <label>Episode runtime</label>
+
+            <div class="select-row">
+
+              <select>
+                <option>10 min</option>
+                <option>15 min</option>
+                <option>20 min</option>
+                <option>30 min</option>
+              </select>
+
+              <select>
+                <option>16:9</option>
+                <option>2.39:1</option>
+                <option>1:1</option>
+                <option>9:16</option>
+              </select>
+
+            </div>
+
+          </div>
+
+
+          <div class="field">
+
+            <label>Story engine</label>
+
+            <select>
+              <option>Continuous narrative</option>
+              <option>Anthology</option>
+              <option>Limited series</option>
+              <option>Procedural</option>
+            </select>
+
+          </div>
+
+
+          <div class="field">
+
+            <label>Director's intention</label>
+
+            <textarea>Quiet tension. The audience should understand that something enormous has begun before the characters do.</textarea>
+
+          </div>
+
+
+          <div class="continuity">
+
+            <div class="continuity-head">
+
+              <span>Continuity</span>
+
+              <span class="continuity-value">
+                LOCKED
+              </span>
+
+            </div>
+
+            <p>
+              Characters, locations, visual language and
+              established story facts remain available to
+              subsequent episodes.
+            </p>
+
+          </div>
+
+
+        </div>
+
+      </aside>
+
+    </section>
+
+
+    <!-- ===================================================
+         ACTION BAR
+    ==================================================== -->
+
+    <footer class="action-bar">
+
+      <div class="production-stats">
+
+        <div class="stat">
+          <span class="stat-label">Episodes</span>
+          <span class="stat-value">03</span>
+        </div>
+
+        <div class="stat">
+          <span class="stat-label">Season runtime</span>
+          <span class="stat-value">30 MIN</span>
+        </div>
+
+        <div class="stat">
+          <span class="stat-label">Continuity</span>
+          <span class="stat-value">LOCKED</span>
+        </div>
+
+        <div class="stat">
+          <span class="stat-label">Production</span>
+          <span class="stat-value">READY</span>
+        </div>
+
+      </div>
+
+      <button class="primary" id="createSeries">
+        Create series →
+      </button>
+
+    </footer>
+
+  </main>
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   EPISODE SELECTION
+========================================================= */
+
+const episodes = document.querySelectorAll(".episode");
+
+episodes.forEach(ep => {
+
+  ep.addEventListener("click", () => {
+
+    episodes.forEach(item =>
+      item.classList.remove("active")
+    );
+
+    ep.classList.add("active");
+
+    const number = ep.dataset.episode;
+
+    document.querySelector(".panel-number").textContent =
+      `${number} / 03`;
+
+  });
+
+});
+
+
+/* =========================================================
+   ROOM NAVIGATION
+========================================================= */
+
+document.querySelectorAll(".room-link").forEach(link => {
+
+  link.addEventListener("click", () => {
+
+    document.querySelectorAll(".room-link")
+      .forEach(item => item.classList.remove("active"));
+
+    link.classList.add("active");
+
+  });
+
+});
+
+
+/* =========================================================
+   CONTINUE WRITING
+========================================================= */
+
+document
+  .getElementById("continueWriting")
+  .addEventListener("click", function(){
+
+    this.textContent = "Writing continuation…";
+
+    setTimeout(() => {
+
+      this.textContent = "Continuation drafted ✓";
+
+    }, 900);
+
+  });
+
+
+/* =========================================================
+   CREATE SERIES
+   TEMPORARY VISUAL HANDLER ONLY.
+   REPLACE AFTER ALL PAGE DESIGNS ARE COMPLETE.
+========================================================= */
+
+document
+  .getElementById("createSeries")
+  .addEventListener("click", function(){
+
+    this.textContent = "Preparing production…";
+
+    setTimeout(() => {
+
+      this.textContent = "Series ready for production";
+
+    }, 1200);
+
+  });
+
+
+/* =========================================================
+   RAIL INTERACTION
+========================================================= */
+
+document.querySelectorAll(".rail-btn").forEach(btn => {
+
+  btn.addEventListener("click", () => {
+
+    document.querySelectorAll(".rail-btn")
+      .forEach(item => item.classList.remove("active"));
+
+    btn.classList.add("active");
+
+  });
+
+});
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cineforge — Access</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+
+:root{
+  --ink:#10110f;
+  --paper:#f3f1eb;
+  --paper2:#e8e6df;
+  --line:rgba(16,17,15,.14);
+  --muted:#777872;
+  --green:#b9f36b;
+  --white:#faf9f5;
+}
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter,sans-serif;
+}
+
+button,
+input,
+select{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+/* ==========================================
+   RAIL
+========================================== */
+
+.rail{
+  position:fixed;
+  left:0;
+  top:0;
+  bottom:0;
+  width:78px;
+  background:#11120f;
+  color:white;
+  z-index:50;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.brand{
+  height:78px;
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-bottom:1px solid rgba(255,255,255,.1);
+}
+
+.brand-mark{
+  width:28px;
+  height:28px;
+  border:2px solid var(--green);
+  border-radius:50%;
+  position:relative;
+}
+
+.brand-mark:after{
+  content:"";
+  position:absolute;
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  background:var(--green);
+  left:7px;
+  top:7px;
+}
+
+.rail-nav{
+  padding-top:22px;
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+}
+
+.rail-button{
+  width:42px;
+  height:42px;
+  border:1px solid transparent;
+  background:none;
+  color:#777971;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.rail-button:hover,
+.rail-button.active{
+  color:white;
+  border-color:rgba(255,255,255,.17);
+  background:rgba(255,255,255,.05);
+}
+
+.rail-icon{
+  width:17px;
+  height:17px;
+  border:1px solid currentColor;
+}
+
+.rail-bottom{
+  margin-top:auto;
+  padding-bottom:22px;
+}
+
+.avatar{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  background:#292b27;
+  color:#aaa;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font:10px "DM Mono";
+}
+
+/* ==========================================
+   MAIN
+========================================== */
+
+.main{
+  margin-left:78px;
+}
+
+.topbar{
+  height:78px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 42px;
+}
+
+.crumb{
+  font:10px "DM Mono";
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+.crumb strong{
+  color:var(--ink);
+  font-weight:500;
+}
+
+.top-actions{
+  display:flex;
+  gap:8px;
+}
+
+.small-button{
+  height:35px;
+  padding:0 14px;
+  border:1px solid var(--line);
+  background:transparent;
+  font-size:11px;
+}
+
+.small-button:hover{
+  background:var(--paper2);
+}
+
+.small-button.dark{
+  background:var(--ink);
+  color:white;
+  border-color:var(--ink);
+}
+
+/* ==========================================
+   HERO
+========================================== */
+
+.hero{
+  padding:78px 42px 65px;
+  border-bottom:1px solid var(--line);
+  display:grid;
+  grid-template-columns:1.25fr .75fr;
+  gap:80px;
+}
+
+.eyebrow{
+  font:10px "DM Mono";
+  letter-spacing:.17em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:22px;
+}
+
+.hero h1{
+  font:700 clamp(65px,9vw,120px)/.84 Manrope;
+  letter-spacing:-.08em;
+}
+
+.hero h1 em{
+  font-family:Georgia,serif;
+  font-weight:400;
+}
+
+.hero-copy{
+  align-self:end;
+  max-width:460px;
+}
+
+.hero-copy p{
+  font-size:15px;
+  line-height:1.75;
+  color:#60615c;
+}
+
+.current-access{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-top:27px;
+  font:9px "DM Mono";
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+
+.dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#91d653;
+}
+
+/* ==========================================
+   ACCESS
+========================================== */
+
+.access{
+  padding:40px 42px 130px;
+}
+
+.access-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  margin-bottom:25px;
+}
+
+.section-label{
+  font:9px "DM Mono";
+  letter-spacing:.15em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+.section-title{
+  margin-top:8px;
+  font:29px Manrope;
+  letter-spacing:-.05em;
+}
+
+/* ==========================================
+   CURRENT PLAN
+========================================== */
+
+.current{
+  background:#11120f;
+  color:white;
+  min-height:350px;
+  position:relative;
+  overflow:hidden;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+}
+
+.current:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 70% 35%,rgba(185,243,107,.15),transparent 25%),
+    linear-gradient(120deg,#191b17,#080908);
+}
+
+.current-left,
+.current-right{
+  position:relative;
+  padding:48px;
+}
+
+.current-right{
+  border-left:1px solid rgba(255,255,255,.1);
+}
+
+.current h2{
+  font:47px/.95 Manrope;
+  letter-spacing:-.06em;
+  margin-top:26px;
+}
+
+.current p{
+  color:#9c9e97;
+  font-size:13px;
+  line-height:1.7;
+  max-width:450px;
+  margin-top:17px;
+}
+
+.credits{
+  margin-top:35px;
+  display:flex;
+  align-items:end;
+  justify-content:space-between;
+  border-bottom:1px solid rgba(255,255,255,.12);
+  padding-bottom:18px;
+}
+
+.credit-number{
+  font:48px Manrope;
+  letter-spacing:-.06em;
+}
+
+.credit-label{
+  font:9px "DM Mono";
+  color:#777a73;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.credit-bar{
+  margin-top:18px;
+  height:3px;
+  background:#343630;
+}
+
+.credit-bar i{
+  display:block;
+  width:63%;
+  height:100%;
+  background:var(--green);
+}
+
+.stat-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  border-top:1px solid rgba(255,255,255,.12);
+  border-left:1px solid rgba(255,255,255,.12);
+  margin-top:18px;
+}
+
+.stat{
+  min-height:100px;
+  padding:17px;
+  border-right:1px solid rgba(255,255,255,.12);
+  border-bottom:1px solid rgba(255,255,255,.12);
+}
+
+.stat label{
+  display:block;
+  font:8px "DM Mono";
+  color:#777a73;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+
+.stat strong{
+  display:block;
+  margin-top:23px;
+  font:20px Manrope;
+}
+
+/* ==========================================
+   PLANS
+========================================== */
+
+.plans{
+  margin-top:70px;
+}
+
+.plans-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  margin-bottom:23px;
+}
+
+.plans-header h2{
+  font:32px Manrope;
+  letter-spacing:-.055em;
+}
+
+.billing{
+  display:flex;
+  gap:4px;
+  padding:3px;
+  border:1px solid var(--line);
+}
+
+.billing button{
+  border:0;
+  background:transparent;
+  padding:7px 11px;
+  font:9px "DM Mono";
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.billing button.active{
+  background:var(--ink);
+  color:white;
+}
+
+/* ==========================================
+   PLAN GRID
+========================================== */
+
+.plan-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--line);
+  border-left:1px solid var(--line);
+}
+
+.plan{
+  min-height:475px;
+  padding:24px;
+  border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  position:relative;
+  display:flex;
+  flex-direction:column;
+}
+
+.plan.featured{
+  background:#e8e6de;
+}
+
+.plan-name{
+  font:9px "DM Mono";
+  letter-spacing:.15em;
+  text-transform:uppercase;
+  color:#777872;
+}
+
+.plan h3{
+  font:29px Manrope;
+  letter-spacing:-.055em;
+  margin-top:13px;
+}
+
+.plan-desc{
+  font-size:11px;
+  color:#71726c;
+  line-height:1.6;
+  margin-top:9px;
+  min-height:50px;
+}
+
+.price{
+  margin-top:30px;
+  padding-bottom:21px;
+  border-bottom:1px solid var(--line);
+}
+
+.price-number{
+  font:42px Manrope;
+  letter-spacing:-.065em;
+}
+
+.price-period{
+  font:9px "DM Mono";
+  color:#777872;
+}
+
+.plan-features{
+  margin-top:20px;
+  list-style:none;
+}
+
+.plan-features li{
+  padding:8px 0;
+  border-bottom:1px solid rgba(16,17,15,.08);
+  font-size:10px;
+  color:#5e5f59;
+}
+
+.plan-features li:before{
+  content:"—";
+  margin-right:7px;
+  color:#9a9b94;
+}
+
+.plan-button{
+  margin-top:auto;
+  height:41px;
+  border:1px solid var(--ink);
+  background:transparent;
+  font-size:10px;
+}
+
+.plan-button:hover{
+  background:var(--ink);
+  color:white;
+}
+
+.plan.featured .plan-button{
+  background:var(--ink);
+  color:white;
+}
+
+/* ==========================================
+   CAPABILITY MATRIX
+========================================== */
+
+.matrix{
+  margin-top:70px;
+  border-top:1px solid var(--line);
+  padding-top:32px;
+}
+
+.matrix-head{
+  margin-bottom:24px;
+}
+
+.matrix-head h2{
+  font:32px Manrope;
+  letter-spacing:-.055em;
+  margin-top:8px;
+}
+
+.matrix-table{
+  border:1px solid var(--line);
+  overflow:hidden;
+}
+
+.matrix-row{
+  display:grid;
+  grid-template-columns:2fr repeat(4,1fr);
+  min-height:58px;
+  border-bottom:1px solid var(--line);
+}
+
+.matrix-row:last-child{
+  border-bottom:0;
+}
+
+.matrix-row > div{
+  display:flex;
+  align-items:center;
+  padding:0 15px;
+  border-right:1px solid var(--line);
+  font-size:10px;
+}
+
+.matrix-row > div:last-child{
+  border-right:0;
+}
+
+.matrix-row.head{
+  background:#e8e6df;
+}
+
+.matrix-row.head > div{
+  font:8px "DM Mono";
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:#777872;
+}
+
+.check{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#1c1d19;
+}
+
+.no{
+  width:7px;
+  height:1px;
+  background:#aaa;
+}
+
+/* ==========================================
+   ENTERPRISE
+========================================== */
+
+.enterprise{
+  margin-top:70px;
+  border-top:1px solid var(--line);
+  padding-top:32px;
+}
+
+.enterprise-box{
+  background:#11120f;
+  color:white;
+  min-height:270px;
+  padding:45px;
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  gap:50px;
+}
+
+.enterprise h2{
+  font:44px/.95 Manrope;
+  letter-spacing:-.06em;
+  margin-top:20px;
+}
+
+.enterprise p{
+  max-width:470px;
+  color:#969891;
+  font-size:12px;
+  line-height:1.7;
+}
+
+.enterprise-button{
+  flex:none;
+  height:43px;
+  padding:0 21px;
+  background:var(--green);
+  border:0;
+  font-size:11px;
+}
+
+/* ==========================================
+   ACTION BAR
+========================================== */
+
+.actionbar{
+  position:fixed;
+  left:78px;
+  right:0;
+  bottom:0;
+  height:72px;
+  z-index:40;
+  background:rgba(244,242,236,.95);
+  backdrop-filter:blur(15px);
+  border-top:1px solid var(--line);
+  padding:0 42px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.action-info{
+  display:flex;
+  gap:32px;
+}
+
+.action-item{
+  font:9px "DM Mono";
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:#777872;
+}
+
+.action-item strong{
+  display:block;
+  color:var(--ink);
+  margin-top:5px;
+  font-size:10px;
+  font-weight:500;
+}
+
+.action-buttons{
+  display:flex;
+  gap:8px;
+}
+
+.action-button{
+  height:40px;
+  padding:0 19px;
+  border:1px solid var(--ink);
+  background:transparent;
+  font-size:11px;
+}
+
+.action-button.primary{
+  background:var(--ink);
+  color:white;
+}
+
+/* ==========================================
+   MODAL
+========================================== */
+
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(8,9,7,.68);
+  backdrop-filter:blur(8px);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:100;
+}
+
+.modal.open{
+  display:flex;
+}
+
+.modal-panel{
+  width:min(570px,calc(100% - 40px));
+  background:var(--paper);
+  padding:35px;
+}
+
+.modal-head{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:28px;
+}
+
+.modal-head h2{
+  font:31px Manrope;
+  letter-spacing:-.05em;
+}
+
+.close{
+  border:0;
+  background:none;
+  font-size:22px;
+}
+
+.field{
+  margin-bottom:19px;
+}
+
+.field label{
+  display:block;
+  font:9px "DM Mono";
+  color:#777872;
+  text-transform:uppercase;
+  letter-spacing:.13em;
+  margin-bottom:8px;
+}
+
+.field select{
+  width:100%;
+  height:44px;
+  border:1px solid var(--line);
+  background:#e9e7e0;
+  padding:0 12px;
+}
+
+.modal-footer{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:27px;
+}
+
+/* ==========================================
+   RESPONSIVE
+========================================== */
+
+@media(max-width:1100px){
+
+  .hero{
+    grid-template-columns:1fr;
+  }
+
+  .plan-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .current{
+    grid-template-columns:1fr;
+  }
+
+  .current-right{
+    border-left:0;
+    border-top:1px solid rgba(255,255,255,.1);
+  }
+
+}
+
+@media(max-width:700px){
+
+  .rail{
+    display:none;
+  }
+
+  .main{
+    margin-left:0;
+  }
+
+  .topbar{
+    padding:0 20px;
+  }
+
+  .hero,
+  .access{
+    padding-left:20px;
+    padding-right:20px;
+  }
+
+  .hero h1{
+    font-size:65px;
+  }
+
+  .current-left,
+  .current-right{
+    padding:30px;
+  }
+
+  .plan-grid{
+    grid-template-columns:1fr;
+  }
+
+  .matrix{
+    overflow-x:auto;
+  }
+
+  .matrix-table{
+    min-width:720px;
+  }
+
+  .enterprise-box{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .actionbar{
+    left:0;
+    padding:0 15px;
+  }
+
+  .action-info{
+    display:none;
+  }
+
+  .action-buttons{
+    width:100%;
+  }
+
+  .action-button{
+    flex:1;
+  }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- ==========================================
+     RAIL
+========================================== -->
+
+<aside class="rail">
+
+  <div class="brand">
+    <div class="brand-mark"></div>
+  </div>
+
+  <nav class="rail-nav">
+
+    <button class="rail-button">
+      <span class="rail-icon"></span>
+    </button>
+
+    <button class="rail-button">
+      <span class="rail-icon" style="border-radius:50%"></span>
+    </button>
+
+    <button class="rail-button active">
+      <span class="rail-icon" style="transform:rotate(45deg)"></span>
+    </button>
+
+    <button class="rail-button">
+      <span class="rail-icon" style="border-radius:4px"></span>
+    </button>
+
+  </nav>
+
+  <div class="rail-bottom">
+    <div class="avatar">CM</div>
+  </div>
+
+</aside>
+
+
+<main class="main">
+
+<!-- ==========================================
+     TOPBAR
+========================================== -->
+
+<header class="topbar">
+
+  <div class="crumb">
+    CINEFORGE / ACCOUNT / <strong>ACCESS</strong>
+  </div>
+
+  <div class="top-actions">
+
+    <button class="small-button">
+      Billing history
+    </button>
+
+    <button class="small-button dark" id="upgradeTop">
+      Upgrade access
+    </button>
+
+  </div>
+
+</header>
+
+
+<!-- ==========================================
+     HERO
+========================================== -->
+
+<section class="hero">
+
+  <div>
+
+    <div class="eyebrow">
+      CINEFORGE / ACCESS
+    </div>
+
+    <h1>
+      Enter<br>
+      the <em>studio.</em>
+    </h1>
+
+  </div>
+
+
+  <div class="hero-copy">
+
+    <p>
+      Cineforge access is built around production.
+      Choose the level of creative capacity your work
+      requires, then move between worlds, films, series,
+      voices, music and finishing without leaving the system.
+    </p>
+
+    <div class="current-access">
+
+      <span class="dot"></span>
+
+      Creator access / active
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- ==========================================
+     ACCESS AREA
+========================================== -->
+
+<section class="access">
+
+
+<!-- CURRENT ACCESS -->
+
+<div class="access-head">
+
+  <div>
+
+    <div class="section-label">
+      YOUR ACCESS
+    </div>
+
+    <div class="section-title">
+      Production capacity
+    </div>
+
+  </div>
+
+  <div class="section-label">
+    ACCOUNT / CURRENT
+  </div>
+
+</div>
+
+
+<section class="current">
+
+  <div class="current-left">
+
+    <div class="section-label">
+      CREATOR
+    </div>
+
+    <h2>
+      Your studio<br>
+      is open.
+    </h2>
+
+    <p>
+      Your current Cineforge access provides the foundation
+      for developing productions, testing ideas and moving
+      work through the production system.
+    </p>
+
+
+    <div class="credits">
+
+      <div>
+
+        <div class="credit-number">
+          6,320
+        </div>
+
+        <div class="credit-label">
+          Production credits remaining
+        </div>
+
+      </div>
+
+      <div class="credit-label">
+        63% available
+      </div>
+
+    </div>
+
+    <div class="credit-bar">
+      <i></i>
+    </div>
+
+  </div>
+
+
+  <div class="current-right">
+
+    <div class="section-label">
+      CURRENT CAPACITY
+    </div>
+
+    <div class="stat-grid">
+
+      <div class="stat">
+
+        <label>
+          Films
+        </label>
+
+        <strong>
+          12
+        </strong>
+
+      </div>
+
+      <div class="stat">
+
+        <label>
+          Series
+        </label>
+
+        <strong>
+          3
+        </strong>
+
+      </div>
+
+      <div class="stat">
+
+        <label>
+          Storage
+        </label>
+
+        <strong>
+          250 GB
+        </strong>
+
+      </div>
+
+      <div class="stat">
+
+        <label>
+          Languages
+        </label>
+
+        <strong>
+          3
+        </strong>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- PLANS -->
+
+<section class="plans">
+
+  <div class="plans-header">
+
+    <div>
+
+      <div class="section-label">
+        ACCESS LEVELS
+      </div>
+
+      <h2>
+        Choose your production scale.
+      </h2>
+
+    </div>
+
+
+    <div class="billing">
+
+      <button class="active" data-period="monthly">
+        Monthly
+      </button>
+
+      <button data-period="annual">
+        Annual
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <div class="plan-grid">
+
+
+    <!-- CREATOR -->
+
+    <article class="plan">
+
+      <div class="plan-name">
+        Individual
+      </div>
+
+      <h3>
+        Creator
+      </h3>
+
+      <p class="plan-desc">
+        For individual filmmakers developing and producing work.
+      </p>
+
+      <div class="price">
+
+        <span class="price-number" data-month="29" data-year="23">
+          €29
+        </span>
+
+        <span class="price-period">
+          / month
+        </span>
+
+      </div>
+
+
+      <ul class="plan-features">
+
+        <li>Film production workspace</li>
+        <li>Series development</li>
+        <li>Standard generation</li>
+        <li>250 GB production storage</li>
+        <li>3 language outputs</li>
+        <li>Personal asset library</li>
+
+      </ul>
+
+
+      <button class="plan-button">
+        Current access
+      </button>
+
+    </article>
+
+
+    <!-- STUDIO -->
+
+    <article class="plan featured">
+
+      <div class="plan-name">
+        Professional
+      </div>
+
+      <h3>
+        Studio
+      </h3>
+
+      <p class="plan-desc">
+        For professional filmmakers and independent studios.
+      </p>
+
+      <div class="price">
+
+        <span class="price-number" data-month="99" data-year="79">
+          €99
+        </span>
+
+        <span class="price-period">
+          / month
+        </span>
+
+      </div>
+
+
+      <ul class="plan-features">
+
+        <li>Everything in Creator</li>
+        <li>Cinematic generation</li>
+        <li>Multiple productions</li>
+        <li>2 TB production storage</li>
+        <li>Advanced voice & language</li>
+        <li>Commercial publishing</li>
+
+      </ul>
+
+
+      <button class="plan-button">
+        Enter Studio
+      </button>
+
+    </article>
+
+
+    <!-- PRODUCTION -->
+
+    <article class="plan">
+
+      <div class="plan-name">
+        Production
+      </div>
+
+      <h3>
+        Pro
+      </h3>
+
+      <p class="plan-desc">
+        For teams producing multiple films and campaigns.
+      </p>
+
+      <div class="price">
+
+        <span class="price-number" data-month="299" data-year="239">
+          €299
+        </span>
+
+        <span class="price-period">
+          / month
+        </span>
+
+      </div>
+
+
+      <ul class="plan-features">
+
+        <li>Everything in Studio</li>
+        <li>Production teams</li>
+        <li>Shared workspaces</li>
+        <li>10 TB storage</li>
+        <li>Priority generation</li>
+        <li>Production administration</li>
+
+      </ul>
+
+
+      <button class="plan-button">
+        Choose Pro
+      </button>
+
+    </article>
+
+
+    <!-- ENTERPRISE -->
+
+    <article class="plan">
+
+      <div class="plan-name">
+        Institution
+      </div>
+
+      <h3>
+        Enterprise
+      </h3>
+
+      <p class="plan-desc">
+        For studios, broadcasters and organizations operating at scale.
+      </p>
+
+      <div class="price">
+
+        <span class="price-number">
+          Custom
+        </span>
+
+      </div>
+
+
+      <ul class="plan-features">
+
+        <li>Dedicated production environment</li>
+        <li>Custom capacity</li>
+        <li>Enterprise governance</li>
+        <li>Private infrastructure options</li>
+        <li>Advanced permissions</li>
+        <li>Dedicated support</li>
+
+      </ul>
+
+
+      <button class="plan-button">
+        Contact Cineforge
+      </button>
+
+    </article>
+
+
+  </div>
+
+</section>
+
+
+<!-- CAPABILITY MATRIX -->
+
+<section class="matrix">
+
+  <div class="matrix-head">
+
+    <div class="section-label">
+      CAPABILITY MATRIX
+    </div>
+
+    <h2>
+      Production access at a glance.
+    </h2>
+
+  </div>
+
+
+  <div class="matrix-table">
+
+    <div class="matrix-row head">
+
+      <div>Capability</div>
+      <div>Creator</div>
+      <div>Studio</div>
+      <div>Pro</div>
+      <div>Enterprise</div>
+
+    </div>
+
+
+    <div class="matrix-row">
+
+      <div>Film production</div>
+      <div><span class="check"></span></div>
+      <div><span class="check"></span></div>
+      <div><span class="check"></span></div>
+      <div><span class="check"></span></div>
+
+    </div>
+
+
+    <div class="matrix-row">
+
+      <div>Series production</div>
+      <div><span class="check"></span></div>
+      <div><span class="check"></span></div>
+      <div><span class="check"></span></div>
+      <div><span class="check"></span></div>
+
+    </div>
+
+
+    <div class="matrix-row">
+
+      <div>Cinematic generation</div>
+      <div><span class="no"></span></div>
+      <div><span class="check"></span></div>
+      <div><span class="check"></span></div>
+      <div><span class="check"></span></div>
+
+    </div>
+
+
+    <div class="matrix-row">
+
+      <div>Team production</div>
+      <div><span class="no"></span></div>
+      <div><span class="no"></span></div>
+      <div><span class="check"></span></div>
+      <div><span class="check"></span></div>
+
+    </div>
+
+
+    <div class="matrix-row">
+
+      <div>Advanced permissions</div>
+      <div><span class="no"></span></div>
+      <div><span class="no"></span></div>
+      <div><span class="check"></span></div>
+      <div><span class="check"></span></div>
+
+    </div>
+
+
+    <div class="matrix-row">
+
+      <div>Private infrastructure</div>
+      <div><span class="no"></span></div>
+      <div><span class="no"></span></div>
+      <div><span class="no"></span></div>
+      <div><span class="check"></span></div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- ENTERPRISE -->
+
+<section class="enterprise">
+
+  <div class="enterprise-box">
+
+    <div>
+
+      <div class="section-label">
+        CINEFORGE FOR INSTITUTIONS
+      </div>
+
+      <h2>
+        Build the production<br>
+        environment around you.
+      </h2>
+
+    </div>
+
+    <div>
+
+      <p>
+        For film studios, broadcasters, universities,
+        agencies and organizations that require controlled
+        production environments, governance, capacity and
+        dedicated infrastructure.
+      </p>
+
+      <button class="enterprise-button" id="enterpriseBtn">
+        Speak with Cineforge →
+      </button>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+</section>
+
+</main>
+
+
+<!-- ==========================================
+     ACTION BAR
+========================================== -->
+
+<div class="actionbar">
+
+  <div class="action-info">
+
+    <div class="action-item">
+      Access
+      <strong>Creator</strong>
+    </div>
+
+    <div class="action-item">
+      Credits
+      <strong>6,320</strong>
+    </div>
+
+    <div class="action-item">
+      Storage
+      <strong>250 GB</strong>
+    </div>
+
+    <div class="action-item">
+      Status
+      <strong>Active</strong>
+    </div>
+
+  </div>
+
+
+  <div class="action-buttons">
+
+    <button class="action-button">
+      Manage billing
+    </button>
+
+    <button class="action-button primary" id="upgradeBtn">
+      Upgrade access →
+    </button>
+
+  </div>
+
+</div>
+
+
+<script>
+
+/*
+====================================================
+VISUAL PROTOTYPE ONLY
+
+Real Cineforge subscription, credit,
+billing and account handlers will be
+connected after the complete page redesign.
+====================================================
+*/
+
+
+/* Billing toggle */
+
+const periods =
+  document.querySelectorAll(".billing button");
+
+const prices =
+  document.querySelectorAll(".price-number[data-month]");
+
+periods.forEach(button=>{
+
+  button.addEventListener("click",()=>{
+
+    periods.forEach(item=>{
+      item.classList.remove("active");
+    });
+
+    button.classList.add("active");
+
+    const annual =
+      button.dataset.period === "annual";
+
+    prices.forEach(price=>{
+
+      price.textContent =
+        "€" +
+        (annual
+          ? price.dataset.year
+          : price.dataset.month);
+
+    });
+
+  });
+
+});
+
+
+/* Plan buttons */
+
+document
+.querySelectorAll(".plan-button")
+.forEach(button=>{
+
+  button.addEventListener("click",()=>{
+
+    alert(
+      "Visual prototype: Cineforge access selection would continue through the real billing system."
+    );
+
+  });
+
+});
+
+
+/* Upgrade */
+
+document.getElementById("upgradeBtn").onclick = () => {
+
+  alert(
+    "Visual prototype: the real Cineforge plan and billing flow would open here."
+  );
+
+};
+
+document.getElementById("upgradeTop").onclick = () => {
+
+  alert(
+    "Visual prototype: the real Cineforge upgrade flow would open here."
+  );
+
+};
+
+
+/* Enterprise */
+
+document.getElementById("enterpriseBtn").onclick = () => {
+
+  alert(
+    "Visual prototype: the Cineforge enterprise contact workflow would open here."
+  );
+
+};
+
+
+/* Rail */
+
+document.querySelectorAll(".rail-button")
+.forEach(button=>{
+
+  button.addEventListener("click",()=>{
+
+    document
+      .querySelectorAll(".rail-button")
+      .forEach(item=>item.classList.remove("active"));
+
+    button.classList.add("active");
+
+  });
+
+});
+
+</script>
+
+</body>
+</html>

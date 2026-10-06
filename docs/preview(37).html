@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cineforge — Super View</title>
+
+<style>
+:root{
+  --paper:#f4f1ea;
+  --ink:#10100f;
+  --muted:#77736b;
+  --line:#cfc9bd;
+  --soft:#ebe7de;
+  --acid:#b7ff3c;
+  --warning:#d8a928;
+  --white:#fbfaf6;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+}
+
+button{
+  font:inherit;
+  cursor:pointer;
+}
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:78px;
+  border-right:1px solid var(--line);
+  background:rgba(244,241,234,.97);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  z-index:30;
+}
+
+.logo{
+  width:78px;
+  height:78px;
+  display:grid;
+  place-items:center;
+  border-bottom:1px solid var(--line);
+  font-weight:900;
+  letter-spacing:-.08em;
+}
+
+.rail-nav{
+  padding-top:25px;
+  display:flex;
+  flex-direction:column;
+  gap:11px;
+}
+
+.rail-nav a{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  color:var(--muted);
+  text-decoration:none;
+  font:10px ui-monospace,monospace;
+}
+
+.rail-nav a.active{
+  background:var(--ink);
+  color:var(--paper);
+}
+
+.rail-dot{
+  margin-top:auto;
+  margin-bottom:22px;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+main{
+  margin-left:78px;
+}
+
+.page{
+  width:min(1500px,100%);
+  margin:auto;
+  padding:34px 6vw 150px;
+}
+
+.breadcrumb{
+  display:flex;
+  gap:11px;
+  margin-bottom:62px;
+  color:var(--muted);
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.breadcrumb strong{
+  color:var(--ink);
+}
+
+.hero{
+  display:grid;
+  grid-template-columns:1.35fr .65fr;
+  gap:8vw;
+  padding-bottom:72px;
+  border-bottom:1px solid var(--line);
+}
+
+.eyebrow{
+  margin-bottom:22px;
+  font:10px ui-monospace,monospace;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+
+h1{
+  margin:0;
+  font:400 clamp(70px,9vw,145px)/.82 Georgia,serif;
+  letter-spacing:-.065em;
+}
+
+h1 em{
+  font-style:italic;
+}
+
+.hero-copy{
+  align-self:end;
+  max-width:440px;
+  color:#555149;
+  font-size:15px;
+  line-height:1.75;
+}
+
+.hero-copy strong{
+  color:var(--ink);
+}
+
+.identity{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-top:28px;
+  font:10px ui-monospace,monospace;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+.identity i{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+.section{
+  padding:60px 0;
+  border-bottom:1px solid var(--line);
+}
+
+.section-head{
+  display:grid;
+  grid-template-columns:180px 1fr;
+  gap:5vw;
+  margin-bottom:42px;
+}
+
+.label{
+  color:var(--muted);
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.section-title{
+  margin:0;
+  font:400 42px/1.05 Georgia,serif;
+  letter-spacing:-.04em;
+}
+
+
+/* CONTEXT */
+
+.context{
+  margin-top:42px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  border-top:1px solid var(--ink);
+  border-bottom:1px solid var(--line);
+}
+
+.context-item{
+  min-height:160px;
+  padding:26px;
+  border-right:1px solid var(--line);
+  position:relative;
+  cursor:pointer;
+}
+
+.context-item:last-child{
+  border-right:0;
+}
+
+.context-item:hover{
+  background:var(--soft);
+}
+
+.context-item.active{
+  background:var(--ink);
+  color:var(--paper);
+}
+
+.context-number{
+  font:9px ui-monospace,monospace;
+  opacity:.6;
+}
+
+.context-name{
+  margin-top:42px;
+  font:31px Georgia,serif;
+}
+
+.context-description{
+  margin-top:7px;
+  font-size:11px;
+  color:var(--muted);
+}
+
+.context-item.active .context-description{
+  color:#aaa69d;
+}
+
+.current{
+  position:absolute;
+  top:23px;
+  right:23px;
+  width:7px;
+  height:7px;
+  background:var(--acid);
+  border-radius:50%;
+}
+
+
+/* SYSTEM POSITION */
+
+.position{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr 1fr;
+  border-top:1px solid var(--ink);
+  border-left:1px solid var(--line);
+}
+
+.metric{
+  min-height:190px;
+  padding:28px;
+  border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+}
+
+.metric-label{
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.metric-number{
+  margin-top:54px;
+  font:400 48px Georgia,serif;
+  letter-spacing:-.05em;
+}
+
+.metric-note{
+  margin-top:6px;
+  color:var(--muted);
+  font-size:11px;
+}
+
+
+/* SYSTEM HEALTH */
+
+.system{
+  display:grid;
+  grid-template-columns:1.15fr .85fr;
+  gap:1px;
+  background:var(--line);
+  border:1px solid var(--line);
+}
+
+.system-main,
+.system-side{
+  background:var(--paper);
+  padding:34px;
+}
+
+.system-main{
+  min-height:390px;
+}
+
+.system-score{
+  font:400 105px Georgia,serif;
+  letter-spacing:-.08em;
+}
+
+.system-caption{
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.system-line{
+  margin-top:48px;
+  height:5px;
+  background:var(--line);
+}
+
+.system-line span{
+  display:block;
+  height:100%;
+  width:96%;
+  background:var(--ink);
+}
+
+.system-copy{
+  margin-top:25px;
+  max-width:530px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+
+.system-side h3{
+  margin:0 0 20px;
+  font:400 30px Georgia,serif;
+}
+
+.health-list{
+  border-top:1px solid var(--line);
+}
+
+.health-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:16px 0;
+  border-bottom:1px solid var(--line);
+  font-size:12px;
+}
+
+.health-row span:last-child{
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+.ok{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+}
+
+.ok i{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+
+/* GOVERNANCE */
+
+.governance{
+  border-top:1px solid var(--ink);
+}
+
+.gov-row{
+  display:grid;
+  grid-template-columns:80px 1.4fr 1fr 150px 100px;
+  align-items:center;
+  min-height:88px;
+  border-bottom:1px solid var(--line);
+}
+
+.gov-row:hover{
+  background:var(--soft);
+}
+
+.gov-row.header{
+  min-height:46px;
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.gov-number{
+  color:var(--muted);
+  font:10px ui-monospace,monospace;
+}
+
+.gov-name{
+  font:22px Georgia,serif;
+}
+
+.gov-detail{
+  color:var(--muted);
+  font-size:11px;
+}
+
+.gov-state{
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+.gov-action{
+  justify-self:end;
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+
+/* ACCESS */
+
+.access{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:1px;
+  background:var(--line);
+  border:1px solid var(--line);
+}
+
+.access-panel{
+  background:var(--paper);
+  padding:32px;
+  min-height:300px;
+}
+
+.access-panel h3{
+  margin:0 0 18px;
+  font:400 31px Georgia,serif;
+}
+
+.access-panel p{
+  max-width:460px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.7;
+}
+
+.access-list{
+  margin-top:30px;
+  border-top:1px solid var(--line);
+}
+
+.access-item{
+  display:flex;
+  justify-content:space-between;
+  padding:14px 0;
+  border-bottom:1px solid var(--line);
+  font-size:11px;
+}
+
+.access-item span:last-child{
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+
+/* AUDIT */
+
+.audit{
+  border-top:1px solid var(--ink);
+}
+
+.audit-row{
+  display:grid;
+  grid-template-columns:150px 1fr 170px 130px;
+  gap:20px;
+  align-items:center;
+  min-height:72px;
+  border-bottom:1px solid var(--line);
+  font-size:11px;
+}
+
+.audit-time{
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+}
+
+.audit-event{
+  font:17px Georgia,serif;
+}
+
+.audit-user{
+  color:var(--muted);
+}
+
+.audit-level{
+  justify-self:end;
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+
+/* ACTION */
+
+.cta{
+  margin-top:60px;
+  padding:38px;
+  background:var(--ink);
+  color:var(--paper);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:30px;
+}
+
+.cta h2{
+  margin:0 0 8px;
+  font:400 35px Georgia,serif;
+}
+
+.cta p{
+  margin:0;
+  color:#aaa69d;
+  font-size:13px;
+}
+
+.primary{
+  border:0;
+  background:var(--acid);
+  color:var(--ink);
+  padding:14px 20px;
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.secondary{
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--ink);
+  padding:13px 18px;
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+}
+
+
+/* BOTTOM */
+
+.bottom{
+  position:fixed;
+  left:78px;
+  right:0;
+  bottom:0;
+  height:72px;
+  border-top:1px solid var(--line);
+  background:rgba(244,241,234,.95);
+  backdrop-filter:blur(14px);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 5vw;
+  z-index:20;
+}
+
+.bottom-context{
+  display:flex;
+  gap:12px;
+  color:var(--muted);
+  font:9px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+}
+
+.bottom-context b{
+  color:var(--ink);
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+}
+
+
+@media(max-width:1050px){
+
+  .position{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .system{
+    grid-template-columns:1fr;
+  }
+
+  .governance{
+    overflow-x:auto;
+  }
+
+  .gov-row{
+    min-width:800px;
+  }
+
+  .audit{
+    overflow-x:auto;
+  }
+
+  .audit-row{
+    min-width:750px;
+  }
+
+}
+
+
+@media(max-width:850px){
+
+  .hero{
+    grid-template-columns:1fr;
+  }
+
+  .access{
+    grid-template-columns:1fr;
+  }
+
+}
+
+
+@media(max-width:700px){
+
+  .rail{
+    width:58px;
+  }
+
+  .logo{
+    width:58px;
+  }
+
+  main{
+    margin-left:58px;
+  }
+
+  .page{
+    padding:25px 24px 130px;
+  }
+
+  h1{
+    font-size:70px;
+  }
+
+  .context{
+    grid-template-columns:1fr;
+  }
+
+  .context-item{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .section-head{
+    grid-template-columns:1fr;
+    gap:15px;
+  }
+
+  .position{
+    grid-template-columns:1fr;
+  }
+
+  .cta{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .bottom{
+    left:58px;
+  }
+
+  .bottom-context{
+    display:none;
+  }
+
+}
+
+</style>
+</head>
+
+
+<body>
+
+
+<aside class="rail">
+
+  <div class="logo">CF</div>
+
+  <nav class="rail-nav">
+    <a href="#">ST</a>
+    <a href="#">PR</a>
+    <a href="#">PD</a>
+    <a href="#">TM</a>
+    <a href="#">AN</a>
+    <a href="#" class="active">AC</a>
+  </nav>
+
+  <div class="rail-dot"></div>
+
+</aside>
+
+
+<main>
+
+<div class="page">
+
+
+  <!-- HERO -->
+
+  <div class="breadcrumb">
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <span>VIEWING AS</span>
+    <span>/</span>
+    <strong>SUPER</strong>
+  </div>
+
+
+  <section class="hero">
+
+    <div>
+
+      <div class="eyebrow">
+        SYSTEM CONTEXT / 03
+      </div>
+
+      <h1>
+        Govern<br>
+        the <em>system.</em>
+      </h1>
+
+    </div>
+
+
+    <div class="hero-copy">
+
+      <p>
+        Super mode is the highest operational
+        view of Cineforge.
+      </p>
+
+      <p>
+        It exposes the health of the platform,
+        organizations, access, policies and
+        production infrastructure.
+      </p>
+
+      <p>
+        <strong>
+          Authority without unnecessary noise.
+        </strong>
+      </p>
+
+      <div class="identity">
+        <i></i>
+        Current context · Super
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- CONTEXT -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        CONTEXT / 01
+      </div>
+
+      <h2 class="section-title">
+        Three perspectives. One production system.
+      </h2>
+
+    </div>
+
+
+    <div class="context">
+
+
+      <div
+        class="context-item"
+        onclick="switchContext('Creator')">
+
+        <div class="context-number">01</div>
+
+        <div class="context-name">
+          Creator
+        </div>
+
+        <div class="context-description">
+          Your personal production environment.
+        </div>
+
+      </div>
+
+
+      <div
+        class="context-item"
+        onclick="switchContext('Studio')">
+
+        <div class="context-number">02</div>
+
+        <div class="context-name">
+          Studio
+        </div>
+
+        <div class="context-description">
+          The collaborative production house.
+        </div>
+
+      </div>
+
+
+      <div class="context-item active">
+
+        <div class="context-number">03</div>
+
+        <div class="current"></div>
+
+        <div class="context-name">
+          Super
+        </div>
+
+        <div class="context-description">
+          Full system administration and oversight.
+        </div>
+
+      </div>
+
+
+    </div>
+
+  </section>
+
+
+  <!-- SYSTEM POSITION -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        SYSTEM POSITION / 02
+      </div>
+
+      <h2 class="section-title">
+        The platform at a glance.
+      </h2>
+
+    </div>
+
+
+    <div class="position">
+
+
+      <div class="metric">
+
+        <div class="metric-label">
+          Organizations
+        </div>
+
+        <div class="metric-number">
+          42
+        </div>
+
+        <div class="metric-note">
+          active production houses
+        </div>
+
+      </div>
+
+
+      <div class="metric">
+
+        <div class="metric-label">
+          Productions
+        </div>
+
+        <div class="metric-number">
+          184
+        </div>
+
+        <div class="metric-note">
+          currently in system
+        </div>
+
+      </div>
+
+
+      <div class="metric">
+
+        <div class="metric-label">
+          Members
+        </div>
+
+        <div class="metric-number">
+          1,284
+        </div>
+
+        <div class="metric-note">
+          active collaborators
+        </div>
+
+      </div>
+
+
+      <div class="metric">
+
+        <div class="metric-label">
+          System uptime
+        </div>
+
+        <div class="metric-number">
+          99.98%
+        </div>
+
+        <div class="metric-note">
+          rolling 30 days
+        </div>
+
+      </div>
+
+
+    </div>
+
+  </section>
+
+
+  <!-- SYSTEM HEALTH -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        INFRASTRUCTURE / 03
+      </div>
+
+      <h2 class="section-title">
+        The machine behind the work.
+      </h2>
+
+    </div>
+
+
+    <div class="system">
+
+
+      <div class="system-main">
+
+        <div class="system-score">
+          96
+        </div>
+
+        <div class="system-caption">
+          Overall system health
+        </div>
+
+        <div class="system-line">
+          <span></span>
+        </div>
+
+        <div class="system-copy">
+
+          All primary services are operational.
+          Production workers, storage, rendering,
+          authentication and publishing are within
+          expected operating thresholds.
+
+        </div>
+
+      </div>
+
+
+      <div class="system-side">
+
+        <h3>
+          Service position
+        </h3>
+
+        <div class="health-list">
+
+
+          <div class="health-row">
+            <span>Production engine</span>
+            <span class="ok">
+              <i></i>Operational
+            </span>
+          </div>
+
+
+          <div class="health-row">
+            <span>Render workers</span>
+            <span class="ok">
+              <i></i>Operational
+            </span>
+          </div>
+
+
+          <div class="health-row">
+            <span>Storage</span>
+            <span class="ok">
+              <i></i>Operational
+            </span>
+          </div>
+
+
+          <div class="health-row">
+            <span>Authentication</span>
+            <span class="ok">
+              <i></i>Operational
+            </span>
+          </div>
+
+
+          <div class="health-row">
+            <span>Publishing</span>
+            <span class="ok">
+              <i></i>Operational
+            </span>
+          </div>
+
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- GOVERNANCE -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        GOVERNANCE / 04
+      </div>
+
+      <h2 class="section-title">
+        Decisions that govern the platform.
+      </h2>
+
+    </div>
+
+
+    <div class="governance">
+
+
+      <div class="gov-row header">
+
+        <div>#</div>
+        <div>Control</div>
+        <div>Scope</div>
+        <div>State</div>
+        <div>Action</div>
+
+      </div>
+
+
+      <div class="gov-row">
+
+        <div class="gov-number">001</div>
+
+        <div class="gov-name">
+          Production access
+        </div>
+
+        <div class="gov-detail">
+          Organizations / members
+        </div>
+
+        <div class="gov-state">
+          Enforced
+        </div>
+
+        <div
+          class="gov-action"
+          onclick="manageControl('Production access')">
+          Manage →
+        </div>
+
+      </div>
+
+
+      <div class="gov-row">
+
+        <div class="gov-number">002</div>
+
+        <div class="gov-name">
+          Rendering policy
+        </div>
+
+        <div class="gov-detail">
+          Platform-wide
+        </div>
+
+        <div class="gov-state">
+          Enforced
+        </div>
+
+        <div
+          class="gov-action"
+          onclick="manageControl('Rendering policy')">
+          Manage →
+        </div>
+
+      </div>
+
+
+      <div class="gov-row">
+
+        <div class="gov-number">003</div>
+
+        <div class="gov-name">
+          Publishing policy
+        </div>
+
+        <div class="gov-detail">
+          Release / distribution
+        </div>
+
+        <div class="gov-state">
+          Enforced
+        </div>
+
+        <div
+          class="gov-action"
+          onclick="manageControl('Publishing policy')">
+          Manage →
+        </div>
+
+      </div>
+
+
+      <div class="gov-row">
+
+        <div class="gov-number">004</div>
+
+        <div class="gov-name">
+          Brand governance
+        </div>
+
+        <div class="gov-detail">
+          Protected assets
+        </div>
+
+        <div class="gov-state">
+          Enforced
+        </div>
+
+        <div
+          class="gov-action"
+          onclick="manageControl('Brand governance')">
+          Manage →
+        </div>
+
+      </div>
+
+
+      <div class="gov-row">
+
+        <div class="gov-number">005</div>
+
+        <div class="gov-name">
+          Audit retention
+        </div>
+
+        <div class="gov-detail">
+          Platform records
+        </div>
+
+        <div class="gov-state">
+          365 days
+        </div>
+
+        <div
+          class="gov-action"
+          onclick="manageControl('Audit retention')">
+          Manage →
+        </div>
+
+      </div>
+
+
+    </div>
+
+  </section>
+
+
+  <!-- ACCESS -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        ACCESS / 05
+      </div>
+
+      <h2 class="section-title">
+        Who can reach the system.
+      </h2>
+
+    </div>
+
+
+    <div class="access">
+
+
+      <div class="access-panel">
+
+        <h3>
+          Organizations
+        </h3>
+
+        <p>
+          Production houses are isolated by organization,
+          with their own members, productions, assets,
+          permissions and publishing boundaries.
+        </p>
+
+
+        <div class="access-list">
+
+          <div class="access-item">
+            <span>Active organizations</span>
+            <span>42</span>
+          </div>
+
+          <div class="access-item">
+            <span>Pending organizations</span>
+            <span>03</span>
+          </div>
+
+          <div class="access-item">
+            <span>Suspended</span>
+            <span>01</span>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="access-panel">
+
+        <h3>
+          Authority
+        </h3>
+
+        <p>
+          System authority is separated from creative
+          authority. Super users can govern the platform
+          without altering the creative decisions of a
+          production.
+        </p>
+
+
+        <div class="access-list">
+
+          <div class="access-item">
+            <span>Super administrators</span>
+            <span>04</span>
+          </div>
+
+          <div class="access-item">
+            <span>Production administrators</span>
+            <span>42</span>
+          </div>
+
+          <div class="access-item">
+            <span>Restricted accounts</span>
+            <span>07</span>
+          </div>
+
+        </div>
+
+      </div>
+
+
+    </div>
+
+  </section>
+
+
+  <!-- AUDIT -->
+
+  <section class="section">
+
+    <div class="section-head">
+
+      <div class="label">
+        AUDIT / 06
+      </div>
+
+      <h2 class="section-title">
+        Nothing important happens unseen.
+      </h2>
+
+    </div>
+
+
+    <div class="audit">
+
+
+      <div class="audit-row">
+
+        <div class="audit-time">
+          09:42 · TODAY
+        </div>
+
+        <div class="audit-event">
+          Organization policy updated
+        </div>
+
+        <div class="audit-user">
+          System Administrator
+        </div>
+
+        <div class="audit-level">
+          Governance
+        </div>
+
+      </div>
+
+
+      <div class="audit-row">
+
+        <div class="audit-time">
+          08:17 · TODAY
+        </div>
+
+        <div class="audit-event">
+          New production house created
+        </div>
+
+        <div class="audit-user">
+          Studio Administrator
+        </div>
+
+        <div class="audit-level">
+          Platform
+        </div>
+
+      </div>
+
+
+      <div class="audit-row">
+
+        <div class="audit-time">
+          22:31 · YESTERDAY
+        </div>
+
+        <div class="audit-event">
+          Release authority granted
+        </div>
+
+        <div class="audit-user">
+          Executive
+        </div>
+
+        <div class="audit-level">
+          Access
+        </div>
+
+      </div>
+
+
+      <div class="audit-row">
+
+        <div class="audit-time">
+          18:04 · YESTERDAY
+        </div>
+
+        <div class="audit-event">
+          Protected brand asset changed
+        </div>
+
+        <div class="audit-user">
+          Brand Administrator
+        </div>
+
+        <div class="audit-level">
+          Asset
+        </div>
+
+      </div>
+
+
+    </div>
+
+
+    <div class="cta">
+
+      <div>
+
+        <h2>
+          Govern without entering the edit.
+        </h2>
+
+        <p>
+          Platform authority stays separate from
+          the creative work itself.
+        </p>
+
+      </div>
+
+      <button
+        class="primary"
+        onclick="openGovernance()">
+        Open governance
+      </button>
+
+    </div>
+
+  </section>
+
+
+</div>
+
+
+<div class="bottom">
+
+  <div class="bottom-context">
+
+    <span>CINEFORGE</span>
+    <span>/</span>
+    <b>SUPER VIEW</b>
+
+  </div>
+
+
+  <div class="actions">
+
+    <button
+      class="secondary"
+      onclick="switchContext('Studio')">
+      Studio
+    </button>
+
+    <button
+      class="primary"
+      onclick="openGovernance()">
+      System governance
+    </button>
+
+  </div>
+
+</div>
+
+</main>
+
+
+<script>
+
+function switchContext(name){
+
+  alert(
+    "Context switch placeholder.\n\n" +
+    "Switching Cineforge to: " +
+    name +
+    "\n\n" +
+    "Existing production engines remain untouched."
+  );
+
+}
+
+
+function manageControl(control){
+
+  alert(
+    "Governance control placeholder.\n\n" +
+    "Control: " +
+    control +
+    "\n\n" +
+    "This interface will connect to the existing permission and governance engine."
+  );
+
+}
+
+
+function openGovernance(){
+
+  alert(
+    "System governance placeholder.\n\n" +
+    "The production engines remain unchanged."
+  );
+
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cineforge — Audience / The Audience Desk</title>
+<style>
+:root{
+  --ink:#10100f;
+  --paper:#f4f1ea;
+  --muted:#77736b;
+  --line:#cfc9bd;
+  --acid:#b7ff3c;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter,Arial,sans-serif;
+}
+button{font:inherit}
+
+.rail{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:82px;
+  border-right:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  background:rgba(244,241,234,.95);
+  z-index:5;
+}
+.logo{
+  font-weight:900;
+  letter-spacing:-.08em;
+  font-size:20px;
+  margin:25px 0 35px;
+}
+.rail a{
+  writing-mode:vertical-rl;
+  text-decoration:none;
+  color:var(--muted);
+  font-size:10px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  margin:18px 0;
+}
+.rail a.active{color:var(--ink)}
+.dot{
+  margin-top:auto;
+  margin-bottom:26px;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--acid);
+}
+
+main{
+  margin-left:82px;
+  min-height:100vh;
+}
+
+.top{
+  height:76px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 48px;
+}
+.crumb{
+  font:11px ui-monospace,monospace;
+  letter-spacing:.12em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+.top button{
+  border:1px solid var(--ink);
+  background:none;
+  padding:10px 16px;
+  text-transform:uppercase;
+  font-size:10px;
+  letter-spacing:.1em;
+}
+
+.hero{
+  padding:64px 7vw 52px;
+  border-bottom:1px solid var(--line);
+  display:grid;
+  grid-template-columns:1.55fr .8fr;
+  gap:70px;
+}
+.eyebrow{
+  font:10px ui-monospace,monospace;
+  letter-spacing:.16em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+.hero h1{
+  font-family:Georgia,serif;
+  font-weight:400;
+  font-size:clamp(60px,8vw,128px);
+  line-height:.84;
+  letter-spacing:-.07em;
+  margin:18px 0 28px;
+}
+.hero p{
+  max-width:650px;
+  font-size:17px;
+  line-height:1.6;
+  color:#4e4a44;
+}
+.signal{
+  align-self:end;
+  border-left:1px solid var(--line);
+  padding-left:30px;
+}
+.signal strong{
+  display:block;
+  font-family:Georgia,serif;
+  font-size:50px;
+  font-weight:400;
+  margin:10px 0;
+}
+.signal span{
+  font-size:11px;
+  color:var(--muted);
+}
+
+.content{
+  padding:42px 7vw 90px;
+}
+.sectionhead{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  margin-bottom:18px;
+}
+.sectionhead h2{
+  font-family:Georgia,serif;
+  font-weight:400;
+  font-size:34px;
+  margin:0;
+}
+.sectionhead span{
+  font:10px ui-monospace,monospace;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+
+.metrics{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--ink);
+  border-bottom:1px solid var(--line);
+}
+.metric{
+  padding:25px 20px 28px;
+  border-right:1px solid var(--line);
+}
+.metric:last-child{border:0}
+.metric label{
+  font-size:10px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+.metric strong{
+  display:block;
+  font-family:Georgia,serif;
+  font-size:36px;
+  font-weight:400;
+  margin:15px 0 7px;
+}
+.metric small{
+  font-size:11px;
+  color:#467400;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1.4fr .9fr;
+  gap:28px;
+  margin-top:48px;
+}
+.panel{
+  border-top:1px solid var(--ink);
+  padding-top:16px;
+}
+.panel h3{
+  font-family:Georgia,serif;
+  font-weight:400;
+  font-size:27px;
+  margin:0 0 23px;
+}
+
+.chart{
+  height:255px;
+  border-bottom:1px solid var(--line);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 61px,
+      rgba(16,16,15,.08) 62px
+    );
+}
+svg{
+  width:100%;
+  height:100%;
+}
+.axis{
+  display:flex;
+  justify-content:space-between;
+  margin-top:11px;
+  font:10px ui-monospace,monospace;
+  color:var(--muted);
+}
+
+.stat{
+  display:flex;
+  justify-content:space-between;
+  border-bottom:1px solid var(--line);
+  padding:17px 0;
+  font-size:12px;
+}
+.stat strong{font-weight:500}
+
+.audience-list{
+  border-top:1px solid var(--line);
+}
+.aud{
+  display:grid;
+  grid-template-columns:1.1fr .7fr .6fr .6fr;
+  gap:14px;
+  padding:17px 0;
+  border-bottom:1px solid var(--line);
+  font-size:12px;
+}
+.aud span{color:var(--muted)}
+.aud b{font-weight:500}
+
+.regions{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  border-top:1px solid var(--ink);
+  margin-top:50px;
+}
+.region{
+  padding:22px 20px 28px;
+  border-right:1px solid var(--line);
+  min-height:160px;
+}
+.region:last-child{border:0}
+.region h4{
+  font:10px ui-monospace,monospace;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  margin:0 0 16px;
+}
+.region strong{
+  font-family:Georgia,serif;
+  font-size:28px;
+  font-weight:400;
+}
+.region p{
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.6;
+  max-width:260px;
+}
+
+.actions{
+  position:sticky;
+  bottom:0;
+  border-top:1px solid var(--ink);
+  background:rgba(244,241,234,.95);
+  backdrop-filter:blur(12px);
+  padding:14px 7vw;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.actions span{
+  font:10px ui-monospace,monospace;
+  color:var(--muted);
+}
+.actions button{
+  border:1px solid var(--ink);
+  background:var(--ink);
+  color:var(--paper);
+  padding:12px 20px;
+  text-transform:uppercase;
+  font-size:10px;
+  letter-spacing:.12em;
+}
+.actions .secondary{
+  background:none;
+  color:var(--ink);
+  margin-right:8px;
+}
+
+@media(max-width:900px){
+  .hero,.grid{
+    grid-template-columns:1fr;
+  }
+  .metrics{
+    grid-template-columns:1fr 1fr;
+  }
+  .regions{
+    grid-template-columns:1fr;
+  }
+  .rail{
+    width:60px;
+  }
+  main{
+    margin-left:60px;
+  }
+  .top{
+    padding:0 25px;
+  }
+  .hero,.content{
+    padding-left:25px;
+    padding-right:25px;
+  }
+  .actions{
+    padding-left:25px;
+    padding-right:25px;
+  }
+}
+
+@media(max-width:560px){
+  .rail{
+    display:none;
+  }
+  main{
+    margin:0;
+  }
+  .metrics{
+    grid-template-columns:1fr;
+  }
+  .metric{
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+  .aud{
+    grid-template-columns:1fr .7fr;
+  }
+  .aud span:nth-child(2),
+  .aud span:nth-child(3){
+    display:none;
+  }
+  .aud b:nth-child(2),
+  .aud b:nth-child(3){
+    display:none;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<aside class="rail">
+
+  <div class="logo">CF</div>
+
+  <a href="#">Studio</a>
+  <a href="#">Production</a>
+  <a href="#" class="active">Audience</a>
+  <a href="#">Publishing</a>
+  <a href="#">Account</a>
+
+  <div class="dot"></div>
+
+</aside>
+
+<main>
+
+<header class="top">
+
+  <div class="crumb">
+    CINEFORGE / ANALYTICS / AUDIENCE
+  </div>
+
+  <button onclick="alert('Audience period selector')">
+    Current period · Sep 2026
+  </button>
+
+</header>
+
+
+<section class="hero">
+
+  <div>
+
+    <div class="eyebrow">
+      The Audience Desk · Reach & attention
+    </div>
+
+    <h1>
+      Know who<br>
+      is watching.
+    </h1>
+
+    <p>
+      Understand how stories travel — who discovers them,
+      where they stay, what they return to, and which
+      productions are building a lasting audience.
+    </p>
+
+  </div>
+
+  <div class="signal">
+
+    <div class="eyebrow">
+      Active audience
+    </div>
+
+    <strong>
+      284.6K
+    </strong>
+
+    <span>
+      Prototype figures · live audience connection
+      will replace these values.
+    </span>
+
+  </div>
+
+</section>
+
+
+<section class="content">
+
+<div class="sectionhead">
+  <h2>Audience position</h2>
+  <span>September · all channels</span>
+</div>
+
+
+<div class="metrics">
+
+  <div class="metric">
+    <label>Unique viewers</label>
+    <strong>284.6K</strong>
+    <small>↑ 21.8% vs Aug</small>
+  </div>
+
+  <div class="metric">
+    <label>Watch time</label>
+    <strong>1.84M</strong>
+    <small>↑ 17.3% vs Aug</small>
+  </div>
+
+  <div class="metric">
+    <label>Completion</label>
+    <strong>68.4%</strong>
+    <small>↑ 5.9 pts</small>
+  </div>
+
+  <div class="metric">
+    <label>Returning</label>
+    <strong>41.7%</strong>
+    <small>↑ 8.2 pts</small>
+  </div>
+
+</div>
+
+
+<div class="grid">
+
+<section class="panel">
+
+  <h3>Attention over time</h3>
+
+  <div class="chart">
+
+    <svg viewBox="0 0 900 255"
+         preserveAspectRatio="none">
+
+      <path
+        d="M0 218
+           C80 210 120 178 185 191
+           S295 142 355 157
+           S460 118 520 135
+           S620 73 690 96
+           S800 42 900 52"
+        fill="none"
+        stroke="#10100f"
+        stroke-width="2.5"/>
+
+      <path
+        d="M0 235
+           C90 225 135 215 200 221
+           S310 196 370 205
+           S475 184 540 191
+           S635 161 705 171
+           S815 142 900 149"
+        fill="none"
+        stroke="#77736b"
+        stroke-width="1.5"
+        stroke-dasharray="5 6"/>
+
+      <circle
+        cx="900"
+        cy="52"
+        r="5"
+        fill="#b7ff3c"
+        stroke="#10100f"
+        stroke-width="2"/>
+
+    </svg>
+
+  </div>
+
+  <div class="axis">
+    <span>APR</span>
+    <span>MAY</span>
+    <span>JUN</span>
+    <span>JUL</span>
+    <span>AUG</span>
+    <span>SEP</span>
+  </div>
+
+</section>
+
+
+<section class="panel">
+
+  <h3>Audience quality</h3>
+
+  <div class="stat">
+    <span>Average session</span>
+    <strong>18m 42s</strong>
+  </div>
+
+  <div class="stat">
+    <span>Episodes / session</span>
+    <strong>2.7</strong>
+  </div>
+
+  <div class="stat">
+    <span>First-time viewers</span>
+    <strong>58.3%</strong>
+  </div>
+
+  <div class="stat">
+    <span>Returning viewers</span>
+    <strong>41.7%</strong>
+  </div>
+
+  <div class="stat">
+    <span>Completion rate</span>
+    <strong>68.4%</strong>
+  </div>
+
+</section>
+
+</div>
+
+
+<div class="grid">
+
+<section class="panel">
+
+  <h3>What the audience is watching</h3>
+
+  <div class="audience-list">
+
+    <div class="aud">
+      <b>Northstar</b>
+      <span>Feature</span>
+      <span>92.4K</span>
+      <b>74%</b>
+    </div>
+
+    <div class="aud">
+      <b>Atlas — Season 01</b>
+      <span>Series</span>
+      <span>71.8K</span>
+      <b>81%</b>
+    </div>
+
+    <div class="aud">
+      <b>Meridian</b>
+      <span>Commercial</span>
+      <span>48.6K</span>
+      <b>63%</b>
+    </div>
+
+    <div class="aud">
+      <b>The Last Archive</b>
+      <span>Short</span>
+      <span>31.2K</span>
+      <b>59%</b>
+    </div>
+
+    <div class="aud">
+      <b>Field Notes</b>
+      <span>Documentary</span>
+      <span>18.7K</span>
+      <b>72%</b>
+    </div>
+
+  </div>
+
+</section>
+
+
+<section class="panel">
+
+  <h3>Discovery</h3>
+
+  <div class="stat">
+    <span>Direct / Cineforge</span>
+    <strong>36%</strong>
+  </div>
+
+  <div class="stat">
+    <span>Social</span>
+    <strong>28%</strong>
+  </div>
+
+  <div class="stat">
+    <span>Streaming partners</span>
+    <strong>21%</strong>
+  </div>
+
+  <div class="stat">
+    <span>Search</span>
+    <strong>9%</strong>
+  </div>
+
+  <div class="stat">
+    <span>Other</span>
+    <strong>6%</strong>
+  </div>
+
+</section>
+
+</div>
+
+
+<div class="regions">
+
+<article class="region">
+
+  <h4>01 · Europe</h4>
+
+  <strong>118.4K</strong>
+
+  <p>
+    Strongest returning audience. Series and documentary
+    viewing lead the region.
+  </p>
+
+</article>
+
+
+<article class="region">
+
+  <h4>02 · Africa</h4>
+
+  <strong>76.2K</strong>
+
+  <p>
+    Fastest audience growth this period, led by feature
+    and language-localised releases.
+  </p>
+
+</article>
+
+
+<article class="region">
+
+  <h4>03 · North America</h4>
+
+  <strong>54.8K</strong>
+
+  <p>
+    Highest average session value and strongest completion
+    for long-form productions.
+  </p>
+
+</article>
+
+</div>
+
+</section>
+
+
+<div class="actions">
+
+  <span>
+    AUDIENCE DESK · PROTOTYPE VIEW
+  </span>
+
+  <div>
+
+    <button
+      class="secondary"
+      onclick="alert('Export audience report')">
+      Export report
+    </button>
+
+    <button
+      onclick="alert('Open audience detail')">
+      Open audience map
+    </button>
+
+  </div>
+
+</div>
+
+</main>
+
+</body>
+</html>
