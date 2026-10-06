@@ -81,7 +81,17 @@ export function CreateStudio(props: CreateStudioProps) {
   const effectiveRes: Resolution = resolution ?? (isAdmin ? "1080p" : DEFAULT_RES[tier]);
   const resAllowed = (r: Resolution) => isAdmin || resolutionAllowed(r, tier);
 
-  const estMs = useMemo(() => estimateMs(modelId, seconds), [modelId, seconds]);
+  // Never offer or run more than the plan allows (the worker clamps anyway).
+  // When the ceiling sits below every preset (Free on Create Film), the
+  // ceiling itself becomes the option.
+  const durations =
+    maxSec < Math.min(...props.durations.map((d) => d.value))
+      ? [{ label: `${fmtDuration(maxSec)} · plan max`, value: maxSec }, ...props.durations]
+      : props.durations;
+  const allowedMax = Math.max(...durations.filter((d) => d.value <= maxSec).map((d) => d.value));
+  const effSeconds = seconds <= maxSec ? seconds : allowedMax;
+
+  const estMs = useMemo(() => estimateMs(modelId, effSeconds), [modelId, effSeconds]);
   // One serialized GPU: wall-clock ≈ total GPU time + assembly overhead.
   const readyEstimate = fmtDuration(Math.round(estMs / 1000) + 60);
   const model = MODELS.find((m) => m.id === modelId);
@@ -90,7 +100,7 @@ export function CreateStudio(props: CreateStudioProps) {
   const noun = production.toLowerCase();
 
   function onCreate() {
-    void run({ prompt, modelId, targetSeconds: seconds, resolution: effectiveRes });
+    void run({ prompt, modelId, targetSeconds: effSeconds, resolution: effectiveRes });
   }
 
   const body = (
@@ -128,16 +138,16 @@ export function CreateStudio(props: CreateStudioProps) {
               </Control>
             )}
 
-            <Control name={props.kind === "series" ? "Total runtime" : "Length"} value={fmtDuration(seconds)}>
+            <Control name={props.kind === "series" ? "Total runtime" : "Length"} value={fmtDuration(effSeconds)}>
               <div className="flex flex-wrap gap-1.5">
-                {props.durations.map((d) => {
+                {durations.map((d) => {
                   const locked = d.value > maxSec;
                   return (
                     <button
                       key={d.value}
                       type="button"
                       className="cf-option"
-                      aria-pressed={seconds === d.value}
+                      aria-pressed={effSeconds === d.value}
                       disabled={locked}
                       title={locked ? "Longer productions need a higher plan — see Plans & Credits" : undefined}
                       onClick={() => setSeconds(d.value)}
@@ -148,6 +158,11 @@ export function CreateStudio(props: CreateStudioProps) {
                   );
                 })}
               </div>
+              {maxSec < Math.max(...durations.map((d) => d.value)) && (
+                <p className="cf-label mt-2.5 leading-relaxed">
+                  Your {isAdmin ? "" : tier.toLowerCase() + " "}plan runs up to {fmtDuration(maxSec)} — longer lengths open on higher plans.
+                </p>
+              )}
             </Control>
 
             <Control name="Quality" value={quality}>
@@ -201,7 +216,7 @@ export function CreateStudio(props: CreateStudioProps) {
           <SpecList
             rows={[
               ["Production", production],
-              ["Runtime", fmtDuration(seconds)],
+              ["Runtime", fmtDuration(effSeconds)],
               ["Quality", `${quality} · ${model?.name ?? modelId}`],
               ["Format", effectiveRes],
               ...(props.platforms ? ([["Aspect", props.platforms.find((p) => p.id === platform)?.aspect ?? "16:9"]] as [string, string][]) : []),

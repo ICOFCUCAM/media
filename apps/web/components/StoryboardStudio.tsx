@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { fmtDuration } from "../lib/system";
+import { MAX_FILM_SEC } from "../lib/plans";
 import {
   draftScenesFromBrief,
   newDraft,
@@ -70,8 +71,10 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
 
   // Live = persist to Supabase + Realtime. Otherwise everything runs locally as
   // a preview (no account needed) so the full flow is usable on the deploy.
-  const { enabled, user } = useAuth();
+  const { enabled, user, profile } = useAuth();
   const live = enabled && !!user;
+  // The worker refuses storyboards longer than the plan's ceiling — warn first.
+  const planCap = profile ? (profile.role === "ADMIN" ? Number.MAX_SAFE_INTEGER : MAX_FILM_SEC[profile.tier]) : null;
   const [anchors, setAnchors] = useState<Anchors>({ characters: [], worlds: [] });
 
   const totalSeconds = useMemo(() => scenes.reduce((s, d) => s + d.durationSec, 0), [scenes]);
@@ -387,6 +390,12 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
               </div>
             )}
             {scenes.length > 0 && !allReady && <p className="cf-label mt-3 leading-relaxed">Assembly opens once every scene is ready.</p>}
+            {live && planCap !== null && totalSeconds > planCap && (
+              <p role="status" className="mt-3 border-l-2 border-cf-warn pl-3 text-[12px] leading-relaxed text-cf-warn">
+                This board runs {fmtDuration(totalSeconds)}; your {profile!.tier.toLowerCase()} plan allows {fmtDuration(planCap)}. Shorten clips or remove scenes — the
+                studio won&apos;t generate past the ceiling.
+              </p>
+            )}
           </div>
         </div>
 
