@@ -70,6 +70,7 @@ export class HunyuanAdapter implements VideoModelAdapter {
       width: out.width,
       height: out.height,
       durationSec: out.durationSec,
+      timing: out.timing,
     };
   }
 

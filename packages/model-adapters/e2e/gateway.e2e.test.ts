@@ -14,6 +14,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { classifyVideoResult, syncPolicy } from "@cineforge/shared";
 
 import {
   GatewayAdmin,
@@ -160,6 +161,13 @@ describe.runIf(RUN)("Media Runtime Gateway — end-to-end acceptance (enforce)",
     );
     expect(out.videoKey).toMatch(new RegExp(`^projects/${JOB.projectId}/video/g_[0-9a-f-]+\\.mp4$`));
     expect(objects.objects.get(out.videoKey)!.length).toBeGreaterThan(0);
+    // docs/38 §AV.5: the worker measured what it produced; Cineforge judges it.
+    const decision = classifyVideoResult({
+      timing: out.timing,
+      request: { durationUs: 1_000_000n, fps: { num: 8, den: 1 } },
+      policy: syncPolicy("cinematic"),
+    });
+    expect(decision).toMatchObject({ outcome: "ACCEPTED", actualDurationUs: 1_000_000n });
     const grant = [...store.grants.values()].find((g) => g.outputKeys.includes(out.videoKey))!;
     expect(grant).toMatchObject({ outcome: "completed", deploymentId: DEPLOYMENT, shotId: JOB.shotId, projectId: JOB.projectId, imageRef: IMAGE, mode: "enforce" });
     expect(grant.inputKeys).toEqual([`projects/${JOB.projectId}/seeds/s1.png`]);

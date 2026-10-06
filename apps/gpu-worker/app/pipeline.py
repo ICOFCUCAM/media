@@ -147,9 +147,13 @@ class VideoPipeline:
             return 0
 
     def capabilities(self) -> dict:
+        # `limits`: the workload caps this worker applies (docs/38 §AV.5 — a cap
+        # that shortens a clip must be visible, so Cineforge can refuse a request
+        # instead of paying for a re-timed result). None when nothing is capped.
+        limits = runtime_limits() if self.is_real else None
         if self.model_name == "hunyuan":
-            return {"model": "hunyuan", "maxDuration": 5, "resolutions": [[1280, 720], [1920, 1080]], "supportsRefImage": True, "supportsRefVideo": True, "supportsLora": True}
-        return {"model": "wan-2.1", "maxDuration": 5, "resolutions": [[832, 480], [1280, 720]], "supportsRefImage": True, "supportsRefVideo": True, "supportsLora": True}
+            return {"model": "hunyuan", "maxDuration": 5, "resolutions": [[1280, 720], [1920, 1080]], "supportsRefImage": True, "supportsRefVideo": True, "supportsLora": True, "limits": limits}
+        return {"model": "wan-2.1", "maxDuration": 5, "resolutions": [[832, 480], [1280, 720]], "supportsRefImage": True, "supportsRefVideo": True, "supportsLora": True, "limits": limits}
 
     def generate(
         self,
@@ -208,11 +212,12 @@ class VideoPipeline:
         # Cap the per-shot workload (all env-tunable) so a clip renders in a
         # practical time on one GPU. The worker's ~80 frames x 30 steps takes many
         # minutes per clip; these defaults bring it to ~1 min. Raise for quality.
-        width = min(width, int(os.environ.get("WAN_MAX_WIDTH", "832")))
-        height = min(height, int(os.environ.get("WAN_MAX_HEIGHT", "480")))
-        num_frames = min(num_frames, int(os.environ.get("WAN_MAX_FRAMES", "25")))
+        caps = runtime_limits()
+        width = min(width, caps["maxWidth"])
+        height = min(height, caps["maxHeight"])
+        num_frames = min(num_frames, caps["maxFrames"])
         gen = torch.Generator(device="cuda").manual_seed(int(seed))
-        steps = min(int((extra or {}).get("steps", 30)), int(os.environ.get("WAN_MAX_STEPS", "20")))
+        steps = min(int((extra or {}).get("steps", 30)), caps["maxSteps"])
         guidance = float((extra or {}).get("guidance", 5.0))
 
         call = {
@@ -343,6 +348,17 @@ class VideoPipeline:
             capture_output=True,
         )
         return out, None
+
+
+def runtime_limits(env: dict | None = None) -> dict:
+    """Per-shot workload caps applied by the real pipeline (env-tunable)."""
+    env = os.environ if env is None else env
+    return {
+        "maxWidth": int(env.get("WAN_MAX_WIDTH", "832")),
+        "maxHeight": int(env.get("WAN_MAX_HEIGHT", "480")),
+        "maxFrames": int(env.get("WAN_MAX_FRAMES", "25")),
+        "maxSteps": int(env.get("WAN_MAX_STEPS", "20")),
+    }
 
 
 def _san(text: str) -> str:

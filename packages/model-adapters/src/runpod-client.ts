@@ -55,6 +55,11 @@ export interface GpuGenerateOutput {
   height: number;
   durationSec: number;
   videoBytes?: number;
+  /**
+   * What the worker actually produced, measured from the file (docs/38 §AV.5).
+   * Raw wire JSON: Cineforge parses and judges it; absent on older images.
+   */
+  timing?: unknown;
 }
 
 export class RunpodClient {
@@ -120,6 +125,17 @@ export class RunpodClient {
       return (await res.json()) as { status: string; modelLoaded: boolean };
     } catch {
       return { status: "down", modelLoaded: false };
+    }
+  }
+
+  /** The worker's runtime identity: model, revisions, gateway mode, source commit, code digest. */
+  async capabilities(): Promise<Record<string, unknown> | null> {
+    const base = this.url();
+    try {
+      const res = await fetch(`${base}/capabilities`, { headers: await this.authHeaders(base, "/capabilities", "status") });
+      return res.ok ? ((await res.json()) as Record<string, unknown>) : null;
+    } catch {
+      return null;
     }
   }
 
