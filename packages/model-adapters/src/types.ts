@@ -67,7 +67,14 @@ export interface ShotResult {
   gpuMs: number;
   width: number;
   height: number;
+  /** The requested duration. What was produced is in `timing`. */
   durationSec: number;
+  /**
+   * The runtime's timing report as received (docs/38 §AV.5) — parse and judge
+   * it with classifyVideoResult (@cineforge/shared). Undefined when the
+   * runtime does not report one, which Cineforge treats as TIMING_REPORT_MISSING.
+   */
+  timing?: unknown;
 }
 
 export interface ModelCapabilities {
