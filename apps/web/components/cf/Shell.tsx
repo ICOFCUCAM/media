@@ -276,6 +276,8 @@ function Account() {
 /* ── Mobile index ─────────────────────────────────────────────── */
 
 function Drawer({ sections, pathname, onClose }: { sections: NavSection[]; pathname: string; onClose: () => void }) {
+  const { role, setRole } = useRole();
+  const { profile } = useAuth();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -311,6 +313,28 @@ function Drawer({ sections, pathname, onClose }: { sections: NavSection[]; pathn
             </div>
           ))}
         </nav>
+        <div className="mt-auto border-t border-cf-line px-5 py-5">
+          {profile && (
+            <Link href="/pricing" className="mb-4 flex items-center justify-between border border-cf-line px-3 py-3">
+              <span className="cf-label">Credits · {profile.tier}</span>
+              <span className="font-mono text-[11px]">{msToCredits(profile.creditsMs).toLocaleString()}</span>
+            </Link>
+          )}
+          <div className="cf-label pb-2">Viewing as</div>
+          <div className="grid grid-cols-3 border border-cf-line" role="group" aria-label="Viewing as">
+            {ROLES.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setRole(r.id as Role)}
+                aria-pressed={role === r.id}
+                className={`py-2.5 font-mono text-[9px] uppercase tracking-[0.08em] ${role === r.id ? "bg-cf-inverse text-cf-on-inverse" : "text-cf-muted"}`}
+              >
+                {r.id === "owner" ? "Studio" : r.id === "admin" ? "Super" : "Creator"}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <button type="button" aria-label="Close the studio index" className="flex-1 bg-black/50" onClick={onClose} />
     </div>
