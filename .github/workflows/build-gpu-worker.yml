@@ -51,6 +51,7 @@ jobs:
           printf '%s' "$token" | docker login -u "$user" --password-stdin
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v6
         with:
           # Context = the gpu-worker dir, since the Dockerfile COPYs
@@ -59,11 +60,19 @@ jobs:
           file: apps/gpu-worker/Dockerfile
           platforms: linux/amd64
           push: true
+          build-args: |
+            SOURCE_COMMIT=${{ github.sha }}
           # Every build also gets an immutable `sha-<commit>` tag (docs/39 rollout
           # R0): pin the RunPod pod to it so a merge never reaches production
           # until the pod's image tag is changed on purpose.
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/cineforge-gpu:${{ inputs.tag || 'latest' }}
             ${{ secrets.DOCKERHUB_USERNAME }}/cineforge-gpu:sha-${{ github.sha }}
+
+      # The immutable reference to approve and pin (docs/39): repo@sha256:<digest>.
+      - name: Record image digest
+        run: |
+          echo "### GPU worker image" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pin and approve: \`cineforge-gpu@${{ steps.build.outputs.digest }}\` (source ${{ github.sha }})" >> "$GITHUB_STEP_SUMMARY"
 
 # re-run trigger

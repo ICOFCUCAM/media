@@ -28,7 +28,7 @@ from typing import Callable
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from .gateway import (
     AUTHZ_VERSION,
@@ -42,11 +42,21 @@ from .gateway import (
 )
 from .gateway.authz import TimingRequest
 from .gateway.manifest import PLACEHOLDER
+from .media_io import put_file, storage_credentials_present
 from .pipeline import VideoPipeline, upload_clip
 
 MODEL_NAME = os.environ.get("MODEL_NAME", "wan-2.1")  # "wan-2.1" | "hunyuan"
 
 log = logging.getLogger("cineforge.gateway")
+
+
+class OutputTarget(BaseModel):
+    """Where Cineforge has decided the outputs go (one-time upload URLs, docs/39)."""
+
+    videoKey: str
+    videoUploadUrl: str
+    thumbnailKey: str | None = None
+    thumbnailUploadUrl: str | None = None
 
 
 class GenerateInput(BaseModel):
@@ -67,6 +77,12 @@ class GenerateInput(BaseModel):
     loraKeys: list[str] | None = None
     camera: dict | None = None
     extra: dict | None = None
+    # One-time presigned URLs: input key → GET URL, and the output targets.
+    inputUrls: dict[str, str] | None = None
+    output: OutputTarget | None = None
+
+    def input_keys(self) -> list[str]:
+        return list(dict.fromkeys([*(self.referenceImageKeys or []), *(self.referenceVideoKeys or []), *(self.loraKeys or [])]))
 
 
 class GenerateOutput(BaseModel):
@@ -77,6 +93,7 @@ class GenerateOutput(BaseModel):
     width: int
     height: int
     durationSec: float
+    videoBytes: int | None = None
 
 
 class RuntimeIdentity:
@@ -149,6 +166,7 @@ def create_app(
     config: GatewayConfig | None = None,
     pipeline=None,
     uploader=upload_clip,
+    put=put_file,
     resolve_weights: Callable[[ModelSpec], str | None] = resolve_weights_digest,
 ) -> FastAPI:
     config = config or GatewayConfig.from_env()
@@ -183,6 +201,10 @@ def create_app(
         unpinned = [f"{s.role}:{s.repo_id}" for s in identity.specs().values() if not s.pinned]
         if config.enforcing and problems:
             raise GatewayConfigError("; ".join(problems))
+        # No permanent storage credentials on an enforcing GPU worker (docs/39 §3.2).
+        creds = storage_credentials_present()
+        if config.enforcing and creds:
+            raise GatewayConfigError(f"storage credentials present in enforce mode: {', '.join(creds)}")
         for p in problems:
             log.warning('{"event":"gateway.config","problem":%r}', p)
         # Load weights once; keep the model warm in memory.
@@ -219,6 +241,9 @@ def create_app(
             "deploymentId": config.deployment_id or None,
             "gatewayMode": config.mode,
             "manifest": identity.manifest(),
+            # Status information only. The authoritative running-image digest
+            # comes from the provider's control plane, never from the pod.
+            "image": {"sourceCommit": os.environ.get("CINEFORGE_SOURCE_COMMIT") or None},
         }
 
     @app.post("/warm")
@@ -228,7 +253,15 @@ def create_app(
         return {"modelLoaded": pipeline.is_loaded}
 
     @app.post("/generate", response_model=GenerateOutput)
-    async def generate(request: Request, inp: GenerateInput) -> GenerateOutput:
+    async def generate(request: Request) -> GenerateOutput:
+        # Authenticate before parsing: an unauthenticated caller gets 401, never
+        # a validation error that describes the request schema.
+        raw = await request.body()
+        try:
+            inp = GenerateInput.model_validate_json(raw)
+        except ValidationError:
+            await guard(request, RequestBinding(scope="video:run"))
+            raise HTTPException(status_code=422, detail={"error": "INVALID_REQUEST"}) from None
         authz, authz_error = identity.expected_authz(inp)
         fields = inp.model_fields_set
         await guard(
@@ -239,7 +272,12 @@ def create_app(
                 authz=authz,
                 authz_error=authz_error,
                 # Timing is part of the production request, never a silent default.
-                checks=[("TIMING_MISSING", {"durationSec", "fps", "width", "height"} <= fields)],
+                checks=[
+                    ("TIMING_MISSING", {"durationSec", "fps", "width", "height"} <= fields),
+                    # Enforce mode: all I/O goes through the job's one-time URLs.
+                    ("OUTPUT_TARGET_MISSING", inp.output is not None or not config.enforcing),
+                    ("INPUT_URL_MISSING", not config.enforcing or set(inp.input_keys()) <= set((inp.inputUrls or {}).keys())),
+                ],
             ),
         )
         return await run_in_threadpool(_generate, inp)
@@ -265,9 +303,41 @@ def create_app(
                 lora_keys=inp.loraKeys or [],
                 camera=inp.camera or {},
                 extra=inp.extra or {},
+                input_urls=inp.inputUrls,
+                legacy_fallback=not config.enforcing,
             )
 
         gpu_ms = int((time.monotonic() - started) * 1000)
+
+        if inp.output is not None:
+            # Cineforge chose the keys; write only there, through one-time URLs.
+            try:
+                size = put(inp.output.videoUploadUrl, local_mp4, "video/mp4")
+            except Exception as e:  # noqa: BLE001
+                if config.enforcing:
+                    raise
+                # Report mode: never let the new path break generation; the
+                # legacy write below is recorded by Cineforge as unverified.
+                log.warning('{"event":"gateway.io_fallback","direction":"output","error":%r}', type(e).__name__)
+                size = None
+            thumb_key = None
+            if size is not None and thumb and inp.output.thumbnailUploadUrl and inp.output.thumbnailKey:
+                try:
+                    put(inp.output.thumbnailUploadUrl, thumb, "image/jpeg")
+                    thumb_key = inp.output.thumbnailKey
+                except Exception:  # noqa: BLE001
+                    thumb_key = None
+        if inp.output is not None and size is not None:
+            return GenerateOutput(
+                videoKey=inp.output.videoKey,
+                thumbnailKey=thumb_key,
+                seed=seed,
+                gpuMs=gpu_ms,
+                width=inp.width,
+                height=inp.height,
+                durationSec=inp.durationSec,
+                videoBytes=size,
+            )
 
         key = f"_generated/{pipeline.model_name}/{uuid.uuid4().hex}.mp4"
         thumb_key = uploader(local_mp4, key, thumb)

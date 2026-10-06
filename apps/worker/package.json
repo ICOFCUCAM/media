@@ -9,7 +9,8 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vitest run"
+    "test": "vitest run",
+    "gateway:admin": "tsx src/gateway/admin-cli.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

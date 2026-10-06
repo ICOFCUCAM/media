@@ -1,0 +1,8 @@
+{
+  "publicKey": "kfix:6kpsY-KcUgq-9VB7Ey7F-ZVHdq6-vnuSQh7qaRRG0iw",
+  "deploymentId": "dep-fixture",
+  "now": 1800000000,
+  "body": "{\"jobId\":\"g_fixture\",\"prompt\":\"a lighthouse at dusk\",\"durationSec\":5,\"width\":832,\"height\":480,\"fps\":16}",
+  "authz": "07d602c7d909cf6fdfa2ca4c84469320aee4d651d4e81ab0b752d957e8754084",
+  "token": "eyJhbGciOiJFZERTQSIsImtpZCI6ImtmaXgiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJjaW5lZm9yZ2Utd29ya2VyIiwiYXVkIjoiZGVwLWZpeHR1cmUiLCJzdWIiOiJnX2ZpeHR1cmUiLCJzY29wZSI6InZpZGVvOnJ1biIsImp0aSI6Imp0aS1maXh0dXJlIiwiaWF0IjoxODAwMDAwMDAwLCJleHAiOjE4MDAwMDAxMjAsImJoIjoiMTJlNWQzOTgyMDAwZjVhMjNkYjgyYmI0ZWNkYzAzZGZlY2EyOWZjNzk2YTBlZjkzMjA4YTY4YWI3ZDBiMWJjNyIsImF1dGh6IjoiMDdkNjAyYzdkOTA5Y2Y2ZmRmYTJjYTRjODQ0NjkzMjBhZWU0ZDY1MWQ0ZTgxYWIwYjc1MmQ5NTdlODc1NDA4NCJ9.DK1apI6gHMV2qV2NkUOZ4XOnugGT14OanMDYWqOwzmvoenrEPrqWUugssZVbZrbP7Qo3I9w7kIKd5dxbjxdnDA"
+}

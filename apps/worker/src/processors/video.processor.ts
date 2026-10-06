@@ -19,11 +19,12 @@ import {
   type StatePatch,
   type SceneBridge,
 } from "@cineforge/shared";
-import { buildClusterRegistry, buildOpenAIProviders, MODEL_VERSIONS, type ShotRequest } from "@cineforge/model-adapters";
+import { buildClusterRegistry, buildOpenAIProviders, MODEL_VERSIONS, type JobContext, type ShotRequest } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
 import { realtime } from "../realtime";
 import { S3Storage } from "../storage/storage";
 import { enqueueLora } from "../orchestration/lora-queue";
+import { buildGatewayAuthority } from "../gateway";
 
 // Bytes uploader for provider adapters (OpenAI seed frames).
 const storage = new S3Storage();
@@ -68,6 +69,10 @@ const registry = buildClusterRegistry(
     resolveVideoUrl: assetBase ? async (key: string) => `${assetBase}/${key}` : undefined,
     // Reference clip for video-to-video — fal needs it on its own CDN.
     getVideoBytes: async (key: string) => ({ bytes: await storage.getBytes(key), contentType: "video/mp4" }),
+    // Media Runtime Gateway (docs/39): every self-hosted GPU call is authorized,
+    // signed, deployment-bound and audited. Report mode unless an operator
+    // explicitly enforces a deployment.
+    gpuAuthorizer: buildGatewayAuthority(),
     // Mirror finished external clips into our storage.
     saveVideo: (key, bytes, contentType) => storage.putBytes(key, bytes, contentType),
     // fal uploads the seed still to its own CDN (our bucket is private).
@@ -173,6 +178,15 @@ function buildShotRequest(
     motionStrength: refVideo ? 0.7 : undefined,
     loraKeys: loraKeys.length ? loraKeys : undefined,
   };
+}
+
+/** The job as the database sees it right now — what the GPU gateway authorizes (docs/39). */
+async function jobContext(shotId: string, modelId: string): Promise<JobContext> {
+  const row = await prisma.shot.findUniqueOrThrow({
+    where: { id: shotId },
+    select: { status: true, scene: { select: { projectId: true, project: { select: { status: true } } } } },
+  });
+  return { shotId, projectId: row.scene.projectId, shotStatus: row.status, projectStatus: row.scene.project.status, modelId };
 }
 
 // Web-only markers from the preview UI — not real storage keys.
@@ -282,7 +296,10 @@ export const videoWorker = new Worker<VideoJob>(
     // Continuity: inherit prior scenes into the prompt + reuse the same character
     // reference frames so identity is locked pixel-level (docs/28).
     const { preamble, referenceImageKeys, loraKeys } = await resolveContinuity(shot);
-    const result = await adapter.generate(buildShotRequest(shot, seedKey, preamble, referenceImageKeys, loraKeys));
+    const request = buildShotRequest(shot, seedKey, preamble, referenceImageKeys, loraKeys);
+    // Job authorization reads the job's state fresh, immediately before dispatch.
+    request.job = await jobContext(shotId, adapter.id);
+    const result = await adapter.generate(request);
 
     // QC gate (docs/09) omitted here; on failure throw to trigger retry.
 

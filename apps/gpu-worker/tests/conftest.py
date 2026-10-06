@@ -26,6 +26,15 @@ def raw_pub_b64(priv: Ed25519PrivateKey) -> str:
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
 
 
+@pytest.fixture(autouse=True)
+def _no_storage_credentials(monkeypatch):
+    # Enforce mode refuses to start with storage credentials in the env.
+    from app.media_io import STORAGE_CREDENTIAL_ENV
+
+    for k in STORAGE_CREDENTIAL_ENV:
+        monkeypatch.delenv(k, raising=False)
+
+
 @pytest.fixture(scope="session")
 def signing_key() -> Ed25519PrivateKey:
     return Ed25519PrivateKey.generate()
@@ -104,12 +113,31 @@ def fake_weights(spec) -> str:
     return hashlib.sha256(f"{spec.repo_id}@{spec.revision}".encode()).hexdigest()
 
 
-def build_client(signing_key, *, mode="enforce", pipeline=None, deployment=DEPLOYMENT):
+class FakeStore:
+    """Records uploads made through one-time URLs (and legacy direct writes)."""
+
+    def __init__(self) -> None:
+        self.puts: list[tuple[str, str]] = []
+        self.legacy: list[str] = []
+
+    def put(self, url: str, local: str, content_type: str) -> int:
+        self.puts.append((url, content_type))
+        return 4321
+
+    def legacy_upload(self, local, key, thumb):
+        self.legacy.append(key)
+        return None
+
+
+def build_client(signing_key, *, mode="enforce", pipeline=None, deployment=DEPLOYMENT, store=None):
     pipeline = pipeline or FakePipeline()
+    store = store or FakeStore()
     app = create_app(
         config=make_config(signing_key, mode=mode, deployment=deployment),
         pipeline=pipeline,
-        uploader=lambda local, key, thumb: None,
+        uploader=store.legacy_upload,
+        put=store.put,
         resolve_weights=fake_weights,
     )
+    app.state.fake_store = store
     return TestClient(app), pipeline, app

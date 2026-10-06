@@ -1,11 +1,18 @@
 /**
  * Thin client for a self-hosted GPU worker running on RunPod (A40 48GB).
  *
- * Works against either a RunPod Serverless endpoint or an on-demand pod that
- * exposes the gpu-worker FastAPI service (see apps/gpu-worker). The worker runs
- * inference, uploads the clip to S3, and returns the S3 key + measured gpuMs —
- * so we never pay per-generation vendor fees, only GPU-seconds.
+ * Works against an on-demand pod that exposes the gpu-worker FastAPI service
+ * (see apps/gpu-worker). The worker runs inference, writes the clip, and
+ * returns its key + measured gpuMs — so we never pay per-generation vendor
+ * fees, only GPU-seconds.
+ *
+ * Every call goes through the Media Runtime Gateway when an authorizer is
+ * configured (docs/39): it chooses the deployment-bound, body-bound execution
+ * token and, for generation, the one-time storage URLs and output keys. The
+ * RunPod account API key is never sent to a pod.
  */
+import type { GpuCallAuthorizer, GrantHandle } from "./gateway/authority";
+import type { JobContext } from "./gateway/types";
 
 export interface RunpodClientOptions {
   /** Base URL of the gpu-worker service (serverless endpoint or pod). */
@@ -16,7 +23,8 @@ export interface RunpodClientOptions {
    * different worker in the pool (round-robin / least-loaded).
    */
   resolveBaseUrl?: () => string;
-  apiKey?: string; // RunPod token when calling the serverless API
+  /** Media Runtime Gateway authority (apps/worker wires it). */
+  authorizer?: GpuCallAuthorizer;
   timeoutMs?: number;
 }
 
@@ -45,6 +53,7 @@ export interface GpuGenerateOutput {
   width: number;
   height: number;
   durationSec: number;
+  videoBytes?: number;
 }
 
 export class RunpodClient {
@@ -59,39 +68,62 @@ export class RunpodClient {
     return this.opts.resolveBaseUrl ? this.opts.resolveBaseUrl() : this.opts.baseUrl!;
   }
 
-  private headers(): Record<string, string> {
-    const h: Record<string, string> = { "content-type": "application/json" };
-    if (this.opts.apiKey) h["authorization"] = `Bearer ${this.opts.apiKey}`;
-    return h;
-  }
-
-  async generate(input: GpuGenerateInput, signal?: AbortSignal): Promise<GpuGenerateOutput> {
+  async generate(input: GpuGenerateInput, signal?: AbortSignal, job?: JobContext): Promise<GpuGenerateOutput> {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), this.opts.timeoutMs ?? 15 * 60_000);
     if (signal) signal.addEventListener("abort", () => ctrl.abort());
+    const base = this.url();
+    let grant: GrantHandle | null = null;
     try {
-      const res = await fetch(`${this.url()}/generate`, {
+      let body = JSON.stringify(input);
+      let auth: Record<string, string> = {};
+      if (this.opts.authorizer) {
+        const prepared = await this.opts.authorizer.prepare({ baseUrl: base, path: "/generate", scope: "video:run", payload: { ...input }, job });
+        body = prepared.body ?? body;
+        auth = prepared.headers;
+        grant = prepared.grant;
+      }
+      const res = await fetch(`${base}/generate`, {
         method: "POST",
-        headers: this.headers(),
-        body: JSON.stringify(input),
+        headers: { "content-type": "application/json", ...auth },
+        body,
         signal: ctrl.signal,
       });
       if (!res.ok) {
-        throw new Error(`gpu-worker /generate ${res.status}: ${await res.text()}`);
+        const text = await res.text();
+        await grant?.fail(`HTTP_${res.status}`);
+        throw new Error(`gpu-worker /generate ${res.status}: ${text}`);
       }
-      return (await res.json()) as GpuGenerateOutput;
+      const out = (await res.json()) as GpuGenerateOutput;
+      if (!grant) return out;
+      const verified = await grant.complete(out);
+      return { ...out, videoKey: verified.videoKey, thumbnailKey: verified.thumbnailKey ?? undefined };
+    } catch (e) {
+      if (grant && (e as Error)?.name === "AbortError") await grant.fail("ABORTED");
+      throw e;
     } finally {
       clearTimeout(t);
     }
   }
 
+  private async authHeaders(base: string, path: string, scope: "status" | "warm"): Promise<Record<string, string>> {
+    if (!this.opts.authorizer) return {};
+    return (await this.opts.authorizer.prepare({ baseUrl: base, path, scope })).headers;
+  }
+
   async health(): Promise<{ status: string; modelLoaded: boolean }> {
-    const res = await fetch(`${this.url()}/health`, { headers: this.headers() });
-    if (!res.ok) return { status: "down", modelLoaded: false };
-    return (await res.json()) as { status: string; modelLoaded: boolean };
+    const base = this.url();
+    try {
+      const res = await fetch(`${base}/health`, { headers: await this.authHeaders(base, "/health", "status") });
+      if (!res.ok) return { status: "down", modelLoaded: false };
+      return (await res.json()) as { status: string; modelLoaded: boolean };
+    } catch {
+      return { status: "down", modelLoaded: false };
+    }
   }
 
   async warm(): Promise<void> {
-    await fetch(`${this.url()}/warm`, { method: "POST", headers: this.headers() });
+    const base = this.url();
+    await fetch(`${base}/warm`, { method: "POST", headers: await this.authHeaders(base, "/warm", "warm") });
   }
 }

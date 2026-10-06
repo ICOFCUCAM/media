@@ -58,6 +58,14 @@ services:
         sync: false
       - key: RUNPOD_API_KEY
         sync: false
+      # Media Runtime Gateway (docs/39): signing key for GPU execution tokens,
+      # global mode floor (report|enforce) and upload URL kind (s3|supabase).
+      - key: GPU_JWT_SIGNING_KEY
+        sync: false
+      - key: GPU_GATEWAY_MODE
+        value: report
+      - key: GPU_UPLOAD_URL_MODE
+        value: s3
       # GPU auto start/stop (docs/23): pod sleeps when idle, wakes on work.
       - key: RUNPOD_WAN_POD_ID
         sync: false

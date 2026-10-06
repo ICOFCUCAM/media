@@ -1,5 +1,6 @@
 import { VideoModelAdapter, ModelCapabilities } from "./types";
 import { RunpodClient } from "./runpod-client";
+import type { GpuCallAuthorizer } from "./gateway/authority";
 import { WanAdapter } from "./wan/wan.adapter";
 import { HunyuanAdapter } from "./hunyuan/hunyuan.adapter";
 import { ExternalApiAdapter } from "./external/external.adapter";
@@ -37,6 +38,7 @@ export class ModelRegistry {
 export interface BuildRegistryEnv {
   WAN_GPU_URL: string;
   HUNYUAN_GPU_URL: string;
+  /** @deprecated Never sent to GPU pods (docs/39 F2); only the RunPod control API uses it. */
   RUNPOD_API_KEY?: string;
 }
 
@@ -45,8 +47,8 @@ export interface BuildRegistryEnv {
  * RunPod A40 48GB GPU workers.
  */
 export function buildDefaultRegistry(env: BuildRegistryEnv): ModelRegistry {
-  const wanGpu = new RunpodClient({ baseUrl: env.WAN_GPU_URL, apiKey: env.RUNPOD_API_KEY });
-  const hunyuanGpu = new RunpodClient({ baseUrl: env.HUNYUAN_GPU_URL, apiKey: env.RUNPOD_API_KEY });
+  const wanGpu = new RunpodClient({ baseUrl: env.WAN_GPU_URL });
+  const hunyuanGpu = new RunpodClient({ baseUrl: env.HUNYUAN_GPU_URL });
 
   return new ModelRegistry()
     .register(new WanAdapter(wanGpu))
@@ -65,6 +67,7 @@ export interface BuildClusterEnv {
   WAN_GPU_URL?: string;
   HUNYUAN_GPU_URLS?: string;
   HUNYUAN_GPU_URL?: string;
+  /** @deprecated Never sent to GPU pods (docs/39 F2); only the RunPod control API uses it. */
   RUNPOD_API_KEY?: string;
   /** Drop-in external provider (text/image-to-video). Keyless models stay self-hosted. */
   EXTERNAL_VIDEO_API_URL?: string;
@@ -95,6 +98,8 @@ export interface ExternalHooks {
   getImageBytes?: (key: string) => Promise<{ bytes: Uint8Array; contentType: string }>;
   /** Read a reference video's bytes for video-to-video conditioning. */
   getVideoBytes?: (key: string) => Promise<{ bytes: Uint8Array; contentType: string }>;
+  /** Media Runtime Gateway authority for self-hosted GPU workers (docs/39). */
+  gpuAuthorizer?: GpuCallAuthorizer;
 }
 
 /**
@@ -114,12 +119,12 @@ export function buildClusterRegistry(env: BuildClusterEnv, hooks: ExternalHooks 
   const registry = new ModelRegistry();
   if (wanUrls.length) {
     registry.register(
-      new WanAdapter(new RunpodClient({ resolveBaseUrl: roundRobin(wanUrls), apiKey: env.RUNPOD_API_KEY })),
+      new WanAdapter(new RunpodClient({ resolveBaseUrl: roundRobin(wanUrls), authorizer: hooks.gpuAuthorizer })),
     );
   }
   if (hunyuanUrls.length) {
     registry.register(
-      new HunyuanAdapter(new RunpodClient({ resolveBaseUrl: roundRobin(hunyuanUrls), apiKey: env.RUNPOD_API_KEY })),
+      new HunyuanAdapter(new RunpodClient({ resolveBaseUrl: roundRobin(hunyuanUrls), authorizer: hooks.gpuAuthorizer })),
     );
   }
   if (env.FAL_KEY && hooks.saveVideo) {
