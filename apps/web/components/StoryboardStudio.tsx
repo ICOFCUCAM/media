@@ -213,8 +213,10 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
   }
 
   function onGenerateImage(key: string) {
-    // Labeled stub — no image provider wired yet. Records an image source with a
-    // synthetic seed so the image→video path is exercised end to end.
+    // Marks the scene image→video with no uploaded still: persistScene stores no
+    // seed key, and the render worker's resolveSeedKey paints one from the
+    // prompt (GPT-image-1) when the shot generates — or falls back to
+    // text→video when no image provider is configured.
     patch(key, { source: "image", seedKey: `generated:${key}`, seedUrl: null });
     onSaveScene(key);
   }
@@ -583,10 +585,14 @@ function SceneCard({
                 <button
                   type="button"
                   onClick={onGenerateImage}
-                  title="No image provider is wired yet — this records a placeholder seed so the image→video path runs end to end."
+                  title={
+                    live
+                      ? "The render worker paints this scene's seed frame from its prompt (GPT-image-1) when the shot generates; without an image provider it falls back to text-to-video."
+                      : "Preview: the seed frame is painted only when a signed-in run reaches the render worker."
+                  }
                   className="cf-option"
                 >
-                  AI seed · placeholder
+                  AI seed frame
                 </button>
               </div>
             )}
@@ -749,7 +755,7 @@ function SeedPreview({ scene: s }: { scene: SceneDraft }) {
     return <img src={s.seedUrl} alt={`Seed frame for scene ${s.index + 1}`} className="aspect-video w-full object-cover" />;
   }
   if (s.seedKey) {
-    const label = s.seedKey.startsWith("generated:") ? "AI seed · placeholder" : s.seedKey.startsWith("ref:") ? s.seedKey.slice(4) : "Seed frame";
+    const label = s.seedKey.startsWith("generated:") ? "AI seed · painted at render" : s.seedKey.startsWith("ref:") ? s.seedKey.slice(4) : "Seed frame";
     return (
       <div className={`${frame} bg-cf-panel`}>
         <span className="cf-label">{label}</span>
