@@ -14,13 +14,16 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Image tag"
+        description: "Extra tag (e.g. candidate-3f37433). Leave empty for sha-<commit> only. 'latest' is a deliberate promotion."
         required: false
-        default: "latest"
+        default: ""
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      # Digest only: a job output that contains a secret (the username) is dropped.
+      digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Free up disk space
         run: |
@@ -50,6 +53,26 @@ jobs:
           echo "cleaned username length=${#user} token length=${#token}"
           printf '%s' "$token" | docker login -u "$user" --password-stdin
 
+      # Push builds publish ONLY the immutable sha-<commit> tag: a merge never
+      # moves :latest. :latest (or any other tag) is applied only by a manual
+      # run with an explicit `tag` input — a deliberate promotion (docs/39 §10).
+      - name: Compute tags
+        id: tags
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          EXTRA_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || '' }}
+        run: |
+          user="$(printf '%s' "$DH_USER" | tr -cd 'A-Za-z0-9._-')"
+          repo="$user/cineforge-gpu"
+          extra="$(printf '%s' "$EXTRA_TAG" | tr -cd 'A-Za-z0-9._-')"
+          {
+            echo "tags<<EOF"
+            echo "$repo:sha-$GITHUB_SHA"
+            if [ -n "$extra" ]; then echo "$repo:$extra"; fi
+            echo "EOF"
+            echo "repo=$repo"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         id: build
         uses: docker/build-push-action@v6
@@ -62,17 +85,24 @@ jobs:
           push: true
           build-args: |
             SOURCE_COMMIT=${{ github.sha }}
-          # Every build also gets an immutable `sha-<commit>` tag (docs/39 rollout
-          # R0): pin the RunPod pod to it so a merge never reaches production
-          # until the pod's image tag is changed on purpose.
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/cineforge-gpu:${{ inputs.tag || 'latest' }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/cineforge-gpu:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          tags: ${{ steps.tags.outputs.tags }}
 
       # The immutable reference to approve and pin (docs/39): repo@sha256:<digest>.
       - name: Record image digest
         run: |
           echo "### GPU worker image" >> "$GITHUB_STEP_SUMMARY"
           echo "Pin and approve: \`cineforge-gpu@${{ steps.build.outputs.digest }}\` (source ${{ github.sha }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "Tags: $(echo '${{ steps.tags.outputs.tags }}' | sed 's#.*/##' | tr '\n' ' ')" >> "$GITHUB_STEP_SUMMARY"
+          echo "The verify job below checks this digest (contents vs git, gateway probes). Deploy only a VERIFIED digest." >> "$GITHUB_STEP_SUMMARY"
 
-# re-run trigger
+  # Verify the image just pushed, by digest, before anyone deploys it.
+  verify:
+    needs: build
+    uses: ./.github/workflows/verify-gpu-image.yml
+    with:
+      image: ${{ needs.build.outputs.digest }}
+      expect_commit: ${{ github.sha }}
+    secrets: inherit

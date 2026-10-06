@@ -7,3 +7,4 @@ export * from "./i18n";
 export * from "./subtitles";
 export * from "./ads";
 export * from "./plans";
+export * from "./clock";

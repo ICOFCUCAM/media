@@ -323,7 +323,8 @@ change to a deployment row, however it is made.
 |---|---|---|
 | 0 | Merge PR 2. Apply migration 0026 to the Supabase project (same as earlier migrations), regenerate `packages/db/supabase/types.ts`. **Done 2026-10-06** (live migration `runtime_gateway`; types regenerated; security advisors show no new findings). Migration 0027 (LoRA hashes) not yet applied. | none — report mode; audit rows start appearing once keys are set. Inspect them at `/admin/gateway` |
 | 1 | `pnpm --filter @cineforge/worker gateway:admin keygen` → set `GPU_JWT_SIGNING_KEY` on Render (secret) and `GPU_JWT_PUBLIC_KEYS` on the pod. Set `DEPLOYMENT_ID` on the pod. | calls become signed; pod (report mode) logs verification results |
-| 2 | Pin the pod image to the digest from the build summary (`<user>/cineforge-gpu@sha256:…`), set `WAN_MODEL_REVISION` (and I2V/Hunyuan revisions if used), restart. | pinned image, pinned weights |
+| 2a | **Verify the image** before any pod uses it: the build's `verify` job (or Actions → *Verify GPU worker image* with `sha256:<digest>`) must say **VERIFIED** — immutable digest pulled, `SOURCE_COMMIT` exists in the repo, `/app/app` byte-identical to `apps/gpu-worker/app` at that commit, and the enforce-mode gateway probes pass (§10.1). | none |
+| 2 | Pin the pod image to the **verified** digest (`<user>/cineforge-gpu@sha256:…`), set `WAN_MODEL_REVISION` (and I2V/Hunyuan revisions if used), restart. Then verify the runtime: `/capabilities` reports the same `image.sourceCommit` and `image.codeSha256` as the verification report, and RunPod's `pod.imageName` shows the digest. | pinned image, pinned weights |
 | 3 | `gateway:admin register --id … --model wan-2.1 --url … --pod …`, then `gateway:admin approve --id … --image <user>/cineforge-gpu@sha256:…` | deployment approved; still report |
 | 4 | Verify presigned uploads work against Supabase: run one shot; check its grant row is `completed` (not `completed_unverified`) and the clip is under `projects/{id}/video/`. If uploads fail, set `GPU_UPLOAD_URL_MODE=supabase` (+ `SUPABASE_SERVICE_ROLE_KEY` on Render) and repeat. | outputs move to the project layout |
 | 5 | Pod: `GATEWAY_MODE=enforce`, **remove** `S3_ACCESS_KEY` / `S3_SECRET_KEY` from the pod env, restart (it refuses to start otherwise). Then `gateway:admin enforce --id …`. | GPU path enforced end to end |
@@ -334,3 +335,17 @@ Rollback at any point: `gateway:admin report --id … --reason "…"` (recorded)
 and/or `GATEWAY_MODE=report` on the pod. Do not rotate the S3 keys (step 6)
 before step 5 is live and verified: until then the report-mode path still uses
 them.
+
+### 10.1 Image chain (verification, not assumption)
+
+```
+Base commit → GPU image → immutable digest → verify contents → deploy → verify runtime
+```
+
+| Link | How it is established |
+|---|---|
+| Base commit → image | build workflow passes `SOURCE_COMMIT=<commit>`; the image carries it as `CINEFORGE_SOURCE_COMMIT` and the OCI `revision` label |
+| Image → immutable digest | push builds tag only `sha-<commit>`; the build summary prints `cineforge-gpu@sha256:…`. **A merge never moves `:latest`.** `:latest` (or `candidate-…`) is applied only by a manual run with an explicit `tag` — a deliberate promotion — and production never references a tag once enforcement is on |
+| Digest → verified contents | `apps/gpu-worker/scripts/verify_image.py` (CI job `verify` after each build; workflow *Verify GPU worker image* on demand): pulls by digest, checks the digest, the source commit, the code digest of `/app/app` against git, and probes the gateway in enforce mode (no token, foreign key and replay rejected; `/train` closed). Its own correctness is a CI check (`gpu-image-verifier`: a verified image passes, a tampered one fails, a tag is refused) |
+| Verified digest → deployed pod | the pod's image is set to the verified `repo@sha256:…`; `gateway:admin approve --image` records the same reference |
+| Deployed pod → verified runtime | RunPod `pod.imageName` (attestation, authoritative) equals the approved digest; `/capabilities` `image.sourceCommit` / `image.codeSha256` equal the verification report (status only — the pod's own claims never authorize) |
