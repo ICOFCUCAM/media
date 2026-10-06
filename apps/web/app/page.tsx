@@ -80,7 +80,7 @@ function Nav() {
 
       <div className="nav-right">
         <Link href="/projects" className="nav-login">Sign in</Link>
-        <Link href="/create/film" className="nav-cta">Enter Studio</Link>
+        <Link href="/create" className="nav-cta">Enter Studio</Link>
       </div>
     </nav>
   );
@@ -106,7 +106,7 @@ function Hero() {
         </p>
 
         <div className="hero-actions">
-          <Link href="/create/film" className="primary">Enter the Studio</Link>
+          <Link href="/create" className="primary">Enter the Studio</Link>
           <a href="#films" className="text-link">Watch the work →</a>
         </div>
       </div>
@@ -563,8 +563,8 @@ function FinalCta() {
           <em>YOUR WORLD.</em>
         </h2>
         <p>Enter the production system and build something worth watching.</p>
-        <Link href="/create/film" className="primary">Enter Cineforge</Link>
-        <Link href="/create" className="text-link">See all the ways to start →</Link>
+        <Link href="/create" className="primary">Enter Cineforge</Link>
+        <Link href="/create/film" className="text-link">Or go straight to the Director&apos;s Room →</Link>
       </div>
     </section>
   );
@@ -576,7 +576,7 @@ function Footer() {
     <footer>
       <div>© {new Date().getFullYear()} Cineforge</div>
       <div className="footer-links">
-        <Link href="/create/film">Studio</Link>
+        <Link href="/create">Studio</Link>
         <Link href="/projects">Films</Link>
         <Link href="/library/voices">Voice</Link>
         <Link href="/publish">Publishing</Link>
