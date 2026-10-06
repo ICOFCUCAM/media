@@ -135,40 +135,45 @@ export function PricingPage() {
         </div>
       </Section>
 
-      <div className="mt-10">
-        <h2 className="mb-3 text-center text-sm font-semibold text-white/70">Need more? Top up any plan.</h2>
-        <div className="mx-auto grid max-w-2xl gap-3 sm:grid-cols-3">
+      <Section label="Top-ups" title="Need more? Top up any plan.">
+        <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-3">
           {TOPUPS.map((t) => (
             <button
               key={t.id}
+              type="button"
               onClick={() => checkout({ topup: t.id })}
               disabled={busy !== null}
-              className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center transition hover:border-white/30 disabled:opacity-40"
+              className="group flex min-h-[150px] flex-col bg-cf-bg p-6 text-left transition hover:bg-cf-soft disabled:opacity-40"
             >
-              <div className="text-lg font-semibold">{t.credits.toLocaleString()} cr</div>
-              <div className="text-sm text-white/50">${t.price}</div>
+              <span className="cf-label">{busy === t.id ? "Opening checkout…" : "Credit pack"}</span>
+              <span className="cf-display mt-auto text-[40px] leading-none">{t.credits.toLocaleString()}</span>
+              <span className="mt-2 flex justify-between font-mono text-[10px] uppercase tracking-[0.1em]">
+                <span className="text-cf-muted">credits</span>
+                <span>${t.price}</span>
+              </span>
             </button>
           ))}
         </div>
-        <p className="mt-6 text-center text-[11px] text-white/35">
-          Annual billing −20% (contact us) · credits roll over 90 days on paid plans · failed generations are
-          auto-recovered, never double-billed.
+        <p className="cf-label mt-4 leading-relaxed">
+          Annual billing −20% (contact us) · credits roll over 90 days on paid plans · failed generations are auto-recovered, never double-billed.
         </p>
-      </div>
+      </Section>
 
-      <div className="mx-auto mt-14 max-w-3xl">
-        <h2 className="mb-4 text-center text-sm font-semibold text-white/70">Questions, answered</h2>
-        <div className="space-y-3">
-          {FAQ.map((f) => (
-            <details key={f.q} className="group rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
-              <summary className="cursor-pointer list-none text-sm font-medium text-white/80 transition group-open:text-white">
-                {f.q}
+      <Section label="Questions" title="Answered.">
+        <div className="border-t border-cf-fg">
+          {FAQ.map((f, i) => (
+            <details key={f.q} className="group border-b border-cf-line">
+              <summary className="grid cursor-pointer list-none grid-cols-[44px_1fr_auto] items-center gap-4 py-5">
+                <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                <span className="font-serif text-[20px] tracking-[-0.02em]">{f.q}</span>
+                <span className="cf-label group-open:hidden">+</span>
+                <span className="cf-label hidden group-open:inline">−</span>
               </summary>
-              <p className="mt-2 text-sm leading-relaxed text-white/55">{f.a}</p>
+              <p className="max-w-3xl pb-6 pl-[60px] text-[13px] leading-relaxed text-cf-muted">{f.a}</p>
             </details>
           ))}
         </div>
-      </div>
+      </Section>
     </div>
   );
 }
