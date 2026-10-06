@@ -88,12 +88,14 @@ export function PricingPage() {
 
       <Section label="Plans" title="Choose the room.">
         <div className="grid border-l border-t border-cf-line md:grid-cols-2 xl:grid-cols-5">
-          {PLANS.map((p) => {
+          {PLANS.map((p, i) => {
             const current = profile?.tier === p.tier;
+            // An odd final plan fills the row in the two-column layout instead of sitting alone.
+            const orphan = PLANS.length % 2 === 1 && i === PLANS.length - 1;
             return (
               <article
                 key={p.tier}
-                className={`flex min-h-[520px] flex-col border-b border-r border-cf-line p-6 ${p.highlight ? "bg-cf-inverse text-cf-on-inverse" : "bg-cf-bg"}`}
+                className={`flex min-h-[520px] flex-col border-b border-r border-cf-line p-6 ${orphan ? "md:col-span-2 xl:col-span-1" : ""} ${p.highlight ? "bg-cf-inverse text-cf-on-inverse" : "bg-cf-bg"}`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="font-mono text-[10px] uppercase tracking-[0.12em]">{p.name}</h2>

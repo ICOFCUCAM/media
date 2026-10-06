@@ -50,12 +50,12 @@ export function PageHeader({
   aside?: ReactNode;
 }) {
   return (
-    <header className="grid gap-10 border-b border-cf-line pb-14 lg:grid-cols-[1.35fr_0.65fr] lg:gap-[8vw]">
+    <header className="grid gap-10 border-b border-cf-line pb-14 xl:grid-cols-[1.35fr_0.65fr] xl:gap-[8vw]">
       <div>
         <div className="cf-eyebrow mb-6">{eyebrow}</div>
         <h1 className="cf-display text-[clamp(52px,7.5vw,128px)] leading-[0.84] [&_em]:italic">{title}</h1>
       </div>
-      <div className="max-w-[440px] self-end text-[15px] leading-[1.75] text-cf-muted [&_p+p]:mt-4 [&_strong]:font-normal [&_strong]:text-cf-fg">
+      <div className="max-w-[520px] self-end text-[15px] leading-[1.75] text-cf-muted [&_p+p]:mt-4 [&_strong]:font-normal [&_strong]:text-cf-fg">
         {copy}
         {status && (
           <div className="mt-7">
