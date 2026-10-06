@@ -22,6 +22,21 @@ run in preview mode (no Supabase session), so signed-in, data-heavy states
 
 ## Critique
 
+### 0. Studios were laid out like editorial pages (owner's note)
+The redesign gave the create studios the homepage's editorial treatment:
+huge titles, a three-frame film strip, a "production plan" spec sheet and a
+pipeline that explained the production process. On a 1080p screen, Create
+sat three scrolls down. The previous studio showed everything at once. Users
+don't need the pipeline explained.
+
+**Resolved:** studios are now tools (`components/cf/StudioLayout.tsx`).
+There is a compact title row with mode tabs, brief and options on the left
+with Create pinned under them, and the preview filling the right. The whole
+room fits one screen at 1366×768 and up, with no page scroll. The pipeline
+explainer is gone. The editorial treatment stays on the homepage and the
+library, publishing and marketplace pages.
+
+
 ### 1. Too many front doors
 "Create Anything" (7 types × 10 materials), the navigator's six Create
 links, the seven Film modes and four separate studios all lead to
@@ -102,20 +117,38 @@ Several Vercel preview URLs are live, and an old one still shows the
 pre-redesign studio. Pin a production domain to the default branch and
 protect or expire old previews so reviewers see the current site.
 
-## Upgrade roadmap
+## Resolution (this pass)
 
-| Priority | Upgrade | Effort |
+| # | Upgrade | Status |
 | --- | --- | --- |
-| Now | Production domain + expire old previews (§11) | S |
-| Now | Sticky mobile action bar (§2) | S |
-| Next | Real poster frames from the worker (§4) | M |
-| Next | Notify on READY/FAILED (§5) | M |
-| Next | Example shelf / first run (§6) | M |
-| Next | Plan-aware option display (§3) | S |
-| Later | Single "New production" flow (§1) | L |
-| Later | Marketplace waitlists (§7) | S |
-| Later | Phone homepage condensation (§8) | M |
-| Later | Card performance (§9), tablist semantics (§10) | S |
+| 0 | One-screen studios, no pipeline explainer | Done. Film, Series, Trailer, Shorts and Advert on `StudioLayout` |
+| 1 | Single "New production" flow | Done. Create Anything is a compact chooser that opens the right studio; studio-owned types skip the material step |
+| 2 | Create always in reach | Done. Pinned under the options on desktop; sticky bottom bar on phones and tablets; the preview scrolls into view after Create |
+| 3 | Plan-aware options | Done. Only runnable lengths, formats and engines are offered, plus one "Unlock …" row (`UnlockRow`, `usePlan`) |
+| 4 | Real poster frames | Done. Project rows and the finished-film player use `films.poster_key` (already written by the render engine); drawn frames remain the fallback |
+| 5 | Notify on READY/FAILED | Done. "Notify me" toggle (`NotifyToggle`): browser notification when the tab is hidden, plus email from the worker (`apps/worker/src/notify.ts`) |
+| 6 | Example shelf | Done. One-tap briefs in every studio (`ExampleShelf`) |
+| 7 | Marketplace waitlists | Done. Closed catalogues take one-tap waitlist sign-ups (`WaitlistButton`, table `marketplace_waitlist`) |
+| 8 | Shorter homepage on phones | Done. Capabilities, showreel, marketplace and pricing swipe sideways; release channels collapse to five. About 16,700px down to about 10,500px at 360px wide |
+| 9 | Deployment hygiene | Done in code: preview builds show a "Preview build · sha · branch" badge with a link to the live site, and are `noindex`. The Vercel settings below still need doing |
+
+### To switch on
+- **Migration 0012** (`packages/db/supabase/migrations/0012_notify_and_waitlist.sql`):
+  adds `users.notify_on_finish` and `marketplace_waitlist`. Until it runs, the
+  notify toggle offers browser notifications only, and the waitlist button
+  reports that it could not join.
+- **Email notifications:** set `RESEND_API_KEY`, `NOTIFY_FROM` (an address on
+  a domain verified in Resend) and `APP_URL` on the worker. Without them,
+  email is skipped silently.
+- **Vercel** (dashboard; can't be done from code):
+  1. Project → Settings → Domains: attach the production domain to the
+     default branch.
+  2. Set `NEXT_PUBLIC_SITE_URL` to that domain, so the preview badge links
+     to it.
+  3. Settings → Deployment Protection: protect preview deployments (Vercel
+     Authentication), so old preview URLs are not public.
+  4. Keep "Automatically expose System Environment Variables" on. The badge
+     reads `VERCEL_ENV` and the commit SHA and branch.
 
 ## Responsive baseline (this pass)
 
