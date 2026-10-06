@@ -351,7 +351,7 @@ const CAPABILITIES: { title: string; body: string; href: string; go: string }[] 
     title: "Create",
     body: "Turn an idea into a production. Develop scripts, characters, scenes, locations and shots inside the same creative environment.",
     href: "/create",
-    go: "Create anything",
+    go: "New production",
   },
   {
     title: "Direct",
@@ -380,16 +380,18 @@ function Capabilities() {
         <div className="eyebrow reveal">The system</div>
         <div style={{ height: 55 }} />
 
-        {CAPABILITIES.map((c, i) => (
-          <Link key={c.title} href={c.href} className="capability reveal">
-            <div className="capability-number">{String(i + 1).padStart(2, "0")}</div>
-            <h3>{c.title}</h3>
-            <div>
-              <p>{c.body}</p>
-              <span className="capability-go">{c.go} →</span>
-            </div>
-          </Link>
-        ))}
+        <div className="capability-track">
+          {CAPABILITIES.map((c, i) => (
+            <Link key={c.title} href={c.href} className="capability reveal">
+              <div className="capability-number">{String(i + 1).padStart(2, "0")}</div>
+              <h3>{c.title}</h3>
+              <div>
+                <p>{c.body}</p>
+                <span className="capability-go">{c.go} →</span>
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -463,6 +465,11 @@ function Publish() {
             <div className="channel">
               <span>Private Channel</span>
               <span>1080p HLS</span>
+            </div>
+            {/* Phones show the first five channels and this count instead of all of them. */}
+            <div className="channel channel-more" aria-hidden>
+              <span>+ {SOCIAL_CHANNELS.length + 1 - 5} more channels</span>
+              <span />
             </div>
           </div>
 

@@ -1833,3 +1833,49 @@
   .cfh .nav-login { display: none !important; }
   .cfh .nav-right { gap: 10px; }
 }
+
+/* Phones: long stacks become swipeable rows so the page stays short (docs/36 §8). */
+.cfh .channel-more { display: none; }
+
+@media (max-width: 600px) {
+  .cfh .section { padding: 72px 6vw; }
+
+  .cfh .capability-track,
+  .cfh .reel-grid,
+  .cfh .price-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    margin: 0 -6vw;
+    padding: 0 6vw 6px;
+    scrollbar-width: none;
+    scroll-padding-inline: 6vw;
+    border-top: none;
+  }
+  .cfh .capability-track::-webkit-scrollbar,
+  .cfh .reel-grid::-webkit-scrollbar,
+  .cfh .price-row::-webkit-scrollbar { display: none; }
+
+  .cfh .capability-track .capability {
+    flex: 0 0 84%;
+    scroll-snap-align: start;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 26px 22px;
+    border: 1px solid #cbc9c2;
+  }
+  .cfh .capability-track .capability > div:last-child { grid-column: auto; }
+
+  .cfh .reel-grid .reel { flex: 0 0 84%; scroll-snap-align: start; }
+
+  .cfh .price-row .price {
+    flex: 0 0 84%;
+    scroll-snap-align: start;
+    min-height: 0;
+    border: 1px solid #c7c4bb;
+  }
+
+  .cfh .publish .channel-list .channel:nth-child(n + 6):not(.channel-more) { display: none; }
+  .cfh .publish .channel-more { display: flex; color: #74716b; }
+}
