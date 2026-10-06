@@ -24,44 +24,52 @@ export function AuthCard({ title = "Sign in to your studio" }: { title?: string 
   }
 
   return (
-    <div className="mx-auto max-w-sm rounded-xl border border-white/10 bg-white/[0.02] p-6">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <p className="mt-1 text-sm text-white/55">
-        {mode === "in" ? "Welcome back." : "Create an account to save your films."}
-      </p>
-      <form onSubmit={submit} className="mt-4 space-y-3">
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@studio.com"
-          className="w-full rounded-lg border border-white/10 bg-white/[0.03] p-2.5 text-sm outline-none focus:border-white/30"
-        />
-        <input
-          type="password"
-          required
-          minLength={6}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password (6+ chars)"
-          className="w-full rounded-lg border border-white/10 bg-white/[0.03] p-2.5 text-sm outline-none focus:border-white/30"
-        />
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-40"
-        >
-          {busy ? "…" : mode === "in" ? "Sign in" : "Create account"}
+    <div className="mx-auto w-full max-w-sm border border-cf-line bg-cf-bg p-7 text-cf-fg">
+      <div className="cf-label">{mode === "in" ? "Studio access" : "New studio"}</div>
+      <h2 className="cf-display mt-4 text-[30px] leading-none">{title}</h2>
+      <p className="mt-2 text-[13px] text-cf-muted">{mode === "in" ? "Welcome back." : "Create an account to save your productions."}</p>
+      <form onSubmit={submit} className="mt-6 space-y-3">
+        <label className="block">
+          <span className="cf-label">Email</span>
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@studio.com"
+            className="cf-input mt-2"
+          />
+        </label>
+        <label className="block">
+          <span className="cf-label">Password</span>
+          <input
+            type="password"
+            required
+            minLength={6}
+            autoComplete={mode === "in" ? "current-password" : "new-password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="6+ characters"
+            className="cf-input mt-2"
+          />
+        </label>
+        <button type="submit" disabled={busy} className="cf-btn-ink mt-2 w-full">
+          {busy ? "One moment…" : mode === "in" ? "Sign in" : "Create account"}
         </button>
       </form>
-      {msg && <p className="mt-3 text-xs text-amber-300">{msg}</p>}
+      {msg && (
+        <p role="status" className="mt-4 border-l-2 border-cf-warn pl-3 text-[12px] text-cf-warn">
+          {msg}
+        </p>
+      )}
       <button
+        type="button"
         onClick={() => {
           setMode(mode === "in" ? "up" : "in");
           setMsg(null);
         }}
-        className="mt-4 text-xs text-white/50 hover:text-white"
+        className="cf-link mt-5 text-cf-muted hover:text-cf-fg"
       >
         {mode === "in" ? "Need an account? Sign up" : "Have an account? Sign in"}
       </button>
