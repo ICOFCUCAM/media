@@ -702,3 +702,210 @@ model RuntimeGatewayEvent {
   @@index([deploymentId, createdAt(sort: Desc)], map: "runtime_gateway_events_deployment_idx")
   @@map("runtime_gateway_events")
 }
+
+// ─────────────────────────────────────────────────────────────
+// Master Production Clock, generation ledgers and A/V sync
+// (migrations 0028–0030; docs/38 §AU.16, §AV.5, §AW.9). Times are
+// integer microseconds (BigInt); rates are fpsNum/fpsDen. Scalar foreign
+// keys only: the database enforces the relations, immutability and RLS.
+// ─────────────────────────────────────────────────────────────
+
+model ProductionTimeline {
+  id                String    @id @default(uuid()) @db.Uuid
+  projectId         String    @map("project_id") @db.Uuid
+  version           Int
+  parentVersionId   String?   @map("parent_version_id") @db.Uuid
+  fpsNum            Int       @map("fps_num")
+  fpsDen            Int       @map("fps_den")
+  sampleRate        Int       @default(48000) @map("sample_rate")
+  durationUs        BigInt    @default(0) @map("duration_us")
+  status            String    @default("draft")
+  syncPolicyId      String    @default("cinematic") @map("sync_policy_id")
+  syncPolicyVersion Int       @default(1) @map("sync_policy_version")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  approvedAt        DateTime? @map("approved_at") @db.Timestamptz(6)
+
+  @@unique([projectId, version])
+  @@index([projectId, version(sort: Desc)], map: "production_timelines_project_idx")
+  @@map("production_timelines")
+}
+
+model TimelineEvent {
+  id                String   @id @default(uuid()) @db.Uuid
+  timelineVersionId String   @map("timeline_version_id") @db.Uuid
+  kind              String
+  startUs           BigInt   @map("start_us")
+  endUs             BigInt   @map("end_us")
+  refType           String?  @map("ref_type")
+  refId             String?  @map("ref_id") @db.Uuid
+  parentEventId     String?  @map("parent_event_id") @db.Uuid
+  anchorEventId     String?  @map("anchor_event_id") @db.Uuid
+  anchorOffsetUs    BigInt?  @map("anchor_offset_us")
+  anchorMode        String?  @map("anchor_mode")
+  payload           Json     @default("{}")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([timelineVersionId, startUs], map: "timeline_events_timeline_idx")
+  @@index([refType, refId], map: "timeline_events_ref_idx")
+  @@map("timeline_events")
+}
+
+model MediaVersion {
+  id            String   @id @default(uuid()) @db.Uuid
+  projectId     String   @map("project_id") @db.Uuid
+  assetType     String   @map("asset_type")
+  assetId       String   @map("asset_id") @db.Uuid
+  version       Int
+  storageKey    String   @map("storage_key")
+  sha256        String?
+  durationUs    BigInt?  @map("duration_us")
+  derivedFrom   String[] @default([]) @map("derived_from") @db.Uuid
+  derivation    Json?
+  generationRef String?  @map("generation_ref")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([assetType, assetId, version])
+  @@index([projectId, assetType], map: "media_versions_project_idx")
+  @@map("media_versions")
+}
+
+model VideoGeneration {
+  id                  String    @id @default(uuid()) @db.Uuid
+  projectId           String    @map("project_id") @db.Uuid
+  shotId              String?   @map("shot_id") @db.Uuid
+  timelineVersionId   String?   @map("timeline_version_id") @db.Uuid
+  attempt             Int       @default(1)
+  modelId             String    @map("model_id")
+  modelVersion        String?   @map("model_version")
+  runtime             String    @default("diffusers")
+  runtimeVersion      String?   @map("runtime_version")
+  workflowId          String    @default("cineforge.video-shot") @map("workflow_id")
+  workflowVersion     Int       @default(1) @map("workflow_version")
+  graphSha256         String?   @map("graph_sha256")
+  grantId             String?   @map("grant_id")
+  requestedDurationUs BigInt    @map("requested_duration_us")
+  requestedFpsNum     Int       @map("requested_fps_num")
+  requestedFpsDen     Int       @default(1) @map("requested_fps_den")
+  timingConstraints   Json      @default("{}") @map("timing_constraints")
+  timingReport        Json?     @map("timing_report")
+  actualDurationUs    BigInt?   @map("actual_duration_us")
+  outcome             String?
+  outcomeCode         String?   @map("outcome_code")
+  policy              String?
+  decision            Json?
+  mediaVersionId      String?   @map("media_version_id") @db.Uuid
+  gpuMs               Int?      @map("gpu_ms")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  classifiedAt        DateTime? @map("classified_at") @db.Timestamptz(6)
+
+  @@index([shotId, createdAt(sort: Desc)], map: "video_generations_shot_idx")
+  @@index([projectId, outcome], map: "video_generations_outcome_idx")
+  @@map("video_generations")
+}
+
+model AudioGeneration {
+  id               String    @id @default(uuid()) @db.Uuid
+  projectId        String    @map("project_id") @db.Uuid
+  kind             String
+  dialogueLineId   String?   @map("dialogue_line_id") @db.Uuid
+  language         String?
+  voiceId          String?   @map("voice_id")
+  provider         String
+  modelId          String?   @map("model_id")
+  attempt          Int       @default(1)
+  requestedStartUs BigInt?   @map("requested_start_us")
+  requestedEndUs   BigInt?   @map("requested_end_us")
+  meta             Json      @default("{}")
+  timingReport     Json?     @map("timing_report")
+  outcome          String?
+  outcomeCode      String?   @map("outcome_code")
+  policy           String?
+  mediaVersionId   String?   @map("media_version_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  classifiedAt     DateTime? @map("classified_at") @db.Timestamptz(6)
+
+  @@index([projectId, kind], map: "audio_generations_project_idx")
+  @@map("audio_generations")
+}
+
+model AudioEvent {
+  id                String   @id @default(uuid()) @db.Uuid
+  timelineVersionId String   @map("timeline_version_id") @db.Uuid
+  timelineEventId   String?  @map("timeline_event_id") @db.Uuid
+  audioGenerationId String?  @map("audio_generation_id") @db.Uuid
+  mediaVersionId    String?  @map("media_version_id") @db.Uuid
+  stem              String
+  startUs           BigInt   @map("start_us")
+  endUs             BigInt   @map("end_us")
+  gainDb            Decimal  @default(0) @map("gain_db") @db.Decimal(6, 2)
+  fadeInUs          BigInt   @default(0) @map("fade_in_us")
+  fadeOutUs         BigInt   @default(0) @map("fade_out_us")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([timelineVersionId, stem, startUs], map: "audio_events_timeline_idx")
+  @@map("audio_events")
+}
+
+model SyncPolicyRow {
+  id         String
+  version    Int
+  tolerances Json
+  repair     Json
+  delivery   Json
+  calibrated Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([id, version])
+  @@map("sync_policies")
+}
+
+model AvSyncReport {
+  id                String   @id @default(uuid()) @db.Uuid
+  timelineVersionId String   @map("timeline_version_id") @db.Uuid
+  scope             Json     @default("{}")
+  checks            String[]
+  passed            Boolean
+  policy            String
+  toolVersions      Json     @default("{}") @map("tool_versions")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([timelineVersionId, createdAt(sort: Desc)], map: "av_sync_reports_timeline_idx")
+  @@map("av_sync_reports")
+}
+
+model AvSyncIssue {
+  id           String    @id @default(uuid()) @db.Uuid
+  reportId     String    @map("report_id") @db.Uuid
+  check        String
+  severity     String
+  sceneId      String?   @map("scene_id") @db.Uuid
+  shotId       String?   @map("shot_id") @db.Uuid
+  eventId      String?   @map("event_id") @db.Uuid
+  atUs         BigInt    @map("at_us")
+  spanUs       BigInt?   @map("span_us")
+  measured     Json      @default("{}")
+  expected     Json      @default("{}")
+  confidence   Decimal   @db.Decimal(4, 3)
+  message      String
+  status       String    @default("open")
+  waiverReason String?   @map("waiver_reason")
+  resolvedAt   DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  @@index([reportId, severity], map: "av_sync_issues_report_idx")
+  @@map("av_sync_issues")
+}
+
+model RepairJob {
+  id                   String    @id @default(uuid()) @db.Uuid
+  issueId              String    @map("issue_id") @db.Uuid
+  action               Json
+  status               String    @default("planned")
+  attempt              Int       @default(1)
+  resultMediaVersionId String?   @map("result_media_version_id") @db.Uuid
+  error                String?
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  finishedAt           DateTime? @map("finished_at") @db.Timestamptz(6)
+
+  @@index([issueId, attempt], map: "repair_jobs_issue_idx")
+  @@map("repair_jobs")
+}
