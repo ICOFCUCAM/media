@@ -6,3 +6,4 @@ export * from "./dialogue-aligner";
 export * from "./subtitle-sync";
 export * from "./rate-and-drift";
 export * from "./cue-validators";
+export * from "./loudness";
