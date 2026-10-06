@@ -1,14 +1,41 @@
 # GPU worker — Wan 2.1 (primary) & Hunyuan Video (premium)
 
-FastAPI service that runs the real video model on a GPU, plus a per-character
-LoRA trainer (`/train`). The worker (Render) drives it over HTTP; see docs/22
-and docs/28. One image, one model per container via `MODEL_NAME`.
+FastAPI service that runs the real video model on a GPU. The worker (Render)
+drives it over HTTP; see docs/22 and docs/28. One image, one model per
+container via `MODEL_NAME`. Every route except `GET /livez` is behind the
+**Media Runtime Gateway** (see below; docs/38 §O, §AV.2; docs/39).
 
 ## Endpoints
 - `POST /generate` — text/image-to-video; honors `referenceImageKeys` (seed →
   image-to-video when an I2V model is set), `loraKeys` (load + fuse), seed.
-- `POST /train` + `GET /tasks/{id}` — per-character LoRA training.
-- `GET /health` · `GET /capabilities` · `POST /warm`.
+- `GET /livez` — public liveness probe; returns `ok` and nothing else.
+- `GET /health` · `GET /capabilities` (scope `status`; capabilities include
+  the deployment id and the resolved model manifest) · `POST /warm` (scope
+  `warm`). `POST /generate` needs scope `video:run`.
+- `POST /train` + `GET /tasks/{id}` — **disabled** (`503 TRAINER_DISABLED`)
+  until a real trainer exists (docs/39 decision 3).
+
+## Media Runtime Gateway (execution tokens)
+Each request carries `Authorization: Bearer <JWT>` minted by Cineforge, signed
+with **Ed25519**. The pod holds only public keys, so nothing on the GPU host can
+mint a token. Checks, in order: signature (`kid`) → expiry and lifetime
+(≤ 300 s, ±30 s skew) → issuer → `jti` replay → `aud` = this `DEPLOYMENT_ID` →
+`scope` → `sub` = body `jobId` → `bh` = SHA-256 of the exact body → `authz` =
+workflow + model authorization digest (`app/gateway/authz.py`) → explicit
+timing fields. Rejections return `{"detail": {"error": "<CODE>"}}`; every decision is
+logged as one JSON line with no token, prompt, body or URL.
+
+| Env | Meaning |
+|---|---|
+| `GATEWAY_MODE` | `report` (default: verify and log, never block) or `enforce` (reject). Any other value fails startup. |
+| `DEPLOYMENT_ID` | this pod's identity; tokens for another deployment are rejected. Required in `enforce`. |
+| `GPU_JWT_PUBLIC_KEYS` | `kid:base64url(raw 32-byte Ed25519 public key)`, comma-separated for rotation. Required in `enforce`. |
+| `WAN_MODEL_REVISION` · `WAN_I2V_MODEL_REVISION` · `HUNYUAN_MODEL_REVISION` | Hugging Face commit SHA (40 hex) pinning each model. `enforce` refuses to start with an unpinned real model. |
+
+In `enforce` mode the pod fails to start if `DEPLOYMENT_ID` or the keys are
+missing, a real model is unpinned, or the primary model's weights digest
+cannot be resolved. Run tests with
+`pip install -r requirements.txt -r requirements-dev.txt && python -m pytest`.
 
 Real inference runs when CUDA is available; otherwise it falls back to a
 placeholder clip (set `CINEFORGE_PLACEHOLDER=1` to force it).
@@ -27,10 +54,12 @@ placeholder clip (set `CINEFORGE_PLACEHOLDER=1` to force it).
 3. **Persist weights:** mount a RunPod **network volume** at
    `/root/.cache/huggingface` so the model downloads once, not every cold start.
    (Or bake weights into the image.)
-4. **Env on the pod:** `MODEL_NAME`, `S3_*` (same bucket as the app, so it can
-   read reference frames / write clips), optionally `WAN_MODEL_ID` /
-   `HUNYUAN_MODEL_ID` / `WAN_I2V_MODEL_ID`, `LORA_TRAINER_*` if this pod also
-   trains.
+4. **Env on the pod:** `MODEL_NAME`, the gateway env above, `S3_*` (same
+   bucket as the app, so it can read reference frames / write clips — removed
+   in docs/39 PR 3, when the pod switches to one-time presigned URLs),
+   optionally `WAN_MODEL_ID` / `HUNYUAN_MODEL_ID` / `WAN_I2V_MODEL_ID` with
+   their `*_REVISION` pins. Pin the pod to an immutable `sha-<commit>` image
+   tag rather than `latest`.
 5. **Wire it to the worker (Render):** set on the Render worker
    `WAN_GPU_URL=https://<wan-pod>` and/or `HUNYUAN_GPU_URL=https://<hunyuan-pod>`
    (or `WAN_GPU_URLS` / `HUNYUAN_GPU_URLS` for a comma-separated cluster), plus

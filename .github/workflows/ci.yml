@@ -51,7 +51,10 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install gpu-worker deps
-        run: pip install -r apps/gpu-worker/requirements.txt
+        run: pip install -r apps/gpu-worker/requirements.txt -r apps/gpu-worker/requirements-dev.txt
       - name: Import check
         run: python -c "import app.server"
+        working-directory: apps/gpu-worker
+      - name: Gateway security tests
+        run: python -m pytest -q
         working-directory: apps/gpu-worker

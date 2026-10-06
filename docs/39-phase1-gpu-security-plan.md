@@ -1,6 +1,6 @@
 # 39 — Phase 1 implementation plan: GPU security / Media Runtime Gateway
 
-Status: **PLAN — for review. No implementation code until this plan is approved.**
+Status: **APPROVED (2026-10-06) with all six recommended options in §7. PR 1 implemented; PRs 2–5 pending.**
 Implements: docs/38 v2.6, **§AX.2 Phase 1**, which is specified in §O, §P, §Y, §AV.2, §AV.3 and §AW.11 (tests 5, 6).
 Date: 2026-10-06.
 
@@ -231,7 +231,24 @@ Requirement → PR → docs/38 section:
 | 9 | Protection against model substitution | 3 (output), 4 (model) | AV.3, AW.11 test 5 |
 | 10 | Compatibility with the existing Wan worker | 1–5 (R0–R4) | AX.2 Phase 1 |
 
-## 7. Decisions needed before PR 1
+## 7. Decisions (approved 2026-10-06 — recommended option for all six)
+
+Recorded outcome: D1 Ed25519 · D2 in-process enforcer · D3 `/train` disabled in
+**every** mode (not only enforce) · D4 migration `0026` approved — delivered in
+PR 2 with the Cineforge side that writes it · D5 rotate the Supabase S3 keys
+only after enforcement is live and verified · D6 native signed-upload fallback
+if presigned PUT is unsupported, keeping URLs short-lived, scoped and
+single-use.
+
+**PR 1 as delivered.** GPU-side only: the enforcer, scopes, `/livez`,
+`/train` disabled, and — moved forward from PR 4 because it is GPU-side code —
+the authorization digest (version 1, with a golden vector for the TypeScript
+minter) and the model manifest with pinned revisions. Storage is untouched
+(PR 3). Default `GATEWAY_MODE=report`, so the current Cineforge client keeps
+working when the pod picks up the new image.
+
+Original decision text:
+
 
 1. **D1 — Token algorithm.**
    - **Recommended:** Ed25519 (GPU holds only a public key).

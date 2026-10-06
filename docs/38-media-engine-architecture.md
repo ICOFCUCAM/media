@@ -1086,6 +1086,12 @@ provider, in any environment reachable from outside the developer's machine.
 Target: **every GPU request carries a short-lived JWT signed by the worker**,
 verified by the pod.
 
+> **Amended 2026-10-06 (docs/39 decision D1, approved):** execution tokens are
+> signed with **Ed25519 (EdDSA)**, not HS256. Cineforge holds the private key;
+> each GPU deployment holds only public keys (`GPU_JWT_PUBLIC_KEYS=kid:key,…`),
+> so a compromised GPU host cannot mint tokens. Claims, binding and rotation are
+> otherwise as below. Implemented GPU-side in `apps/gpu-worker/app/gateway`.
+
 ```
 Worker                                            GPU pod (deployment D)
   sign HS256 with secret K_D (per deployment)       verify signature with K_D

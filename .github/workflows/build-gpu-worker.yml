@@ -59,6 +59,11 @@ jobs:
           file: apps/gpu-worker/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cineforge-gpu:${{ inputs.tag || 'latest' }}
+          # Every build also gets an immutable `sha-<commit>` tag (docs/39 rollout
+          # R0): pin the RunPod pod to it so a merge never reaches production
+          # until the pod's image tag is changed on purpose.
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/cineforge-gpu:${{ inputs.tag || 'latest' }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/cineforge-gpu:sha-${{ github.sha }}
 
 # re-run trigger
