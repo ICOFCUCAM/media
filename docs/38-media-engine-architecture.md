@@ -7,6 +7,7 @@ Version: **2** (2026-10-06) · Supersedes nothing; extends docs/12, 22, 23, 25, 
 |---|---|
 | 1 | Image Intelligence & Generation Engine; model-neutral Video Engine; registry, router, schemas, queues, GPU, security, billing, identity, continuity, migration, phases (§A–§AE). |
 | 2 | **DeployPro** adopted as Cineforge's long-term infrastructure and media-render platform. Added: Cineforge/DeployPro separation of concerns (§0), portability rules (§AF), DeployPro capability and gap analysis from its repository (§AG), `GpuProvider` abstraction (§AH), model-aware GPU scheduling (§AI), media render pipeline (§AJ), `StorageProvider` abstraction (§AK), database portability (§AL), Redis/BullMQ on DeployPro (§AM), private networking (§AN), container deployment model (§AO), control-plane contract (§AP), GPU pool (§AQ), combined product + infrastructure migration roadmap (§AR), requirement traceability for both directives (§AS). Sections A, B, M, N, O, P, Z, AA, AB, AC, AD revised to be provider-neutral. |
+| 2.3 | **Synchronized production** (Part IV, §AU): Master Production Clock (integer-µs timebase, rational fps), audio-first planning, Audio Engine, A/V Synchronization Engine and validators, lip-sync validation, music/SFX/ambience anchoring, automatic repair loop, Final Quality Gate, mastering pipeline, production state machine, timeline/audio/sync/repair/version/provenance tables; verified current-code gaps (e.g. silent `-shortest` truncation, 16 vs 24 fps); analysis-tool licenses checked. |
 | 2.2 | **Workflow Runtime / ComfyUI integration** (§AT): ComfyUI as an execution runtime behind `WorkflowRuntime` (with `DiffusersRuntime`), versioned Workflow Registry, Workflow Builder, ComfyUI worker design, security, license obligations (ComfyUI is GPL-3.0; its server has no authentication), promotion pipeline; provenance columns added to §J/§K; images, phases, traceability and decisions updated. |
 | 2.1 | **Model neutrality clarified** (review directive): the Video Engine names no primary model; Wan 2.2 is the initial license-safe production candidate; LTX and HunyuanVideo are pluggable candidates subject to their licenses. Model **eligibility** dimensions and **lifecycle statuses** added to the registry (§H). Character identity defined as a Cineforge-owned system (§R). GPU security requirements restated as non-negotiable (§O). Universal metering incl. rendering (§Q). |
 
@@ -32,6 +33,11 @@ does not replace it.
 > V2 Small for depth control. **No excluded model is used, directly or as a
 > hidden dependency** (§C, §D).
 
+> **Synchronized production:** the production timeline is authoritative. One
+> Master Production Clock governs picture, dialogue, music, effects, ambience,
+> subtitles and events; a film is COMPLETE only after A/V synchronization and
+> the Final Quality Gate pass (§AU).
+>
 > **Workflow runtime:** Cineforge builds versioned, validated workflows from
 > production intent and executes them through interchangeable runtimes —
 > ComfyUI first, Diffusers and future runtimes through the same
@@ -2954,6 +2960,664 @@ create.
 | 12 | Promote validated workflows to stable production versions | continuous (AT.16) | |
 
 
+# Part IV — Synchronized Production: Master Production Clock, Audio Engine, A/V Synchronization, Quality Control and Final Mastering
+
+## AU. Synchronized film production
+
+### AU.1 Purpose and core principle
+
+This part defines what Cineforge needs to create complete, production-ready
+films in which picture, dialogue, music, sound effects, ambience, subtitles,
+transitions and other timed events are generated and validated as **one
+synchronized production** rather than as unrelated media files.
+
+**Cineforge is a synchronized film-production system**, not a system that
+independently generates a video file and an audio file and combines them at
+the end. **The production timeline is authoritative.** Audio timing, dialogue
+timing and event timing influence video planning; generated video is then
+checked against the intended audio performance.
+
+Authoritative chain:
+
+```
+Story → Script → Production Plan → Audio Plan → Master Production Clock
+      → Shot/Video Plan → Media Generation → A/V Synchronization
+      → Validation → Automatic Repair → Mastering → Final Film
+```
+
+**Architectural decision (definitive).** Cineforge's audio and video systems
+are coordinated production engines. Audio timing is a production constraint,
+video timing is a production constraint, and both are governed by the same
+Master Production Clock. Cineforge never defines success as "video generated"
+or "audio generated". Success is: **the approved production timeline has
+synchronized, technically valid picture and sound and has passed the Final
+Quality Gate.**
+
+**Final architectural rule.** Cineforge is not a video generator with audio
+added afterward. It is an AI film-production operating system in which story,
+picture, sound and timed production events are coordinated around one
+authoritative timeline. ComfyUI and other runtimes execute workflows; DeployPro
+provides controlled compute; Cineforge remains the source of creative and
+production truth. The product is not a collection of generated assets — it is
+a **synchronized, validated, reproducible film production**.
+
+### AU.2 What exists today (verified in the code) and why it must change
+
+| Area | Today (`apps/worker`) | Problem |
+|---|---|---|
+| Narration | `audio.processor.ts`: one TTS track per scene (OpenAI `tts-1`, voice "onyx") from the scene's dialogue/narration text | no per-line timing; no relation to shot boundaries |
+| Assembly | `render-engine.ts`: shots normalized, concatenated; "Voice bed: ordered concat of per-scene narration" | audio and picture are positioned independently |
+| Truncation | `commands.ts` mux uses `-shortest` ("a narration bed longer than the cut must not…") | **narration longer than the picture is silently cut off** — exactly failure 27(a)/(h) |
+| Music | one score composed on the opening scene (fal Stable Audio) and looped under the cut | no cue points, no scene-boundary transitions |
+| SFX | "no generator yet" | no event-anchored sound |
+| Frame rate | `render-engine.ts` normalizes shots with `fps=16`; `commands.ts` `DEFAULT_FORMAT` is 24 fps | two timebases in one pipeline; risk of conversion drift |
+| Loudness | single `loudnorm=I=-16:TP=-1.5:LRA=11` pass on the mix | no stems, no measured QC, no delivery profiles |
+| Subtitles | `localize.processor.ts` builds SRT from lines (`cuesFromLines`) | cue times estimated, not aligned to the voice track |
+| Data | `audio_tracks` has `start_ms`, `duration_ms`, `gain_db`, kind `VOICE|MUSIC|SFX|AMBIENCE`; `dialogue_lines` has `start_ms`, `audio_key`, `character_id`, `emotion` | the schema anticipated timing, but the pipeline does not use it as authority |
+| Talking characters | Voice Lab avatars via fal (SadTalker, Kling AI Avatar) — standalone, not part of film timing | not in the production timeline |
+
+These are kept running during migration and replaced incrementally (AU.24).
+
+### AU.3 Complete Cineforge media architecture (layers)
+
+| Layer | Responsibility |
+|---|---|
+| **Cineforge Creative Intelligence** | story, screenplay, characters, worlds, scenes, shots, directing logic, production intent |
+| **Production Planning Layer** | scene breakdown, shot plan, dialogue plan, audio plan, timing constraints, continuity, dependencies |
+| **Media Intelligence Layer** | model registry, model router, generation policies, provenance, licensing, runtime selection (§H, §AT) |
+| **Image Engine** | character images, locations, props, key art, storyboards, reference images, editing, variations (§C, §T) |
+| **Video Engine** | shot generation, animation, motion, image-to-video, video-to-video, future models (§E) |
+| **Audio Engine** | dialogue, voice, narration, music, SFX, ambience, mastering stems, timed audio events (AU.6) |
+| **Workflow Runtime Layer** | ComfyUI, Diffusers and future runtimes behind a common interface (§AT) |
+| **DeployPro Infrastructure Layer** | GPU/CPU workers, storage, scheduling, networking, secrets, observability, deployment (Part II) |
+| **A/V Synchronization Engine** | master clock, timeline analysis, dialogue alignment, lip-sync validation, drift detection, repair (AU.7–AU.12) |
+| **Final Quality Gate and Mastering Layer** | technical QC, loudness, frame rate, continuity, subtitles, render, final deliverables (AU.13, AU.17) |
+
+### AU.4 Master Production Clock
+
+Every production has **one authoritative Master Production Clock**; all
+generated and imported media are positioned against it.
+
+The clock coordinates: video frames and shot boundaries · dialogue and
+narration start/end times · word- and, where available, phoneme-level timing ·
+music cues, beats and musical transitions · sound effects and ambience ·
+character actions and important visual events · subtitles and captions ·
+transitions, titles and visual effects · scene and sequence boundaries.
+
+**No media asset is production-ready merely because it exists.** It is
+production-ready only when it has a valid temporal relationship to the Master
+Production Clock (a `timeline_events` placement that passes validation).
+
+**Timebase specification (design):**
+- Canonical time unit: **integer microseconds (µs)** from timeline start,
+  stored as `bigint`. No floating-point seconds in timeline storage.
+- Each timeline declares a **rational frame rate** (`fps_num/fps_den`, e.g.
+  `24/1`, `25/1`, `24000/1001`) and an **audio sample rate** (48 000 Hz).
+  Frame `n` starts at `floor(n · 1e6 · fps_den / fps_num)` µs; sample `k` at
+  `k · 1e6 / 48000` µs. All conversions are exact integer arithmetic with
+  explicit rounding rules, so frame-rate conversion cannot introduce
+  cumulative drift.
+- **Snap rules:** picture events (cuts, shot bounds) snap to frame boundaries;
+  audio events are sample-accurate; subtitles snap to frames for display.
+- **One production fps.** Generated clips arrive at model-native rates (e.g. 16
+  fps today); they are conformed once to the timeline fps by the render worker
+  with a recorded method (frame interpolation or duplication), never
+  re-timed implicitly. The conform is a versioned media derivative.
+- Timeline versions are immutable once approved; edits produce a new version.
+
+### AU.5 Audio-first timing and production planning
+
+Cineforge establishes an initial timing plan **before** expensive video
+generation:
+
+1. Create or import the screenplay.
+2. Break the screenplay into scenes, sequences and shots.
+3. Identify every spoken line and non-dialogue audio event.
+4. Generate or select voices and create a dialogue timing estimate.
+5. Create an audio timeline containing dialogue, music, effects and ambience.
+6. Calculate expected shot durations from the audio and directing plan.
+7. Create video shot constraints from those timings.
+8. Generate video using the timing constraints.
+9. Run A/V synchronization analysis.
+10. Repair or regenerate any failed segment before final mastering.
+
+Timing estimate before TTS: words × language-specific speaking rate × emotion
+modifier (from `dialogue_lines.emotion`) + pauses from punctuation and
+direction; replaced by measured durations as soon as dialogue audio exists.
+Shot duration = max(directing intent, covered dialogue span + head/tail
+handles); shots that exceed a model's `maxDurationSec` are split at planned
+cut points or rendered as extensions (V2V `extend`), decided by the planner,
+not by the model.
+
+### AU.6 Video Engine and Audio Engine (production-intent interfaces)
+
+**Video Engine** (model-neutral, §E): Wan 2.2 initial license-safe production
+candidate; Wan 2.1 legacy/fallback; LTX candidate requiring commercial
+licensing before production use; HunyuanVideo subject to territory and
+licensing restrictions; future models pluggable without changing the
+production architecture.
+
+The Video Engine receives a **production intent**, not a raw user prompt:
+
+```ts
+export interface VideoShotIntent {
+  projectId: string; sceneId: string; shotId: string; timelineVersionId: string;
+  characterRefs: string[]; locationRef?: string; worldRefs?: string[];
+  camera: CameraPlan;                         // §I (existing type)
+  motion?: { constraints: string[]; strength?: number };
+  durationUs: bigint;                         // from the Master Production Clock
+  fps: { num: number; den: number }; aspectRatio: "16:9" | "9:16" | "1:1" | "2.39:1";
+  seed?: number; initImageKey?: string;       // storyboard frame
+  timing: {                                   // audio-derived constraints
+    speakingIntervals: Array<{ characterId: string; startUs: bigint; endUs: bigint; dialogueEventId: string }>;
+    actionEvents: Array<{ label: string; atUs: bigint; toleranceUs: bigint }>; // e.g. "door slams"
+    headHandleUs: bigint; tailHandleUs: bigint;
+  };
+  drivingAudioKey?: string;                   // for audio-driven talking shots
+  quality: QualityClass;
+}
+```
+
+**Talking-character shots** prefer **audio-driven or timing-constrained
+generation** over hoping an independent video matches the voice track. The
+registry gets an operation `speech_to_video` (audio-driven). Candidate: **Wan
+2.2 S2V-14B** (speech-to-video, listed in the Wan 2.2 repository whose models
+are Apache-2.0 — verified) — subject to the same benchmark and registry
+eligibility as every model.
+
+**Audio Engine** — first-class; produces structured audio assets with timing
+metadata, not just an opaque WAV/MP3:
+
+| Capability | Today | Target |
+|---|---|---|
+| Dialogue / voice generation | OpenAI TTS; MiniMax via fal (Voice Lab) | `AudioEngine` adapters; self-hosted TTS later via `cineforge-audio-worker` (models selected under the same license rules) |
+| Narration | OpenAI TTS per scene | per line, timed |
+| Character voice assignment and continuity | `characters.voice_profile`, Voice Lab voices | voice id pinned per character + version |
+| Music generation or ingestion | fal Stable Audio, one looped score | cue-based (AU.11) |
+| Sound-effect generation or library selection | none | event-anchored SFX (AU.11) |
+| Ambience and room tone | none | per location/scene |
+| Dialogue segmentation | none | per line → words |
+| Word timestamps; phoneme/viseme timing where supported | none | forced alignment (AU.10 tooling) |
+| Stems | single mix | dialogue, music, effects, ambience |
+| Loudness normalization and technical validation | single `loudnorm` | measured per stem and program (AU.13) |
+
+Every audio asset carries: start time, end time, source, speaker/role,
+language, sample rate, loudness metadata, confidence, and its relationship to
+the scene/shot/event that caused it.
+
+```ts
+export type AudioKind = "dialogue" | "narration" | "music" | "sfx" | "ambience" | "room_tone";
+export interface AudioAssetMeta {
+  kind: AudioKind; startUs: bigint; endUs: bigint;
+  source: { workflow?: WorkflowRef; modelVersionId?: string; library?: string; upload?: boolean };
+  speakerCharacterId?: string; role?: string; language?: string;
+  sampleRate: 48000 | 44100; channels: 1 | 2 | 6;
+  loudness: { integratedLufs: number; truePeakDbtp: number; lra?: number };
+  confidence?: number;                        // TTS/alignment confidence
+  words?: Array<{ text: string; startUs: bigint; endUs: bigint; confidence?: number }>;
+  phonemes?: Array<{ symbol: string; startUs: bigint; endUs: bigint }>;
+  cause: { sceneId?: string; shotId?: string; timelineEventId?: string; dialogueLineId?: string };
+}
+export interface AudioEngine {
+  planDialogue(lines: DialogueLineRef[], lang: string): Promise<Array<{ lineId: string; estDurationUs: bigint }>>;
+  generate(intent: AudioIntent): Promise<{ generationId: string }>;   // row-first, like images
+  align(audioKey: string, transcript: string, lang: string): Promise<AudioAssetMeta["words"]>;
+  stems(timelineVersionId: string): Promise<Record<"dialogue" | "music" | "effects" | "ambience", string>>;
+}
+```
+
+### AU.7 A/V Synchronization Engine
+
+A first-class subsystem between media generation and final mastering.
+
+```
+CINEFORGE FILM GENERATION
+        │
+ ┌──────┴───────┐
+ │              │
+VIDEO ENGINE  AUDIO ENGINE
+ │              │
+shots/scenes   dialogue/music/SFX
+ └──────┬───────┘
+        │
+     SYNC ENGINE
+        │
+ ┌──────┼─────────────┐
+ │      │             │
+Duration Dialogue     Event
+Align   Align         Align
+ └──────┬─────────────┘
+        │
+   QUALITY GATE
+     /       \
+   PASS      FAIL
+    │          │
+ Master     Repair/Regenerate
+```
+
+Components (each a pure, testable module in `cineforge-worker` / render
+workers; heavy media analysis runs as `cineforge.avsync-check.v1` jobs):
+
+| Component | Role |
+|---|---|
+| **MasterClock** | authoritative timebase for the entire production (AU.4) |
+| **TimelineAnalyzer** | compares all media and event intervals |
+| **DialogueAligner** | aligns dialogue segments to the intended scene and shot timing |
+| **LipSyncValidator** | evaluates whether visible speaking/action timing is compatible with dialogue timing |
+| **AudioVideoDurationValidator** | detects duration mismatches, leading/trailing silence and unexpected offsets |
+| **MusicCueValidator** | checks music entry, exit and transition points |
+| **SFXCueValidator** | checks event-triggered effects against visual actions |
+| **SubtitleSynchronizer** | aligns captions/subtitles to approved dialogue timing |
+| **LoudnessValidator** | validates dialogue, stems and final program loudness |
+| **FrameRateValidator** | verifies frame-rate and timebase consistency |
+| **DriftDetector** | detects progressive A/V timing drift |
+| **RepairPlanner** | converts failures into specific repair actions |
+| **FinalQualityGate** | decides whether the production can become the master |
+
+```ts
+export type SyncCheck =
+  | "duration" | "dialogue_alignment" | "lip_sync" | "music_cue" | "sfx_cue"
+  | "subtitle" | "loudness" | "frame_rate" | "drift" | "transitions" | "silence"
+  | "clipping" | "black_frames" | "dropped_frames" | "missing_media" | "provenance";
+
+export interface SyncIssue {
+  check: SyncCheck; severity: "info" | "warning" | "error" | "blocker";
+  sceneId?: string; shotId?: string; eventId?: string;
+  atUs: bigint; spanUs?: bigint;
+  measured: Record<string, number>;      // e.g. { offsetMs: 420, overrunMs: 1200 }
+  expected: Record<string, number>;
+  confidence: number;                    // 0..1; low → human review
+  message: string;                       // human-readable diagnostic
+  repair?: RepairAction;                 // proposed by RepairPlanner
+}
+export interface AVSyncReport {
+  timelineVersionId: string; checks: SyncCheck[];
+  passed: boolean; issues: SyncIssue[];
+  toolVersions: Record<string, string>;  // analyzers + model versions (provenance)
+}
+export interface AVSyncEngine {
+  analyze(timelineVersionId: string, scope?: { sceneIds?: string[]; shotIds?: string[] }): Promise<AVSyncReport>;
+}
+```
+
+### AU.8 Dialogue-to-video synchronization levels
+
+| Level | Requirement | Evidence |
+|---|---|---|
+| Scene | dialogue belongs to the correct scene | timeline event parentage |
+| Shot | the line begins and ends inside the intended visual segment | event interval ⊂ shot interval (with handles) |
+| Character | the correct character is visually associated with the speech | speaking face ↔ character identity (face track + identity references) |
+| Temporal | speaking action begins at the expected time | visual speech onset vs dialogue onset |
+| Mouth-motion | visible mouth movement compatible with speech duration and cadence | mouth-activity signal vs speech envelope |
+| Word/phoneme | finer timing where the pipeline gives sufficient visual evidence | word/phoneme alignment vs visual activity |
+| Continuity | dialogue not cut, duplicated or shifted when adjacent shots are edited | timeline diff between versions |
+
+For important talking-character shots Cineforge prefers an **audio-driven or
+timing-constrained generation workflow**.
+
+### AU.9 Lip-sync validation (a QC process, not cosmetic post-processing)
+
+1. Read the approved dialogue timing.
+2. Identify the visual speaking interval.
+3. Compare expected speaking activity with visible mouth/action activity.
+4. Measure the timing offset.
+5. Detect speech that continues after the visual speaking action ends.
+6. Detect visual speaking that occurs while the character has no corresponding dialogue.
+7. Flag low-confidence cases for human review when automated evidence is insufficient.
+
+Example diagnostic: *"Shot 17: dialogue begins 420 ms after expected speaking
+motion; dialogue exceeds the visual speaking segment by 1.2 seconds.
+Recommended repair: regenerate the final 3 seconds of the shot using the
+approved dialogue timing constraint."*
+
+Tolerances are configuration (`sync_policies`), calibrated in the benchmark.
+Starting defaults follow commonly used broadcast practice for audio/video
+alignment (sound should not lead picture by more than a few tens of ms nor lag
+by much more) — exact values to be confirmed against the standard text and
+viewer testing before they become gates.
+
+### AU.10 Analysis tooling (license status, verified 2026-10-06 from official repositories)
+
+| Need | Candidate | License found | Status |
+|---|---|---|---|
+| Word-level timestamps | WhisperX | code BSD-2-Clause; alignment uses wav2vec2 models whose licenses vary per language (not catalogued in README) | verify each alignment model per language before use |
+| Word/phone forced alignment | Montreal Forced Aligner | MIT; pretrained acoustic models in a separate repository | verify model licenses |
+| Speaker diarization | pyannote `speaker-diarization-community-1` (via WhisperX) | CC-BY-4.0 (attribution) | usable with attribution; gated download |
+| Mouth activity / face landmarks | MediaPipe | Apache-2.0 | verify Face Landmarker blendshape outputs in benchmark |
+| A/V offset + confidence | SyncNet (`joonson/syncnet_python`) | repository shows MIT | verify pretrained weight license |
+| Audio-driven talking video | Wan 2.2 S2V-14B | Apache-2.0 (Wan 2.2 repository) | benchmark |
+| Loudness / technical QC | FFmpeg `ebur128`/`loudnorm`, `blackdetect`, `silencedetect`, `freezedetect`, `ffprobe` | FFmpeg (already used) | in use; build configuration to be checked for GPL/LGPL components if distributed |
+
+No tool enters production until its license is verified (the "no hidden
+dependencies" rule applies to analyzers exactly as to generators).
+
+### AU.11 Music, SFX and ambience synchronization
+
+- Music cues are **attached to timeline events**, not merely placed under the final video.
+- SFX events can be attached to actions such as impacts, door openings, footsteps, vehicles or transitions.
+- Ambience follows location and scene continuity.
+- Music transitions respect scene and sequence boundaries.
+- SFX are not displaced when a shot is shortened or regenerated.
+- When a shot changes duration, dependent audio events are **recalculated**, not blindly retained.
+
+Anchoring model: every `timeline_events` row may declare `anchor_event_id` +
+`anchor_offset_us` + `anchor_mode` (`start`, `end`, `action`, `cut`), so a
+re-timed shot moves its dependent events automatically; events with no valid
+anchor after a change are flagged by TimelineAnalyzer.
+
+### AU.12 Automatic repair loop
+
+```
+Generate → Analyze → Sync Check
+PASS → continue
+FAIL → diagnose → select repair → regenerate/retime → recheck
+```
+
+| Failure | Repair |
+|---|---|
+| Dialogue too long | adjust shot duration, or regenerate the shot with a longer timing constraint |
+| Dialogue too short | shorten/re-edit the visual segment, or regenerate the dialogue (production decision) |
+| Lip sync fails | regenerate the affected talking segment with the approved audio timing (audio-driven where available) |
+| Music starts too early/late | retime the cue |
+| SFX displaced by a changed visual action | relocate the SFX event (anchor recalculation) |
+| Drift accumulates across a sequence | recalculate sequence timing from the Master Clock |
+| Repair changes the approved timeline materially | invalidate and re-evaluate downstream dependent jobs |
+
+```ts
+export type RepairAction =
+  | { kind: "retime_event"; eventId: string; newStartUs: bigint }
+  | { kind: "adjust_shot_duration"; shotId: string; newDurationUs: bigint }
+  | { kind: "regenerate_shot_segment"; shotId: string; fromUs: bigint; toUs: bigint; constraint: "dialogue_timing" | "audio_driven" }
+  | { kind: "regenerate_dialogue"; dialogueLineId: string; targetDurationUs: bigint }
+  | { kind: "relocate_sfx"; eventId: string; anchorEventId: string }
+  | { kind: "recompute_sequence"; sceneIds: string[] }
+  | { kind: "human_review"; reason: string };
+```
+Repair policy: automatic repairs have a per-production budget (attempts and
+credits); after the budget, issues go to human review. Repairs always create
+**new media versions** (AU.16), never overwrite approved media.
+
+### AU.13 Final Quality Gate
+
+A film cannot be marked **COMPLETE** until the Final Quality Gate passes.
+Checks: video duration · audio duration · dialogue alignment · lip
+synchronization · scene and shot transitions · music timing · SFX timing ·
+ambience continuity · subtitle/caption alignment · audio silence gaps · audio
+clipping and technical defects · program loudness · sample rate · frame rate
+and timebase · dropped or duplicate frames · black frames · missing media ·
+timeline continuity · media provenance and successful asset resolution ·
+required render outputs and codecs.
+
+Delivery profiles (configuration) define targets per output: e.g. program
+loudness and true-peak targets per platform (EBU R 128-style broadcast vs
+streaming targets), codecs, frame rate, sample rate, subtitle formats. Each
+check has a severity; any `blocker` fails the gate; `error` fails unless a
+human waives it with a recorded reason.
+
+### AU.14 Workflow registry additions
+
+Added to §AT.7: `cineforge.audio-dialogue.v1`, `cineforge.audio-music.v1`,
+`cineforge.audio-sfx.v1`, `cineforge.avsync-check.v1`,
+`cineforge.final-master.v1` (alongside character, location, storyboard v1/v2,
+keyart, image-edit, video-shot, upscale). Each specifies required models and
+versions, VRAM/GPU requirements, inputs, outputs, estimated compute, licensing
+constraints, territory restrictions, allowed production modes and validation
+requirements. `workflow_definitions.runtime` is extended with CPU runtimes
+(`ffmpeg` for mastering/conform, `analysis` for A/V checks) and an `audio`
+runtime for audio models, all behind `WorkflowRuntime`.
+
+### AU.15 Production graph, jobs and queues
+
+The existing polling/BullMQ model remains the orchestration foundation:
+production requests become durable jobs · jobs are idempotent · workers claim
+jobs atomically · retries are explicit · dependencies are represented in the
+production graph · storyboard frames may be child jobs of shot-generation
+jobs · A/V validation jobs depend on the relevant media assets and approved
+timeline · repair jobs create new versions rather than silently overwriting
+approved media.
+
+New queues (same row-first pattern, §L): `timeline` (planning, re-timing),
+`avsync` (analysis), `repair`, `master` (final assembly + post-render QC).
+Existing `audio`, `render`, `localize` processors move behind the Audio Engine
+and render workers. BullMQ flows express dependencies:
+`timeline → {image, audio} → video → avsync → (repair → avsync)* → master`.
+
+### AU.16 Data model additions
+
+Every generation records the selected model, runtime, workflow version,
+parameters, licensing decision, timing constraints, input references, output
+artifacts and validation state.
+
+| Table | Purpose | Key fields (design) | Relationship to existing |
+|---|---|---|---|
+| `image_generations` | image ledger | §J | new |
+| `video_generations` | video attempt ledger | §K + `timing_constraints jsonb`, `timeline_version_id` | new |
+| `entity_images` | images ↔ entities | §J | new |
+| `character_identities` | versioned identity | §R | new |
+| `audio_generations` | audio ledger (dialogue, music, sfx, ambience) | like `image_generations` + `kind`, `language`, `voice_id`, `meta jsonb` (AudioAssetMeta) | supersedes ad-hoc `audio_tracks` writes; `audio_tracks` kept as a compatibility view during migration |
+| `audio_events` | placed audio on a timeline (start/end µs, gain, stem, anchor) | `timeline_version_id`, `audio_generation_id`, `media_version_id`, `stem`, `start_us`, `end_us`, `gain_db`, `fade_in_us`, `fade_out_us` | generalizes `audio_tracks.start_ms/duration_ms/gain_db` |
+| `production_timelines` | timeline versions per project | `project_id`, `version`, `fps_num`, `fps_den`, `sample_rate`, `duration_us`, `status` (`draft`,`approved`,`superseded`,`frozen`), `parent_version_id` | new |
+| `timeline_events` | every timed thing: shots, dialogue, words (optional), music cues, SFX, ambience, subtitles, transitions, titles, VFX, visual actions | `timeline_version_id`, `kind`, `start_us`, `end_us`, `ref_type`, `ref_id`, `anchor_event_id`, `anchor_offset_us`, `anchor_mode`, `payload jsonb` | maps from `scenes`, `shots`, `dialogue_lines` (existing) |
+| `av_sync_reports` | one per analysis run | `timeline_version_id`, `scope`, `passed`, `checks`, `tool_versions`, `created_at` | new |
+| `av_sync_issues` | individual findings | `report_id`, `check`, `severity`, `at_us`, `span_us`, `measured`, `expected`, `confidence`, `message`, `status` (`open`,`repairing`,`resolved`,`waived`) | new |
+| `repair_jobs` | planned/executed repairs | `issue_id`, `action jsonb` (RepairAction), `status`, `result_media_version_id`, `attempt`, `credits_hold_id` | new |
+| `media_versions` | immutable version of every asset | `asset_type`, `asset_id`, `version`, `storage_key`, `checksum`, `duration_us`, `derived_from[]`, `generation_ref` | new; outputs of generations become versions |
+| `workflow_runs` | one execution of a bound workflow | `workflow_id@version`, `runtime`, `graph_sha256`, `generation_ref`, `lease`/worker, timings, status | new (an image/video/audio generation may have several runs) |
+| `generation_provenance` | unified, append-only provenance view across image/video/audio | generation ref, model version, weights revision, runtime, workflow, routing decision, license decision, inputs, outputs, timing constraints, validation state | view over the ledgers + `workflow_runs` |
+
+All tables: owner-scoped RLS via `owns_project`, worker-only status/metric
+columns (guard triggers), Realtime for status rows the UI shows.
+
+### AU.17 Final mastering pipeline
+
+After all quality gates pass:
+1. Freeze the approved production timeline.
+2. Resolve all referenced media versions.
+3. Assemble video and audio stems.
+4. Apply approved transitions and effects.
+5. Apply audio mastering and loudness targets.
+6. Render the final master.
+7. Run post-render technical QC.
+8. Generate delivery derivatives such as platform-specific versions.
+9. Create the final provenance manifest.
+
+Runs on `cineforge-render-worker` (§AJ) as `cineforge.final-master.v1`. The
+master manifest (stored next to the master) lists timeline version, every
+media version with checksum, models/workflows/runtimes, licenses, QC report
+ids and delivery profile — the film is reproducible from its manifest.
+
+### AU.18 Production state machine
+
+```
+PLANNED → SCRIPTED → TIMELINED → MEDIA_GENERATING → SYNC_ANALYSIS
+        → QUALITY_REPAIR (if required) → READY_FOR_MASTER → MASTERING → COMPLETE
+```
+A production is **never** marked COMPLETE solely because all generation jobs
+succeeded.
+
+Compatibility: today's `projects.status` enum (`DRAFT`, `PLANNING`,
+`GENERATING`, `RENDERING`, `PAUSED`, `READY`, `FAILED`) stays for existing UI;
+a new `projects.production_state` column carries the new machine, with a
+mapping (`PLANNED/SCRIPTED/TIMELINED → PLANNING`, `MEDIA_GENERATING/
+SYNC_ANALYSIS/QUALITY_REPAIR → GENERATING`, `READY_FOR_MASTER/MASTERING →
+RENDERING`, `COMPLETE → READY`) until the UI migrates.
+
+### AU.19 Failure examples the system must catch
+
+| # | Failure | Caught by |
+|---|---|---|
+| a | Voice line lasts 8.2 s but the shot has only 6 s of usable speaking action | DialogueAligner, LipSyncValidator, AudioVideoDurationValidator |
+| b | Character begins speaking 0.6 s before the dialogue track | LipSyncValidator |
+| c | Mouth movement continues after dialogue ends | LipSyncValidator |
+| d | Music cue starts before the scene transition | MusicCueValidator |
+| e | Explosion SFX occurs after the visible impact | SFXCueValidator |
+| f | Subtitle appears after the spoken sentence | SubtitleSynchronizer |
+| g | A regenerated shot changes duration and causes downstream music/SFX drift | TimelineAnalyzer (anchors), DriftDetector |
+| h | Audio and video have different final durations | AudioVideoDurationValidator (replaces silent `-shortest` truncation) |
+| i | Frame-rate conversion introduces timing drift | FrameRateValidator, DriftDetector |
+| j | A missing media asset creates a silent or black section | FinalQualityGate (missing media, silence, black frames) |
+
+### AU.20 Storage and provenance
+
+Original generated assets remain immutable versions · derived renders
+reference their source assets · timeline versions identify the media versions
+they used · a repaired shot creates a new version · final masters retain a
+manifest of the video, audio, subtitle and metadata inputs · private
+production assets remain protected by project ownership/RLS and server-side
+authorization (§P, §AK). Storage keys gain a version segment:
+`projects/{projectId}/{assetType}/{assetId}/v{n}/…`.
+
+### AU.21 Billing and universal metering
+
+Images, video, audio, synchronization analysis, upscaling and other expensive
+operations participate in the universal usage model (§Q): reserve usage before
+expensive execution where appropriate · record actual usage after completion ·
+release unused reservations · record compute and provider/model metadata ·
+make cost estimation available before generation · allow premium production
+modes to consume different usage amounts. `usage_records.kind` adds
+`avsync` and `master`; repairs are metered (`units.repair=true`) so the cost
+of failed synchronization is visible.
+
+### AU.22 Quality and cost strategy (progressive gates)
+
+Low-cost planning and timing analysis → preview/storyboard generation →
+timing-aware video generation → A/V synchronization validation → targeted
+repair rather than full-film regeneration → final high-quality mastering.
+Expensive computation is spent only when the production is likely to succeed.
+
+### AU.23 Security, separation, model routing (restated for this part)
+
+- **Separation:** Cineforge owns what the production means — projects, users,
+  stories, scripts, characters, scenes, shots, production plans, workflows,
+  model policies, media metadata, **timelines, A/V synchronization**, billing
+  semantics and final production state. DeployPro owns where and how
+  computation runs — GPU/CPU workers, deployment, scheduling, scaling,
+  networking, storage infrastructure, secrets, TLS, worker health, logs,
+  metrics and provider adapters. **DeployPro must not become the source of
+  truth for Cineforge creative state.**
+- **Secure GPU execution** (§O): GPU service not invokable merely because a
+  pod URL is known; short-lived signed execution tokens; authorization bound
+  to deployment, job/action and request/body; one-off upload/download URLs;
+  model/workflow authorization validated before execution; private
+  networking where possible; no long-lived provider credentials in browser
+  clients; **every generation request and resulting artifact audited**
+  (`workflow_runs` + `generation_provenance`).
+- **Model router** (§H) selects on: model version · license status ·
+  commercial eligibility · territory eligibility · account/plan eligibility ·
+  generation type · required runtime · GPU/VRAM availability · expected
+  quality · expected cost · latency · current deployment availability ·
+  internal policy. The routing decision is stored on the generation record.
+- **Character identity** (§R): persistent, versioned; references, approved
+  appearances, wardrobe, age, visual attributes, identity
+  embeddings/conditioning artifacts; CharacterIdentity records, approved
+  reference images, identity/version metadata, generation constraints,
+  optional LoRA/adapter artifacts when licensing permits, shot-level identity
+  references, continuity validation across scenes.
+- **Image Engine** (§C, §T): characters, worlds, locations, props, storyboards,
+  key art, references; Qwen-Image + Qwen-Image-Edit recommended, others via
+  the registry.
+
+### AU.24 R&D promotion and migration from third-party generation
+
+Promotion (extends §AT.16): research model/workflow → test quality and compute
+requirements → verify license and territory → create Cineforge workflow
+definition → run benchmark **and synchronization tests** → validate security
+and resource limits → canary deployment → promote to production → retain the
+prior workflow as a rollback option.
+
+Migration (extends §Z): replace direct generation calls with engine adapters ·
+run self-hosted models in shadow mode · compare quality, cost **and
+synchronization results** · canary selected productions · retain a controlled
+fallback during transition · remove direct vendor coupling after acceptance
+criteria are met. Applies to OpenAI TTS, fal (MiniMax voice, Stable Audio,
+SadTalker/Kling avatars, Topaz upscale), OpenAI images and the fal video tier.
+
+The current render path stays available as the `legacy` master workflow until
+`cineforge.final-master.v1` passes the gate on the benchmark film set.
+
+### AU.25 Canonical end-to-end flow
+
+```
+USER/CREATIVE INTENT
+↓
+STORY / SCRIPT
+↓
+SCENE & SHOT BREAKDOWN
+↓
+CHARACTER / WORLD / ASSET PLAN
+↓
+AUDIO PLAN
+↓
+DIALOGUE + MUSIC + SFX + AMBIENCE TIMING
+↓
+MASTER PRODUCTION CLOCK
+↓
+VIDEO SHOT PLAN WITH TIMING CONSTRAINTS
+↓
+IMAGE / STORYBOARD / VIDEO GENERATION
+↓
+AUDIO GENERATION
+↓
+A/V SYNC ENGINE
+↓
+DURATION + DIALOGUE + LIP-SYNC + EVENT + SUBTITLE + LOUDNESS CHECKS
+↓
+PASS? ── NO → REPAIR / REGENERATE → RECHECK
+  │
+ YES
+  ↓
+FINAL QUALITY GATE
+↓
+MASTERING
+↓
+POST-RENDER QC
+↓
+FINAL FILM + PROVENANCE MANIFEST
+```
+
+### AU.26 Implementation priority (directive) and reconciliation
+
+Directive order:
+1. Define the Master Production Clock and timeline schema.
+2. Define Audio Engine interfaces and audio event schema.
+3. Define AVSyncEngine interfaces and reports.
+4. Move video generation behind the model/runtime abstraction.
+5. Integrate ComfyUI as the first workflow runtime.
+6. Implement timing-aware shot generation.
+7. Implement duration and dialogue synchronization checks.
+8. Implement subtitle/music/SFX synchronization.
+9. Implement targeted repair jobs.
+10. Implement final quality gate.
+11. Implement universal usage metering.
+12. Secure GPU execution.
+13. Add model/license/territory routing.
+14. Promote tested workflows to production.
+15. Migrate remaining direct vendor generation calls.
+
+**Reconciliation (for review):** items 1–3 are definitions (schemas and
+interfaces in this document) and can proceed in parallel. Item 12 (secure GPU
+execution) is listed late here but was set as the **first implementation
+phase** in the earlier review directive, and it closes a live exposure (the GPU
+service accepts unauthenticated requests today). Recommendation: keep GPU
+security first, run items 1–3 alongside it, then continue in the directive's
+order. One quick win that needs no new model: replace the silent `-shortest`
+truncation with a duration check that fails loudly (AU.19 h).
+
+| Directive item | Phase mapping |
+|---|---|
+| 1–3 | P1 (this document) → schema PR alongside P2 |
+| 4–5 | P3–P4 (§AT.19 steps 3–4) |
+| 6 | P12 + audio-first planning (new P6a) |
+| 7–8 | new P14a (sync checks) |
+| 9 | new P14b (repair) |
+| 10 | new P15a (final quality gate + mastering) |
+| 11 | P6 onward |
+| 12 | **P2 (first)** |
+| 13 | P3 |
+| 14 | continuous (§AT.16) |
+| 15 | §Z, AU.24 |
+
+
 ---
 
 ## AS. Requirement traceability
@@ -3004,6 +3668,45 @@ Every requirement from the two directives and where this document satisfies it.
 | Security first phase; no unauthenticated generation/training endpoint; short-lived signed job tokens, deployment-bound, action-bound, body-bound; one-time upload/download URLs; no permanent storage credentials in GPU workers; private GPU networking | O (requirements table), AN, AA phase 2, AR I2 |
 | Universal metering (image, video, training, upscale, rendering, other GPU ops) without necessarily charging; collect cost/performance data before pricing | Q |
 | Architecture review PR, no implementation code | Status line; PR |
+
+**Directive 5 — Complete media production architecture (v2.3)**
+
+| Item | Section(s) |
+|---|---|
+| Purpose; 1 core principle (synchronized system; timeline authoritative; authoritative chain) | AU.1 |
+| 2 Complete media architecture (10 layers) | AU.3 |
+| 3 Master Production Clock (coordinated elements; production-ready only with valid temporal relationship) | AU.4 |
+| 4 Audio-first timing and planning (10 steps) | AU.5 |
+| 5 Video Engine (model-neutral; production intent incl. audio-derived timing) | AU.6, E |
+| 6 Audio Engine (capabilities; structured assets with timing metadata) | AU.6 |
+| 7 A/V Synchronization Engine (diagram) | AU.7 |
+| 8 A/V components (13) | AU.7 |
+| 9 Dialogue-to-video levels (7); audio-driven preference | AU.8, AU.6 |
+| 10 Lip-sync validation (7 steps, example diagnostic) | AU.9, AU.10 |
+| 11 Music, SFX, ambience synchronization | AU.11 |
+| 12 Automatic repair loop | AU.12 |
+| 13 Final Quality Gate (20 checks) | AU.13 |
+| 14 Workflow runtime architecture | AT.6, AU.14 |
+| 15 Workflow registry incl. audio, avsync, final-master | AU.14, AT.7 |
+| 16 Image Engine | AU.23, C, T |
+| 17 Character identity | AU.23, R |
+| 18 Cineforge / DeployPro separation; DeployPro not source of creative truth | AU.23, 0 |
+| 19 Secure GPU execution (incl. audit) | AU.23, O |
+| 20 Job and queue architecture | AU.15, L |
+| 21 Data model additions (14 tables) | AU.16 |
+| 22 Model registry and router (13 criteria; decision stored) | AU.23, H |
+| 23 Storage and provenance | AU.20, AU.17 |
+| 24 Billing and universal metering | AU.21, Q |
+| 25 Quality and cost strategy | AU.22 |
+| 26 Production state machine | AU.18 |
+| 27 Failure examples (10) | AU.19 |
+| 28 Final mastering pipeline (9 steps) | AU.17 |
+| 29 R&D to production promotion | AU.24, AT.16 |
+| 30 Migration from third-party generation | AU.24, Z |
+| 31 Architectural decision (audio part of video production) | AU.1 |
+| 32 Canonical end-to-end flow | AU.25 |
+| 33 Implementation priority | AU.26 |
+| 34 Final architectural rule | AU.1 |
 
 **Directive 4 — Cineforge + ComfyUI + DeployPro addendum (v2.2)**
 
@@ -3106,3 +3809,15 @@ Every requirement from the two directives and where this document satisfies it.
 13. Choose the database target path for I11: self-hosted Supabase services on
    DeployPro (preferred, §AL option a) or `cineforge-api` replacing
    PostgREST/Realtime (option b) — decision can wait until I10.
+
+14. Approve **synchronized production** (§AU): the Master Production Clock
+    (integer-µs timebase, one production fps), audio-first planning, the A/V
+    Synchronization Engine and the rule that COMPLETE requires the Final
+    Quality Gate.
+15. Approve the **ordering reconciliation** in §AU.26: GPU security stays the
+    first implementation phase; clock/audio/sync schemas proceed alongside it.
+16. Approve **A/V analysis tooling** candidates pending license verification
+    (WhisperX alignment models per language, MFA models, MediaPipe, SyncNet
+    weights) and **Wan 2.2 S2V** as the audio-driven talking-shot candidate.
+17. Approve **sync tolerances and delivery profiles** as configuration to be
+    calibrated in the benchmark, not fixed in code.
