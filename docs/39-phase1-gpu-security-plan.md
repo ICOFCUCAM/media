@@ -309,6 +309,14 @@ unauthenticated request and a forged token. The switch and its evidence are
 written to `runtime_gateway_events`; a database trigger also records every
 change to a deployment row, however it is made.
 
+### 9.1 Security targets and known limitations (accepted for PR 2)
+
+| Item | Cineforge target | Current state | Status |
+|---|---|---|---|
+| Upload URL lifetime | **30 minutes** (S3 presigned PUT, the default path) | 30 minutes | meets target |
+| Upload URL lifetime, Supabase fallback (`GPU_UPLOAD_URL_MODE=supabase`) | 30 minutes | **≈ 2 hours, provider-imposed** (Supabase signed upload URLs have a fixed validity); single-use, unique per grant, cannot overwrite, no permanent credential exposed, scope limited to that job's object | **accepted limitation — not the target**. Tighten when Supabase allows a shorter TTL or the fallback mechanism changes |
+| LoRA / adapter binding in the authorization digest | **content-addressed**: model → revision → artifact → content hash → approved manifest → execution token | authz v1 binds LoRAs by **storage key (filename) only** | **known security limitation**, not equivalent to content-addressed integrity. Authz v2 adds the artifact content hash and must land before Wan 3.x, ComfyUI workflows, new LoRAs or Qwen-Image are authorized |
+
 ## 10. Rollout runbook (operator actions)
 
 | Step | Action | Production effect |

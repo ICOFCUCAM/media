@@ -62,7 +62,11 @@ export class SupabaseSignedUploadPresigner extends S3Presigner {
     if (!supabaseUrl || !serviceKey) throw new Error("GPU_UPLOAD_URL_MODE=supabase needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY");
   }
 
-  /** Single-use upload URL (Supabase-fixed validity); upsert is never enabled, so it cannot overwrite. */
+  /**
+   * Single-use upload URL; upsert is never enabled, so it cannot overwrite.
+   * Its validity (≈ 2 h) is fixed by Supabase and is longer than Cineforge's
+   * 30-minute target — an accepted, documented limitation (docs/39 §9.1).
+   */
   override async presignPut(key: string): Promise<string> {
     const base = this.supabaseUrl.replace(/\/+$/, "");
     const path = key.split("/").map(encodeURIComponent).join("/");
