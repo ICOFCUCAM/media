@@ -7,6 +7,7 @@ Version: **2** (2026-10-06) · Supersedes nothing; extends docs/12, 22, 23, 25, 
 |---|---|
 | 1 | Image Intelligence & Generation Engine; model-neutral Video Engine; registry, router, schemas, queues, GPU, security, billing, identity, continuity, migration, phases (§A–§AE). |
 | 2 | **DeployPro** adopted as Cineforge's long-term infrastructure and media-render platform. Added: Cineforge/DeployPro separation of concerns (§0), portability rules (§AF), DeployPro capability and gap analysis from its repository (§AG), `GpuProvider` abstraction (§AH), model-aware GPU scheduling (§AI), media render pipeline (§AJ), `StorageProvider` abstraction (§AK), database portability (§AL), Redis/BullMQ on DeployPro (§AM), private networking (§AN), container deployment model (§AO), control-plane contract (§AP), GPU pool (§AQ), combined product + infrastructure migration roadmap (§AR), requirement traceability for both directives (§AS). Sections A, B, M, N, O, P, Z, AA, AB, AC, AD revised to be provider-neutral. |
+| 2.2 | **Workflow Runtime / ComfyUI integration** (§AT): ComfyUI as an execution runtime behind `WorkflowRuntime` (with `DiffusersRuntime`), versioned Workflow Registry, Workflow Builder, ComfyUI worker design, security, license obligations (ComfyUI is GPL-3.0; its server has no authentication), promotion pipeline; provenance columns added to §J/§K; images, phases, traceability and decisions updated. |
 | 2.1 | **Model neutrality clarified** (review directive): the Video Engine names no primary model; Wan 2.2 is the initial license-safe production candidate; LTX and HunyuanVideo are pluggable candidates subject to their licenses. Model **eligibility** dimensions and **lifecycle statuses** added to the registry (§H). Character identity defined as a Cineforge-owned system (§R). GPU security requirements restated as non-negotiable (§O). Universal metering incl. rendering (§Q). |
 
 This document designs (1) a proprietary, self-hosted **Image Intelligence &
@@ -30,6 +31,11 @@ does not replace it.
 > Inpainting for mask-based editing; Real-ESRGAN for upscaling; Depth Anything
 > V2 Small for depth control. **No excluded model is used, directly or as a
 > hidden dependency** (§C, §D).
+
+> **Workflow runtime:** Cineforge builds versioned, validated workflows from
+> production intent and executes them through interchangeable runtimes —
+> ComfyUI first, Diffusers and future runtimes through the same
+> `WorkflowRuntime` abstraction (§AT). Users never operate raw ComfyUI graphs.
 
 ---
 
@@ -839,6 +845,9 @@ create table public.image_generations (
   -- routing & execution
   requested_model text,                    -- user preference, optional
   model_version_id text references public.media_model_versions(id),
+  workflow_id text, workflow_version int,  -- workflow_definitions (§AT.7)
+  runtime text, runtime_version text,      -- 'comfyui' + commit | 'diffusers' + version
+  graph_sha256 text,                       -- bound workflow hash (provenance / reproduction)
   deployment_id text,
   routing jsonb,                           -- RouteDecision
   status text not null default 'PENDING' check (status in
@@ -920,6 +929,7 @@ create table public.video_generations (
   seed bigint,
   idempotency_key text,
   model_version_id text references public.media_model_versions(id),
+  workflow_id text, workflow_version int, runtime text, runtime_version text, graph_sha256 text,
   deployment_id text, routing jsonb,
   status text not null default 'QUEUED',
   progress smallint not null default 0, attempt smallint not null default 1,
@@ -2055,6 +2065,7 @@ independently (and that runs on today's providers too):
 | `cineforge-render-worker` | `apps/worker` entrypoint `render` | FFmpeg render/transcode/thumbnails/HLS/mastering (§AJ) | worker (replicas, CPU-heavy) | inside Render worker |
 | `cineforge-image-worker` | `apps/gpu-worker` + `BACKEND=image_*` | image generation/edit/inpaint/outpaint/upscale | GPU worker (DeployPro GPU placement) | RunPod (planned) |
 | `cineforge-video-worker` | `apps/gpu-worker` + `BACKEND=video_ltx|video_hunyuan|video_wan` (one image per backend) | video generation | GPU worker | RunPod (Wan today) |
+| `cineforge-comfy-worker` | `apps/gpu-worker` core (sidecar) + pinned ComfyUI + allow-listed node set (`comfy-image`, `comfy-video` profiles) | `ComfyUIRuntime` execution (§AT.10); ComfyUI bound to 127.0.0.1 | GPU worker | — (new) |
 | `cineforge-audio-worker` | `apps/gpu-worker` + `BACKEND=audio_*` (future) | self-hosted TTS / voice / music | GPU or CPU worker | fal / OpenAI today |
 | `cineforge-trainer` | `apps/gpu-worker` + `BACKEND=train_lora` | identity LoRA training (§R) | GPU worker (long leases) | stub today |
 
@@ -2179,6 +2190,772 @@ Interleaving with product phases (P = product, §AA):
 At every row: the previous provider stays configured as fallback until the new
 path has passed production testing (§Z exit-criteria pattern).
 
+# Part III — Workflow Runtime & ComfyUI Integration
+
+## AT. Workflow Runtime / ComfyUI integration
+
+### AT.1 Executive decision
+
+ComfyUI is integrated into Cineforge **as a workflow execution runtime**, not
+as Cineforge's product architecture or user-facing creative interface.
+
+```
+CINEFORGE
+  Creative Intelligence
+  Production Logic
+  Model Registry / Router
+  Workflow Builder
+  Asset System
+          │
+          ▼
+    WORKFLOW RUNTIME
+       ┌──┴────┐
+       │       │
+    ComfyUI  Diffusers
+       │       │
+       └──┬────┘
+          ▼
+      DEPLOYPRO
+   GPU / Compute / Storage
+   Network / Scheduling
+          │
+          ▼
+     Cineforge Assets
+```
+Cineforge remains the creative production platform; ComfyUI is an execution
+engine; DeployPro is the infrastructure and compute control plane.
+
+**Architecture statement.** Cineforge is a model-neutral AI film production
+platform. Its creative intelligence and production systems generate structured
+production intent, select eligible models through a policy-aware model router,
+construct versioned workflows, and execute those workflows through
+interchangeable workflow runtimes. ComfyUI is a supported execution runtime for
+complex image and media workflows, while Diffusers and future runtimes remain
+available through the same abstraction. DeployPro provides the controlled
+infrastructure layer, including GPU scheduling, worker deployment, private
+networking, storage connectivity, security, scaling, monitoring and resource
+management. Models such as Qwen-Image, Qwen-Image-Edit and Wan 2.2 are
+replaceable production components subject to license, territory, capability
+and benchmark requirements.
+
+### AT.2 Binding principles (the 13 establishing rules)
+
+1. **ComfyUI is an execution runtime, not Cineforge's product architecture.**
+2. **Users never directly operate raw ComfyUI graphs.** No customer-facing node
+   editor; no customer-supplied graphs are executed.
+3. **Cineforge generates or selects validated workflows from production
+   intent** (Workflow Builder, AT.8).
+4. **`WorkflowRuntime` is an abstraction** (AT.6); business logic never calls
+   ComfyUI APIs directly.
+5. **`ComfyUIRuntime` is the first supported implementation.**
+6. **`DiffusersRuntime`** (today's `apps/gpu-worker` backends) **and future
+   runtimes remain possible** behind the same interface.
+7. **Workflow definitions are versioned** (`cineforge.storyboard.v2`) and
+   immutable once in production (AT.7).
+8. **Workflows declare model, VRAM, GPU, licensing and resource
+   requirements** (AT.7).
+9. **DeployPro hosts and schedules ComfyUI GPU workers** (AT.11); RunPod or a
+   development GPU host them through the same `GpuProvider` contract until
+   DeployPro's GPU gates (§AG G1–G4) pass.
+10. **GPU endpoints are authenticated and preferably private** (AT.12); the
+    ComfyUI server itself is never reachable from outside its container.
+11. **Model routing and licensing remain Cineforge responsibilities.** ComfyUI
+    does not choose models; the registry/router (§H) is the only authority.
+12. **Outputs return to Cineforge's asset system** (`image_generations`,
+    `video_generations`, `entity_images`, shots) via one-time URLs (AT.13).
+13. **Experimental workflows can be promoted into stable production
+    workflows** through a gated pipeline (AT.16).
+
+Core principle restated: Cineforge must not become tied to one image model,
+one video model, one inference framework or one workflow runtime. Qwen-Image,
+Wan 2.2, LTX, HunyuanVideo and future models are replaceable components;
+ComfyUI is replaceable through `WorkflowRuntime`; Cineforge owns production
+intent, workflow policy, project state and assets.
+
+### AT.3 Why ComfyUI belongs in Cineforge — and what it is not
+
+**Why:** node-based execution supports complex visual-generation pipelines; it
+combines generation, editing, references, LoRAs, controls and upscaling in one
+graph; it accelerates experimentation with new models and workflows;
+successful experiments can become polished Cineforge production features; it
+reduces the need to rewrite Cineforge whenever a new model or technique
+appears. Its README lists support for the models this architecture targets
+(Qwen Image, Z-Image, Wan 2.1/2.2, LTX-Video 2/2.3, HunyuanVideo 1.5, SDXL,
+upscalers) — each to be confirmed in the benchmark for the exact node set used.
+
+**ComfyUI is not:** the Cineforge application architecture · the public
+Cineforge API · the primary user interface · the source of truth for projects,
+characters, worlds, scenes, shots or assets · the model-selection authority ·
+the long-term infrastructure/control plane · a raw node editor ordinary
+Cineforge customers must operate.
+
+### AT.4 ComfyUI facts verified from its repository (2026-10-06)
+
+| Fact | Source | Consequence |
+|---|---|---|
+| **License: GPL-3.0** | github.com/comfyanonymous/ComfyUI | see AT.15 (license obligations) |
+| **No authentication on any HTTP route** — `GET /ws`, `/`, `/embeddings`, `/models`, `/models/{folder}`, `/extensions`, `/view`, `/view_metadata/{folder_name}`, `/system_stats`, `/features`, `/prompt`, `/object_info`, `/object_info/{node_class}`, `/api/jobs`, `/api/jobs/{job_id}`, `/history`, `/history/{prompt_id}`, `/queue`; `POST /upload/image`, `/upload/mask`, `/prompt`, `/queue`, `/interrupt`, `/free`, `/history`, `/api/jobs/{job_id}/cancel`, `/api/jobs/cancel` | `server.py` | ComfyUI binds to **127.0.0.1 inside its container only**; all external access goes through the authenticated Cineforge runtime sidecar (AT.10) |
+| Frontend is a separate package (ComfyUI Frontend) | README | not exposed; no UI served to customers |
+| Extensible via custom nodes (third-party code, separate licenses) | README | custom nodes allow-listed, pinned and license-checked like models (AT.7, AT.15) |
+
+### AT.5 User experience: filmmaking verbs, not graphs
+
+Users interact with filmmaking concepts; Cineforge translates intent into a
+validated workflow and ComfyUI executes it behind the scenes:
+
+| User action | Workflow (initial ids) |
+|---|---|
+| Generate Character | `cineforge.character.v1` |
+| Create Location | `cineforge.location.v1` |
+| Create Storyboard | `cineforge.storyboard.v1` / `.v2` |
+| Animate Shot / Generate Video | `cineforge.video-shot.v1` |
+| Edit Image | `cineforge.image-edit.v1` |
+| Create Key Art | `cineforge.keyart.v1` |
+| Upscale | `cineforge.upscale.v1` |
+| Create Variation | the source asset's workflow + new seed/strength (lineage via `parent_id`) |
+
+End-to-end execution:
+
+```
+User
+  │
+  ▼
+Cineforge Production Intent        (purpose, entities, quality — §J/§K rows)
+  │
+  ▼
+Creative Intelligence              (Director + ContextCompiler §U)
+  │
+  ▼
+Model Router                       (eligibility + scoring §H)
+  │
+  ▼
+Workflow Builder                   (AT.8)
+  │
+  ▼
+Validated Workflow                 (definition id@version + bound parameters + hash)
+  │
+  ▼
+ComfyUI Runtime                    (WorkflowRuntime implementation)
+  │
+  ▼
+GPU Worker on DeployPro            (RunPod/dev during migration, same image)
+  │
+  ▼
+Generated Output                   (one-time PUT URLs)
+  │
+  ▼
+Asset Validation                   (checksum, dimensions, safety, QC score)
+  │
+  ▼
+Cineforge Asset System             (entity_images, shots, generation rows)
+```
+
+### AT.6 `WorkflowRuntime` abstraction (TypeScript contract — design only)
+
+```
+WorkflowRuntime
+├── execute()
+├── validate()
+├── estimate()
+├── cancel()
+├── getStatus()
+└── getCapabilities()
+
+Implementations
+├── ComfyUIRuntime
+├── DiffusersRuntime
+└── FutureRuntime
+```
+
+```ts
+export type RuntimeId = "comfyui" | "diffusers" | string;
+
+export interface WorkflowRef { id: string; version: number }        // "cineforge.storyboard", 2
+
+export interface BoundWorkflow {
+  ref: WorkflowRef;
+  runtime: RuntimeId;
+  runtimeVersion: string;            // ComfyUI commit / diffusers version pinned by the definition
+  graphSha256: string;               // hash of the fully bound graph (provenance, cache key)
+  payload: unknown;                  // ComfyUI API-format prompt JSON, or Diffusers backend request
+  inputs: InputRef[];                // one-time GET URLs (§I InputRef)
+  outputs: OutputTarget[];           // one-time PUT URLs
+  models: Array<{ versionId: string; role: string; weightsRevision: string }>;
+  requirements: GpuRequirements;     // §AH — VRAM, GPU class, disk, job type
+}
+
+export interface RuntimeValidation { ok: boolean; errors: Array<{ code: string; path?: string; message: string }> }
+export interface RuntimeEstimate { gpuMs: number; vramMb: number; gpuClass: string; confidence: "low" | "medium" | "high" }
+export type RuntimeStatus =
+  | { state: "queued" | "loading" | "running"; progress: number; node?: string }
+  | { state: "succeeded"; result: ImageGenerationResult | ShotResult }
+  | { state: "failed"; error: { code: string; message: string; retryable: boolean } }
+  | { state: "cancelled" };
+
+export interface RuntimeCapabilities {
+  runtime: RuntimeId; runtimeVersion: string;
+  nodes?: Array<{ package: string; commit: string; licenseId: string }>;  // ComfyUI custom nodes installed
+  models: string[];                  // model version ids resident/available on this worker
+  supportsCancel: boolean; supportsProgress: boolean;
+}
+
+export interface WorkflowRuntime {
+  readonly id: RuntimeId;
+  validate(wf: BoundWorkflow): Promise<RuntimeValidation>;          // static + against worker capabilities
+  estimate(wf: BoundWorkflow): Promise<RuntimeEstimate>;
+  execute(wf: BoundWorkflow, lease: GpuLease, ctx: GenerationContext): Promise<{ runId: string }>;
+  getStatus(runId: string): Promise<RuntimeStatus>;
+  cancel(runId: string): Promise<void>;
+  getCapabilities(lease: GpuLease): Promise<RuntimeCapabilities>;
+}
+```
+- The **ImageEngine / VideoEngine** (§L) call `WorkflowBuilder.build()` then
+  `WorkflowRuntime.execute()`; they no longer call an `ImageModelAdapter`
+  directly. The §I adapters remain as the **DiffusersRuntime**'s backend
+  contract (one backend per model), so nothing in v1/v2 is discarded.
+- `DiffusersRuntime` = today's `apps/gpu-worker` FastAPI backends (Wan 2.1 and
+  future diffusers backends). `ComfyUIRuntime` = the ComfyUI worker image
+  (AT.10). Both share the same authenticated sidecar core.
+
+### AT.7 Workflow Registry (versioned definitions, owned by Cineforge)
+
+Initial workflow ids: `cineforge.character.v1`, `cineforge.location.v1`,
+`cineforge.storyboard.v1`, `cineforge.storyboard.v2`, `cineforge.keyart.v1`,
+`cineforge.image-edit.v1`, `cineforge.video-shot.v1`, `cineforge.upscale.v1`.
+
+Every definition declares: workflow id and version · runtime · required models
+and versions · required VRAM/GPU capabilities · inputs and outputs · estimated
+GPU time · license requirements · territorial restrictions · allowed
+production modes · validation rules.
+
+```sql
+create table public.workflow_definitions (
+  id text not null,                        -- 'cineforge.storyboard'
+  version int not null,                    -- 2  → referenced as cineforge.storyboard.v2
+  purpose text not null,                   -- matches image_generations.purpose / video operation
+  runtime text not null check (runtime in ('comfyui','diffusers')),  -- extended for future runtimes
+  runtime_version text not null,           -- ComfyUI commit sha / diffusers version
+  template jsonb not null,                 -- ComfyUI API-format graph with named parameter slots, or diffusers request template
+  template_sha256 text not null,
+  parameters_schema jsonb not null,        -- JSON Schema of the slots the Workflow Builder may fill
+  inputs_schema jsonb not null,            -- required/optional inputs by role (reference, mask, control, identity…)
+  outputs_schema jsonb not null,           -- outputs produced (count, format, dimensions)
+  required_models jsonb not null,          -- [{role:'base', versionId:'qwen-image/…'}, {role:'edit', versionId:'qwen-image/2511-edit'}, …]
+  model_slots jsonb not null default '{}', -- roles the router may fill with any eligible version of a family
+  required_nodes jsonb not null default '[]', -- ComfyUI custom nodes [{package, commit, licenseId}]
+  requirements jsonb not null,             -- {minVramMb, gpuClasses[], diskGb, jobType}
+  cost_model jsonb not null,               -- gpu-ms as a function of resolution, steps, frames, count, GPU class
+  license_ids text[] not null,             -- union of model + node + runtime licenses (computed at registration)
+  territory_excludes text[] not null default '{}',  -- union of component territory exclusions (computed)
+  allowed_modes text[] not null,           -- 'draft','standard','premium','cinematic'
+  validation_rules jsonb not null,         -- limits: max megapixels, max frames, allowed samplers, input count, etc.
+  status text not null default 'experimental' check (status in
+    ('experimental','benchmarking','license_review','production_candidate','production','deprecated','retired')),
+  benchmark_report_key text,               -- storage key of the benchmark report
+  created_by text, approved_by text, approved_at timestamptz,
+  created_at timestamptz not null default now(),
+  primary key (id, version)
+);
+```
+- Admin-only RLS (like the model registry). A `production` definition is
+  **immutable**; changes create a new version.
+- **Eligibility of a workflow** = its own status + eligibility of every
+  required model (§H) + every node/runtime license + territory union. If any
+  component is ineligible for the request, the workflow is ineligible.
+- Custom nodes are pinned by commit, installed at image build time only, and
+  each carries a `license_id` in `model_licenses` (the "no hidden
+  dependencies" rule applies to nodes exactly as to models).
+
+### AT.8 Model Registry, Router and Workflow Builder
+
+The model registry/router remains the authority for model eligibility.
+ComfyUI does not independently choose models.
+
+```
+Cineforge Request
+      │
+      ▼
+Model Router
+      │
+      ├── Territory
+      ├── Commercial license
+      ├── Model version
+      ├── Account / plan
+      ├── Generation type
+      ├── GPU availability
+      ├── Cost / performance
+      └── Internal policy
+      │
+      ▼
+Selected Model + Workflow Runtime
+```
+(The full eligibility dimensions — territory, commercial eligibility, license
+status, product usage, model version, deployment availability, generation
+type, account/plan, internal policy — are defined in §H.)
+
+**Workflow Builder** (Cineforge, TypeScript):
+1. Input: production intent (generation row), compiled context (§U), route
+   decision (model versions per role).
+2. Select the highest `production` (or canary `production_candidate`) workflow
+   definition for the purpose and mode whose required models/slots match the
+   routed versions.
+3. Bind parameters into the template's named slots only (prompt, negative
+   prompt, seed, size, steps, guidance, strength/denoise, LoRA files and
+   scales, reference/mask/control inputs) — never free-form graph edits.
+4. Replace model file references with the exact weights revisions; replace
+   input references with runtime-local paths that the sidecar materializes
+   from one-time URLs.
+5. Validate: parameters against `parameters_schema`/`validation_rules`; graph
+   contains only allow-listed node classes; no node that fetches arbitrary
+   URLs, executes code, or writes outside the job directory; output nodes
+   match `outputs_schema`.
+6. Produce `BoundWorkflow` with `graphSha256`; persist `workflow_id`,
+   `workflow_version`, `runtime`, `runtime_version`, `graph_sha256` on the
+   generation row for provenance and reproduction.
+
+### AT.9 Reference workflows (production intent → graph stages)
+
+**Character generation**
+```
+Character References
+        │
+        ▼
+Character Identity
+        │
+        ├── Metadata
+        ├── Reference Images
+        └── Identity LoRA
+        │
+        ▼
+Qwen-Image
+        │
+        ▼
+Qwen-Image-Edit
+        │
+        ▼
+Consistency / Quality Evaluation
+        │
+        ▼
+Optional Upscaling
+        │
+        ▼
+Cineforge Character Asset
+```
+
+**Cinematic image**
+```
+Creative Brief
+     │
+     ▼
+Reference Images
+     │
+     ▼
+Identity / LoRA
+     │
+     ▼
+Qwen-Image
+     │
+     ▼
+Depth / Pose / Control      (Depth Anything V2 Small; pose only once a pose model's license is verified)
+     │
+     ▼
+Qwen-Image-Edit
+     │
+     ▼
+Upscaling                   (Real-ESRGAN)
+     │
+     ▼
+Cinematic Processing        (grade/grain/letterbox per project bible)
+     │
+     ▼
+Final Asset
+```
+
+**Video shot**
+```
+Storyboard Frame
+      │
+      ▼
+Character / World Identity
+      │
+      ▼
+Video Model Router
+      │
+      ├── Wan 2.2
+      ├── LTX (if licensed)
+      ├── HunyuanVideo (where permitted)
+      └── Future Models
+      │
+      ▼
+Motion / Camera Processing
+      │
+      ▼
+Video Generation
+      │
+      ▼
+Temporal / Quality Processing
+      │
+      ▼
+Upscale / Mastering          (render workers §AJ)
+      │
+      ▼
+Cineforge Master Clip
+```
+
+Video model policy (unchanged, §E): Video Engine remains model-neutral; Wan 2.2
+is the initial license-safe production candidate; LTX and HunyuanVideo remain
+pluggable candidates subject to their licenses and territorial restrictions;
+Wan 2.1 remains the temporary legacy fallback.
+
+```
+VIDEO ENGINE
+     │
+ MODEL ROUTER
+     │
+ ┌───┼────────────────┐
+ │   │                │
+Wan  LTX         HunyuanVideo
+2.2  licensed-   territory/license
+     dependent   dependent
+ │
+ └──────── Future Models
+```
+
+Image model stack (unchanged, §C): Qwen-Image (primary generation candidate) ·
+Qwen-Image-Edit (editing, multiple references, consistency) · Z-Image-Turbo
+(drafts) · SDXL Inpainting (mask editing) · Real-ESRGAN (upscaling) · Depth
+Anything V2 Small (depth). Excluded or unverified models must not become
+hidden dependencies; production adoption requires primary-source license
+verification.
+
+Character identity (unchanged, §R): Cineforge-owned; reference images,
+character metadata, permitted visual representations/embeddings, LoRA identity
+training, generation constraints, reference-image conditioning, consistency
+evaluation, persistent identity records; one identity for still images and
+video; no commercially restricted face-identity models as hidden dependencies.
+
+### AT.10 ComfyUI worker design (`cineforge-comfy-worker`)
+
+```
+┌──────────────────────── container (one GPU) ────────────────────────┐
+│  Cineforge runtime sidecar (apps/gpu-worker core: FastAPI)          │
+│   - only listener on the container network (§O auth, §AN private)  │
+│   - verifies job token (deployment / action / job / body binding)   │
+│   - downloads inputs from one-time GET URLs → /job/{id}/input       │
+│   - submits bound graph to ComfyUI   POST 127.0.0.1:8188/prompt      │
+│   - tracks progress (/ws, /history/{id}); cancel (/interrupt,        │
+│     /api/jobs/{id}/cancel); unload (/free) on scheduler request     │
+│   - collects outputs → checksums → one-time PUT URLs                │
+│   - wipes /job/{id} (no cross-job leakage); reports gpu ms, VRAM    │
+│     (/system_stats), node timings, runtime/node versions             │
+│                          │ localhost only                           │
+│  ComfyUI (pinned commit, GPL-3.0) bound to 127.0.0.1                │
+│   - no frontend exposed, no ComfyUI-Manager, no runtime node install │
+│   - custom nodes pinned + allow-listed + license-checked            │
+│   - models dir read-only (weights cache by revision)                │
+│   - one prompt at a time (sidecar enforces queue length 1)          │
+└─────────────────────────────────────────────────────────────────────┘
+```
+- One image per **node-set profile** (e.g. `comfy-image` with Qwen/Z-Image/
+  SDXL-inpaint/ESRGAN/depth nodes; `comfy-video` with the video nodes of
+  eligible models). Model weights are not baked in; they are mounted from the
+  node cache.
+- The same image runs on DeployPro GPU nodes, RunPod (transitional) or a
+  development GPU — `GpuProvider` (§AH) decides where.
+- `DiffusersRuntime` workers keep the existing backend design (§M); both
+  runtimes can serve the same model version, and the workflow definition
+  states which runtime it uses.
+
+### AT.11 DeployPro + ComfyUI
+
+```
+                    DEPLOYPRO
+                        │
+                 GPU Scheduler
+                        │
+          ┌─────────────┼─────────────┐
+          │             │             │
+       GPU Node      GPU Node      GPU Node
+          │             │             │
+       ComfyUI       ComfyUI       ComfyUI
+          │             │             │
+        Qwen          Video         Future
+        Image         Engine        Models
+```
+DeployPro hosts and orchestrates ComfyUI GPU workers. The scheduler receives
+the workflow's declared `requirements` (VRAM, GPU class, disk, job type) and
+the model versions it needs, and places the job on a node where the matching
+`comfy-*` image and weights are warm (§AI) — Cineforge never names the node.
+
+| DeployPro responsibilities | Cineforge responsibilities |
+|---|---|
+| GPU provisioning and lifecycle | Creative intelligence |
+| GPU pool management | Projects |
+| Model-aware scheduling | Characters and identities |
+| ComfyUI worker deployment | Worlds and locations |
+| Container deployment | Scenes and shots |
+| Private networking | Storyboards |
+| Storage connectivity | Prompts and creative intent |
+| Secrets management | Workflow selection |
+| TLS / service exposure | Model policy |
+| Health monitoring | Production orchestration |
+| Logs and metrics | Assets |
+| Scaling | Generation history |
+| Resource accounting | User experience |
+| Deployment history | Usage records and credit policy |
+| Worker lifecycle | |
+| Provider abstraction | |
+
+### AT.12 Security (ComfyUI-specific)
+
+ComfyUI and GPU services must never be exposed as unauthenticated public
+generation endpoints.
+
+```
+Cineforge
+   │
+   │ Short-lived signed job token
+   ▼
+DeployPro GPU Gateway        (in the RunPod period the sidecar performs these checks itself)
+   │
+   ├── Validate deployment
+   ├── Validate action
+   ├── Validate job
+   ├── Validate request/body
+   └── Issue one-time storage URLs
+            │
+            ▼
+       ComfyUI Worker         (sidecar re-verifies; ComfyUI on 127.0.0.1 only)
+            │
+            ▼
+         GPU Model
+```
+- No permanent object-storage credentials inside GPU workers; one-time
+  upload/download links per job; authorization bound to deployment, action
+  and request (§O requirements table).
+- Prefer private GPU networking (§AN).
+- Record execution identity and model version: worker id, runtime and
+  runtime version, workflow id@version, graph hash, node commits, weights
+  revisions — on the generation row.
+- **Reject jobs violating license or territory policy** — at the router
+  (primary) and again at the gateway/sidecar (defense in depth: the token
+  carries the eligibility decision id; the sidecar refuses a graph whose
+  hash or model set differs from what was authorized).
+- Additional ComfyUI hardening: graphs are generated only by the Workflow
+  Builder (never by users); node allow-list; no node classes that load remote
+  URLs, run arbitrary code or shell, or read/write outside the job directory;
+  `/view`, `/upload/*`, `/models`, `/object_info`, `/history`, `/ws` and
+  `/free` unreachable from outside the container; resource limits per job
+  (max megapixels, frames, steps, wall-clock deadline).
+- One-time URL issuance: Cineforge requests them from the active
+  `StorageProvider` for the exact job keys (§AK); on DeployPro the gateway may
+  hand them to the worker, but authority over which keys a job may touch stays
+  with Cineforge (it owns the assets and ownership rules).
+
+### AT.13 Storage flow
+
+```
+Cineforge
+    │
+    ▼
+Generation Job
+    │
+    ▼
+One-time Input URL
+    │
+    ▼
+ComfyUI / GPU Worker
+    │
+    ▼
+One-time Output URL
+    │
+    ▼
+Asset Storage
+    │
+    ▼
+Cineforge Asset Record
+```
+
+### AT.14 Billing, metering and workflow cost estimation
+
+Meter all significant work even when a category is initially free: image
+generation · video generation · LoRA/identity training · upscaling ·
+rendering · audio processing · other GPU-intensive operations (§Q kinds).
+Reserve credits when a job is claimed (§Q credit holds). Initially, image
+metering is used to discover real infrastructure costs before charging.
+
+```
+Workflow
+  │
+  ├── Model
+  ├── Resolution
+  ├── Steps
+  ├── Frames
+  ├── GPU class
+  ├── Estimated VRAM
+  └── Estimated GPU time
+          │
+          ▼
+      Cost Estimate
+```
+`workflow_definitions.cost_model` (fitted from benchmark runs and refreshed
+from production `gpu_ms`) produces the estimate used for credit holds and,
+later, prices — so pricing reflects actual infrastructure cost. Usage records
+gain `workflow_id`, `workflow_version` and `runtime` in `units`.
+
+### AT.15 License obligations of the runtime itself
+
+- **ComfyUI is GPL-3.0** (verified). Running it as a network service to
+  produce outputs does not distribute it; GPL-3.0 is not the AGPL, so
+  service use alone does not require releasing Cineforge's source.
+- **Distribution triggers obligations:** if ComfyUI (modified or not) or a
+  container image containing it is ever distributed to a third party — e.g.
+  an on-premises Cineforge or DeployPro package for customers — GPL-3.0
+  source-availability terms apply to ComfyUI and to anything that forms a
+  derivative work with it.
+- **Keep Cineforge proprietary code out of the ComfyUI process.** Cineforge
+  talks to ComfyUI only over its HTTP API from the sidecar. Any custom node
+  Cineforge writes runs in-process and should be treated as GPL-compatible
+  (or kept internal and never distributed).
+- **Custom nodes have their own licenses** (some third-party nodes are
+  non-commercial or unlicensed); each must be verified and recorded before it
+  enters a node-set image.
+- Model licenses are independent of the runtime license: running a model in
+  ComfyUI does not change the model's license.
+- **Counsel review of the GPL-3.0 position is a listed decision** before any
+  distribution scenario (on-prem, customer-hosted DeployPro).
+
+### AT.16 Experimentation, R&D and promotion
+
+ComfyUI is Cineforge's R&D surface for internal teams: test new models · test
+LoRAs · test reference conditioning · test image editing · test control
+mechanisms · test upscalers · test video workflows · compare model versions ·
+prototype production pipelines. R&D runs on isolated `experimental` workers
+with admin-only access, never on customer traffic and never on non-permitted
+models in production pools.
+
+```
+Experimental ComfyUI Workflow
+            │
+            ▼
+       Benchmark                 (§AE eval sets; quality, speed, VRAM, cost)
+            │
+            ▼
+    License Verification         (every model, node, runtime component; primary sources)
+            │
+            ▼
+    Cost / Quality Review        (cost_model fitted; QC thresholds)
+            │
+            ▼
+     Production Workflow         (status production_candidate → canary → production)
+            │
+            ▼
+   Cineforge Workflow Registry   (immutable id@version)
+            │
+            ▼
+     Customer-Facing Feature     (filmmaking verb in the UI, AT.5)
+```
+
+### AT.17 Why this architecture is better
+
+No lock-in to a single model · no permanent lock-in to ComfyUI · fast
+experimentation without rewriting the application · GPU infrastructure can
+move between providers · DeployPro can manage different GPU classes ·
+licensing can be enforced centrally · workflow provenance can be recorded ·
+production workflows can be versioned and reproduced.
+
+### AT.18 Target unified architecture
+
+```
+                         CINEFORGE
+                             │
+              ┌──────────────┴──────────────┐
+              │                             │
+      CREATIVE INTELLIGENCE          PRODUCTION LOGIC
+              │                             │
+       Character Engine              Project / Scene / Shot
+       World Engine                  Story / Storyboard
+              │                             │
+              └──────────────┬──────────────┘
+                             │
+                       MODEL REGISTRY
+                             │
+                       MODEL ROUTER
+                             │
+                     WORKFLOW BUILDER
+                             │
+                     WORKFLOW RUNTIME
+                       ┌─────┴─────┐
+                       │           │
+                    ComfyUI     Diffusers
+                       │           │
+                       └─────┬─────┘
+                             │
+                         DEPLOYPRO
+                             │
+                    PRIVATE GPU NETWORK
+                             │
+             ┌───────────────┼────────────────┐
+             │               │                │
+          IMAGE GPU       VIDEO GPU        AUDIO GPU
+             │               │                │
+           Qwen            Wan 2.2          Future
+           Qwen-Edit       LTX*             Engines
+             │             Hunyuan*
+             │               │
+             └───────────────┼────────────────┘
+                             │
+                          STORAGE
+                             │
+                       CINEFORGE ASSETS
+
+* only where licensing/territory permits
+```
+
+Expected long-term result:
+
+```
+CINEFORGE   = Creative Brain + Production System + Model Intelligence
+              + Workflow Intelligence + Asset Intelligence
+COMFYUI     = Visual Workflow Runtime
+DIFFUSERS   = Direct Model Runtime
+DEPLOYPRO   = Compute + Infrastructure Control Plane
+GPU POOL    = Execution Capacity
+STORAGE     = Persistent Media Layer
+```
+Together these layers create a path toward a self-controlled, extensible AI
+film-production platform without permanent dependence on a single commercial
+model provider, inference framework, GPU provider or hosting platform.
+
+**Strategic principle.** The strategic asset is not ComfyUI and not any
+individual model. It is the combination of Cineforge creative intelligence,
+persistent character/world continuity, proprietary workflows, production
+orchestration, model routing, asset intelligence and DeployPro-controlled
+infrastructure. ComfyUI makes Cineforge faster to evolve; DeployPro makes
+Cineforge progressively independent of external infrastructure providers;
+Cineforge remains the layer that understands what the filmmaker is trying to
+create.
+
+### AT.19 Implementation order (addendum) mapped to phases
+
+| # | Addendum step | Maps to | Notes |
+|---|---|---|---|
+| 1 | Approve architecture and model/license policy | P1 | this PR |
+| 2 | Secure GPU endpoints with signed authorization | P2 / I2 | sidecar core shared by both runtimes |
+| 3 | Introduce `WorkflowRuntime` abstraction | P3–P4 | with registry/router; `DiffusersRuntime` wraps existing backends |
+| 4 | Deploy ComfyUI on DeployPro GPU infrastructure | P4 + I3/I4 | **gated on DeployPro G1–G4**; until then the same `cineforge-comfy-worker` image runs on RunPod or a dev GPU via `GpuProvider` |
+| 5 | Integrate Qwen-Image and Qwen-Image-Edit | P5 | benchmark + license archive of exact revisions and ComfyUI node set |
+| 6 | Build workflows for characters, locations, storyboard frames, key art | P6–P7, P10 | `cineforge.character/location/storyboard/keyart` v1 |
+| 7 | Connect character identity / LoRA workflows | P9 | trainer + identity workflows |
+| 8 | Integrate and benchmark Wan 2.2 | P12 | `cineforge.video-shot.v1` on Wan 2.2 |
+| 9 | Benchmark LTX / HunyuanVideo / future models where legally eligible | P12–P13 | LTX only after license clearance; Hunyuan only where permitted |
+| 10 | Integrate video workflows | P12–P14 | |
+| 11 | Metering, cost estimation, pricing controls | P6 onward (metering), pricing later | AT.14 |
+| 12 | Promote validated workflows to stable production versions | continuous (AT.16) | |
+
+
+---
+
 ## AS. Requirement traceability
 
 Every requirement from the two directives and where this document satisfies it.
@@ -2227,6 +3004,43 @@ Every requirement from the two directives and where this document satisfies it.
 | Security first phase; no unauthenticated generation/training endpoint; short-lived signed job tokens, deployment-bound, action-bound, body-bound; one-time upload/download URLs; no permanent storage credentials in GPU workers; private GPU networking | O (requirements table), AN, AA phase 2, AR I2 |
 | Universal metering (image, video, training, upscale, rendering, other GPU ops) without necessarily charging; collect cost/performance data before pricing | Q |
 | Architecture review PR, no implementation code | Status line; PR |
+
+**Directive 4 — Cineforge + ComfyUI + DeployPro addendum (v2.2)**
+
+| Addendum item | Section(s) |
+|---|---|
+| 1 Executive decision (ComfyUI = workflow runtime; separation diagram) | AT.1 |
+| 2 Core principle (model- and runtime-neutral; models and ComfyUI replaceable; Cineforge owns intent, policy, state, assets) | AT.2 |
+| 3 Why ComfyUI belongs | AT.3 |
+| 4 What ComfyUI is not | AT.3 |
+| 5 User experience (filmmaking verbs, no raw graphs) | AT.5 |
+| 6 End-to-end execution | AT.5 |
+| 7 Character generation workflow | AT.9 |
+| 8 Cinematic image workflow | AT.9 |
+| 9 Video workflow | AT.9 |
+| 10 WorkflowRuntime abstraction (execute/validate/estimate/cancel/getStatus/getCapabilities; ComfyUI/Diffusers/Future) | AT.6 |
+| 11 Workflow Registry (ids; declared requirements incl. license, territory, modes, validation) | AT.7 |
+| 12 Model Registry and Router authority; ComfyUI never chooses models | AT.8, H |
+| 13 Video model policy | AT.9, E |
+| 14 Image model stack; no hidden dependencies | AT.9, C |
+| 15 Character identity architecture | AT.9, R |
+| 16 DeployPro + ComfyUI | AT.11, AI |
+| 17 DeployPro responsibilities | AT.11, 0, AP |
+| 18 Cineforge responsibilities | AT.11, 0 |
+| 19 Security architecture (gateway, token, validations, one-time URLs, no permanent creds, private networking, provenance, license/territory rejection) | AT.12, O, AN |
+| 20 Storage flow | AT.13, P, AK |
+| 21 Billing and metering (credit reservation, discovery of costs) | AT.14, Q |
+| 22 Workflow cost estimation | AT.14 |
+| 23 Experimentation and R&D | AT.16 |
+| 24 Promotion experiment → product | AT.16 |
+| 25 Why this architecture is better | AT.17 |
+| 26 Target unified architecture | AT.18 |
+| 27 Implementation order | AT.19, AA, AR |
+| 28 Architecture review decisions | Decisions list |
+| 29 Strategic principle | AT.18 |
+| 30 Amend doc (13 establishing rules) before PR | AT.2 (rules 1–13), this revision |
+| 31 Recommended architecture statement | AT.1 |
+| 32 Expected long-term result | AT.18 |
 
 **Directive 2 — DeployPro infrastructure requirement**
 
@@ -2278,9 +3092,17 @@ Every requirement from the two directives and where this document satisfies it.
 7. Approve the **Cineforge-owned identity** approach without InsightFace-based
    adapters, and the open item to select a commercially licensed embedding
    model for consistency scoring.
-6. Adopt the **portability rules (§AF)** as binding for all new Cineforge services.
-7. Accept the **DeployPro gap list (§AG G1–G13)** as DeployPro's roadmap
+8. Approve **ComfyUI as a supported workflow runtime** behind `WorkflowRuntime`
+   (with `DiffusersRuntime`), with the Cineforge UX independent of ComfyUI's
+   node editor and no customer-supplied graphs.
+9. Approve the **Workflow Registry** (versioned, immutable production
+   definitions) and the experiment → production promotion gates.
+10. Request **counsel review of ComfyUI's GPL-3.0 license** for any future
+    distribution scenario (on-prem / customer-hosted DeployPro) and approve
+    the rule that Cineforge proprietary code stays out of the ComfyUI process.
+11. Adopt the **portability rules (§AF)** as binding for all new Cineforge services.
+12. Accept the **DeployPro gap list (§AG G1–G13)** as DeployPro's roadmap
    prerequisites, and the first DeployPro GPU target being **one image node (I4)**.
-8. Choose the database target path for I11: self-hosted Supabase services on
+13. Choose the database target path for I11: self-hosted Supabase services on
    DeployPro (preferred, §AL option a) or `cineforge-api` replacing
    PostgREST/Realtime (option b) — decision can wait until I10.
