@@ -252,7 +252,40 @@ describe.runIf(RUN)("Media Runtime Gateway — end-to-end acceptance (enforce)",
     expect(await (await fetch(`${podUrl}/livez`)).text()).toBe("ok");
   });
 
-  it("every grant is traceable: job, deployment, image, digest, body hash, outcome", async () => {
+  // ── authz v2: LoRAs are content-addressed ────────────────────────────────
+  const LORA = () => `projects/${JOB.projectId}/identities/c1/v1/lora.safetensors`;
+  const loraShot = (sha?: string) => ({
+    prompt: "identity lock", durationSec: 1, width: 64, height: 64, fps: 8,
+    loraKeys: [LORA()], ...(sha ? { loraSha256: { [LORA()]: sha } } : {}),
+  });
+
+  it("the approved manifest is authz v2", () => {
+    expect(store.deployments.get(DEPLOYMENT)!.manifest!.authzVersion).toBe(2);
+  });
+
+  it("a LoRA whose bytes match its recorded hash is loaded", async () => {
+    const bytes = Buffer.from("real-adapter-weights");
+    objects.objects.set(LORA(), bytes);
+    const out = await new RunpodClient({ baseUrl: podUrl, authorizer: authority() })
+      .generate(loraShot(sha256Hex(bytes)), undefined, JOB);
+    expect(objects.objects.has(out.videoKey)).toBe(true);
+  }, 60_000);
+
+  it("a swapped LoRA (same key, different bytes) is refused by the GPU before loading", async () => {
+    objects.objects.set(LORA(), Buffer.from("swapped-weights"));
+    const before = objects.writes;
+    await expect(new RunpodClient({ baseUrl: podUrl, authorizer: authority() })
+      .generate(loraShot(sha256Hex("real-adapter-weights")), undefined, JOB)).rejects.toThrow(/409.*LORA_HASH_MISMATCH/);
+    expect(objects.writes).toBe(before); // nothing produced
+    expect([...store.grants.values()].at(-1)).toMatchObject({ outcome: "failed", errorCode: "HTTP_409" });
+  }, 60_000);
+
+  it("a LoRA with no recorded hash is denied before any GPU call", async () => {
+    await expect(new RunpodClient({ baseUrl: podUrl, authorizer: authority() }).generate(loraShot(), undefined, JOB))
+      .rejects.toMatchObject({ code: "LORA_UNHASHED" });
+  });
+
+    it("every grant is traceable: job, deployment, image, digest, body hash, outcome", async () => {
     const done = [...store.grants.values()].filter((g) => g.outcome === "completed");
     expect(done.length).toBeGreaterThan(0);
     for (const g of done) {

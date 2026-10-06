@@ -10,8 +10,11 @@ Canonical form (version 1), identical in TypeScript and Python:
   are whole microseconds, matching the Master Production Clock, so no float
   formatting can differ between languages); sha256, lowercase hex.
 
-Version 1 binds LoRAs by storage key. Content hashes for LoRAs arrive with the
-presigned-download change (docs/39 PR 3) as version 2.
+Version 2 (current) binds every LoRA by storage key AND content hash
+(`{"key", "sha256"}`): model → revision → artifact → content hash → approved
+manifest → execution token. The worker additionally verifies the bytes it
+downloads against that hash before loading them (docs/39 §9.1). Version 1
+bound LoRAs by key only; this worker no longer computes it.
 """
 
 from __future__ import annotations
@@ -20,7 +23,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 
-AUTHZ_VERSION = 1
+AUTHZ_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -40,7 +43,7 @@ def authz_document(
     workflow: str,
     runtime: str,
     models: list[dict[str, str]],
-    loras: list[str],
+    loras: list[dict[str, str]],
     timing: TimingRequest,
 ) -> dict:
     return {
@@ -51,7 +54,8 @@ def authz_document(
             ({"role": m["role"], "id": m["id"], "revision": m["revision"], "weights": m["weights"]} for m in models),
             key=lambda m: m["role"],
         ),
-        "loras": sorted(set(loras)),
+        # One entry per key (a duplicate key keeps its last hash), sorted by key.
+        "loras": [{"key": k, "sha256": h} for k, h in sorted({lo["key"]: lo["sha256"] for lo in loras}.items())],
         "timing": {
             "durationUs": int(timing.duration_us),
             "fps": int(timing.fps),

@@ -36,6 +36,7 @@ import {
 export const INPUT_URL_TTL_SEC = 15 * 60;
 export const OUTPUT_URL_TTL_SEC = 30 * 60;
 const IMAGE_ATTEST_CACHE_MS = 60_000;
+const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 /** Body fields the authority adds/reads; the rest is the existing generate payload. */
 export interface GeneratePayload {
@@ -47,6 +48,8 @@ export interface GeneratePayload {
   referenceImageKeys?: string[];
   referenceVideoKeys?: string[];
   loraKeys?: string[];
+  /** Content hash per LoRA key from Cineforge's registry (authz v2). */
+  loraSha256?: Record<string, string>;
   [k: string]: unknown;
 }
 
@@ -135,6 +138,7 @@ export class GatewayAuthority implements GpuCallAuthorizer {
       else {
         problems.push(...this.authorizeJob(req.job, req.payload, dep));
         if (dep?.manifest && !workflowRole(dep, req.payload)) problems.push("MODEL_NOT_AUTHORIZED");
+        problems.push(...this.loraProblems(dep, req.payload));
       }
       if (!this.opts.presigner) problems.push("NO_PRESIGNER");
     }
@@ -187,6 +191,14 @@ export class GatewayAuthority implements GpuCallAuthorizer {
     return out;
   }
 
+  /** LoRAs must be content-addressed, which only authz v2 deployments verify. */
+  private loraProblems(dep: RuntimeDeployment | null, payload: GeneratePayload): string[] {
+    const keys = payload.loraKeys ?? [];
+    if (!keys.length || !dep?.manifest) return [];
+    if ((dep.manifest.authzVersion ?? 1) < 2) return ["LORA_REQUIRES_AUTHZ_V2"];
+    return keys.every((k) => SHA256_HEX.test(payload.loraSha256?.[k] ?? "")) ? [] : ["LORA_UNHASHED"];
+  }
+
   private async checkImage(dep: RuntimeDeployment): Promise<string | null> {
     if (!dep.approvedImage || !IMMUTABLE_IMAGE.test(dep.approvedImage)) return "NO_APPROVED_IMAGE_DIGEST";
     if (!this.opts.attestor) return "NO_IMAGE_ATTESTOR";
@@ -230,11 +242,13 @@ export class GatewayAuthority implements GpuCallAuthorizer {
 
     const fps = payload.fps ?? 16;
     const { role, model } = workflowRole(dep, payload)!;
+    const version = dep.manifest!.authzVersion >= 2 ? 2 : 1;
     const authz = authzDigest({
+      version,
       workflow: `diffusers.${dep.modelId}.${role}@1`,
       runtime: dep.manifest!.runtime,
       models: [{ role, id: model.id, revision: model.revision, weights: model.weights }],
-      loras: payload.loraKeys ?? [],
+      loras: (payload.loraKeys ?? []).map((key) => (version === 2 ? { key, sha256: payload.loraSha256?.[key] ?? "" } : key)),
       timing: { durationUs: secondsToMicros(payload.durationSec), fps, width: payload.width, height: payload.height },
     });
 

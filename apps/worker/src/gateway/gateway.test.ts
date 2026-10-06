@@ -47,3 +47,14 @@ describe("presigners", () => {
     expect(p.kind).toBe("supabase-signed-upload");
   });
 });
+
+describe("artifact content hash (authz v2)", () => {
+  it("hashes the stored bytes, streaming through a temp file", async () => {
+    const { createHash } = await import("node:crypto");
+    const { writeFile } = await import("node:fs/promises");
+    const { sha256OfObject } = await import("./artifact-hash");
+    const bytes = Buffer.from("adapter-weights-v1");
+    const storage = { download: async (_key: string, dest: string) => writeFile(dest, bytes) };
+    expect(await sha256OfObject(storage, "projects/p1/identities/c1/v1/lora.safetensors")).toBe(createHash("sha256").update(bytes).digest("hex"));
+  });
+});

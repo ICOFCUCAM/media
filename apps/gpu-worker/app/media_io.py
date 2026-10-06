@@ -4,6 +4,7 @@ inputs and write only the outputs of the job it is running."""
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import tempfile
@@ -16,6 +17,23 @@ _MAX_INPUT_BYTES = 2 * 1024**3  # LoRAs and frames; a guard, not a quota
 
 class MediaUrlError(RuntimeError):
     pass
+
+
+class LoraIntegrityError(RuntimeError):
+    """A LoRA's bytes do not match the content hash Cineforge authorized."""
+
+    def __init__(self, code: str, key: str) -> None:
+        super().__init__(f"{code}: {key}")
+        self.code = code
+        self.key = key
+
+
+def sha256_file(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def _check_url(url: str) -> None:

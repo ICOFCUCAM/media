@@ -173,6 +173,42 @@ describe("GatewayAuthority — enforce mode rejects before any GPU call", () => 
   });
 });
 
+describe("GatewayAuthority — LoRAs are content-addressed (authz v2)", () => {
+  const LORA = "projects/p1/identities/c1/v1/lora.safetensors";
+  const v2 = () => {
+    const d = deployment();
+    d.manifest!.authzVersion = 2;
+    return d;
+  };
+  const withLora = (sha?: string): GeneratePayload => ({ ...PAYLOAD, loraKeys: [LORA], ...(sha ? { loraSha256: { [LORA]: sha } } : {}) });
+
+  it("binds the LoRA's content hash into the token's digest and the signed body", async () => {
+    await store.saveDeployment(v2());
+    const a = await authority().prepare({ baseUrl: URL_, path: "/generate", scope: "video:run", payload: withLora("ab".repeat(32)), job: JOB });
+    const b = await authority().prepare({ baseUrl: URL_, path: "/generate", scope: "video:run", payload: withLora("cd".repeat(32)), job: JOB });
+    expect(JSON.parse(a.body!).loraSha256).toEqual({ [LORA]: "ab".repeat(32) });
+    expect(store.grants.get(a.grant!.id)!.authzDigest).not.toBe(store.grants.get(b.grant!.id)!.authzDigest);
+  });
+
+  it("enforce: a LoRA without a recorded content hash is denied", async () => {
+    await store.saveDeployment(v2());
+    await expect(authority().prepare({ baseUrl: URL_, path: "/generate", scope: "video:run", payload: withLora(), job: JOB }))
+      .rejects.toMatchObject({ code: "LORA_UNHASHED" });
+  });
+
+  it("enforce: a deployment still on authz v1 may not run LoRAs (filename binding only)", async () => {
+    await expect(authority().prepare({ baseUrl: URL_, path: "/generate", scope: "video:run", payload: withLora("ab".repeat(32)), job: JOB }))
+      .rejects.toMatchObject({ code: "LORA_REQUIRES_AUTHZ_V2" });
+  });
+
+  it("report: an unhashed LoRA is recorded as would-deny, the call still goes out", async () => {
+    await store.saveDeployment({ ...v2(), enforcement: "report" });
+    const call = await authority().prepare({ baseUrl: URL_, path: "/generate", scope: "video:run", payload: withLora(), job: JOB });
+    expect(call.headers.authorization).toBeDefined();
+    expect(store.events.at(-1)).toMatchObject({ type: "dispatch.would_deny", code: "LORA_UNHASHED" });
+  });
+});
+
 describe("GatewayAuthority — report mode never blocks today's pipeline", () => {
   beforeEach(async () => { await store.saveDeployment(deployment({ enforcement: "report" })); });
 

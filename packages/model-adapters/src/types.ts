@@ -40,6 +40,8 @@ export interface ShotRequest {
   /** Storage keys of trained per-character LoRA adapters — the tightest identity
    *  lock (docs/28). Self-hosted models load these; external APIs ignore them. */
   loraKeys?: string[];
+  /** Content hash per LoRA key (authz v2): the GPU worker refuses other bytes. */
+  loraSha256?: Record<string, string>;
   /** Deterministic seed for reproducibility / character anchoring. */
   seed?: number;
   durationSec: number;

@@ -100,7 +100,9 @@ function loadShot(shotId: string) {
  * inherited character **asset ids** into actual reference frames so the SAME
  * character drives every shot — pixel-level visual continuity, not just a prompt.
  */
-async function resolveContinuity(shot: ShotWithScene): Promise<{ preamble: string; referenceImageKeys: string[]; loraKeys: string[] }> {
+async function resolveContinuity(
+  shot: ShotWithScene,
+): Promise<{ preamble: string; referenceImageKeys: string[]; loraKeys: string[]; loraSha256: Record<string, string> }> {
   const scenes = await prisma.scene.findMany({
     where: { projectId: shot.scene.projectId, index: { lte: shot.scene.index } },
     orderBy: { index: "asc" },
@@ -133,20 +135,23 @@ async function resolveContinuity(shot: ShotWithScene): Promise<{ preamble: strin
   // reference frames are an IP-adapter signal; the LoRA is the tightest lock.
   let referenceImageKeys: string[] = [];
   let loraKeys: string[] = [];
+  // Content hash per LoRA (authz v2): the GPU worker loads only these exact bytes.
+  const loraSha256: Record<string, string> = {};
   if (assetIds.size) {
     const chars = await prisma.character.findMany({
       where: { id: { in: [...assetIds] } },
-      select: { id: true, referenceUrls: true, loraKey: true },
+      select: { id: true, referenceUrls: true, loraKey: true, loraSha256: true },
     });
     referenceImageKeys = [...new Set(chars.flatMap((c) => c.referenceUrls))].slice(0, 4);
     loraKeys = [...new Set(chars.map((c) => c.loraKey).filter((k): k is string => Boolean(k)))];
+    for (const c of chars) if (c.loraKey && c.loraSha256) loraSha256[c.loraKey] = c.loraSha256;
     // Train the tightest lock in the background: any framed-but-untrained
     // character gets a LoRA job (deduped by character id). Next render uses it.
     for (const c of chars) {
       if (c.referenceUrls.length > 0 && !c.loraKey) await enqueueLora(c.id, shot.scene.projectId);
     }
   }
-  return { preamble, referenceImageKeys, loraKeys };
+  return { preamble, referenceImageKeys, loraKeys, loraSha256 };
 }
 
 /** Compose the final ShotRequest. `seedKey` is the resolved seed frame for
@@ -158,6 +163,7 @@ function buildShotRequest(
   preamble?: string,
   refKeys: string[] = [],
   loraKeys: string[] = [],
+  loraSha256: Record<string, string> = {},
 ): ShotRequest {
   const [w, h] = shot.scene.project.aspectRatio === "9:16" ? [720, 1280] : [1280, 720];
   // video-to-video: an uploaded reference video drives the motion style.
@@ -177,6 +183,7 @@ function buildShotRequest(
     videoOp: refVideo ? "style" : undefined,
     motionStrength: refVideo ? 0.7 : undefined,
     loraKeys: loraKeys.length ? loraKeys : undefined,
+    loraSha256: loraKeys.length ? loraSha256 : undefined,
   };
 }
 
@@ -295,8 +302,8 @@ export const videoWorker = new Worker<VideoJob>(
     }
     // Continuity: inherit prior scenes into the prompt + reuse the same character
     // reference frames so identity is locked pixel-level (docs/28).
-    const { preamble, referenceImageKeys, loraKeys } = await resolveContinuity(shot);
-    const request = buildShotRequest(shot, seedKey, preamble, referenceImageKeys, loraKeys);
+    const { preamble, referenceImageKeys, loraKeys, loraSha256 } = await resolveContinuity(shot);
+    const request = buildShotRequest(shot, seedKey, preamble, referenceImageKeys, loraKeys, loraSha256);
     // Job authorization reads the job's state fresh, immediately before dispatch.
     request.job = await jobContext(shotId, adapter.id);
     const result = await adapter.generate(request);

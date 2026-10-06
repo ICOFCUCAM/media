@@ -11,6 +11,8 @@ import { Worker } from "bullmq";
 import { QUEUES, type LoraJob } from "@cineforge/shared";
 import { buildLoraTrainer } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
+import { sha256OfObject } from "../gateway/artifact-hash";
+import { S3Storage } from "../storage/storage";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const assetBase = process.env.ASSET_PUBLIC_BASE_URL?.replace(/\/$/, "");
@@ -39,8 +41,11 @@ export const loraWorker = new Worker<LoraJob>(
       appearance: char.appearance,
       imageKeys: char.referenceUrls,
     });
-    await prisma.character.update({ where: { id: characterId }, data: { loraKey, loraVersion: version } });
-    return { characterId, loraKey, version };
+    // Content-address the artifact (authz v2): the GPU worker will load only
+    // these exact bytes. Hashed from storage, never trusted from the trainer.
+    const loraSha256 = await sha256OfObject(new S3Storage(), loraKey);
+    await prisma.character.update({ where: { id: characterId }, data: { loraKey, loraVersion: version, loraSha256 } });
+    return { characterId, loraKey, version, loraSha256 };
   },
   { connection, concurrency: 1 }, // training is heavy — one at a time
 );

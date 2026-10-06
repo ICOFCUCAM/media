@@ -53,7 +53,8 @@ export type GatewayEventType =
   | "dispatch.would_deny"
   | "dispatch.legacy"
   | "output.legacy"
-  | "output.rejected";
+  | "output.rejected"
+  | "artifact.hashed";
 
 export interface GatewayEvent {
   type: GatewayEventType;

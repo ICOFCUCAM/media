@@ -1,5 +1,11 @@
 /**
- * Workflow + model authorization digest, version 1 (docs/38 §AV.3).
+ * Workflow + model authorization digest (docs/38 §AV.3).
+ *
+ * Version 2 (current): every LoRA is bound by storage key AND content hash —
+ * model → revision → artifact → content hash → approved manifest → token.
+ * Version 1 bound LoRAs by key only; it is still produced for deployments whose
+ * approved manifest reports authzVersion 1, and such deployments may not run
+ * LoRAs under enforcement (docs/39 §9.1).
  *
  * Must produce byte-identical canonical JSON to
  * apps/gpu-worker/app/gateway/authz.py — locked by the shared golden vector in
@@ -8,7 +14,8 @@
  */
 import { sha256Hex } from "./token";
 
-export const AUTHZ_VERSION = 1;
+export const AUTHZ_VERSION = 2;
+export type AuthzVersion = 1 | 2;
 
 export interface AuthzModel {
   role: string;
@@ -24,11 +31,19 @@ export interface AuthzTiming {
   height: number;
 }
 
+export interface AuthzLora {
+  key: string;
+  sha256: string;
+}
+
 export interface AuthzInput {
+  /** Defaults to the current version (2). */
+  version?: AuthzVersion;
   workflow: string;
   runtime: string;
   models: AuthzModel[];
-  loras: string[];
+  /** v2: `{key, sha256}`; v1: keys (a v2 entry's key is used). */
+  loras: (AuthzLora | string)[];
   timing: AuthzTiming;
 }
 
@@ -66,14 +81,24 @@ export function authzDocument(input: AuthzInput) {
   for (const n of [input.timing.durationUs, input.timing.fps, input.timing.width, input.timing.height]) {
     if (!Number.isInteger(n)) throw new Error("authz timing values must be integers");
   }
+  const version = input.version ?? AUTHZ_VERSION;
+  const loras =
+    version === 1
+      ? [...new Set(input.loras.map((l) => (typeof l === "string" ? l : l.key)))].sort()
+      : [...new Map(input.loras.map((l) => {
+          if (typeof l === "string") throw new Error("authz v2 needs a content hash for every LoRA");
+          return [l.key, l.sha256] as const;
+        })).entries()]
+          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+          .map(([key, sha256]) => ({ key, sha256 }));
   return {
-    v: AUTHZ_VERSION,
+    v: version,
     workflow: input.workflow,
     runtime: input.runtime,
     models: [...input.models]
       .map((m) => ({ role: m.role, id: m.id, revision: m.revision, weights: m.weights }))
       .sort((a, b) => (a.role < b.role ? -1 : a.role > b.role ? 1 : 0)),
-    loras: [...new Set(input.loras)].sort(),
+    loras,
     timing: {
       durationUs: input.timing.durationUs,
       fps: input.timing.fps,

@@ -21,8 +21,10 @@ with **Ed25519**. The pod holds only public keys, so nothing on the GPU host can
 mint a token. Checks, in order: signature (`kid`) → expiry and lifetime
 (≤ 300 s, ±30 s skew) → issuer → `jti` replay → `aud` = this `DEPLOYMENT_ID` →
 `scope` → `sub` = body `jobId` → `bh` = SHA-256 of the exact body → `authz` =
-workflow + model authorization digest (`app/gateway/authz.py`) → explicit
-timing fields. Rejections return `{"detail": {"error": "<CODE>"}}`; every decision is
+workflow + model authorization digest (`app/gateway/authz.py`, v2: every
+LoRA bound by key **and** SHA-256) → explicit timing fields. LoRA bytes are
+hashed after download and must match the authorized hash (`409
+LORA_HASH_MISMATCH`); in `enforce` an unhashed LoRA is refused. Rejections return `{"detail": {"error": "<CODE>"}}`; every decision is
 logged as one JSON line with no token, prompt, body or URL.
 
 | Env | Meaning |

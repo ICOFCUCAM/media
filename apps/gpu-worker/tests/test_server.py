@@ -17,6 +17,8 @@ from .conftest import DEPLOYMENT, FakePipeline, build_client, fake_weights
 from app.gateway.manifest import ModelSpec
 
 T2V = ("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", "a" * 40)
+LORA = "projects/p1/identities/c1/v1/lora.safetensors"
+LORA_SHA = "ab" * 32
 I2V = ("Wan-AI/Wan2.1-I2V-14B-480P-Diffusers", "b" * 40)
 
 
@@ -32,6 +34,8 @@ def gen_body(**over) -> bytes:
     keys = [*(body.get("referenceImageKeys") or []), *(body.get("loraKeys") or [])]
     if keys and "inputUrls" not in body:
         body["inputUrls"] = {k: f"https://store.example/get/{k}?sig=1" for k in keys}
+    if body.get("loraKeys") and "loraSha256" not in body:
+        body["loraSha256"] = {k: LORA_SHA for k in body["loraKeys"]}
     return json.dumps(body).encode()
 
 
@@ -42,7 +46,7 @@ def cineforge_authz(*, workflow="diffusers.wan-2.1.t2v@1", runtime="placeholder"
     return authz_digest(
         workflow=workflow, runtime=runtime,
         models=[{"role": role, "id": model[0], "revision": model[1], "weights": weights}],
-        loras=list(loras),
+        loras=[{"key": k, "sha256": h} for k, h in loras],
         timing=TimingRequest(duration_us=duration_us, fps=fps, width=width, height=height),
     )
 
@@ -105,8 +109,8 @@ def test_enforce_requires_output_target(signing_key, mint):
 
 def test_enforce_requires_a_url_for_every_input(signing_key, mint):
     client, pipeline, _ = build_client(signing_key)
-    body = gen_body(loraKeys=["projects/p1/identities/c1/v1/lora.safetensors"], inputUrls={})
-    authz = cineforge_authz(loras=("projects/p1/identities/c1/v1/lora.safetensors",))
+    body = gen_body(loraKeys=[LORA], inputUrls={})
+    authz = cineforge_authz(loras=((LORA, LORA_SHA),))
     with client:
         r = post(client, body, mint.token(body, authz=authz))
     assert r.json()["detail"]["error"] == "INPUT_URL_MISSING" and pipeline.calls == []
@@ -114,11 +118,12 @@ def test_enforce_requires_a_url_for_every_input(signing_key, mint):
 
 def test_presigned_input_urls_reach_the_pipeline(signing_key, mint):
     client, pipeline, _ = build_client(signing_key)
-    body = gen_body(loraKeys=["projects/p1/identities/c1/v1/lora.safetensors"])
-    authz = cineforge_authz(loras=("projects/p1/identities/c1/v1/lora.safetensors",))
+    body = gen_body(loraKeys=[LORA])
+    authz = cineforge_authz(loras=((LORA, LORA_SHA),))
     with client:
         r = post(client, body, mint.token(body, authz=authz))
     assert r.status_code == 200, r.text
+    assert pipeline.calls[0]["lora_sha256"] == {LORA: LORA_SHA} and pipeline.calls[0]["strict_integrity"] is True
     assert pipeline.calls[0]["input_urls"] == {"projects/p1/identities/c1/v1/lora.safetensors":
                                                "https://store.example/get/projects/p1/identities/c1/v1/lora.safetensors?sig=1"}
 
@@ -138,7 +143,7 @@ def test_status_scope_reads_health_and_manifest(signing_key, mint):
         c = client.get("/capabilities", headers={"authorization": f"Bearer {mint.token(b'', scope='status')}"})
     assert h.status_code == 200 and c.status_code == 200
     m = c.json()["manifest"]
-    assert c.json()["deploymentId"] == DEPLOYMENT and m["authzVersion"] == 1
+    assert c.json()["deploymentId"] == DEPLOYMENT and m["authzVersion"] == 2
     assert m["models"][0]["role"] == "t2v"
 
 
@@ -165,6 +170,7 @@ REAL_T2V_WEIGHTS = fake_weights(ModelSpec("t2v", *T2V))
         ("different runtime", {"runtime": "diffusers@0.0.1"}),
         ("different workflow", {"workflow": "diffusers.wan-2.1.i2v@1"}),
         ("unapproved lora", {"loras": ()}),
+        ("different lora content", {"loras": ((LORA, "cd" * 32),)}),
         ("different timing", {"duration_us": 4_000_000}),
     ],
 )
@@ -173,9 +179,8 @@ def test_regression_5_model_substitution_rejected(signing_key, mint, label, auth
     # request/worker resolves to another → AUTHZ_MISMATCH, nothing runs.
     pipeline = FakePipeline(real=True)
     client, pipeline, _ = build_client(signing_key, pipeline=pipeline)
-    body = gen_body(loraKeys=["projects/p1/identities/c1/v1/lora.safetensors"])
-    approved = dict(runtime=_runtime(), weights=REAL_T2V_WEIGHTS,
-                    loras=("projects/p1/identities/c1/v1/lora.safetensors",))
+    body = gen_body(loraKeys=[LORA])
+    approved = dict(runtime=_runtime(), weights=REAL_T2V_WEIGHTS, loras=((LORA, LORA_SHA),))
     approved.update(authz_kwargs)
     with client:
         r = post(client, body, mint.token(body, authz=cineforge_authz(**approved)))
@@ -353,3 +358,29 @@ def test_enforce_mode_never_falls_back_on_upload_failure(signing_key, mint):
         with pytest.raises(OSError):
             post(client, body, mint.token(body, authz=cineforge_authz()))
     assert store.legacy == []
+
+
+# ── authz v2: LoRAs are content-addressed ─────────────────────────────────────
+
+def test_enforce_rejects_an_unhashed_lora(signing_key, mint):
+    client, pipeline, _ = build_client(signing_key)
+    body = gen_body(loraKeys=[LORA], loraSha256={})
+    authz = cineforge_authz(loras=((LORA, ""),))
+    with client:
+        r = post(client, body, mint.token(body, authz=authz))
+    assert r.json()["detail"]["error"] == "LORA_UNHASHED" and pipeline.calls == []
+
+
+def test_lora_hash_mismatch_at_download_is_409(signing_key, mint):
+    from app.media_io import LoraIntegrityError
+
+    class Tampered(FakePipeline):
+        def generate(self, **kw):
+            raise LoraIntegrityError("LORA_HASH_MISMATCH", LORA)
+
+    client, _, app = build_client(signing_key, pipeline=Tampered())
+    body = gen_body(loraKeys=[LORA])
+    with client:
+        r = post(client, body, mint.token(body, authz=cineforge_authz(loras=((LORA, LORA_SHA),))))
+    assert r.status_code == 409 and r.json()["detail"]["error"] == "LORA_HASH_MISMATCH"
+    assert app.state.fake_store.puts == []

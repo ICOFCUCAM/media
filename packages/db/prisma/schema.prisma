@@ -216,6 +216,8 @@ model Character {
   referenceUrls String[] @map("reference_urls")
   loraKey       String?  @map("lora_key")
   loraVersion   String?  @map("lora_version")
+  /// Content hash of the LoRA artifact (migration 0027; authz v2). Server-written only.
+  loraSha256    String?  @map("lora_sha256")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
