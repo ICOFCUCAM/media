@@ -60,11 +60,10 @@ body {
   color: #f5f5f7;
 }
 
-/* Keyboard focus — a visible, on-brand ring (mouse clicks stay clean). */
+/* Keyboard focus — a visible hairline in the room's ink (mouse clicks stay clean). */
 :focus-visible {
-  outline: 2px solid rgba(165, 180, 252, 0.8);
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline: 1px solid rgb(var(--cf-fg));
+  outline-offset: 3px;
 }
 
 /* Smooth in-page anchored scrolling. */
@@ -73,6 +72,47 @@ html {
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+}
+
+/* ── Cineforge components ─────────────────────────────────────── */
+@layer components {
+  .cf-mono {
+    @apply font-mono uppercase tracking-[0.12em];
+  }
+  .cf-eyebrow {
+    @apply font-mono text-[10px] uppercase tracking-[0.16em] text-cf-muted;
+  }
+  .cf-label {
+    @apply font-mono text-[9px] uppercase tracking-[0.12em] text-cf-muted;
+  }
+  .cf-display {
+    @apply font-serif font-normal tracking-[-0.045em];
+  }
+  .cf-btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-3.5 font-mono text-[10px] uppercase tracking-[0.1em] transition disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .cf-btn-accent {
+    @apply cf-btn bg-cf-accent text-[#10100f] hover:brightness-95;
+  }
+  .cf-btn-ink {
+    @apply cf-btn bg-cf-inverse text-cf-on-inverse hover:opacity-90;
+  }
+  .cf-btn-line {
+    @apply cf-btn border border-cf-line text-cf-fg hover:border-cf-fg;
+  }
+  .cf-option {
+    @apply border border-cf-line px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.08em] text-cf-muted transition hover:border-cf-fg hover:text-cf-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-cf-line disabled:hover:text-cf-muted;
+  }
+  .cf-option[aria-pressed="true"],
+  .cf-option.is-active {
+    @apply border-cf-inverse bg-cf-inverse text-cf-on-inverse;
+  }
+  .cf-input {
+    @apply w-full border border-cf-line bg-cf-panel px-4 py-3 text-sm text-cf-fg outline-none transition placeholder:text-cf-dim focus:border-cf-fg;
+  }
+  .cf-link {
+    @apply font-mono text-[10px] uppercase tracking-[0.12em] text-cf-fg underline-offset-4 hover:underline;
+  }
 }
 
 /* ── Homepage cinematic motion ─────────────────────────────── */
