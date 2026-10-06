@@ -38,6 +38,13 @@ and [01-architecture](01-architecture.md); this page is the map.
 - [30 — Ads & licensed stock](30-ads-and-stock.md) · ad presets + Pexels/Pixabay
 - [31 — Social publishing](31-social-publishing.md) · push to YouTube/TikTok/…
 
+**Media engine — governing architecture and phases** ([38 §AX.2](38-media-engine-architecture.md) order; status in §AY)
+- [38 — Media engine architecture](38-media-engine-architecture.md) · runtime gateway, Master Production Clock, A/V sync, ComfyUI plan
+- [39 — Phase 1: GPU security](39-phase1-gpu-security-plan.md) · gateway, execution tokens, verified image chain, **rollout runbook §10**
+- [40 — Phases 2–3: clock and runtime contract](40-phase2-3-clock-and-runtime-contract.md) · µs timebase, timing reports, outcome classification
+- [41 — Phase 4: timeline data model](41-phase4-timeline-data-model.md) · migrations 0028–0030 (**not applied yet** — runbook inside)
+- [42 — Phase 5: A/V Sync Engine](42-phase5-av-sync-engine.md) · analyzers, validators, repair planner, `avsync:check`
+
 ## Continuity & identity — the coherent-movie spine
 
 Scenes are not isolated clips. Every scene **inherits the folded state of all
