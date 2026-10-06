@@ -133,3 +133,22 @@ export function hlsArgs(input: string, outDir: string): string[] {
     `${outDir}/stream_%v.m3u8`,
   ];
 }
+
+/** Where the brand outro looks for a font (fonts-dejavu-core in the worker image). */
+export const OUTRO_FONT = process.env.OUTRO_FONT_FILE ?? "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
+
+/**
+ * Lay the brand kit's outro line over the outro card. The text is read from a
+ * file (textfile=) so a studio's words never need filter escaping, and
+ * expansion=none keeps "%" literal (drawtext would otherwise expand it).
+ */
+export function outroTextArgs(input: string, output: string, textFile: string, fontFile: string = OUTRO_FONT): string[] {
+  return [
+    "-i", input,
+    "-vf",
+    `drawtext=fontfile=${fontFile}:textfile=${textFile}:expansion=none:fontcolor=white:fontsize=34:` +
+      "x=(w-text_w)/2:y=h-(h/5):alpha='if(lt(t,0.4),t/0.4,1)',format=yuv420p",
+    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an",
+    output,
+  ];
+}

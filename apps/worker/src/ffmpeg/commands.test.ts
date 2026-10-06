@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  outroTextArgs,
   normalizeArgs,
   concatListContent,
   concatArgs,
@@ -60,5 +61,20 @@ describe("ffmpeg command builders", () => {
     expect(a).toContain("split=3");
     expect(a).toContain("master.m3u8");
     expect(a).toContain("v:0,a:0 v:1,a:0 v:2,a:0");
+  });
+});
+
+describe("outroTextArgs", () => {
+  it("reads the line from a text file and keeps the encode uniform", () => {
+    const args = outroTextArgs("/w/outro.mp4", "/w/out.mp4", "/w/outro.txt", "/fonts/Sans.ttf");
+    const vf = args[args.indexOf("-vf") + 1]!;
+    expect(vf).toContain("fontfile=/fonts/Sans.ttf");
+    expect(vf).toContain("textfile=/w/outro.txt");
+    expect(vf).toContain("expansion=none");
+    expect(vf).not.toContain("text=A film");
+    expect(vf.endsWith("format=yuv420p")).toBe(true);
+    expect(args[0]).toBe("-i");
+    expect(args.at(-1)).toBe("/w/out.mp4");
+    expect(args).toContain("-an");
   });
 });
