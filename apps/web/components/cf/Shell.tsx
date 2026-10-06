@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NAV, ROLES, type NavSection, type Role } from "../../lib/products";
 import { msToCredits } from "../../lib/plans";
 import { useRole } from "../RoleContext";
@@ -21,6 +21,7 @@ export function CineforgeShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
   const { role } = useRole();
   const [drawer, setDrawer] = useState(false);
+  const menuRef = useRef<HTMLButtonElement>(null);
   // The rail only offers the admin family in the Super view, but a page is
   // always located against the full NAV so an /admin URL keeps its breadcrumb
   // and navigator (the page itself shows the restricted state).
@@ -39,12 +40,22 @@ export function CineforgeShell({ children }: { children: ReactNode }) {
       <Rail sections={sections} active={here?.section.title} />
       {here && <Navigator section={here.section} pathname={pathname} />}
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar crumbs={crumbsFor(pathname)} onMenu={() => setDrawer(true)} />
+        <Topbar crumbs={crumbsFor(pathname)} onMenu={() => setDrawer(true)} menuRef={menuRef} />
         <main id="cf-main" className="min-w-0 flex-1 overflow-y-auto">
           {children}
         </main>
       </div>
-      {drawer && <Drawer sections={sections} pathname={pathname} onClose={() => setDrawer(false)} />}
+      {drawer && (
+        <Drawer
+          sections={sections}
+          pathname={pathname}
+          onClose={() => {
+            setDrawer(false);
+            // Hand focus back to the control that opened the index.
+            requestAnimationFrame(() => menuRef.current?.focus());
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -198,11 +209,11 @@ function Navigator({ section, pathname }: { section: NavSection; pathname: strin
 
 /* ── Topbar ───────────────────────────────────────────────────── */
 
-function Topbar({ crumbs, onMenu }: { crumbs: string[]; onMenu: () => void }) {
+function Topbar({ crumbs, onMenu, menuRef }: { crumbs: string[]; onMenu: () => void; menuRef: React.RefObject<HTMLButtonElement> }) {
   return (
     <header className="flex h-[64px] shrink-0 items-center justify-between gap-4 border-b border-cf-line bg-cf-bg px-5 sm:px-8 lg:h-[78px] lg:px-10">
       <div className="flex min-w-0 items-center gap-4">
-        <button type="button" onClick={onMenu} className="cf-btn-line px-3 py-2 lg:hidden" aria-label="Open the studio index">
+        <button ref={menuRef} type="button" onClick={onMenu} className="cf-btn-line px-3 py-2 lg:hidden" aria-label="Open the studio index" aria-haspopup="dialog">
           Index
         </button>
         <nav aria-label="Breadcrumb" className="min-w-0 truncate font-mono text-[10px] uppercase tracking-[0.14em] text-cf-muted">
