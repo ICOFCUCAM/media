@@ -1,6 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Cineforge rooms ──────────────────────────────────────────────
+ * Channel triplets consumed by the `cf-*` Tailwind colors. A page picks a
+ * room: .cf-light (editorial paper — studio, publishing, account, analytics,
+ * enterprise) or .cf-dark (production rooms — casting, worlds, assets,
+ * storyboard, cutting room). The homepage black is the shared anchor.
+ */
+:root,
+.cf-light {
+  --cf-bg: 244 241 234;
+  --cf-panel: 251 250 246;
+  --cf-soft: 235 231 222;
+  --cf-fg: 16 16 15;
+  --cf-muted: 119 115 107;
+  --cf-dim: 160 156 148;
+  --cf-line: 207 201 189;
+  --cf-line2: 16 16 15;
+  --cf-accent: 183 255 60;
+  --cf-inverse: 16 16 15;
+  --cf-on-inverse: 244 241 234;
+  --cf-ok: 72 130 38;
+  --cf-warn: 155 110 54;
+  --cf-danger: 168 60 50;
+}
+
+.cf-dark {
+  --cf-bg: 8 9 8;
+  --cf-panel: 13 15 13;
+  --cf-soft: 20 22 20;
+  --cf-fg: 240 241 235;
+  --cf-muted: 152 156 150;
+  --cf-dim: 98 103 97;
+  --cf-line: 33 35 33;
+  --cf-line2: 70 73 70;
+  --cf-accent: 216 255 67;
+  --cf-inverse: 240 241 235;
+  --cf-on-inverse: 8 9 8;
+  --cf-ok: 160 220 110;
+  --cf-warn: 216 169 40;
+  --cf-danger: 255 118 107;
+}
+
+.cf-light,
+.cf-dark {
+  background: rgb(var(--cf-bg));
+  color: rgb(var(--cf-fg));
+}
 
 :root {
   color-scheme: dark;
