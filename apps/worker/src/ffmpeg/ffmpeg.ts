@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
 
+import { probeDurationArgs } from "./commands";
+
 /**
  * Spawn FFmpeg and resolve on success. Streams progress (0..1) via -progress.
  * See docs/10-ffmpeg-render.md.
@@ -28,3 +30,22 @@ export function ffmpeg(args: string[], onProgress?: (p: number) => void): Promis
 }
 
 export type FfmpegRunner = typeof ffmpeg;
+
+/** Duration of a media file in seconds (ffprobe). */
+export function probeDuration(input: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("ffprobe", probeDurationArgs(input));
+    let out = "";
+    let err = "";
+    proc.stdout.on("data", (b: Buffer) => (out += b.toString()));
+    proc.stderr.on("data", (b: Buffer) => (err += b.toString()));
+    proc.on("error", reject);
+    proc.on("close", (code) => {
+      const sec = Number.parseFloat(out.trim());
+      if (code === 0 && Number.isFinite(sec)) resolve(sec);
+      else reject(new Error(`ffprobe failed for ${input}: ${err.slice(-500) || out}`));
+    });
+  });
+}
+
+export type DurationProbe = typeof probeDuration;

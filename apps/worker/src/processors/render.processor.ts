@@ -5,9 +5,10 @@
  * outro into final.mp4 + an HLS ladder and uploads to S3. This stub computes
  * the duration and writes the Film row so the lifecycle completes.
  */
-import { Worker } from "bullmq";
+import { UnrecoverableError, Worker } from "bullmq";
 import { QUEUES, type RenderJob , parseLanguages } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
+import { NarrationOverrunError } from "../ffmpeg/commands";
 import { RenderEngine, type SceneAssets } from "../ffmpeg/render-engine";
 import { S3Storage } from "../storage/storage";
 import { realtime } from "../realtime";
@@ -199,8 +200,11 @@ export const renderWorker = new Worker<RenderJob>(
       await realtime
         .emit("error", { projectId, scope: "render", message: err instanceof Error ? err.message : String(err) })
         .catch(() => {});
+      // A timeline mismatch is deterministic: retrying renders the same overrun.
+      const final = err instanceof NarrationOverrunError;
       // Email once, on the final attempt — not on every retry.
-      if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) await notifyFinish(projectId, "FAILED", short);
+      if (final || job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) await notifyFinish(projectId, "FAILED", short);
+      if (final) throw new UnrecoverableError(short);
       throw err; // let BullMQ record the job failure / apply retries
     }
   },

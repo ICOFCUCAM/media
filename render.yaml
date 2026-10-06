@@ -66,6 +66,9 @@ services:
         value: report
       - key: GPU_UPLOAD_URL_MODE
         value: s3
+      # Narration longer than the picture: fail (default) | extend. Never cut.
+      - key: RENDER_NARRATION_OVERRUN
+        value: fail
       # GPU auto start/stop (docs/23): pod sleeps when idle, wakes on work.
       - key: RUNPOD_WAN_POD_ID
         sync: false

@@ -16,7 +16,8 @@ import { prisma } from "@cineforge/db";
 import { buildOpenAIProviders } from "@cineforge/model-adapters";
 import { S3Storage } from "../storage/storage";
 import { translateLines } from "../director/translate";
-import { ffmpeg } from "../ffmpeg/ffmpeg";
+import { extendVideoArgs, NarrationOverrunError, planNarrationFit } from "../ffmpeg/commands";
+import { ffmpeg, probeDuration } from "../ffmpeg/ffmpeg";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const storage = new S3Storage();
@@ -101,8 +102,23 @@ export const localizeWorker = new Worker<LocalizeJob>(
               const voicePath = join(work, `voice_${lang}.mp3`);
               await storage.download(voiceKey, voicePath);
               const out = join(work, `final_${lang}.mp4`);
+              // Never cut the dubbed narration, and never cut the picture to a
+              // shorter dub (both were `-shortest`; docs/38 §AW.2). A real
+              // overrun skips this language with the reason, like any dub failure.
+              const fit = planNarrationFit({
+                pictureSec: await probeDuration(source),
+                narrationSec: await probeDuration(voicePath),
+                toleranceSec: Number(process.env.RENDER_NARRATION_TOLERANCE_SEC ?? 0.5),
+                policy: process.env.RENDER_NARRATION_OVERRUN === "extend" ? "extend" : "fail",
+              });
+              if (fit.action === "fail") throw new NarrationOverrunError(fit);
+              let video = source;
+              if (fit.padSec > 0) {
+                video = join(work, `video_${lang}.mp4`);
+                await ffmpeg(extendVideoArgs(source, video, fit.padSec));
+              }
               // Copy the video track untouched; swap in the dubbed narration.
-              await ffmpeg(["-i", source, "-i", voicePath, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", out]);
+              await ffmpeg(["-i", video, "-i", voicePath, "-map", "0:v", "-map", "1:a", "-t", fit.outputSec.toFixed(3), "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out]);
               const mp4Key = `projects/${projectId}/film/final_${lang}.mp4`;
               await storage.upload(out, mp4Key, "video/mp4");
               locales[lang] = { mp4: mp4Key, voice: voiceKey };

@@ -98,26 +98,98 @@ export function audioMixArgs(inputs: AudioInputs, output: string, opts: { musicL
   return [...args, "-filter_complex", filters.join(";"), "-map", "[aout]", "-c:a", "aac", "-b:a", "192k", output];
 }
 
-/** Mux the assembled video with the mixed audio (+ optional soft subtitles). */
+/**
+ * Mux the assembled video with the mixed audio (+ optional soft subtitles).
+ *
+ * Never `-shortest`: that silently cut narration whenever it ran longer than
+ * the picture (docs/38 §AW.2, regression test 1). The output length is set
+ * explicitly by the caller from the narration fit (`planNarrationFit`), so the
+ * only audio that can be trimmed is the music/SFX tail beyond it.
+ */
 export function muxArgs(
   video: string,
   audio: string,
   output: string,
-  opts: { subtitles?: string } = {},
+  opts: { subtitles?: string; durationSec?: number } = {},
 ): string[] {
   const args = ["-i", video, "-i", audio];
   if (opts.subtitles) args.push("-i", opts.subtitles);
   args.push("-map", "0:v", "-map", "1:a");
   if (opts.subtitles) args.push("-map", "2", "-c:s", "mov_text");
+  if (opts.durationSec !== undefined) args.push("-t", opts.durationSec.toFixed(3));
   args.push(
-    // veryfast: the worker is a small instance and source quality is the
-    // bound anyway; -shortest: a narration bed longer than the cut must not
-    // extend the film with frozen video.
+    // veryfast: the worker is a small instance and source quality is the bound anyway.
     "-c:v", "libx264", "-crf", "19", "-preset", "veryfast",
-    "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart",
+    "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
     output,
   );
   return args;
+}
+
+/** Hold the last frame for `extraSec` seconds (picture extended to fit narration). */
+export function extendVideoArgs(input: string, output: string, extraSec: number): string[] {
+  return [
+    "-i", input,
+    "-vf", `tpad=stop_mode=clone:stop_duration=${extraSec.toFixed(3)},format=yuv420p`,
+    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an",
+    output,
+  ];
+}
+
+/** ffprobe arguments that print a media file's duration in seconds. */
+export function probeDurationArgs(input: string): string[] {
+  return ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", input];
+}
+
+/**
+ * What to do when narration runs longer than the picture
+ * (env RENDER_NARRATION_OVERRUN):
+ *  - "fail" (default): timeline mismatch — the film is not rendered, and the
+ *    reason is surfaced. Nothing is cut.
+ *  - "extend": an explicit production decision to hold the last frame until
+ *    the narration ends. Nothing is cut.
+ * Truncating narration is not an available policy.
+ */
+export type NarrationOverrunPolicy = "fail" | "extend";
+
+export interface NarrationFit {
+  action: "fits" | "pad" | "extend" | "fail";
+  pictureSec: number;
+  narrationSec: number;
+  overrunSec: number;
+  /** Seconds of held last frame to add to the picture. */
+  padSec: number;
+  /** Final film length: never shorter than the narration. */
+  outputSec: number;
+}
+
+export function planNarrationFit(input: {
+  pictureSec: number;
+  narrationSec: number;
+  toleranceSec: number;
+  policy: NarrationOverrunPolicy;
+}): NarrationFit {
+  const { pictureSec, narrationSec, toleranceSec, policy } = input;
+  const overrunSec = Math.max(0, narrationSec - pictureSec);
+  const base = { pictureSec, narrationSec, overrunSec };
+  if (overrunSec === 0) return { ...base, action: "fits", padSec: 0, outputSec: pictureSec };
+  // A small overrun (encoder padding, rounding) is absorbed by holding the
+  // last frame — the narration still plays to its end.
+  if (overrunSec <= toleranceSec) return { ...base, action: "pad", padSec: overrunSec, outputSec: narrationSec };
+  if (policy === "extend") return { ...base, action: "extend", padSec: overrunSec, outputSec: narrationSec };
+  return { ...base, action: "fail", padSec: 0, outputSec: pictureSec };
+}
+
+/** Narration longer than the picture beyond tolerance, with policy "fail". */
+export class NarrationOverrunError extends Error {
+  readonly code = "TIMELINE_MISMATCH";
+  constructor(readonly fit: NarrationFit) {
+    super(
+      `timeline mismatch: narration is ${fit.narrationSec.toFixed(1)}s but the picture is ${fit.pictureSec.toFixed(1)}s ` +
+        `(${fit.overrunSec.toFixed(1)}s over). Narration is never cut to fit — shorten the narration or add shots.`,
+    );
+    this.name = "NarrationOverrunError";
+  }
 }
 
 /** Adaptive HLS ladder (1080/720/480) for streaming. */
