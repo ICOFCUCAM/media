@@ -1970,56 +1970,189 @@
 .cfh .ws-preview { min-width: 0; }
 .cfh .ws-preview .scene { height: 100%; min-height: 360px; border-radius: 12px; }
 
-/* Release — one master, reframed onto every screen. */
+/* Release — one master, reframed onto real screens: TV, tablet, phone. */
 .cfh .release-stage {
   position: relative;
   margin-top: 56px;
-  width: min(100%, 620px);
-  aspect-ratio: 16 / 12;
+  width: min(100%, 640px);
+  aspect-ratio: 100 / 90;
+  container-type: inline-size;
 }
-.cfh .rs-screen {
-  position: absolute;
-  margin: 0;
-  overflow: hidden;
-  background: #111;
-  box-shadow: 0 24px 60px rgba(16,16,16,.28);
-}
+.cfh .dev { position: absolute; margin: 0; }
+.cfh .dev-screen { position: relative; overflow: hidden; background: #000; }
 .cfh .rs-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.cfh .rs-screen figcaption {
-  position: absolute;
-  left: 10px;
-  top: 10px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: rgba(0,0,0,.55);
-  color: #fff;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+
+/* Television: thin black bezel, a slightly deeper chin, neck and foot. */
+.cfh .dev-tv { left: 3%; top: 0; width: 80%; display: flex; flex-direction: column; align-items: center; }
+.cfh .dev-tv-panel {
+  position: relative;
+  width: 100%;
+  padding: 1.1% 1.1% 2.4%;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #1c1c1e, #0b0b0c);
+  box-shadow:
+    inset 0 0 0 1px #2c2c2f,
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 30px 60px -20px rgba(20, 16, 10, 0.55);
 }
-.cfh .rs-master { left: 0; top: 0; width: 84%; aspect-ratio: 16 / 9; border-radius: 6px; }
-.cfh .rs-square { left: 6%; bottom: 0; width: 32%; aspect-ratio: 1; border-radius: 6px; border: 3px solid #eae8e1; }
-.cfh .rs-phone {
-  right: 2%;
+.cfh .dev-tv-panel .dev-screen { aspect-ratio: 16 / 9; border-radius: 2px; }
+.cfh .dev-tv-logo {
+  position: absolute;
+  left: 50%;
+  bottom: 0.7%;
+  width: 3cqw;
+  height: 0.5cqw;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background: #3a3a3d;
+}
+.cfh .dev-tv-neck { width: 7%; height: 3cqw; background: linear-gradient(90deg, #2a2a2c, #4a4a4e 50%, #2a2a2c); }
+.cfh .dev-tv-foot {
+  width: 36%;
+  height: 1.2cqw;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #4a4a4e, #1c1c1e);
+  box-shadow: 0 10px 18px -6px rgba(20, 16, 10, 0.5);
+}
+.cfh .tv-ui { position: absolute; inset: 0; z-index: 3; color: #fff; }
+.cfh .tv-badge {
+  position: absolute;
+  left: 3%;
+  top: 5%;
+  padding: 0.4cqw 0.9cqw;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 1.5cqw;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.cfh .tv-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
   bottom: 0;
-  width: 25%;
-  aspect-ratio: 9 / 16;
-  border-radius: 22px;
-  border: 5px solid #101010;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4cqw;
+  padding: 6% 4% 4%;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.75), transparent);
 }
-.cfh .rs-phone figcaption { left: 50%; transform: translateX(-50%); top: 12px; white-space: nowrap; font-size: 9.5px; }
-.cfh .rs-sub {
+.cfh .tv-title { font-family: var(--serif); font-style: italic; font-size: 3.2cqw; line-height: 1; }
+.cfh .tv-meta { font-size: 1.35cqw; color: rgba(255, 255, 255, 0.72); }
+.cfh .tv-bar { margin-top: 0.6cqw; height: 0.45cqw; border-radius: 9px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+.cfh .tv-bar i { display: block; width: 38%; height: 100%; background: var(--accent); }
+
+/* Tablet: portrait, aluminium edge, even bezel, front camera. */
+.cfh .dev-tablet { left: 0; bottom: 0; width: 28%; z-index: 2; }
+.cfh .dev-tablet-body {
+  position: relative;
+  padding: 5.5%;
+  border-radius: 2.6cqw;
+  background: #0d0d0e;
+  box-shadow:
+    0 0 0 0.35cqw #c9c9ce,
+    0 0 0 0.5cqw #9a9aa0,
+    0 30px 50px -18px rgba(20, 16, 10, 0.55);
+}
+.cfh .dev-cam {
   position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 18%;
-  text-align: center;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  text-shadow: 0 1px 6px rgba(0,0,0,.8);
+  left: 50%;
+  top: 2.2%;
+  width: 0.8cqw;
+  height: 0.8cqw;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #3a4a6a, #050507 70%);
 }
+.cfh .dev-tablet .dev-screen { aspect-ratio: 3 / 4; border-radius: 1.2cqw; }
+
+/* Feed post on the tablet. */
+.cfh .feed { display: flex; flex-direction: column; min-height: 0; background: #fff; color: #111; font-size: 1.3cqw; }
+.cfh .feed-head { display: flex; align-items: center; gap: 1cqw; padding: 1.6cqw 1.8cqw; }
+.cfh .feed-avatar {
+  width: 3.2cqw;
+  height: 3.2cqw;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e18a52, #3a2236);
+  box-shadow: 0 0 0 0.3cqw #fff, 0 0 0 0.55cqw var(--accent);
+}
+.cfh .feed-handle { display: flex; flex-direction: column; font-weight: 700; line-height: 1.2; }
+.cfh .feed-handle small { font-size: 1.15cqw; font-weight: 500; color: #777; }
+.cfh .feed-dots { margin-left: auto; color: #555; letter-spacing: 0.1em; }
+.cfh .feed-media { position: relative; aspect-ratio: 1; }
+.cfh .feed-actions { display: flex; gap: 1.6cqw; padding: 1.4cqw 1.8cqw 0.6cqw; }
+.cfh .feed-actions svg, .cfh .ph-rail svg { width: 2.6cqw; height: 2.6cqw; }
+.cfh .feed-caption { padding: 0 1.8cqw; line-height: 1.35; }
+.cfh .feed-line { display: block; height: 0.9cqw; margin: 1cqw 1.8cqw 0; border-radius: 4px; background: #ececec; }
+.cfh .feed-line.short { width: 45%; }
+
+/* Phone: titanium edge, side buttons, Dynamic Island, reel UI. */
+.cfh .dev-phone { right: 0; bottom: 0; width: 22.5%; z-index: 3; }
+.cfh .dev-phone-body {
+  position: relative;
+  padding: 3.4%;
+  border-radius: 5.4cqw;
+  background: #050506;
+  box-shadow:
+    0 0 0 0.35cqw #46464b,
+    0 0 0 0.55cqw #1d1d20,
+    0 30px 50px -16px rgba(20, 16, 10, 0.6);
+}
+.cfh .dev-phone-body::before,
+.cfh .dev-phone-body::after {
+  content: "";
+  position: absolute;
+  width: 0.5cqw;
+  border-radius: 2px;
+  background: #3a3a3e;
+}
+.cfh .dev-phone-body::before { left: -0.9cqw; top: 20%; height: 9%; box-shadow: 0 5cqw 0 #3a3a3e; }
+.cfh .dev-phone-body::after { right: -0.9cqw; top: 26%; height: 14%; }
+.cfh .reel-screen { aspect-ratio: 9 / 19.5; border-radius: 4.4cqw; color: #fff; font-size: 1.35cqw; }
+.cfh .reel-screen::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(0deg, rgba(0, 0, 0, 0.7) 0%, transparent 40%, transparent 80%, rgba(0, 0, 0, 0.35)); }
+.cfh .ph-status {
+  position: absolute;
+  z-index: 3;
+  left: 9%;
+  right: 9%;
+  top: 2.4%;
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.3cqw;
+  font-weight: 700;
+}
+.cfh .ph-icons { display: flex; gap: 0.4cqw; align-items: center; }
+.cfh .ph-icons i { width: 1.2cqw; height: 0.75cqw; border-radius: 1px; background: #fff; }
+.cfh .ph-icons i:last-child { width: 2cqw; border-radius: 2px; }
+.cfh .ph-island {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 2%;
+  width: 34%;
+  height: 3.6%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: #000;
+}
+.cfh .ph-tag {
+  position: absolute;
+  z-index: 3;
+  left: 8%;
+  top: 9%;
+  padding: 0.3cqw 0.8cqw;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.5);
+  font-size: 1.2cqw;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.cfh .ph-rail { position: absolute; z-index: 3; right: 6%; bottom: 26%; display: flex; flex-direction: column; gap: 2cqw; }
+.cfh .ph-bottom { position: absolute; z-index: 3; left: 8%; right: 22%; bottom: 5%; display: flex; flex-direction: column; gap: 0.5cqw; }
+.cfh .ph-handle { font-weight: 700; }
+.cfh .ph-caption { font-size: 1.6cqw; font-weight: 600; line-height: 1.2; }
+.cfh .ph-music { color: rgba(255, 255, 255, 0.75); font-size: 1.15cqw; }
 
 /* Voice — the presenter in the booth. */
 .cfh .vp-card {
@@ -2139,9 +2272,6 @@
 .cfh .studio-main { min-width: 0; }
 @media (max-width: 600px) {
   .cfh .hero-frame-meta { display: none; }
-  .cfh .rs-sub { font-size: 10px; bottom: 14%; }
-  .cfh .rs-screen figcaption { font-size: 9px; padding: 3px 6px; left: 6px; top: 6px; }
-  .cfh .rs-phone figcaption { left: 50%; top: 8px; }
 }
 
 /* ------------------------------
@@ -2310,8 +2440,8 @@
 
   /* Release: the 16:9 master reframes to 9:16; the cut-downs land. */
   .cfh .reveal.visible .rs-reframe { animation: cfh-reframe 9s ease-in-out infinite; }
-  .cfh .reveal.visible .rs-square { animation: cfh-land 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s both; }
-  .cfh .reveal.visible .rs-phone { animation: cfh-land 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.6s both; }
+  .cfh .reveal.visible .dev-tablet { animation: cfh-land 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s both; }
+  .cfh .reveal.visible .dev-phone { animation: cfh-land 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.6s both; }
 
   /* Voice: each language arrives. */
   .cfh .vp-line { animation: vp-in 0.5s ease both; }
@@ -2322,4 +2452,9 @@
   .cfh .market .reel { transition: transform 0.35s ease, box-shadow 0.35s ease; }
   .cfh .market .reel:hover { z-index: 2; transform: translateY(-4px); box-shadow: 0 26px 50px -22px rgba(0, 0, 0, 0.85); }
   .cfh .market .reel:hover .reel-tag { box-shadow: 0 0 0 1px var(--accent); }
+}
+
+.cfh .rs-reframe i { font-size: 1.3cqw; padding: 0.3cqw 0.7cqw; }
+@media (max-width: 600px) {
+  .cfh .rs-reframe i { display: none; }
 }
