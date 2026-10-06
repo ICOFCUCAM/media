@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { fmtDuration } from "../lib/system";
 import {
@@ -25,6 +26,7 @@ import {
 } from "../lib/storyboard";
 import type { ShotSource } from "../lib/database.types";
 import { listAnchors } from "../lib/library";
+import { subscribeProject, type ProjectRow } from "../lib/projects";
 import { useAuth } from "./AuthProvider";
 import { Status } from "./cf/primitives";
 
@@ -62,6 +64,9 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
   const [assembled, setAssembled] = useState(false);
   const cancelers = useRef<Map<string, { cancel: () => void }>>(new Map());
   const channelRef = useRef<{ unsubscribe: () => void } | null>(null);
+  const projectChannelRef = useRef<{ unsubscribe: () => void } | null>(null);
+  // The live project row: assembly status, the worker's refusals (credits, plan length) and failures.
+  const [projectRow, setProjectRow] = useState<ProjectRow | null>(null);
 
   // Live = persist to Supabase + Realtime. Otherwise everything runs locally as
   // a preview (no account needed) so the full flow is usable on the deploy.
@@ -84,6 +89,7 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
     return () => {
       cancelers.current.forEach((c) => c.cancel());
       channelRef.current?.unsubscribe();
+      projectChannelRef.current?.unsubscribe();
     };
   }, []);
 
@@ -96,6 +102,11 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
     channelRef.current?.unsubscribe();
     channelRef.current = subscribeScenes(id, (row) => {
       setScenes((prev) => prev.map((s) => (s.sceneId === row.id ? { ...s, status: row.status } : s)));
+    });
+    projectChannelRef.current?.unsubscribe();
+    projectChannelRef.current = subscribeProject(id, (row) => {
+      setProjectRow(row);
+      if (row.error_message) setError(row.error_message);
     });
   }
 
@@ -223,13 +234,20 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
     }
   }
 
-  function startGen(d: SceneDraft) {
+  function startGen(d: SceneDraft, id: string) {
     if (!d.sceneId || !d.shotId) return;
     cancelers.current.get(d.key)?.cancel();
     patch(d.key, { status: "GENERATING" });
     if (live) {
-      // Worker writes status → Realtime → UI.
-      cancelers.current.set(d.key, generateScene(d.sceneId, d.shotId));
+      // Save the scene's latest direction, then queue its shot. The worker
+      // claims it, generates, and writes status back → Realtime → the board.
+      const c = contByIndex.get(d.index);
+      void persistScene(id, d, { continuityScore: c?.score, dependsOn: c?.dependsOn })
+        .then(() => generateScene(d.sceneId!, d.shotId!))
+        .catch((e) => {
+          patch(d.key, { status: "FAILED" });
+          setError(e instanceof Error ? e.message : "Could not queue the scene");
+        });
     } else {
       // Preview: simulate the render locally.
       const t = setTimeout(() => patch(d.key, { status: "READY" }), 1400 + Math.random() * 1200);
@@ -239,9 +257,9 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
 
   async function onGenerate(key: string) {
     try {
-      const { scenes: list } = await ensureStarted();
+      const { id, scenes: list } = await ensureStarted();
       const d = list.find((s) => s.key === key);
-      if (d) startGen(d);
+      if (d) startGen(d, id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generate failed");
     }
@@ -249,8 +267,8 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
 
   async function onGenerateAll() {
     try {
-      const { scenes: list } = await ensureStarted();
-      list.forEach((s) => s.status !== "READY" && startGen(s));
+      const { id, scenes: list } = await ensureStarted();
+      list.forEach((s) => s.status !== "READY" && startGen(s, id));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generate failed");
     }
@@ -279,15 +297,20 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
       return;
     }
     setBusy(true);
+    setError(null);
     try {
-      await assembleStoryboard(projectId, totalSeconds);
+      await assembleStoryboard(projectId);
       setAssembled(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not request assembly");
     } finally {
       setBusy(false);
     }
   }
 
   const ready = scenes.filter((x) => x.status === "READY").length;
+  // The worker either rejected the request (back to GENERATING with a reason) or the render failed.
+  const assemblyFailed = live && assembled && !!projectRow && (projectRow.status === "FAILED" || (projectRow.status === "GENERATING" && !!projectRow.error_message));
   return (
     <div className="space-y-8">
       {intro}
@@ -356,8 +379,8 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
                 <button type="button" onClick={onGenerateAll} className="cf-btn-line">
                   Generate all
                 </button>
-                <button type="button" onClick={onAssemble} disabled={!allReady || busy || assembled} className="cf-btn-accent">
-                  {assembled ? "Assembled" : "Assemble film"}
+                <button type="button" onClick={onAssemble} disabled={!allReady || busy || (assembled && !assemblyFailed)} className="cf-btn-accent">
+                  {assembled && !assemblyFailed ? (live && projectRow?.status !== "READY" ? "Assembling…" : "Assembled") : "Assemble film"}
                 </button>
               </div>
             )}
@@ -366,12 +389,37 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
         </div>
 
         {assembled && (
-          <div className="border-t border-cf-line bg-cf-panel px-6 py-6 sm:px-8">
-            <span className="cf-label text-cf-ok">Final cut assembled</span>
-            <p className="cf-display mt-2 text-[28px] leading-none">
-              {fmtDuration(totalSeconds)} from {scenes.length} scenes
-            </p>
-            <p className="cf-label mt-2">{live ? "Saved to your studio — open it from Projects" : "Preview — nothing was rendered"}</p>
+          <div className="border-t border-cf-line bg-cf-panel px-6 py-6 sm:px-8" aria-live="polite">
+            {!live ? (
+              <>
+                <span className="cf-label text-cf-warn">Preview assembly</span>
+                <p className="cf-display mt-2 text-[28px] leading-none">
+                  {fmtDuration(totalSeconds)} from {scenes.length} scenes
+                </p>
+                <p className="cf-label mt-2">Preview — nothing was rendered. Sign in to assemble for real.</p>
+              </>
+            ) : projectRow?.status === "READY" ? (
+              <>
+                <span className="cf-label text-cf-ok">Final cut ready</span>
+                <p className="cf-display mt-2 text-[28px] leading-none">
+                  {fmtDuration(totalSeconds)} from {scenes.length} scenes
+                </p>
+                <Link href={`/projects/${projectId}`} className="cf-link mt-3 inline-block">
+                  Open the production file →
+                </Link>
+              </>
+            ) : assemblyFailed ? (
+              <>
+                <span className="cf-label text-cf-danger">Assembly stopped</span>
+                <p className="mt-2 text-[13px] text-cf-danger">{projectRow?.error_message ?? "The render worker could not assemble the cut."}</p>
+              </>
+            ) : (
+              <>
+                <span className="cf-label text-cf-accent">Assembling on the render worker</span>
+                <p className="cf-display mt-2 text-[28px] leading-none">Stitching {scenes.length} scenes into the final cut.</p>
+                <p className="cf-label mt-2">Picture, narration and music are being mixed. This board updates when the film is ready.</p>
+              </>
+            )}
           </div>
         )}
 

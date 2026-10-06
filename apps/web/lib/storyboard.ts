@@ -321,42 +321,29 @@ export function subscribeScenes(projectId: string, onChange: (row: SceneRow) => 
 }
 
 /**
- * Worker stand-in for a single scene: walks scene + shot statuses through
- * GENERATING -> READY by WRITING to Supabase. The UI reflects these only after
- * they round-trip via Realtime. apps/worker does the same writes after the GPU
- * (text-to-video or image-to-video) job and QC.
+ * Queue one scene for production. The board persists the scene first, then
+ * marks its shot QUEUED; the worker's poller claims it (credit + plan-length
+ * gates), runs the shot / narration / music flow and finalizes the scene. The
+ * UI reflects only what comes back over Realtime — nothing is simulated here.
  */
-export function generateScene(sceneId: string, shotId: string): { cancel: () => void } {
-  const timers: ReturnType<typeof setTimeout>[] = [];
-  let cancelled = false;
+export async function generateScene(sceneId: string, shotId: string): Promise<void> {
   const sb = getSupabase();
-  const at = (ms: number, fn: () => void) => timers.push(setTimeout(() => !cancelled && fn(), ms));
-
-  if (sb) {
-    sb.from("scenes").update({ status: "GENERATING" }).eq("id", sceneId);
-    sb.from("shots").update({ status: "GENERATING" }).eq("id", shotId);
-    at(2200 + Math.random() * 1500, async () => {
-      await sb.from("shots").update({ status: "READY" }).eq("id", shotId);
-      await sb.from("scenes").update({ status: "READY" }).eq("id", sceneId);
-    });
-  }
-  return {
-    cancel: () => {
-      cancelled = true;
-      timers.forEach(clearTimeout);
-    },
-  };
+  if (!sb) throw new Error("Supabase not configured");
+  const shot = await sb.from("shots").update({ status: "QUEUED" }).eq("id", shotId);
+  if (shot.error) throw new Error(shot.error.message);
+  const scene = await sb.from("scenes").update({ status: "GENERATING" }).eq("id", sceneId);
+  if (scene.error) throw new Error(scene.error.message);
 }
 
-/** Mark the project rendered + write the film row once all scenes are READY. */
-export async function assembleStoryboard(projectId: string, totalSeconds: number): Promise<void> {
+/**
+ * Ask the render worker to assemble the final cut. The poller claims the
+ * request (status RENDERING at progress 0.9), checks every scene clip exists,
+ * and runs the same FFmpeg final render an auto film gets; the project row
+ * reports RENDERING → READY (with the film) or FAILED with the reason.
+ */
+export async function assembleStoryboard(projectId: string): Promise<void> {
   const sb = getSupabase();
-  if (!sb) return;
-  await sb.from("projects").update({ status: "RENDERING", progress: 0.9 }).eq("id", projectId);
-  await sb.from("films").insert({
-    project_id: projectId,
-    duration_sec: totalSeconds,
-    mp4_key: `projects/${projectId}/film/final.mp4`,
-  });
-  await sb.from("projects").update({ status: "READY", progress: 1 }).eq("id", projectId);
+  if (!sb) throw new Error("Supabase not configured");
+  const { error } = await sb.from("projects").update({ status: "RENDERING", progress: 0.9, error_message: null }).eq("id", projectId);
+  if (error) throw new Error(error.message);
 }
