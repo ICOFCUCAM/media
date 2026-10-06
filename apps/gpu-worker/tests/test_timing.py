@@ -65,3 +65,10 @@ def test_regression_7_real_clip(tmp_path):
     assert r["actualDurationUs"] == 5_800_000 and r["frameCount"] == 145
     assert r["timingAccuracy"] == {"deltaUs": -1_040_000, "ratio": 0.847953}
     assert r["frameRate"] == {"num": 25, "den": 1}
+
+
+def test_runtime_limits_are_published():
+    from app.pipeline import runtime_limits
+
+    assert runtime_limits({}) == {"maxWidth": 832, "maxHeight": 480, "maxFrames": 25, "maxSteps": 20}
+    assert runtime_limits({"WAN_MAX_FRAMES": "81"})["maxFrames"] == 81

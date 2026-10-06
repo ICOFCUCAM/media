@@ -66,6 +66,8 @@ export interface RuntimeCapabilities {
   supportsProgress: boolean;
   /** Timing parameters the runtime honors (§AX.5 rule 5). */
   timing: { duration: boolean; fps: boolean; frameCount: boolean; audioConditioning: boolean; maxDurationSec: number };
+  /** Workload caps the worker applies; a request beyond them would be silently changed. */
+  limits?: { maxWidth: number; maxHeight: number; maxFrames: number; maxSteps: number } | null;
   /** Worker-reported identity (status only; never authorizes). */
   sourceCommit?: string | null;
   codeSha256?: string | null;

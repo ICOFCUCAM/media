@@ -84,4 +84,14 @@ describe("DiffusersRuntime", () => {
     expect(caps.timing).toMatchObject({ duration: true, fps: true, maxDurationSec: 5 });
     expect(await rt.estimate(bindVideoShot(adapter, SHOT))).toMatchObject({ gpuMs: 1234 });
   });
+
+  it("refuses requests a worker cap would silently re-time or resize (the Wan frame cap)", async () => {
+    const adapter = new FakeAdapter(async () => result(80));
+    const rt = new DiffusersRuntime(adapter, { describeWorker: async () => ({ limits: { maxWidth: 832, maxHeight: 480, maxFrames: 25, maxSteps: 20 } }) });
+    const v = await rt.validate(bindVideoShot(adapter, SHOT));
+    expect(v.errors.map((e) => e.code)).toEqual(["RUNTIME_WOULD_RETIME"]);
+    expect(v.errors[0]!.message).toContain("1.563 s");
+    expect((await rt.validate(bindVideoShot(adapter, { ...SHOT, durationSec: 1.5 }))).ok).toBe(true);
+    expect((await rt.getCapabilities()).limits).toEqual({ maxWidth: 832, maxHeight: 480, maxFrames: 25, maxSteps: 20 });
+  });
 });

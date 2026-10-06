@@ -43,9 +43,29 @@ export function bindVideoShot(
   };
 }
 
+type Limits = NonNullable<RuntimeCapabilities["limits"]>;
+
+function parseLimits(v: unknown): Limits | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  const n = (k: string) => (typeof o[k] === "number" && (o[k] as number) > 0 ? (o[k] as number) : null);
+  const [w, h, f, s] = [n("maxWidth"), n("maxHeight"), n("maxFrames"), n("maxSteps")];
+  return w && h && f && s ? { maxWidth: w, maxHeight: h, maxFrames: f, maxSteps: s } : null;
+}
+
 export class DiffusersRuntime implements WorkflowRuntime<DiffusersPayload> {
   readonly id = "diffusers";
   private readonly runs = new Map<string, Run>();
+  private worker: { at: number; info: Record<string, unknown> | null } | null = null;
+
+  /** Worker identity, cached for a minute (it changes only when the pod does). */
+  private async describe(): Promise<Record<string, unknown> | null> {
+    if (!this.opts.describeWorker) return null;
+    if (this.worker && Date.now() - this.worker.at < 60_000) return this.worker.info;
+    const info = await this.opts.describeWorker().catch(() => null);
+    this.worker = { at: Date.now(), info };
+    return info;
+  }
 
   constructor(
     private readonly adapter: VideoModelAdapter,
@@ -70,6 +90,17 @@ export class DiffusersRuntime implements WorkflowRuntime<DiffusersPayload> {
     }
     if (p.width && p.height && !caps.resolutions.some((r) => r.width === p.width && r.height === p.height)) {
       errors.push({ code: "UNSUPPORTED_RESOLUTION", path: "payload.width", message: `${p.width}x${p.height} not offered by ${caps.id}` });
+    }
+    // A worker cap would silently shorten or shrink the result (§AV.5): refuse up front.
+    const limits = parseLimits((await this.describe())?.limits);
+    if (limits && typeof p.durationSec === "number" && typeof p.fps === "number") {
+      const frames = Math.ceil(p.durationSec * p.fps);
+      if (frames > limits.maxFrames) {
+        errors.push({ code: "RUNTIME_WOULD_RETIME", path: "payload.durationSec", message: `${frames} frames requested; the worker caps at ${limits.maxFrames} (${(limits.maxFrames / p.fps).toFixed(3)} s)` });
+      }
+    }
+    if (limits && ((p.width ?? 0) > limits.maxWidth || (p.height ?? 0) > limits.maxHeight)) {
+      errors.push({ code: "RUNTIME_WOULD_RESIZE", path: "payload.width", message: `${p.width}x${p.height} exceeds the worker cap ${limits.maxWidth}x${limits.maxHeight}` });
     }
     if (p.loraKeys?.length && !caps.supportsLora) errors.push({ code: "CAPABILITY", message: `${caps.id} cannot load LoRAs` });
     if (p.referenceVideoKeys?.length && !caps.supportsReferenceVideo) errors.push({ code: "CAPABILITY", message: `${caps.id} has no video-to-video path` });
@@ -117,7 +148,7 @@ export class DiffusersRuntime implements WorkflowRuntime<DiffusersPayload> {
 
   async getCapabilities(): Promise<RuntimeCapabilities> {
     const caps = this.adapter.capabilities();
-    const worker = (await this.opts.describeWorker?.()) ?? null;
+    const worker = await this.describe();
     const image = (worker?.image ?? {}) as { sourceCommit?: string | null; codeSha256?: string | null };
     const manifest = (worker?.manifest ?? {}) as { runtime?: string; models?: Array<{ id: string; revision?: string | null }> };
     return {
@@ -128,6 +159,7 @@ export class DiffusersRuntime implements WorkflowRuntime<DiffusersPayload> {
       supportsCancel: true,
       supportsProgress: false,
       timing: { duration: true, fps: true, frameCount: false, audioConditioning: false, maxDurationSec: caps.maxDurationSec },
+      limits: parseLimits(worker?.limits),
       sourceCommit: image.sourceCommit ?? null,
       codeSha256: image.codeSha256 ?? null,
     };
