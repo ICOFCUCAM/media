@@ -10,3 +10,4 @@ export * from "./loudness";
 export * from "./repair-planner";
 export * from "./engine";
 export * from "./picture-validator";
+export * from "./lip-sync";
