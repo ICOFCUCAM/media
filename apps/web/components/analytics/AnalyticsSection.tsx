@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../AuthProvider";
-import { AuthCard } from "../AuthCard";
+import { StudioGate } from "../cf/StudioGate";
+import { PageHeader } from "../cf/primitives";
 import { getSupabase } from "../../lib/supabase";
 import { msToCredits } from "../../lib/plans";
-import { StatCard, BarChart, RankList, Panel, type Bar } from "./Charts";
+import { StatCard, BarChart, RankList, Panel, Measures, type Bar } from "./Charts";
 
 /**
  * Analytics on REAL rows — usage_records (generation spend), projects/films
@@ -23,8 +24,8 @@ interface Data {
   creditsMs: number;
 }
 
-function useAnalytics(): { data: Data | null; user: unknown; enabled: boolean; loading: boolean } {
-  const { enabled, loading, user, profile } = useAuth();
+function useAnalytics(): { data: Data | null } {
+  const { user, profile } = useAuth();
   const [data, setData] = useState<Data | null>(null);
 
   useEffect(() => {
@@ -51,7 +52,7 @@ function useAnalytics(): { data: Data | null; user: unknown; enabled: boolean; l
     })();
   }, [user, profile]);
 
-  return { data, user, enabled, loading };
+  return { data };
 }
 
 function dailyBars(usage: Data["usage"], days = 14): Bar[] {
@@ -67,34 +68,36 @@ function dailyBars(usage: Data["usage"], days = 14): Bar[] {
   return [...buckets.entries()].map(([k, v]) => ({ label: k.slice(5), value: Math.round(v / 60000) }));
 }
 
-export function AnalyticsSection({ section }: { section: "revenue" | "audience" | "performance" }) {
-  const { data, user, enabled, loading } = useAnalytics();
+const DESKS: Record<"revenue" | "audience" | "performance", { eyebrow: string; title: React.ReactNode; copy: string }> = {
+  revenue: {
+    eyebrow: "Analytics / The business desk",
+    title: <>The business<br /><em>desk.</em></>,
+    copy: "What you generate, what it costs, and what is left — read from your real usage records and credit balance.",
+  },
+  audience: {
+    eyebrow: "Analytics / The audience desk",
+    title: <>The audience<br /><em>desk.</em></>,
+    copy: "Views and distribution across your finished work — counted per screening and per social launch.",
+  },
+  performance: {
+    eyebrow: "Analytics / The performance desk",
+    title: <>The performance<br /><em>desk.</em></>,
+    copy: "Production throughput and pipeline health — what finished, what failed, and how busy the studio has been.",
+  },
+};
 
-  const titles: Record<string, { title: string; subtitle: string }> = {
-    revenue: { title: "Revenue & Spend", subtitle: "What you generate, what it costs, what's left." },
-    audience: { title: "Audience", subtitle: "Views and distribution across your published work." },
-    performance: { title: "Performance", subtitle: "Production throughput and pipeline health." },
-  };
-  const t = titles[section]!;
+export function AnalyticsSection({ section }: { section: "revenue" | "audience" | "performance" }) {
+  const { data } = useAnalytics();
+  const desk = DESKS[section];
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">{t.title}</h1>
-        <p className="mt-1 text-sm text-white/55">{t.subtitle}</p>
-      </header>
-
-      {!enabled ? (
-        <p className="text-sm text-white/45">Connect Supabase to see analytics.</p>
-      ) : loading ? (
-        <p className="text-sm text-white/40">Loading…</p>
-      ) : !user ? (
-        <AuthCard title="Sign in to see analytics" />
-      ) : !data ? (
-        <p className="text-sm text-white/40">Crunching…</p>
-      ) : (
-        <SectionBody section={section} data={data} />
-      )}
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader eyebrow={desk.eyebrow} title={desk.title} copy={<p>{desk.copy}</p>} status={{ tone: data ? "live" : "idle", label: data ? "Live data" : "Desk" }} />
+      <div className="pt-12">
+        <StudioGate signIn="Sign in to see analytics" what="Analytics">
+          {!data ? <p className="cf-label">Reading the records…</p> : <SectionBody section={section} data={data} />}
+        </StudioGate>
+      </div>
     </div>
   );
 }
@@ -113,12 +116,12 @@ function SectionBody({ section, data }: { section: string; data: Data }) {
       }, {}),
     ).map(([label, v]) => ({ label, value: Math.round(v / 60000) }));
     return (
-      <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <StatCard label="Credits remaining" value={msToCredits(data.creditsMs).toLocaleString()} sub="tops up on /pricing" />
-          <StatCard label="Generation used" value={`${Math.round(totalMs / 60000)} min`} sub="across all engines" />
-          <StatCard label="Marketplace earnings" value="$0" sub="voice sales appear here" />
-        </div>
+      <div className="space-y-14">
+        <Measures>
+          <StatCard label="Credits remaining" value={msToCredits(data.creditsMs).toLocaleString()} sub="Top up in Plans & Credits" />
+          <StatCard label="Generation used" value={`${Math.round(totalMs / 60000)} min`} sub="Across all engines (last 500 records)" />
+          <StatCard label="Marketplace earnings" value="—" sub="Paid sales are not open yet" />
+        </Measures>
         <Panel title="Generation minutes — last 14 days">
           <BarChart bars={dailyBars(data.usage)} unit="min" />
         </Panel>
@@ -131,12 +134,12 @@ function SectionBody({ section, data }: { section: string; data: Data }) {
 
   if (section === "audience") {
     return (
-      <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <StatCard label="Total views" value={totalViews.toLocaleString()} sub="across published films" />
-          <StatCard label="Published films" value={String(ready.length)} />
-          <StatCard label="Social launches" value={String(published)} sub="via the Launchpad" />
-        </div>
+      <div className="space-y-14">
+        <Measures>
+          <StatCard label="Total views" value={totalViews.toLocaleString()} sub="Across your finished films" />
+          <StatCard label="Finished films" value={String(ready.length)} />
+          <StatCard label="Social launches" value={String(published)} sub="Launched from the Distribution Desk" />
+        </Measures>
         <Panel title="Most viewed">
           <RankList
             rows={data.filmRows
@@ -157,13 +160,13 @@ function SectionBody({ section, data }: { section: string; data: Data }) {
   const failed = data.films.filter((f) => f.status === "FAILED").length;
   const successRate = data.films.length ? Math.round((ready.length / data.films.length) * 100) : 100;
   return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-4">
+    <div className="space-y-14">
+      <Measures cols={4}>
         <StatCard label="Projects" value={String(data.films.length)} />
         <StatCard label="Completed" value={String(ready.length)} sub={`${successRate}% completion`} />
         <StatCard label="Failed" value={String(failed)} />
-        <StatCard label="Voice assets" value={`${data.voices} voices · ${data.voiceovers} readings`} />
-      </div>
+        <StatCard label="Voice assets" value={String(data.voices)} sub={`${data.voices} voices · ${data.voiceovers} readings`} />
+      </Measures>
       <Panel title="Production activity — last 14 days (generation minutes)">
         <BarChart bars={dailyBars(data.usage)} unit="min" />
       </Panel>
