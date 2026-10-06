@@ -24,6 +24,7 @@ import threading
 import time
 import uuid
 from importlib import metadata
+from pathlib import Path
 from typing import Callable
 
 from fastapi import FastAPI, HTTPException, Request
@@ -42,11 +43,14 @@ from .gateway import (
     resolve_weights_digest,
 )
 from .gateway.authz import TimingRequest
+from .code_digest import code_digest
 from .gateway.manifest import PLACEHOLDER
 from .media_io import LoraIntegrityError, put_file, storage_credentials_present
 from .pipeline import VideoPipeline, upload_clip
 
-MODEL_NAME = os.environ.get("MODEL_NAME", "wan-2.1")  # "wan-2.1" | "hunyuan"
+MODEL_NAME = os.environ.get("MODEL_NAME", "wan-2.1")
+# Digest of the code this process actually loaded (app/code_digest.py).
+CODE_SHA256 = code_digest(Path(__file__).resolve().parent)  # "wan-2.1" | "hunyuan"
 
 log = logging.getLogger("cineforge.gateway")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -247,7 +251,7 @@ def create_app(
             "manifest": identity.manifest(),
             # Status information only. The authoritative running-image digest
             # comes from the provider's control plane, never from the pod.
-            "image": {"sourceCommit": os.environ.get("CINEFORGE_SOURCE_COMMIT") or None},
+            "image": {"sourceCommit": os.environ.get("CINEFORGE_SOURCE_COMMIT") or None, "codeSha256": CODE_SHA256},
         }
 
     @app.post("/warm")
