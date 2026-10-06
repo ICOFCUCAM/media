@@ -1970,189 +1970,161 @@
 .cfh .ws-preview { min-width: 0; }
 .cfh .ws-preview .scene { height: 100%; min-height: 360px; border-radius: 12px; }
 
-/* Release — one master, reframed onto real screens: TV, tablet, phone. */
+/* Release — ONE FILM. EVERY SCREEN. Staged as product photography. */
+.cfh .release-showcase { margin: 56px 0 0; width: min(100%, 660px); }
 .cfh .release-stage {
   position: relative;
-  margin-top: 56px;
-  width: min(100%, 640px);
-  aspect-ratio: 100 / 90;
+  aspect-ratio: 100 / 72;
   container-type: inline-size;
+  overflow: visible;
 }
-.cfh .dev { position: absolute; margin: 0; }
-.cfh .dev-screen { position: relative; overflow: hidden; background: #000; }
-.cfh .rs-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-
-/* Television: thin black bezel, a slightly deeper chin, neck and foot. */
-.cfh .dev-tv { left: 3%; top: 0; width: 80%; display: flex; flex-direction: column; align-items: center; }
-.cfh .dev-tv-panel {
-  position: relative;
-  width: 100%;
-  padding: 1.1% 1.1% 2.4%;
-  border-radius: 7px;
-  background: linear-gradient(180deg, #1c1c1e, #0b0b0c);
-  box-shadow:
-    inset 0 0 0 1px #2c2c2f,
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 30px 60px -20px rgba(20, 16, 10, 0.55);
-}
-.cfh .dev-tv-panel .dev-screen { aspect-ratio: 16 / 9; border-radius: 2px; }
-.cfh .dev-tv-logo {
-  position: absolute;
-  left: 50%;
-  bottom: 0.7%;
-  width: 3cqw;
-  height: 0.5cqw;
-  transform: translateX(-50%);
-  border-radius: 2px;
-  background: #3a3a3d;
-}
-.cfh .dev-tv-neck { width: 7%; height: 3cqw; background: linear-gradient(90deg, #2a2a2c, #4a4a4e 50%, #2a2a2c); }
-.cfh .dev-tv-foot {
-  width: 36%;
-  height: 1.2cqw;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #4a4a4e, #1c1c1e);
-  box-shadow: 0 10px 18px -6px rgba(20, 16, 10, 0.5);
-}
-.cfh .tv-ui { position: absolute; inset: 0; z-index: 3; color: #fff; }
-.cfh .tv-badge {
-  position: absolute;
-  left: 3%;
-  top: 5%;
-  padding: 0.4cqw 0.9cqw;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.55);
-  font-size: 1.5cqw;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-.cfh .tv-bottom {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4cqw;
-  padding: 6% 4% 4%;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.75), transparent);
-}
-.cfh .tv-title { font-family: var(--serif); font-style: italic; font-size: 3.2cqw; line-height: 1; }
-.cfh .tv-meta { font-size: 1.35cqw; color: rgba(255, 255, 255, 0.72); }
-.cfh .tv-bar { margin-top: 0.6cqw; height: 0.45cqw; border-radius: 9px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
-.cfh .tv-bar i { display: block; width: 38%; height: 100%; background: var(--accent); }
-
-/* Tablet: portrait, aluminium edge, even bezel, front camera. */
-.cfh .dev-tablet { left: 0; bottom: 0; width: 28%; z-index: 2; }
-.cfh .dev-tablet-body {
-  position: relative;
-  padding: 5.5%;
-  border-radius: 2.6cqw;
-  background: #0d0d0e;
-  box-shadow:
-    0 0 0 0.35cqw #c9c9ce,
-    0 0 0 0.5cqw #9a9aa0,
-    0 30px 50px -18px rgba(20, 16, 10, 0.55);
-}
-.cfh .dev-cam {
-  position: absolute;
-  left: 50%;
-  top: 2.2%;
-  width: 0.8cqw;
-  height: 0.8cqw;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #3a4a6a, #050507 70%);
-}
-.cfh .dev-tablet .dev-screen { aspect-ratio: 3 / 4; border-radius: 1.2cqw; }
-
-/* Feed post on the tablet. */
-.cfh .feed { display: flex; flex-direction: column; min-height: 0; background: #fff; color: #111; font-size: 1.3cqw; }
-.cfh .feed-head { display: flex; align-items: center; gap: 1cqw; padding: 1.6cqw 1.8cqw; }
-.cfh .feed-avatar {
-  width: 3.2cqw;
-  height: 3.2cqw;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #e18a52, #3a2236);
-  box-shadow: 0 0 0 0.3cqw #fff, 0 0 0 0.55cqw var(--accent);
-}
-.cfh .feed-handle { display: flex; flex-direction: column; font-weight: 700; line-height: 1.2; }
-.cfh .feed-handle small { font-size: 1.15cqw; font-weight: 500; color: #777; }
-.cfh .feed-dots { margin-left: auto; color: #555; letter-spacing: 0.1em; }
-.cfh .feed-media { position: relative; aspect-ratio: 1; }
-.cfh .feed-actions { display: flex; gap: 1.6cqw; padding: 1.4cqw 1.8cqw 0.6cqw; }
-.cfh .feed-actions svg, .cfh .ph-rail svg { width: 2.6cqw; height: 2.6cqw; }
-.cfh .feed-caption { padding: 0 1.8cqw; line-height: 1.35; }
-.cfh .feed-line { display: block; height: 0.9cqw; margin: 1cqw 1.8cqw 0; border-radius: 4px; background: #ececec; }
-.cfh .feed-line.short { width: 45%; }
-
-/* Phone: titanium edge, side buttons, Dynamic Island, reel UI. */
-.cfh .dev-phone { right: 0; bottom: 0; width: 22.5%; z-index: 3; }
-.cfh .dev-phone-body {
-  position: relative;
-  padding: 3.4%;
-  border-radius: 5.4cqw;
-  background: #050506;
-  box-shadow:
-    0 0 0 0.35cqw #46464b,
-    0 0 0 0.55cqw #1d1d20,
-    0 30px 50px -16px rgba(20, 16, 10, 0.6);
-}
-.cfh .dev-phone-body::before,
-.cfh .dev-phone-body::after {
+/* Studio light: a soft key from above, a floor plane falling into shade. */
+.cfh .release-stage::before {
   content: "";
   position: absolute;
-  width: 0.5cqw;
-  border-radius: 2px;
-  background: #3a3a3e;
+  inset: -8% -10% 0;
+  background: radial-gradient(60% 55% at 46% 30%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
 }
-.cfh .dev-phone-body::before { left: -0.9cqw; top: 20%; height: 9%; box-shadow: 0 5cqw 0 #3a3a3e; }
-.cfh .dev-phone-body::after { right: -0.9cqw; top: 26%; height: 14%; }
-.cfh .reel-screen { aspect-ratio: 9 / 19.5; border-radius: 4.4cqw; color: #fff; font-size: 1.35cqw; }
-.cfh .reel-screen::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(0deg, rgba(0, 0, 0, 0.7) 0%, transparent 40%, transparent 80%, rgba(0, 0, 0, 0.35)); }
-.cfh .ph-status {
+.cfh .release-stage::after {
+  content: "";
   position: absolute;
-  z-index: 3;
-  left: 9%;
-  right: 9%;
-  top: 2.4%;
-  display: flex;
-  justify-content: space-between;
-  font-size: 1.3cqw;
-  font-weight: 700;
+  left: -10%;
+  right: -10%;
+  bottom: -4%;
+  height: 42%;
+  background: linear-gradient(180deg, rgba(60, 48, 36, 0) 0%, rgba(60, 48, 36, 0.08) 45%, rgba(60, 48, 36, 0.08) 70%, rgba(60, 48, 36, 0) 100%);
+  pointer-events: none;
 }
-.cfh .ph-icons { display: flex; gap: 0.4cqw; align-items: center; }
-.cfh .ph-icons i { width: 1.2cqw; height: 0.75cqw; border-radius: 1px; background: #fff; }
-.cfh .ph-icons i:last-child { width: 2cqw; border-radius: 2px; }
-.cfh .ph-island {
+.cfh .rs-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* Shared device construction: metal edge → black glass border → screen. */
+.cfh .dv-metal { position: relative; }
+.cfh .dv-bezel { position: relative; background: #050506; }
+.cfh .dv-screen { position: relative; overflow: hidden; background: #000; }
+.cfh .dv-glass {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(118deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 22%, rgba(255, 255, 255, 0) 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 12%);
+  mix-blend-mode: screen;
+}
+
+/* Cinema display: wall-mounted, ultra-thin, hairline graphite edge. */
+.cfh .dv-tv { position: absolute; z-index: 1; left: 8%; top: 0; width: 78%; }
+.cfh .dv-tv-glow {
+  position: absolute;
+  inset: 4% 2% -6%;
+  z-index: -1;
+  filter: blur(4.5cqw) saturate(1.5);
+  opacity: 0.55;
+  transform: scale(1.04);
+}
+.cfh .dv-tv-glow .rs-art { border-radius: 2cqw; }
+.cfh .dv-tv-metal {
+  padding: 0.22cqw;
+  border-radius: 0.7cqw;
+  background: linear-gradient(135deg, #8d8f94 0%, #3b3c40 22%, #1d1e21 50%, #4a4b50 78%, #a3a5aa 100%);
+  box-shadow:
+    0 2.6cqw 4.5cqw -2cqw rgba(30, 22, 14, 0.42),
+    0 0.6cqw 1.2cqw rgba(30, 22, 14, 0.14);
+}
+.cfh .dv-tv-bezel { padding: 0.42cqw; border-radius: 0.5cqw; }
+.cfh .dv-tv-screen { aspect-ratio: 16 / 9; border-radius: 0.15cqw; }
+
+/* Tablet: large-format 16:10, brushed silver-graphite chassis, three-quarter view. */
+.cfh .dv-tablet { position: absolute; z-index: 2; left: 1.5%; bottom: 2%; width: 47%; perspective: 1400px; }
+.cfh .dv-tablet-tilt { transform: rotateY(17deg) rotateX(3deg) rotateZ(-1deg); transform-origin: 30% 60%; }
+.cfh .dv-tablet-metal {
+  padding: 0.32cqw;
+  border-radius: 2.1cqw;
+  background: linear-gradient(140deg, #eceef1 0%, #a9abb1 18%, #5b5d63 46%, #8e9096 74%, #e3e5e9 100%);
+  box-shadow:
+    -0.55cqw 0.1cqw 0 #6e7076,
+    -0.6cqw 0.15cqw 0 #3e4045,
+    -2cqw 3cqw 4cqw -1.5cqw rgba(30, 22, 14, 0.45);
+}
+.cfh .dv-tablet-bezel { padding: 1.05cqw; border-radius: 1.8cqw; }
+.cfh .dv-tablet-cam {
+  position: absolute;
+  left: 50%;
+  top: 0.32cqw;
+  width: 0.5cqw;
+  height: 0.5cqw;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #33415e, #040406 70%);
+}
+.cfh .dv-tablet-screen { aspect-ratio: 16 / 10; border-radius: 0.9cqw; }
+
+/* Phone: flagship proportions, titanium edge, island, side keys, slight angle. */
+.cfh .dv-phone { position: absolute; z-index: 3; right: 4%; bottom: 1%; width: 17.5%; perspective: 1200px; }
+.cfh .dv-phone-tilt { transform: rotateY(-16deg) rotateX(2deg) rotateZ(2.5deg); transform-origin: 50% 70%; }
+.cfh .dv-phone-metal {
+  padding: 0.38cqw;
+  border-radius: 3.9cqw;
+  background: linear-gradient(150deg, #d8d4cc 0%, #8f8b84 20%, #4c4a46 48%, #7d7a74 76%, #cfcbc3 100%);
+  box-shadow:
+    0.5cqw 0.1cqw 0 #5d5a55,
+    0.55cqw 0.15cqw 0 #34322f,
+    2cqw 3cqw 4cqw -1.4cqw rgba(30, 22, 14, 0.5);
+}
+.cfh .dv-phone-metal::before,
+.cfh .dv-phone-metal::after {
+  content: "";
+  position: absolute;
+  width: 0.32cqw;
+  border-radius: 1px;
+  background: linear-gradient(90deg, #6c6964, #aaa59d);
+}
+.cfh .dv-phone-metal::before { left: -0.3cqw; top: 19%; height: 7%; box-shadow: 0 4.2cqw 0 #8f8b84, 0 7.4cqw 0 #8f8b84; }
+.cfh .dv-phone-metal::after { right: -0.3cqw; top: 27%; height: 12%; }
+.cfh .dv-phone-bezel { padding: 0.55cqw; border-radius: 3.55cqw; }
+.cfh .dv-phone-screen { aspect-ratio: 9 / 19.5; border-radius: 3.1cqw; }
+.cfh .dv-island {
   position: absolute;
   z-index: 3;
   left: 50%;
-  top: 2%;
-  width: 34%;
-  height: 3.6%;
+  top: 2.4%;
+  width: 30%;
+  height: 3.1%;
   transform: translateX(-50%);
   border-radius: 999px;
   background: #000;
+  box-shadow: inset 0.25cqw 0 0.2cqw -0.05cqw rgba(60, 80, 120, 0.6);
 }
-.cfh .ph-tag {
+
+/* Contact shadows on the floor plane. */
+.cfh .dv-floor-shadow {
   position: absolute;
-  z-index: 3;
   left: 8%;
-  top: 9%;
-  padding: 0.3cqw 0.8cqw;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.5);
-  font-size: 1.2cqw;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  right: 8%;
+  bottom: -4%;
+  height: 7%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(30, 22, 14, 0.38), rgba(30, 22, 14, 0));
+  filter: blur(0.6cqw);
 }
-.cfh .ph-rail { position: absolute; z-index: 3; right: 6%; bottom: 26%; display: flex; flex-direction: column; gap: 2cqw; }
-.cfh .ph-bottom { position: absolute; z-index: 3; left: 8%; right: 22%; bottom: 5%; display: flex; flex-direction: column; gap: 0.5cqw; }
-.cfh .ph-handle { font-weight: 700; }
-.cfh .ph-caption { font-size: 1.6cqw; font-weight: 600; line-height: 1.2; }
-.cfh .ph-music { color: rgba(255, 255, 255, 0.75); font-size: 1.15cqw; }
+
+.cfh .release-caption {
+  display: flex;
+  gap: 22px;
+  margin-top: 22px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7a766d;
+}
+@media (max-width: 600px) {
+  .cfh .release-showcase { margin-top: 36px; }
+  .cfh .dv-tablet { width: 50%; }
+  .cfh .dv-phone { width: 22%; }
+  .cfh .release-caption { gap: 14px; font-size: 10px; }
+}
 
 /* Voice — the presenter in the booth. */
 .cfh .vp-card {
@@ -2261,7 +2233,7 @@
   .cfh .ws-config .cf-config-value { font-size: 13px; }
   .cfh .ws-config .cf-config-check { display: none; }
   .cfh .ws-config .cf-config-sub { display: none; }
-  .cfh .release-stage, .cfh .vp-card { margin-top: 36px; }
+  .cfh .vp-card { margin-top: 36px; }
 }
 
 /* Scenes are SVGs; absolute positioning alone doesn't size them. */
@@ -2333,34 +2305,6 @@
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
 }
 
-/* Release: the reframe from 16:9 to 9:16, drawn on the master. */
-.cfh .rs-reframe {
-  position: absolute;
-  z-index: 2;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  border: 1.5px solid var(--accent);
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0);
-  pointer-events: none;
-  opacity: 0;
-}
-.cfh .rs-reframe i {
-  position: absolute;
-  left: 50%;
-  bottom: 8px;
-  transform: translateX(-50%);
-  padding: 3px 7px;
-  border-radius: 4px;
-  background: var(--accent);
-  color: #10100f;
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
 
 /* Workspace takes cross-fade under the moving playhead. */
 .cfh .ws-take { position: absolute; inset: 0; opacity: 0; transition: opacity 0.9s ease; }
@@ -2392,13 +2336,6 @@
   @keyframes cfh-flicker { 0%, 100% { opacity: 0.55; } 45% { opacity: 0.85; } 52% { opacity: 0.62; } 70% { opacity: 0.8; } }
   @keyframes cfh-ring { to { stroke-dashoffset: -108; } }
   @keyframes cfh-wind { from { transform: skewY(-4deg) scaleX(0.96); } to { transform: skewY(3deg) scaleX(1.02); } }
-  @keyframes cfh-reframe {
-    0%, 14% { left: 0; width: 100%; opacity: 0; }
-    20% { opacity: 1; }
-    38%, 66% { left: 5%; width: 31.6%; opacity: 1; }
-    84% { left: 0; width: 100%; opacity: 1; }
-    92%, 100% { left: 0; width: 100%; opacity: 0; }
-  }
   @keyframes cfh-land { from { transform: translateY(28px); opacity: 0; } to { transform: none; opacity: 1; } }
   @keyframes ws-scrub { from { left: var(--from); } to { left: var(--to); } }
   @keyframes vp-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -2439,9 +2376,8 @@
   .cfh .ws-playhead { animation: ws-scrub 3.2s linear both; }
 
   /* Release: the 16:9 master reframes to 9:16; the cut-downs land. */
-  .cfh .reveal.visible .rs-reframe { animation: cfh-reframe 9s ease-in-out infinite; }
-  .cfh .reveal.visible .dev-tablet { animation: cfh-land 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s both; }
-  .cfh .reveal.visible .dev-phone { animation: cfh-land 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.6s both; }
+  .cfh .reveal.visible .dv-tablet { animation: cfh-land 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s both; }
+  .cfh .reveal.visible .dv-phone { animation: cfh-land 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.6s both; }
 
   /* Voice: each language arrives. */
   .cfh .vp-line { animation: vp-in 0.5s ease both; }
@@ -2454,7 +2390,3 @@
   .cfh .market .reel:hover .reel-tag { box-shadow: 0 0 0 1px var(--accent); }
 }
 
-.cfh .rs-reframe i { font-size: 1.3cqw; padding: 0.3cqw 0.7cqw; }
-@media (max-width: 600px) {
-  .cfh .rs-reframe i { display: none; }
-}

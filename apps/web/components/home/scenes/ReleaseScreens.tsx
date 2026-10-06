@@ -1,123 +1,76 @@
 import { MasterShot } from "./MasterShot";
 
 /*
- * Release chapter — one film, every screen, on real hardware: the 16:9
- * master on a television in a streaming player, the 1:1 cut-down in a feed
- * post on a tablet, the 9:16 vertical as a reel on a phone. The same frame
- * is reused on purpose: the point is that it is one film, reframed.
+ * Release — ONE FILM. EVERY SCREEN. Staged like product photography: an
+ * ultra-thin wall-mounted cinema display as the hero, a large-format tablet
+ * in three-quarter view as the secondary screen, a flagship phone carrying
+ * the 9:16 vertical. The devices are engineered in HTML/CSS; the screens
+ * carry only the film itself (a real still from public/frames when present,
+ * otherwise the drawn master shot), reframed per screen. No UI on any screen.
  */
 
-/** The master as a real still (cropped by object-position) or the drawn shot. */
-function Master({ still, id, focus, pos }: { still?: string; id: string; focus?: "xMidYMid" | "xMinYMid" | "xMaxYMid"; pos: string }) {
+/** The film, cropped for a screen: a real still via object-position, or the drawn shot. */
+function Film({ still, id, focus, pos }: { still?: string; id: string; focus?: "xMidYMid" | "xMinYMid" | "xMaxYMid"; pos: string }) {
   if (still) return <img src={still} alt="" className="rs-art still-fill" style={{ objectPosition: pos }} loading="lazy" />;
   return <MasterShot idPrefix={id} className="rs-art" focus={focus} />;
 }
 
-const icon = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-const Heart = () => (
-  <svg viewBox="0 0 24 24" {...icon}>
-    <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
-  </svg>
-);
-const Bubble = () => (
-  <svg viewBox="0 0 24 24" {...icon}>
-    <path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12z" />
-  </svg>
-);
-const Send = () => (
-  <svg viewBox="0 0 24 24" {...icon}>
-    <path d="M21 3 10 14M21 3l-7 18-4-7-7-4z" />
-  </svg>
-);
-
 export function ReleaseScreens({ still }: { still?: string }) {
   return (
-    <div className="release-stage" aria-label="One master shot delivered to a television at 16:9, a tablet feed at 1:1 and a phone at 9:16">
-      {/* Television — 16:9 master in a streaming player */}
-      <figure className="dev dev-tv">
-        <div className="dev-tv-panel">
-          <div className="dev-screen">
-            <Master still={still} id="rs-a" pos="50% 50%" />
-            <span className="rs-reframe" aria-hidden>
-              <i>Reframing 16:9 → 9:16</i>
-            </span>
-            <div className="tv-ui" aria-hidden>
-              <span className="tv-badge">16:9 · 4K HDR</span>
-              <div className="tv-bottom">
-                <span className="tv-title">Ashéron-Kor</span>
-                <span className="tv-meta">Drama · Episode 1 · Dolby Atmos</span>
-                <span className="tv-bar">
-                  <i />
-                </span>
+    <figure className="release-showcase">
+      <div className="release-stage" role="img" aria-label="The same film on a wall-mounted cinema display at 16:9, a tablet at 16:10 and a phone at 9:16">
+        {/* Cinema display — the hero */}
+        <div className="dv-tv" aria-hidden>
+          <div className="dv-tv-glow">
+            <Film still={still} id="rs-g" pos="50% 50%" />
+          </div>
+          <div className="dv-metal dv-tv-metal">
+            <div className="dv-bezel dv-tv-bezel">
+              <div className="dv-screen dv-tv-screen">
+                <Film still={still} id="rs-a" pos="50% 50%" />
+                <span className="dv-glass" />
               </div>
             </div>
           </div>
-          <span className="dev-tv-logo" aria-hidden />
         </div>
-        <span className="dev-tv-neck" aria-hidden />
-        <span className="dev-tv-foot" aria-hidden />
-        <figcaption className="sr-only">Television, 16:9 master</figcaption>
-      </figure>
 
-      {/* Tablet — 1:1 cut-down in a feed */}
-      <figure className="dev dev-tablet">
-        <div className="dev-tablet-body">
-          <span className="dev-cam" aria-hidden />
-          <div className="dev-screen feed" aria-hidden>
-            <div className="feed-head">
-              <span className="feed-avatar" />
-              <span className="feed-handle">
-                ashéron.kor <small>1:1 · Feed</small>
-              </span>
-              <span className="feed-dots">•••</span>
-            </div>
-            <div className="feed-media">
-              <Master still={still} id="rs-b" focus="xMaxYMid" pos="70% 50%" />
-            </div>
-            <div className="feed-actions">
-              <Heart />
-              <Bubble />
-              <Send />
-            </div>
-            <span className="feed-caption">
-              <b>ashéron.kor</b> The citadel wakes. Premiere Friday.
-            </span>
-            <span className="feed-line" />
-            <span className="feed-line short" />
-          </div>
-        </div>
-        <figcaption className="sr-only">Tablet, 1:1 feed post</figcaption>
-      </figure>
-
-      {/* Phone — 9:16 vertical reel */}
-      <figure className="dev dev-phone">
-        <div className="dev-phone-body">
-          <div className="dev-screen reel-screen" aria-hidden>
-            <Master still={still} id="rs-c" focus="xMinYMid" pos="18% 50%" />
-            <div className="ph-status">
-              <span>9:41</span>
-              <span className="ph-icons">
-                <i />
-                <i />
-                <i />
-              </span>
-            </div>
-            <span className="ph-island" />
-            <span className="ph-tag">9:16</span>
-            <div className="ph-rail">
-              <Heart />
-              <Bubble />
-              <Send />
-            </div>
-            <div className="ph-bottom">
-              <span className="ph-handle">@asheron.kor</span>
-              <span className="ph-caption">Our queen returns.</span>
-              <span className="ph-music">♪ Original score</span>
+        {/* Tablet — the secondary cinema screen */}
+        <div className="dv-tablet" aria-hidden>
+          <span className="dv-floor-shadow" />
+          <div className="dv-tilt dv-tablet-tilt">
+            <div className="dv-metal dv-tablet-metal">
+              <div className="dv-bezel dv-tablet-bezel">
+                <span className="dv-tablet-cam" />
+                <div className="dv-screen dv-tablet-screen">
+                  <Film still={still} id="rs-b" focus="xMaxYMid" pos="62% 50%" />
+                  <span className="dv-glass" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <figcaption className="sr-only">Phone, 9:16 vertical reel</figcaption>
-      </figure>
-    </div>
+
+        {/* Phone — the vertical cut */}
+        <div className="dv-phone" aria-hidden>
+          <span className="dv-floor-shadow" />
+          <div className="dv-tilt dv-phone-tilt">
+            <div className="dv-metal dv-phone-metal">
+              <div className="dv-bezel dv-phone-bezel">
+                <div className="dv-screen dv-phone-screen">
+                  <Film still={still} id="rs-c" focus="xMinYMid" pos="18% 50%" />
+                  <span className="dv-island" />
+                  <span className="dv-glass" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption className="release-caption">
+        <span>Cinema · 16:9</span>
+        <span>Tablet · 16:10</span>
+        <span>Mobile · 9:16</span>
+      </figcaption>
+    </figure>
   );
 }
