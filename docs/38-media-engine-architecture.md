@@ -4162,9 +4162,16 @@ license policy (`generation_provenance`, §AU.16).
 Tests 1–4 and 7 run in CI against fixture media (FFmpeg-generated tone/bars
 clips of known durations) with no GPU; tests 5–6 run against the gateway with
 a placeholder backend. Each becomes a required check for the phase that
-introduces the behavior (§AX.2 lists which tests gate which phase). Test 1 also has a quick, separately approved
-fix available: replace the silent `-shortest` truncation with a hard
-duration check in today's render path.
+introduces the behavior (§AX.2 lists which tests gate which phase). Test 1 is implemented in today's render
+path (2026-10-06): `-shortest` is gone from the film mux and from dubbing;
+picture and narration are measured, a small overrun (≤ 0.5 s,
+`RENDER_NARRATION_TOLERANCE_SEC`) holds the last frame, and a real overrun
+fails the render with `TIMELINE_MISMATCH` (no retry) — or, by the explicit
+policy `RENDER_NARRATION_OVERRUN=extend`, holds the last frame until the
+narration ends. Narration is never truncated; a short narration no longer
+cuts the picture. Covered by unit tests and by real-FFmpeg media tests (CI job
+`media-regression`). This is the interim behavior until the repair system
+(Phase 9) replaces "fail" with automatic repair.
 
 ### AW.12 Production queues and dependencies
 

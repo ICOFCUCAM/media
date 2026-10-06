@@ -3,17 +3,21 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { Storage } from "../storage/storage";
-import { ffmpeg, type FfmpegRunner } from "./ffmpeg";
+import { ffmpeg, probeDuration, type DurationProbe, type FfmpegRunner } from "./ffmpeg";
 import {
   normalizeArgs,
   concatListContent,
   concatArgs,
   audioMixArgs,
   muxArgs,
+  extendVideoArgs,
+  planNarrationFit,
+  NarrationOverrunError,
   hlsArgs,
   outroTextArgs,
   OUTRO_FONT,
   DEFAULT_FORMAT,
+  type NarrationOverrunPolicy,
   type VideoFormat,
 } from "./commands";
 
@@ -44,6 +48,7 @@ export class RenderEngine {
     private readonly storage: Storage,
     private readonly run: FfmpegRunner = ffmpeg,
     private readonly fmt: VideoFormat = DEFAULT_FORMAT,
+    private readonly probe: DurationProbe = probeDuration,
   ) {}
 
   async renderFinal(
@@ -173,19 +178,46 @@ export class RenderEngine {
           console.log(`[render] narration bed: ${parts.length} scene tracks`);
           await this.run(["-f", "concat", "-safe", "0", "-i", vlist, "-c:a", "aac", "-b:a", "160k", voice]);
         }
+        // Narration is never cut to fit the picture (docs/38 §AW.2, regression
+        // test 1): measure both, then fit explicitly. A real overrun fails the
+        // render (default) or, by explicit policy, holds the last frame.
+        let videoForMux = body;
+        let outputSec: number | undefined;
+        if (voice) {
+          const fit = planNarrationFit({
+            pictureSec: await this.probe(body),
+            narrationSec: await this.probe(voice),
+            toleranceSec: Number(process.env.RENDER_NARRATION_TOLERANCE_SEC ?? 0.5),
+            policy: (process.env.RENDER_NARRATION_OVERRUN === "extend" ? "extend" : "fail") as NarrationOverrunPolicy,
+          });
+          console.log(
+            `[render] narration fit: ${fit.action} picture=${fit.pictureSec.toFixed(2)}s narration=${fit.narrationSec.toFixed(2)}s overrun=${fit.overrunSec.toFixed(2)}s`,
+          );
+          if (fit.action === "fail") throw new NarrationOverrunError(fit);
+          if (fit.padSec > 0) {
+            videoForMux = join(work, "body_extended.mp4");
+            await this.run(extendVideoArgs(body, videoForMux, fit.padSec));
+          }
+          outputSec = fit.outputSec;
+        }
         const musicKey = scenes.find((s) => s.musicKey)?.musicKey;
         const sfxKey = scenes.find((s) => s.sfxKey)?.sfxKey;
         const music = musicKey ? await dl(musicKey, "music.mp3") : undefined;
         const sfx = sfxKey ? await dl(sfxKey, "sfx.wav") : undefined;
         if (voice || music || sfx) {
           const mix = join(work, "mix.m4a");
-          await this.run(audioMixArgs({ music, voice, sfx }, mix, { musicLoopSec: opts.filmSec }));
+          await this.run(audioMixArgs({ music, voice, sfx }, mix, { musicLoopSec: Math.max(opts.filmSec ?? 0, outputSec ?? 0) || undefined }));
           const muxed = join(work, "muxed.mp4");
           console.log(`[render] mux audio bed (voice=${!!voice} music=${!!music} sfx=${!!sfx})`);
-          await this.run(muxArgs(body, mix, muxed));
+          // Length = picture (or picture held to the narration's end): only a
+          // music/SFX tail beyond it is trimmed, never narration.
+          await this.run(muxArgs(videoForMux, mix, muxed, { durationSec: outputSec ?? (await this.probe(videoForMux)) }));
           finalVideo = muxed;
         }
       } catch (e) {
+        // A timeline mismatch is a production outcome, not an optional-audio
+        // hiccup: never "fix" it by shipping the film without its narration.
+        if (e instanceof NarrationOverrunError) throw e;
         console.warn(`[render] audio mix failed, continuing without audio:`, e instanceof Error ? e.message : e);
       }
       onProgress?.(0.8);

@@ -7,6 +7,9 @@ import {
   audioMixArgs,
   muxArgs,
   hlsArgs,
+  extendVideoArgs,
+  planNarrationFit,
+  NarrationOverrunError,
 } from "./commands";
 
 describe("ffmpeg command builders", () => {
@@ -50,6 +53,9 @@ describe("ffmpeg command builders", () => {
     const plain = muxArgs("v.mp4", "a.m4a", "final.mp4").join(" ");
     expect(plain).toContain("+faststart");
     expect(plain).not.toContain("mov_text");
+    // Regression (docs/38 §AW.11 test 1): -shortest silently cut narration.
+    expect(plain).not.toContain("-shortest");
+    expect(muxArgs("v.mp4", "a.m4a", "final.mp4", { durationSec: 42 }).join(" ")).toContain("-t 42.000");
 
     const subbed = muxArgs("v.mp4", "a.m4a", "final.mp4", { subtitles: "s.srt" }).join(" ");
     expect(subbed).toContain("mov_text");
@@ -88,5 +94,45 @@ describe("audioMixArgs score loop", () => {
   });
   it("leaves the score alone by default", () => {
     expect(audioMixArgs({ music: "m.wav" }, "mix.m4a")).not.toContain("-stream_loop");
+  });
+});
+
+describe("planNarrationFit — narration is never cut (docs/38 §AW.11 test 1)", () => {
+  const plan = (pictureSec: number, narrationSec: number, policy: "fail" | "extend" = "fail") =>
+    planNarrationFit({ pictureSec, narrationSec, toleranceSec: 0.5, policy });
+
+  it("regression test 1: narration 42 s over a 35 s picture is a timeline mismatch, not a silent cut", () => {
+    const fit = plan(35, 42);
+    expect(fit).toMatchObject({ action: "fail", overrunSec: 7 });
+    const err = new NarrationOverrunError(fit);
+    expect(err.code).toBe("TIMELINE_MISMATCH");
+    expect(err.message).toContain("42.0s");
+    expect(err.message).toContain("35.0s");
+  });
+
+  it("extend policy holds the last frame until the narration ends", () => {
+    expect(plan(35, 42, "extend")).toMatchObject({ action: "extend", padSec: 7, outputSec: 42 });
+  });
+
+  it("a small overrun within tolerance is padded, still never cut", () => {
+    expect(plan(35, 35.3)).toMatchObject({ action: "pad", outputSec: 35.3 });
+    expect(plan(35, 35.3).padSec).toBeCloseTo(0.3);
+  });
+
+  it("narration shorter than the picture keeps the full picture", () => {
+    expect(plan(35, 20)).toMatchObject({ action: "fits", padSec: 0, outputSec: 35 });
+  });
+
+  it("the output is never shorter than the narration unless the render fails", () => {
+    for (const [p, n, pol] of [[10, 9, "fail"], [10, 10.4, "fail"], [10, 30, "extend"]] as const) {
+      const fit = plan(p, n, pol);
+      expect(fit.outputSec).toBeGreaterThanOrEqual(n);
+    }
+  });
+});
+
+describe("extendVideoArgs", () => {
+  it("clones the last frame for the requested time", () => {
+    expect(extendVideoArgs("in.mp4", "out.mp4", 7).join(" ")).toContain("tpad=stop_mode=clone:stop_duration=7.000");
   });
 });
