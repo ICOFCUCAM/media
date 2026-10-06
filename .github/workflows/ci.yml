@@ -158,6 +158,17 @@ jobs:
             [ -f "$t" ] || { echo "missing validation script $t"; exit 1; }
             psql "$PGURL" -v ON_ERROR_STOP=1 -f "$t"
           done
+      # The Prisma models the worker writes through must match the SQL.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @cineforge/db...
+      - name: Prisma models match the migrations
+        run: packages/db/scripts/check-prisma-vs-migrations.sh
+        env:
+          DATABASE_URL: ${{ env.PGURL }}
 
   # docs/38 §AW.11 regression test 1 with real FFmpeg and real media: narration
   # is never cut to the picture, and a short narration never cuts the picture.
