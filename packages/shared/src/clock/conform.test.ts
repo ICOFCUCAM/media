@@ -14,7 +14,7 @@ describe("regression test 2: 16 fps source into a 24 fps production", () => {
     expect(plan.target.frameCount).toBe(144n);
     expect(plan.target.durationUs).toBe(6_000_000n);
     expect(plan.padUs).toBe(0n);
-    expect(plan.ffmpegFilter).toBe("fps=fps=24/1:round=down");
+    expect(plan.ffmpegFilter).toBe("fps=fps=24/1:round=near:eof_action=pass");
   });
 
   it("maps every 2 source frames to 3 target frames, in order", () => {
@@ -35,7 +35,7 @@ describe("regression test 2: 16 fps source into a 24 fps production", () => {
       sourceDurationUs: "5062500",
       targetDurationUs: "5083333",
       padUs: "20833",
-      filter: "fps=fps=24/1:round=down",
+      filter: "fps=fps=24/1:round=near:eof_action=pass",
     });
   });
 
@@ -46,12 +46,14 @@ describe("regression test 2: 16 fps source into a 24 fps production", () => {
       const frame = frameToUs(1, target);
       expect(plan.target.durationUs - plan.source.durationUs).toBeGreaterThanOrEqual(-1n);
       expect(plan.target.durationUs - plan.source.durationUs).toBeLessThanOrEqual(frame + 1n);
-      // Every sampled target frame shows a source frame that started at most one source frame earlier.
+      // Nearest-timestamp sampling: the shown source frame starts no more than half a
+      // target frame after, and no more than (source frame − half target frame) before.
+      const tf = frameToUs(1, target);
+      const sf = frameToUs(1, WAN);
       for (let i = 0n; i < plan.target.frameCount; i += 7_777n) {
-        const shown = sourceFrameFor(plan, i);
-        const lag = frameToUs(i, target) - frameToUs(shown, WAN);
-        expect(lag).toBeGreaterThanOrEqual(-1n);
-        expect(lag).toBeLessThan(62_501n);
+        const offset = frameToUs(i, target) - frameToUs(sourceFrameFor(plan, i), WAN);
+        expect(offset).toBeGreaterThanOrEqual(-tf / 2n - 1n);
+        expect(offset).toBeLessThanOrEqual(sf - tf / 2n + 1n);
       }
     }
   });

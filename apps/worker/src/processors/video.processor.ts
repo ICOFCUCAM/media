@@ -26,6 +26,7 @@ import { S3Storage } from "../storage/storage";
 import { enqueueLora } from "../orchestration/lora-queue";
 import { buildGatewayAuthority } from "../gateway";
 import { gateShotTiming, timingSummary } from "../runtime/timing-gate";
+import { recordVideoGeneration, videoGenerationRow, type LedgerDb } from "../runtime/ledger";
 
 // Bytes uploader for provider adapters (OpenAI seed frames).
 const storage = new S3Storage();
@@ -313,6 +314,9 @@ export const videoWorker = new Worker<VideoJob>(
     // Default mode records only; RUNTIME_TIMING_POLICY=enforce acts on it.
     const timing = gateShotTiming({ modelId: adapter.id, request, result, attempt: job.attemptsMade + 1 });
     console.log(JSON.stringify({ event: "runtime.timing_outcome", shotId, modelId: adapter.id, ...timingSummary(timing) }));
+    await recordVideoGeneration(prisma as unknown as LedgerDb, videoGenerationRow({
+      projectId, shotId, modelId: adapter.id, modelVersion: shot.modelVersion ?? MODEL_VERSIONS[modelId], request, result, gate: timing,
+    }));
     if (timing.action === "fail") throw new UnrecoverableError(`TIMING ${timing.decision.code}: ${timing.decision.message}`);
     if (timing.action === "retry") throw new Error(`TIMING ${timing.decision.code}: ${timing.decision.message}`);
 

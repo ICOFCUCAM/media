@@ -126,7 +126,8 @@ jobs:
         run: |
           if python3 apps/gpu-worker/scripts/verify_image.py localhost:5000/cineforge-gpu-verify:good; then exit 1; fi
 
-  # Migration 0026 applied to a scratch Postgres with its validation script.
+  # Migrations 0026+ applied in order to a scratch Postgres, each followed by
+  # its validation script (every new migration must ship one).
   migration-0026:
     runs-on: ubuntu-latest
     services:
@@ -148,6 +149,26 @@ jobs:
           psql "$PGURL" -v ON_ERROR_STOP=1 -f packages/db/supabase/tests/0026_runtime_gateway.test.sql
           psql "$PGURL" -v ON_ERROR_STOP=1 -q -f packages/db/supabase/migrations/0027_character_lora_sha256.sql
           psql "$PGURL" -v ON_ERROR_STOP=1 -f packages/db/supabase/tests/0027_character_lora_sha256.test.sql
+      - name: Apply 0028+ (Phase 4 data model) and run their validation
+        run: |
+          for m in packages/db/supabase/migrations/002[89]_*.sql packages/db/supabase/migrations/003*_*.sql; do
+            [ -f "$m" ] || continue
+            psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$m"
+            t="packages/db/supabase/tests/$(basename "$m" .sql).test.sql"
+            [ -f "$t" ] || { echo "missing validation script $t"; exit 1; }
+            psql "$PGURL" -v ON_ERROR_STOP=1 -f "$t"
+          done
+      # The Prisma models the worker writes through must match the SQL.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @cineforge/db...
+      - name: Prisma models match the migrations
+        run: packages/db/scripts/check-prisma-vs-migrations.sh
+        env:
+          DATABASE_URL: ${{ env.PGURL }}
 
   # docs/38 §AW.11 regression test 1 with real FFmpeg and real media: narration
   # is never cut to the picture, and a short narration never cuts the picture.

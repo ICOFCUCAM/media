@@ -3,6 +3,7 @@
  * the global flags that the runner prepends (`-hide_banner -progress ...`), so
  * they're deterministic and unit-testable without spawning FFmpeg.
  */
+import { conformFilter, parseFrameRate } from "@cineforge/shared";
 
 export interface VideoFormat {
   width: number;
@@ -12,14 +13,19 @@ export interface VideoFormat {
 
 export const DEFAULT_FORMAT: VideoFormat = { width: 1920, height: 1080, fps: 24 };
 
-/** Normalize a clip to a uniform resolution / SAR / fps before concat. */
+/**
+ * Normalize a clip to a uniform resolution / SAR / fps before concat. The
+ * frame-rate step is the Master Clock's controlled conform (docs/38 §AU.4):
+ * nearest-frame sampling with the last partial frame kept — exactly what
+ * planConform / sourceFrameFor in @cineforge/shared describe.
+ */
 export function normalizeArgs(input: string, output: string, fmt: VideoFormat = DEFAULT_FORMAT): string[] {
   const { width, height, fps } = fmt;
   return [
     "-i", input,
     "-vf",
     `scale=${width}:${height}:force_original_aspect_ratio=decrease,` +
-      `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${fps}`,
+      `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,${conformFilter(parseFrameRate(fps))}`,
     "-c:v", "libx264", "-crf", "18", "-preset", "medium", "-an",
     output,
   ];
