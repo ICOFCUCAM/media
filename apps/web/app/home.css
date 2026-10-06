@@ -17,7 +17,7 @@
 
   background: var(--black);
   color: var(--white);
-  font-family: Inter, sans-serif;
+  font-family: var(--font-inter), Inter, sans-serif;
   overflow-x: hidden;
 }
 
@@ -48,7 +48,7 @@
 }
 
 .cfh .eyebrow {
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   text-transform: uppercase;
   letter-spacing: .16em;
   font-size: 11px;
@@ -99,7 +99,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-family: Manrope, sans-serif;
+  font-family: var(--font-manrope), Manrope, sans-serif;
   font-weight: 800;
   letter-spacing: -.04em;
   font-size: 18px;
@@ -231,7 +231,7 @@
 }
 
 .cfh .hero-title {
-  font-family: Manrope, sans-serif;
+  font-family: var(--font-manrope), Manrope, sans-serif;
   font-size: clamp(72px, 11vw, 190px);
   line-height: .83;
   letter-spacing: -.075em;
@@ -292,7 +292,7 @@
   right: 5vw;
   display: flex;
   justify-content: space-between;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 9px;
   color: #76746e;
   letter-spacing: .1em;
@@ -319,7 +319,7 @@
 }
 
 .cfh .manifesto h2 {
-  font-family: Manrope, sans-serif;
+  font-family: var(--font-manrope), Manrope, sans-serif;
   font-size: clamp(45px, 6vw, 90px);
   line-height: .95;
   letter-spacing: -.06em;
@@ -381,7 +381,7 @@
   position: absolute;
   bottom: 25px;
   left: 28px;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 9px;
   color: #aaa69c;
   letter-spacing: .12em;
@@ -399,7 +399,7 @@
 }
 
 .cfh .chapter-number {
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 10px;
   color: var(--accent);
   letter-spacing: .15em;
@@ -407,7 +407,7 @@
 }
 
 .cfh .chapter h2 {
-  font-family: Manrope, sans-serif;
+  font-family: var(--font-manrope), Manrope, sans-serif;
   font-size: clamp(52px, 6.5vw, 105px);
   line-height: .9;
   letter-spacing: -.065em;
@@ -439,7 +439,7 @@
   gap: 20px;
   padding: 14px 0;
   border-bottom: 1px solid var(--line-soft);
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: .1em;
@@ -513,7 +513,7 @@
 }
 
 .cfh .studio-sidebar h4 {
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: .15em;
@@ -584,7 +584,7 @@
   position: absolute;
   top: 18px;
   left: 18px;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 9px;
   color: #85827a;
 }
@@ -633,7 +633,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 18px;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: .12em;
@@ -650,7 +650,7 @@
 }
 
 .cfh .inspector {
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 9px;
   color: #66645f;
   text-transform: uppercase;
@@ -710,7 +710,7 @@
 }
 
 .cfh .capability-number {
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 11px;
   color: #77746d;
 }
@@ -733,7 +733,7 @@
 .cfh .capability-go {
   display: block;
   margin-top: 18px;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: .12em;
@@ -758,7 +758,7 @@
 }
 
 .cfh .language {
-  font-family: Manrope, sans-serif;
+  font-family: var(--font-manrope), Manrope, sans-serif;
   font-size: clamp(32px, 4vw, 65px);
   letter-spacing: -.05em;
   margin-right: 60px;
@@ -860,7 +860,7 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: .1em;
@@ -879,7 +879,7 @@
   z-index: 1;
   top: 18px;
   right: 20px;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: .1em;
@@ -941,7 +941,7 @@
   border-bottom: 1px solid #c7c4bb;
   display: flex;
   justify-content: space-between;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: .1em;
@@ -1122,7 +1122,7 @@
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: .12em;
@@ -1240,7 +1240,7 @@
   color: #77746e;
   display: flex;
   justify-content: space-between;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-dm-mono), "DM Mono", monospace;
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: .12em;

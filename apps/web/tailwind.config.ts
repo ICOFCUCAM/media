@@ -27,10 +27,10 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-        display: ["Manrope", "Inter", "sans-serif"],
+        sans: ["var(--font-inter)", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-manrope)", "Manrope", "sans-serif"],
         serif: ["Georgia", '"Times New Roman"', "serif"],
-        mono: ['"DM Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
+        mono: ["var(--font-dm-mono)", '"DM Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
       },
     },
   },
