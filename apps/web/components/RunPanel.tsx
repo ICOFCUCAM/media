@@ -21,11 +21,14 @@ export function RunPanel({
   stageLabels,
   emptyHint,
   readyTitle = "Your cut is ready",
+  fileLink = true,
 }: {
   state: DemoState | null;
   stageLabels: Record<ProjectStatus, string>;
   emptyHint?: ReactNode;
   readyTitle?: string;
+  /** Link a live run to its production file (off on the file page itself). */
+  fileLink?: boolean;
 }) {
   if (!state) {
     return (
@@ -38,10 +41,12 @@ export function RunPanel({
 
   const prod = state.production;
   const idx = STAGES.indexOf(state.status);
+  // Live runs carry the real project id once the row exists.
+  const fileId = fileLink && state.live ? (state.projectId ?? prod?.projectId) : undefined;
 
   return (
     <div className="space-y-8" aria-live="polite">
-      <ModeBanner live={!!state.live} />
+      <ModeBanner live={!!state.live} fileId={fileId} />
 
       {/* Stage rail */}
       <ol className="grid grid-cols-2 border-l border-t border-cf-line sm:grid-cols-4" aria-label="Production stage">
@@ -129,15 +134,20 @@ export function RunPanel({
   );
 }
 
-function ModeBanner({ live }: { live: boolean }) {
+function ModeBanner({ live, fileId }: { live: boolean; fileId?: string }) {
   if (live) {
     return (
-      <div className="flex items-start gap-3 border-l-2 border-cf-accent bg-cf-soft px-5 py-4 text-[12px] leading-relaxed">
+      <div className="flex flex-wrap items-start gap-3 border-l-2 border-cf-accent bg-cf-soft px-5 py-4 text-[12px] leading-relaxed">
         <PulseDot className="mt-1.5 shrink-0 bg-cf-accent" />
-        <span>
+        <span className="min-w-0 flex-1">
           <span className="cf-label mr-2 text-cf-fg">Live production</span>
           Director, GPU and render worker are doing the real work. Leave this page open or come back later — progress is saved to Projects.
         </span>
+        {fileId && (
+          <Link href={`/projects/${fileId}`} className="cf-link shrink-0">
+            Production file →
+          </Link>
+        )}
       </div>
     );
   }
