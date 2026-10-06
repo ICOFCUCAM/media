@@ -1,12 +1,94 @@
-# 38 — Cineforge Media Engine: Image Intelligence & Video Engine Architecture
+# 38 — Cineforge Media Engine & DeployPro Infrastructure Architecture
 
 Status: **PROPOSED — for review. No implementation until approved.**
-Date: 2026-10-06 · Supersedes nothing; extends docs/12, 22, 23, 25, 28.
+Version: **2** (2026-10-06) · Supersedes nothing; extends docs/12, 22, 23, 25, 28.
+
+| Version | Change |
+|---|---|
+| 1 | Image Intelligence & Generation Engine; model-neutral Video Engine; registry, router, schemas, queues, GPU, security, billing, identity, continuity, migration, phases (§A–§AE). |
+| 2 | **DeployPro** adopted as Cineforge's long-term infrastructure and media-render platform. Added: Cineforge/DeployPro separation of concerns (§0), portability rules (§AF), DeployPro capability and gap analysis from its repository (§AG), `GpuProvider` abstraction (§AH), model-aware GPU scheduling (§AI), media render pipeline (§AJ), `StorageProvider` abstraction (§AK), database portability (§AL), Redis/BullMQ on DeployPro (§AM), private networking (§AN), container deployment model (§AO), control-plane contract (§AP), GPU pool (§AQ), combined product + infrastructure migration roadmap (§AR), requirement traceability for both directives (§AS). Sections A, B, M, N, O, P, Z, AA, AB, AC, AD revised to be provider-neutral. |
+| 2.1 | **Model neutrality clarified** (review directive): the Video Engine names no primary model; Wan 2.2 is the initial license-safe production candidate; LTX and HunyuanVideo are pluggable candidates subject to their licenses. Model **eligibility** dimensions and **lifecycle statuses** added to the registry (§H). Character identity defined as a Cineforge-owned system (§R). GPU security requirements restated as non-negotiable (§O). Universal metering incl. rendering (§Q). |
 
 This document designs (1) a proprietary, self-hosted **Image Intelligence &
-Generation Engine** and (2) a model-independent **Video Engine** with LTX as the
-intended primary and HunyuanVideo as premium/alternative. It extends the
-architecture that exists today; it does not replace it.
+Generation Engine**, (2) a **model-neutral Video Engine**, and (3) the path for
+all of Cineforge to run on **infrastructure controlled through DeployPro**,
+while the current Vercel / Render / RunPod / Supabase environment keeps working
+throughout the migration. It extends the architecture that exists today; it
+does not replace it.
+
+> **Video Engine is model-neutral.** Wan 2.2 is the initial license-safe
+> production candidate. LTX and HunyuanVideo remain pluggable candidates
+> subject to their applicable commercial, territorial and usage licenses.
+> Wan 2.1 remains the current legacy fallback until the migration criteria
+> (§Z) are satisfied. No application code knows — or may depend on — which
+> video model is currently in production; the registry and router decide per
+> generation (§H).
+>
+> **Image Engine (proposed, provisional):** Qwen-Image for generation and
+> Qwen-Image-Edit for editing / reference images, subject to final
+> primary-source license verification; Z-Image-Turbo for drafts; SDXL
+> Inpainting for mask-based editing; Real-ESRGAN for upscaling; Depth Anything
+> V2 Small for depth control. **No excluded model is used, directly or as a
+> hidden dependency** (§C, §D).
+
+---
+
+## 0. Layering: Cineforge is the application, DeployPro is the infrastructure
+
+```
+                         DEPLOYPRO
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+           COMPUTE        STORAGE        NETWORK
+              │              │              │
+       ┌──────┼──────┐       │              │
+       │      │      │       │              │
+      CPU    GPU    GPU      │          CDN / TLS
+       │      │      │       │
+       └──────┼──────┘       │
+              │              │
+              └──────┬───────┘
+                     │
+                  CINEFORGE
+                     │
+       ┌─────────────┼─────────────┐
+       │             │             │
+     IMAGE         VIDEO         AUDIO
+    ENGINE        ENGINE        ENGINE
+       │             │             │
+       └─────────────┼─────────────┘
+                     │
+                FINAL MEDIA
+```
+**No permanent public-render dependency.** Render, Vercel and RunPod may be
+used temporarily during development and migration; no new Cineforge service is
+designed around them.
+
+| Cineforge owns | DeployPro owns / controls |
+|---|---|
+| creative intelligence | compute (CPU and GPU) |
+| projects | GPU infrastructure |
+| characters | workers (placement, lifecycle) |
+| worlds | networking (edge, private network, TLS) |
+| scenes | deployment (images, releases, rollbacks) |
+| shots | storage infrastructure (object storage, volumes, backups) |
+| images | scaling |
+| videos | service orchestration |
+| models (which model, which version, licenses, routing) | resource management (which machine, which GPU) |
+| generation orchestration (jobs, retries, fairness, billing) | logs, metrics, health, secrets, domains, deployment history, resource usage |
+| production workflows | |
+| assets | |
+| user experience | |
+
+Contract between the two: **Cineforge asks for capabilities, never machines.**
+It says "give me a GPU capable of running model version X with ≥ N GB VRAM
+for an estimated T ms at priority P"; it never says "run this on
+192.168.x.x". DeployPro decides where the job runs (§AP, §AI).
+
+The same split makes DeployPro reusable for other applications: Cineforge is
+the film-production operating system; DeployPro is the infrastructure
+operating system.
 
 > **Read §D and §E first.** License verification surfaced three findings that
 > change what can ship, independent of model quality:
@@ -24,9 +106,9 @@ architecture that exists today; it does not replace it.
 >    model". It can only be offered to users outside those regions, and its
 >    outputs can never feed Cineforge's own model training (Phase 16).
 > 3. **Wan 2.1 / 2.2 are Apache-2.0** with no field-of-use, territory or
->    revenue restriction. The model being demoted is the most license-safe
->    video family we have. The architecture keeps it as the guaranteed
->    fallback, and recommends evaluating **Wan 2.2** alongside LTX.
+>    revenue restriction. Wan 2.2 is therefore the **leading production
+>    candidate** pending the final technical benchmark; Wan 2.1 stays the
+>    legacy fallback.
 
 ---
 
@@ -64,16 +146,126 @@ architecture that exists today; it does not replace it.
                                            │ signed request (JWT, §O) +
                                            │ presigned storage URLs (§P)
                                            ▼
-   RUNPOD (one model per pod, existing apps/gpu-worker pattern)
+   GPU PROVIDER (GpuProvider abstraction §AH: RunPod today → DeployPro target)
+   one model per GPU worker, existing apps/gpu-worker pattern
    ┌───────────────┬───────────────┬────────────────┬───────────────────────┐
-   │ image pool    │ video pool    │ video pool     │ video pool (fallback) │
-   │ cf-image      │ LTX           │ HunyuanVideo   │ Wan 2.1 → Wan 2.2     │
+   │ image pool    │ video pool    │ video pool     │ video pool (legacy)   │
+   │ cf-image      │ 24–48 GB      │ 80 GB          │ Wan 2.1 fallback      │
+   │ (Qwen, Z-Img) │ Wan 2.2 cand. │ Wan 2.2 A14B · │                       │
+   │               │               │ LTX† · Hunyuan‡│                       │
    └───────────────┴───────────────┴────────────────┴───────────────────────┘
+   † license_required (commercial-license review)  ‡ restricted (territory)
+   Pools are named by GPU capability, never by a "primary" model; the router
+   decides per generation which eligible version runs (§H).
                                            │
                                            ▼
-                       Supabase Storage  cineforge-assets/projects/{projectId}/…
+     STORAGE PROVIDER (StorageProvider abstraction §AK: Supabase Storage today →
+     DeployPro object storage target)   {bucket}/projects/{projectId}/…
    (* = new)
 ```
+
+Target end state on DeployPro (the transitional providers above are adapters
+behind the same interfaces):
+
+```
+                         INTERNET
+                            │
+                            ▼
+                     DEPLOYPRO EDGE
+                            │
+                    ┌───────┴───────┐
+                    │               │
+                 CINEFORGE       OTHER APPS
+                    │
+              ┌─────┴─────┐
+              │            │
+           WEB/API      CONTROL
+              │            │
+              └─────┬──────┘
+                    │
+              PRIVATE NETWORK
+                    │
+        ┌───────────┼────────────┐
+        │           │            │
+     DATABASE      REDIS       STORAGE
+        │           │            │
+        └───────────┼────────────┘
+                    │
+                 BULLMQ
+                    │
+              DEPLOYPRO
+               SCHEDULER
+                    │
+       ┌────────────┼────────────┐
+       │            │            │
+   CPU WORKERS   GPU WORKERS   RENDER WORKERS
+                    │
+          ┌─────────┼──────────┐
+          │         │          │
+        IMAGE      VIDEO      AUDIO
+        ENGINE     ENGINE     ENGINE
+          │         │          │
+          │       ┌─┴────┐     │
+          │       │      │     │
+          │      LTX  Hunyuan  │
+          │       │      │     │
+          └───────┴──────┴─────┘
+                    │
+               MEDIA OUTPUT
+   (model names in this diagram are pluggable candidates, eligible only per
+    their license status and the registry rules in §H)
+                    │
+                 STORAGE
+                    │
+                 CINEFORGE
+```
+
+Unified creative/production layering inside Cineforge (unchanged by the
+infrastructure move):
+
+```
+                         CINEFORGE
+                             │
+                ┌────────────┴────────────┐
+                │                         │
+       CREATIVE INTELLIGENCE       MEDIA ORCHESTRATOR
+                │                         │
+        ┌───────┼────────┐        ┌───────┼────────┐
+        │       │        │        │       │        │
+    CHARACTER  WORLD    STORY   IMAGE   VIDEO    AUDIO
+     ENGINE   ENGINE   ENGINE  ENGINE  ENGINE   ENGINE
+        │       │        │        │       │
+        └───────┼────────┘        │       │
+                │                 │       │
+                └────────┬────────┘       │
+                         │                │
+                    MODEL REGISTRY        │
+                         │                │
+               ┌─────────┴─────────┐      │
+               │                   │      │
+          IMAGE MODELS        VIDEO MODELS
+               │                   │
+          Self-hosted          LTX
+          Model A              HunyuanVideo
+          Model B              Future
+               │                   │
+               └─────────┬─────────┘
+                         │
+                   GPU ORCHESTRATOR
+                         │
+              ┌──────────┼──────────┐
+              │          │          │
+             GPU        GPU        GPU
+              │          │          │
+              └──────────┼──────────┘
+                         │
+                    ASSET SYSTEM
+                         │
+                    CINEFORGE
+```
+PROJECT → STORY → SCENE → CHARACTER → WORLD → LOCATION → SHOT → STORYBOARD →
+IMAGE → VIDEO → AUDIO → EDIT → MASTER all share the same project context,
+identity, continuity and asset system.
 
 Principles:
 - **The product never names a model.** UI and job code ask for an operation and
@@ -85,6 +277,11 @@ Principles:
   cover the user's territory or Cineforge's use is never selected.
 - **GPU pods hold no secrets beyond their own auth key** and no storage
   credentials: inputs and outputs move via presigned URLs.
+- **Infrastructure is an adapter.** Compute (GPU and CPU), object storage,
+  Redis, Postgres hosting, edge/TLS and deployment are reached through
+  provider-neutral interfaces (`GpuProvider`, `StorageProvider`, standard
+  Postgres/Redis URLs, Docker images). RunPod, Supabase Storage, Render and
+  Vercel are today's adapters; DeployPro is the target adapter (§AF–§AS).
 
 ---
 
@@ -104,7 +301,20 @@ Principles:
 | Credits | debit `gpu_ms` for video only | metered `usage_records` for every kind; credit holds | extend |
 | Character identity | `characters.lora_key` + stub trainer | `character_identities` (versioned) + real trainer | extend |
 | Routing policy | `policy.ts` hard-codes `wan-2.1`/`hunyuan` × tier (no `AGENCY`) | DB-configured routing policies | replace |
-| NestJS `apps/api` | legacy, not deployed | unchanged; **not used** for this work | none |
+| NestJS `apps/api` | legacy, not deployed (own JWT secret) | becomes `cineforge-api` only when Supabase-specific browser paths move behind a service boundary (§AL, §AO); auth switched to Supabase/GoTrue JWT verification | reuse later |
+
+Infrastructure mapping (current provider → portable abstraction → DeployPro target):
+
+| Layer | Current (development) | Portable abstraction | DeployPro target | Coupling found in code today |
+|---|---|---|---|---|
+| Web hosting | Vercel | Docker image `cineforge-web` (`next build`, standalone `next start`) | DeployPro web process + edge (Traefik, TLS) | `VERCEL_ENV`, `VERCEL_GIT_COMMIT_*`, `VERCEL_PROJECT_PRODUCTION_URL` in `PreviewBuildBadge.tsx` and `app/layout.tsx` (preview badge, noindex) → map to `DEPLOYPRO_ENV` / `DEPLOYPRO_GIT_SHA` / `DEPLOYPRO_URL` |
+| Background workers | Render worker (`render.yaml`, `apps/worker/Dockerfile`) | Docker image `cineforge-worker` | DeployPro worker process (`--replicas N`) | none in code; only `render.yaml` |
+| Queue | Render Key Value (Redis, free plan, no persistence) | `REDIS_URL` + BullMQ | Redis container on DeployPro private network, persistent volume | none |
+| GPU | RunPod pods via proxy URLs; `packages/gpu/runpod-control.ts`, `RunpodClient` | `GpuProvider` / `GpuProviderAdapter` (§AH) | DeployPro GPU orchestrator + GPU node agents | `RUNPOD_*` env, `runpod-control.ts`, `RunpodClient` naming, `WAN_GPU_URL(S)`/`HUNYUAN_GPU_URL(S)` |
+| Object storage | Supabase Storage (S3 API for worker/GPU; supabase-js for browser) | `StorageProvider` / `StorageAdapter` (§AK) | DeployPro S3-compatible object storage | browser `sb.storage.from(...).upload/createSignedUrl(s)`; worker `S3Storage` (already S3-generic); GPU boto3 |
+| Database | Supabase Postgres (+ Auth, PostgREST, Realtime, RLS with `auth.uid()`) | PostgreSQL + Supabase-specific features behind a service boundary (§AL) | Postgres (+ self-hosted Supabase services, or `cineforge-api`) on DeployPro | `auth.uid()` in RLS; supabase-js from browser; Realtime channels; Prisma in worker (portable) |
+| Serverless functions | Supabase Edge Functions (Deno): `stripe-checkout`, `stripe-webhook`, `team-invite` | HTTP handlers in `cineforge-api` | DeployPro web/API process | `/functions/v1/*` calls in `PricingPage.tsx`, `TeamsPage.tsx` |
+| Secrets | Vercel / Render / RunPod / Supabase dashboards | env vars injected at runtime | DeployPro encrypted env (Fernet, per environment) | none |
 
 ---
 
@@ -139,8 +349,11 @@ Supporting models (verified):
 
 ### Recommendation
 
-**Primary image model: Qwen-Image (T2I) + Qwen-Image-Edit-2511 (edit / reference
-/ identity), served as one "cf-image" family.**
+**Proposed primary image model: Qwen-Image (T2I) + Qwen-Image-Edit-2511 (edit /
+reference / identity), served as one "cf-image" family — subject to final
+primary-source license verification** (archived license text for the exact
+weights revision deployed, including its bundled components; see "No hidden
+dependencies" below).
 Reasons, in order: Apache-2.0 with no field, territory or revenue restriction;
 the only shortlisted family that already combines high-quality T2I, instruction
 editing, **multi-image reference input** and documented **character-identity
@@ -160,6 +373,24 @@ Qwen inpaint path is proven in the bake-off; **Real-ESRGAN** for upscaling;
 alternative; Z-Image-Edit when released; Qwen-Image-2.0 (announced).
 
 The registry makes any of these a configuration change, not a rewrite.
+
+### No hidden dependencies
+
+No excluded model may enter Cineforge indirectly. A model version is
+registered only when **every component it loads** has a verified,
+commercially compatible license recorded in `model_licenses`:
+- text encoders (e.g. the vision-language/LLM encoders bundled with
+  Qwen-Image, Z-Image or HiDream — HiDream's Llama-3.1 dependency is an
+  example of a second license),
+- VAEs, schedulers, tokenizers, safety checkers,
+- ControlNets / adapters / preprocessors (depth: Depth Anything V2 **Small**
+  only; pose estimators unverified → not used),
+- LoRAs and identity adapters (no InsightFace-based face-ID adapters, §R),
+- upscalers (Real-ESRGAN, BSD-3-Clause).
+
+The GPU worker build fails if a backend references weights whose license id is
+not in the approved list (enforced in the image build manifest), and ComfyUI
+workflows, if ever used, are pinned and scanned for the same rule.
 
 ---
 
@@ -206,20 +437,33 @@ enforces those flags (§H).
 | **Wan 2.2** (TI2V-5B, T2V/I2V-A14B, S2V, Animate) | Apache-2.0 | Yes, unrestricted | Worldwide | none | none | Yes | ✅ | ✅ | 720p | TI2V-5B: 24 GB; A14B 720p: 80 GB | ✅ | **License-safe primary candidate** |
 | Wan 2.1 (current) | Apache-2.0 ("We claim no rights over the your generated contents") | Yes | Worldwide | none | none | Yes | ✅ | ✅ (I2V-14B) | 480p/720p | 1.3B: 8.19 GB | ✅ | Legacy / fallback |
 
-### Video strategy
+### Video strategy — model-neutral
 
-The architecture is built exactly as directed: **LTX is the primary engine
-slot, HunyuanVideo the premium/alternative slot, Wan 2.1 the legacy fallback.**
-Which model *occupies* each slot is registry configuration, so the legal
-outcome does not change the code:
+**Video Engine is model-neutral. Wan 2.2 is the initial license-safe
+production candidate. LTX and HunyuanVideo remain pluggable candidates subject
+to their applicable commercial, territorial and usage licenses.**
 
-1. **Phase 12 gate (LTX):** obtain a written commercial agreement from
-   Lightricks that covers Cineforge's use (resolving item 20 and the $10M
-   threshold) — or a counsel opinion that Cineforge is not "directly
+The application never knows which video model is in production. Jobs ask the
+VideoEngine for an operation and a quality class; the router (§H) selects an
+eligible model version per generation. Changing the production model is a
+registry change (status and routing policy), never a code change.
+
+Initial registry classification (lifecycle statuses defined in §H):
+
+| Model version(s) | Initial status | Why | Path to `production` |
+|---|---|---|---|
+| Wan 2.2 (TI2V-5B, T2V/I2V-A14B) | **`production_candidate`** (leading) | Apache-2.0: no field-of-use, territory or revenue restriction | pass the final technical benchmark (§AE) → canary → `production` |
+| LTX-2 / LTX-2.x | **`license_required`** (evaluation as `candidate` only, internal accounts) | LTX-2(.x) Community License: competing-use clause (Attachment A item 20) and US$10M revenue threshold | written Lightricks commercial agreement or counsel opinion recorded on the license (`agreement_ref`) → `production_candidate` → benchmark → canary |
+| HunyuanVideo / 1.5 | **`restricted`** with `territory_blocked` for EU, UK, KR | Tencent Hunyuan Community License: Territory excludes EU/UK/KR; outputs may not improve other models | eligible only where the license permits; never for users in excluded territories; outputs `outputs_trainable=false` |
+| Wan 2.1 (T2V-1.3B, current) | **`production`** (legacy fallback) | current live engine, Apache-2.0 | → `deprecated` → `retired` when §Z removal criteria are met |
+| fal "cinematic" (third-party API) | `production` (transitional) | existing premium path | → `deprecated` once a self-hosted model covers the cinematic class |
+
+1. **LTX license review:** obtain a written commercial agreement from
+   Lightricks covering Cineforge's use (resolving item 20 and the $10M
+   threshold), or a counsel opinion that Cineforge is not "directly
    competing". Until then LTX runs only in internal evaluation.
-2. **In parallel, evaluate Wan 2.2 TI2V-5B / A14B** in the same bake-off. If the
-   LTX agreement is not secured, Wan 2.2 takes the primary slot with zero
-   architectural change.
+2. **Wan 2.2 benchmark** (TI2V-5B and A14B) in the same bake-off as every
+   candidate; if it passes, it becomes `production` for the standard class.
 3. **HunyuanVideo** is registered with `territory_excludes = [EU, UK, KR]`; the
    router never assigns it to users in those regions (determined by billing
    country, §H), and its outputs are tagged `outputs_trainable = false` so the
@@ -227,7 +471,12 @@ outcome does not change the code:
 
 ---
 
-## F. LTX integration strategy
+## F. LTX integration strategy (pluggable candidate — `license_required`)
+
+LTX is integrated as a **candidate** only. Everything below is the technical
+plan for when (and if) its license status allows production use; until then
+it runs in internal evaluation.
+
 
 - **Deployment unit:** a new GPU image target `cf-gpu-video-ltx` built from
   `apps/gpu-worker` (shared server, auth, storage, observability modules; one
@@ -249,9 +498,12 @@ outcome does not change the code:
 - **Identity:** LoRA support via the Character Identity Engine (§R) — LTX
   LoRAs are trained per model family; identity remains reference-image-driven
   for models without a trained LoRA.
-- **Rollout:** shadow → internal → 5% → 25% → 100% of the primary slot (§Z).
+- **Rollout (only after license clearance):** shadow → internal → canary percentages set by routing policy (§Z). LTX has no reserved "primary" role; it competes on the same benchmark and eligibility rules as every candidate.
 
-## G. HunyuanVideo integration strategy
+## G. HunyuanVideo integration strategy (pluggable candidate — `restricted` / `territory_blocked`)
+
+Available only where its license permits use.
+
 
 - Already present as `HunyuanAdapter` + `MODEL_NAME=hunyuan`. Upgrade target is
   **HunyuanVideo 1.5** (8.3B; 480p/720p native; 1080p SR; step-distilled I2V;
@@ -306,7 +558,7 @@ create table public.media_models (
   kind text not null check (kind in ('image','video','audio','upscale','control','embedding')),
   family text not null,
   display_name text not null,
-  status text not null default 'enabled' check (status in ('enabled','disabled','deprecated','eval_only'))
+  status text not null default 'enabled' check (status in ('enabled','disabled'))  -- lifecycle lives on versions
 );
 
 create table public.media_model_versions (
@@ -315,18 +567,29 @@ create table public.media_model_versions (
   version text not null,                       -- weights revision / commit sha
   weights_uri text not null,                   -- repo@revision or s3 key
   license_id text not null references public.model_licenses(id),
-  class text not null check (class in ('draft','standard','premium','cinematic','utility','legacy')),
+  class text not null check (class in ('draft','standard','premium','cinematic','utility')),  -- quality class it serves; "legacy" is a status, not a class
   capabilities jsonb not null,                 -- ImageModelCapabilities | VideoModelCapabilities
   defaults jsonb not null default '{}',        -- steps, guidance, scheduler…
   cost_model jsonb not null default '{}',      -- est gpu-ms per megapixel / per second
-  status text not null default 'eval_only' check (status in ('eval_only','canary','active','deprecated','retired')),
+  status text not null default 'candidate' check (status in
+    ('candidate',            -- registered, internal evaluation only
+     'production_candidate', -- license-cleared, eligible for benchmark + canary
+     'production',           -- eligible for general routing
+     'restricted',           -- eligible only where license_rules allow (e.g. territory)
+     'license_required',     -- blocked until a license/agreement is recorded
+     'territory_blocked',    -- version-wide block (use territory rules for partial blocks)
+     'deprecated',           -- fallback only; not chosen when an eligible alternative exists
+     'retired')),            -- never routed; kept for provenance
+  canary_percent int not null default 0 check (canary_percent between 0 and 100),
+  product_usage text[] not null default '{}',  -- uses permitted by license + policy: 'storyboard','character','poster','video_shot','training_data'…
+  internal_policy jsonb not null default '{}',  -- e.g. {"plans":["STUDIO","ENTERPRISE"],"maxDurationSec":10,"adminOnly":false}
   created_at timestamptz not null default now()
 );
 
 create table public.media_model_deployments (
   id text primary key,                         -- 'ltx-h100-pool-a'
   version_id text not null references public.media_model_versions(id),
-  pool text not null,                          -- 'image', 'video-primary', 'video-premium', 'video-legacy'
+  pool text not null,                          -- logical pool by capability, e.g. 'image', 'video-48g', 'video-80g', 'video-legacy' (never 'primary')
   gpu_type text not null,                      -- 'L40S','A40','A100-80','H100'
   endpoints text[] not null default '{}',      -- base URLs (never sent to browsers)
   runpod jsonb not null default '{}',          -- pod/endpoint ids, template, volume
@@ -352,20 +615,38 @@ filtered, license-safe projection through a `available_models(kind)` SECURITY
 DEFINER RPC that returns only display names, classes and capabilities for the
 caller's plan and territory — never endpoints.
 
-### Router algorithm (both modalities)
+### Eligibility, then routing (both modalities)
+
+The architecture **never requires application code to know which model is
+currently primary**. A model version is first tested for **eligibility** for
+this specific generation; only eligible versions are scored.
+
+Eligibility dimensions (all must pass; each failure is recorded with its reason):
+
+| Dimension | Source | Rule |
+|---|---|---|
+| territory | `model_licenses.territory_excludes`, version `status=territory_blocked` | user's billing country (signup geo if no billing) not excluded |
+| commercial eligibility | `model_licenses.commercial`, `revenue_cap_usd`, `competing_use_restricted`, `agreement_ref` | commercial use permitted for Cineforge now (cap not exceeded, competing-use resolved by agreement) |
+| license status | `media_model_versions.status` ∈ {`production`, `production_candidate` within canary %, `restricted` within its rules, `deprecated` only as fallback}; `license_required`/`retired`/`candidate` excluded (candidate allowed for admin evaluation accounts) | |
+| product usage | `media_model_versions.product_usage` | the generation's purpose (storyboard frame, character portrait, poster, video shot, training data…) is a permitted use |
+| model version | pinned version id + weights revision | only versions registered and verified; `outputs_trainable` checked when purpose = training data |
+| deployment availability | `media_model_deployments` + `GpuProvider.capacity()` | at least one enabled deployment can accept work (or queue within SLA) |
+| generation type | capabilities | operation, resolution, duration, references, mask, LoRA family supported |
+| account / plan | `internal_policy.plans`, routing policy conditions | plan allowed; per-plan limits |
+| internal policy | `internal_policy`, routing policy, admin kill-switch | e.g. admin-only, max duration, safety holds, incident disable |
 
 ```
-candidates = first enabled routing_policy (by priority) whose conditions match the request context
-for version in candidates (+ rollout_percent hashing on user_id for canaries):
-    reject if version.status not in (canary, active)        (eval_only allowed only for admin)
-    reject if license.territory_excludes ∋ user.country
-    reject if license.revenue_cap_usd and cineforge_revenue_usd ≥ cap and no agreement_ref
-    reject if license.competing_use_restricted and no agreement_ref
-    reject if capability mismatch (operation, resolution, duration, refs, mask, lora…)
-    reject if plan not allowed (policy condition)
-    score = w_quality·quality_class + w_cost·(1/est_gpu_ms) + w_load·(1/queue_depth(deployment)) + w_warm·is_warm
-pick max score; else fall through to next policy; else fail with ROUTE_UNAVAILABLE
+eligible = [v for v in candidates(policy) if all(dimension_ok(v, request))]
+for v in eligible:
+    score = w_quality·quality_class + w_cost·(1/est_gpu_ms) + w_load·(1/queue_depth)
+            + w_warm·is_warm + w_pref·(v == user_preference)
+pick max score
+if none eligible: next matching policy; else ROUTE_UNAVAILABLE (with reasons)
 ```
+Canary: a `production_candidate` receives `canary_percent` of eligible
+traffic by stable hash of user id; promotion to `production` and demotion to
+`deprecated` are registry updates.
+
 Request context: `{ kind, operation, plan, userId, country, quality, width,
 height, durationSec, hasRefImages, hasMask, loraFamilies, projectRequirements,
 userPreferredModel? }`. Every decision is persisted on the generation row
@@ -377,9 +658,12 @@ Seed policies (illustrative only — prices and final mapping are not decided):
 |---|---|---|
 | storyboard-draft | image, quality=draft | z-image/turbo, qwen-image/lightning |
 | storyboard-final | image, quality=standard | qwen-image/2511-edit (refs) · qwen-image/base |
-| video-draft | video, quality=draft | ltx/2.5-distilled · wan/2.2-ti2v-5b · wan/2.1-t2v-1.3b |
-| video-standard | video, quality=standard | ltx/2.5 · wan/2.2-a14b · wan/2.1 |
-| video-cinematic | video, quality=cinematic, plan∈{STUDIO,AGENCY,ENTERPRISE} | hunyuan/1.5-sr1080 · ltx/2.5-hq · wan/2.2-a14b |
+| video-draft | video, quality=draft | wan/2.2-ti2v-5b · wan/2.1-t2v-1.3b · ltx/2.5-distilled (only if eligible) |
+| video-standard | video, quality=standard | wan/2.2-a14b · wan/2.2-ti2v-5b · wan/2.1 · ltx/2.5 (only if eligible) |
+| video-cinematic | video, quality=cinematic, plan∈{STUDIO,AGENCY,ENTERPRISE} | wan/2.2-a14b · hunyuan/1.5-sr1080 (only where license permits) · ltx/2.5-hq (only if eligible) · fal cinematic (transitional) |
+
+Candidate order is configuration; ineligible versions are skipped
+automatically, so listing a candidate never makes it a dependency.
 
 ---
 
@@ -713,19 +997,31 @@ apps/gpu-worker/                     (one codebase, many images)
 - `BACKEND=image_qwen|video_ltx|…` selects the backend at start (replaces
   `MODEL_NAME`; `MODEL_NAME` stays an alias during migration).
 - **Independent scaling:** pools are keyed by deployment (`image`,
-  `video-primary`, `video-premium`, `video-legacy`). Image and video never share
+  `video-48g`, `video-80g`, `video-legacy` — named by capability, never by "primary"
+  model). Image and video never share
   a pod; each pool has its own min/max pods and idle timeout.
 - An image pod may host a **multi-model backend** only when the models share
   base weights (e.g. Qwen-Image + Qwen-Image-Edit share the text encoder and
   VAE); otherwise one model per pod as today.
 - One inference at a time per GPU (existing `_infer_lock`); batching of
   same-version image requests (count>1) inside one call.
-- Weights on RunPod network volumes per deployment, pinned by revision; cold
-  start loads from volume, never from the public hub at request time.
+- Weights on a persistent volume per deployment (RunPod network volume today;
+  DeployPro node-local NVMe cache fed from DeployPro object storage in the
+  target, §AI), pinned by revision; cold start loads from the volume/cache,
+  never from the public hub at request time.
+- Workers are **provider-agnostic containers**: the same image runs on RunPod,
+  on a DeployPro GPU node, or on a developer workstation with an NVIDIA GPU.
+  Nothing inside `apps/gpu-worker` may reference RunPod (it doesn't today).
+- Worker types (all from the same codebase, §AO): `cineforge-image-worker`,
+  `cineforge-video-worker` (one image per video backend), `cineforge-audio-worker`
+  (future self-hosted TTS/voice/music backends), `cineforge-upscale` (may share
+  the image worker), and a training variant for LoRA jobs.
 
-## N. RunPod lifecycle integration
+## N. GPU provider lifecycle integration (RunPod today, DeployPro target)
 
-Extend `packages/gpu`, do not duplicate it:
+The lifecycle manager is abstracted behind `GpuProvider` (§AH): RunPod is one
+adapter, DeployPro the preferred adapter, others can be added. Extend
+`packages/gpu`, do not duplicate it:
 - `LifecycleConfig` becomes per **deployment** (`ensureRunning(deploymentId)`,
   `reconcile()` iterates deployments from `media_model_deployments`).
 - `GpuClusterRouter` already models workers by `modelId`; change the key to
@@ -738,6 +1034,12 @@ Extend `packages/gpu`, do not duplicate it:
   video pool in parallel (frames finish first, video pods are warm by then).
 - RunPod Serverless remains an option per deployment (`runpod.mode = 'pod' |
   'serverless'`); the adapter contract is identical.
+- The registry column `media_model_deployments.runpod` generalizes to
+  `provider text` + `provider_config jsonb` (`{ provider: 'runpod', podIds… }` or
+  `{ provider: 'deploypro', pool: 'gpu-h100', requirements… }`), so moving a
+  deployment from RunPod to DeployPro is a registry change, not a code change.
+- With DeployPro, "start/stop a pod" becomes "acquire/release a GPU lease"
+  (§AP); the manager stops managing machines and only expresses demand.
 
 ---
 
@@ -745,6 +1047,21 @@ Extend `packages/gpu`, do not duplicate it:
 
 Today: the worker sends `Authorization: Bearer <RUNPOD_API_KEY>`; FastAPI checks
 nothing; anyone with a pod URL can call `/generate` and `/train`.
+
+**Non-negotiable requirements — first implementation phase.** No GPU worker
+may expose an unauthenticated generation or training endpoint, on any
+provider, in any environment reachable from outside the developer's machine.
+
+| Requirement | Mechanism |
+|---|---|
+| short-lived signed job tokens | JWT (HS256, per-deployment key) with `exp − iat ≤ 300 s`, `jti` replay cache |
+| deployment-bound authorization | `aud` = the worker's own `DEPLOYMENT_ID`; a token for one deployment is useless on another |
+| action-bound authorization | `scope` claim (`image:run`, `video:run`, `train`, `warm`, `admin`) checked per endpoint |
+| request/body binding | `bh` = SHA-256 of the exact request body; `sub` = generation id, must equal body `jobId` |
+| one-time upload URLs | per-job presigned PUT to a **unique, never-reused key** (`…/{generationId}/{n}.{ext}`), TTL ≤ 30 min; conditional create (`If-None-Match: *`) where the store supports it so the URL cannot overwrite an existing object; on completion the worker verifies size/checksum and ignores any later writes |
+| one-time download URLs | per-job presigned GET for each input, TTL ≤ 15 min, issued only to the leased worker, scoped to exactly the object keys of that job; where the store supports single-use tokens (DeployPro object storage requirement G5) they are used, otherwise short TTL + unique per-job issuance |
+| no permanent object-storage credentials in GPU workers | GPU workers carry only their JWT verification key; `S3_ACCESS_KEY`/`S3_SECRET_KEY` removed from GPU images and environments |
+| private GPU networking wherever possible | DeployPro private network with no public ingress (§AN); RunPod transitional: proxy HTTPS + JWT; hybrid gateway with mTLS + allow-list removed at I8 |
 
 Target: **every GPU request carries a short-lived JWT signed by the worker**,
 verified by the pod.
@@ -767,14 +1084,26 @@ Worker                                            GPU pod (deployment D)
 - Secrets: `K_D` generated per deployment, stored in RunPod pod env and in the
   worker's environment (Render secret), rotated by dual-key overlap
   (`GPU_JWT_KEYS=current,previous`).
-- Transport: RunPod proxy HTTPS only; reject plain HTTP; request size limits;
-  per-pod rate limit as defense in depth.
-- Browsers **never** talk to GPU pods; endpoints are not exposed in any
+- Transport (transitional, RunPod): RunPod proxy HTTPS only; reject plain HTTP;
+  request size limits; per-pod rate limit as defense in depth.
+- Transport (target, DeployPro): GPU workers have **no public ingress at all**;
+  they are reachable only on the DeployPro private network (§AN). JWT
+  verification stays mandatory on the private network (zero-trust: network
+  position is never authorization). mTLS between `cineforge-worker` and GPU
+  workers is added where DeployPro provides service certificates.
+- Browsers **never** talk to GPU workers; endpoints are not exposed in any
   browser-readable table or RPC.
-- Future hardening (optional): mTLS between worker and pods, or an
-  authenticated private network (Tailscale/WireGuard) for pods that support it.
+- During the hybrid period (Cineforge workers still on Render, GPUs on
+  DeployPro) the DeployPro edge may expose a GPU gateway route restricted by
+  JWT + mTLS client certificate (+ IP allow-list of the Render egress where
+  available); this route is removed once workers run inside DeployPro (§AR).
 
 ## P. Storage architecture
+
+All storage access goes through the `StorageProvider` abstraction (§AK).
+Supabase Storage is the current adapter; DeployPro object storage is the
+target. Keys, layout and ownership rules below are identical on both, so a
+migration is a copy plus a configuration change.
 
 - **Same bucket:** `cineforge-assets` (private). No new bucket.
 - **Layout:**
@@ -813,8 +1142,18 @@ alter table public.usage_records
   add column credits_ms bigint;                 -- what was debited (null while unpriced)
 alter table public.usage_records
   add constraint usage_kind_chk check (kind in
-    ('video','image','audio','upscale','training','voice','avatar','music','llm'));
+    ('video','image','audio','upscale','training','render','transcode',
+     'voice','avatar','music','llm','other_gpu'));
+-- 'render' / 'transcode' record CPU (or NVENC) render-worker time in units.cpu_ms
+-- (and gpu_ms when GPU-encoded); 'other_gpu' covers any future GPU-intensive operation.
 ```
+- **Universal metering, charging later.** Every GPU-intensive or
+  render-intensive operation records usage from day one — image, video,
+  training, upscale, rendering/transcoding, audio and any other GPU operation —
+  **whether or not that category is charged yet**. Which kinds debit credits is
+  a pricing-policy setting per kind (`charge_enabled`), initially on only for
+  `video` (today's behavior). The goal is real cost/performance data before
+  prices are finalized.
 - **One usage row per successful generation** (and per failed generation that
   consumed GPU time > threshold, flagged `units.failed=true`, debited per
   policy).
@@ -832,7 +1171,20 @@ alter table public.usage_records
 
 ---
 
-## R. Character Identity architecture
+## R. Character Identity architecture (Cineforge-owned)
+
+Character identity is a **Cineforge-owned system**, not a dependency on a
+third-party face-identity model. Identity is composed from:
+
+| Component | What it is | Source / storage |
+|---|---|---|
+| reference images | approved face (front, ¾, profile), body, costume and turnaround images | `entity_images` (role, `approved=true`), generated by the Image Engine or uploaded |
+| character metadata | appearance, gender, age, ethnicity, personality, arc, voice profile | `characters` (existing columns) |
+| visual embeddings (where commercially permitted) | numeric descriptors used for retrieval and consistency scoring | `characters.embedding` (pgvector, existing) — produced only by an embedding model whose license is verified for commercial use; none is selected yet (open item) |
+| LoRA identity training | per-character adapter per base-model family | `character_identities.lora_key` (trained by `cineforge-trainer`) |
+| generation constraints | rules applied to every request containing the character: required descriptors, forbidden changes, wardrobe valid for the scene index, age/era consistency | `character_identities.constraints` jsonb + `wardrobes` (existing) |
+| reference-image conditioning | approved references passed as model inputs (e.g. Qwen-Image-Edit multi-image input; I2V init frames) | resolved by `IdentityService` into `InputRef[]` |
+| consistency evaluation | automatic identity score of each output vs held-out references, plus human approval | `character_identities.metrics`, `image_generations.quality_score` (Phase 15) |
 
 ```
 Character (characters)
@@ -845,29 +1197,41 @@ Character (characters)
         method ('reference_only'|'lora'), status
         ('draft'|'collecting'|'training'|'ready'|'failed'|'retired'),
         dataset (jsonb: reference keys + captions + hash), trigger_token,
-        lora_key, train_params, metrics (jsonb: identity similarity score),
-        trained_at, trained_on (deployment), gpu_ms
+        constraints (jsonb), lora_key, train_params, metrics (jsonb: identity
+        similarity score), trained_at, trained_on (deployment), gpu_ms
 ```
-- **Two identity methods, same interface.** `reference_only` (works today with
-  Qwen-Image-Edit multi-reference) and `lora` (trained adapter, tighter). The
+```
+Character
+    ↓
+Identity (references + metadata + constraints + LoRA/refs per model family)
+    ↓
+Image Generation  +  Video Generation
+```
+- **Two identity methods, same interface.** `reference_only` (works with
+  multi-reference editing models) and `lora` (trained adapter, tighter). The
   ContextCompiler asks `IdentityService.resolve(characterId, family)` and gets
-  back `{ references: InputRef[], loras: LoraRef[] }` for whatever model
-  family the router picked. Image and video share the same identity object.
+  back `{ references: InputRef[], loras: LoraRef[], constraints }` for whatever
+  model family the router picked. Image and video share the same identity
+  object.
 - **LoRAs are per base-model family.** A character may have one ready identity
-  per family (`unique (character_id, family) where status='ready'`). Switching
-  video primary from Wan to LTX triggers retraining for active characters
-  (queued `training` jobs, metered `kind='training'`).
+  per family (`unique (character_id, family) where status='ready'`). When the
+  production video model changes (registry), active characters are queued for
+  retraining on the new family (`training` jobs, metered `kind='training'`).
 - `characters.lora_key` / `lora_version` remain as a **denormalized pointer** to
-  the identity used by the current primary video family (back-compat for the
-  existing video processor).
+  the identity used by the video family currently in production (back-compat
+  for the existing video processor; resolved by the registry, not hard-coded).
 - **Lifecycle:** create character → generate/approve references (portrait +
   turnaround via Image Engine) → `collecting` (≥ N approved refs) → `training`
   (existing `lora` queue, real trainer on a training pool) → automated identity
   score vs held-out refs → `ready` → used by image + video → `retired` when
   superseded.
-- **No face-ID adapters that depend on InsightFace models** (non-commercial).
-  Identity similarity scoring for QC (Phase 15) must use a commercially
-  licensed embedding model — selection is an open item (§AB).
+- **Not used unless their commercial licensing is independently verified:**
+  InsightFace pretrained models and anything built on them — **InstantID,
+  PuLID, IP-Adapter-FaceID** and similar face-ID adapters. InsightFace's
+  models are documented as "non-commercial research purposes only" (§D). The
+  architecture works without them; if a commercial license is obtained later
+  they can be registered as an optional `identity` component through the same
+  registry and license rules.
 - Trainer contract (unchanged endpoint, now authenticated):
   `POST /train {identityId, family, datasetUrls[], captions[], steps, rank}` →
   `{taskId}`; `GET /tasks/{id}` → `{status, progress, loraKey?, metrics?}`.
@@ -1074,7 +1438,7 @@ Feature flags (env + `routing_policies.rollout_percent`):
 **Images (gpt-image-1 → Cineforge Image Engine)**
 1. `IMAGE_ENGINE=openai`: today's behavior, but `resolveSeedKey` already goes
    through `ImageEngine` with an `OpenAIImageAdapter` registered as version
-   `openai/gpt-image-1` (class `legacy`). Every seed frame now creates an
+   `openai/gpt-image-1` (status `deprecated`, transitional). Every seed frame now creates an
    `image_generations` row and a metered usage record.
 2. `shadow`: for each seed frame, also run the self-hosted model (not shown to
    the user); store both; compare cost, latency and blind-review quality.
@@ -1086,20 +1450,24 @@ Feature flags (env + `routing_policies.rollout_percent`):
    `OPENAI_API_KEY` dependency from image paths. (`generate-frames.mjs` moves to
    the engine in Phase 10+.)
 
-**Video (Wan 2.1 → LTX primary)**
-1. Register current Wan 2.1 deployment as `wan/2.1-t2v-1.3b` class `legacy`;
-   VideoEngine routes 100% to it — no behavior change.
-2. Bake-off on the video eval set: LTX-2.5 (distilled + standard), Wan 2.2
-   TI2V-5B / A14B, HunyuanVideo 1.5 — quality, I2V fidelity to storyboard
-   frames, identity retention, speed, cost.
-3. **License gate** (§E): LTX enters canary only with the Lightricks agreement
-   recorded (`agreement_ref`). Otherwise Wan 2.2 takes the primary slot.
-4. Canary 5% → 25% → 100% on `video-standard`; Wan 2.1 stays as fallback
-   candidate.
-5. **Wan 2.1 removal criteria:** primary model at 100% for 30 days, fallback to
-   Wan 2.1 triggered < 0.5% of jobs, no open incidents, active-character LoRAs
-   retrained for the new family. Then status `deprecated` → `retired`, pods
-   scaled to 0, image retained 90 days for rollback.
+**Video (Wan 2.1 legacy fallback → model-neutral Video Engine)**
+1. Register the current Wan 2.1 deployment as `wan/2.1-t2v-1.3b` with status
+   `production` (legacy fallback); VideoEngine routes 100% to it — no behavior
+   change. Register Wan 2.2 as `production_candidate`, LTX as
+   `license_required`, HunyuanVideo 1.5 as `restricted` (territory rules).
+2. Final technical benchmark on the video eval set: Wan 2.2 TI2V-5B / A14B,
+   HunyuanVideo 1.5 (where permitted), LTX-2.x (internal evaluation only) —
+   quality, I2V fidelity to storyboard frames, identity retention, speed, cost.
+3. **License gates** (§E): LTX can move to `production_candidate` only with a
+   Lightricks agreement or counsel opinion recorded (`agreement_ref`);
+   HunyuanVideo stays `restricted` to permitted territories.
+4. The best eligible candidate (initially expected: Wan 2.2) is canaried by
+   `canary_percent` (5% → 25% → 100%) and promoted to `production`; Wan 2.1
+   stays eligible as fallback.
+5. **Wan 2.1 removal criteria:** its replacement at 100% for 30 days, fallback
+   to Wan 2.1 triggered < 0.5% of jobs, no open incidents, active-character
+   LoRAs retrained for the new family. Then status `deprecated` → `retired`,
+   pods scaled to 0, image retained 90 days for rollback.
 
 ---
 
@@ -1118,11 +1486,18 @@ Feature flags (env + `routing_policies.rollout_percent`):
 | 9 | Character Identity Engine: references, `character_identities`, real LoRA trainer, IdentityService | Identity score threshold met on eval set | 6 |
 | 10 | Location / world / asset / poster / key-art generation | Each purpose live with `entity_images` | 6, 9 |
 | 11 | Editing: edit, inpaint, outpaint, upscale UI | Mask tools live | 5, 6 |
-| 12 | LTX primary (license-gated) or Wan 2.2 primary | Canary → 100%; Wan 2.1 removal criteria | 3, legal |
-| 13 | HunyuanVideo 1.5 premium with territory enforcement | Cinematic class live outside EU/UK/KR | 3 |
+| 12 | Model-neutral video production: Wan 2.2 benchmark → canary → `production`; LTX evaluated as `license_required` candidate (production only after license clearance); Wan 2.1 → `deprecated` | Canary → 100%; Wan 2.1 removal criteria | 3, legal (LTX) |
+| 13 | HunyuanVideo 1.5 as pluggable `restricted` candidate with territory enforcement | Eligible only where its license permits; never in EU/UK/KR | 3 |
 | 14 | Unified continuity: ContextCompiler, project bibles, prev/next shot conditioning | Continuity eval improves vs baseline | 7, 9 |
 | 15 | Cinematic intelligence & automatic QC (aesthetic, prompt adherence, identity, artifacts) | QC gates auto-regenerate below threshold | 14 |
 | 16 | Model Lab: LoRA/adapters/fine-tunes; only on `outputs_trainable` data | First Cineforge-tuned version in canary | 9, 15 |
+
+These product phases run alongside the infrastructure phases I1–I11 (moving to
+DeployPro). The combined, dependency-ordered roadmap is in **§AR**. Two rules
+tie them together: every product phase is built against the provider-neutral
+interfaces (so it works on RunPod/Supabase/Render today and DeployPro later),
+and no infrastructure phase starts until the DeployPro capability it needs
+(§AG) exists and has passed its gate.
 
 ## AB. Risks and mitigations
 
@@ -1139,7 +1514,14 @@ Feature flags (env + `routing_policies.rollout_percent`):
 | Diffusers version conflicts across backends | Broken builds | One Docker image per backend with pinned deps; contract tests per image |
 | Cold starts with scale-to-zero | Slow first frame | Predictive warm-up on storyboard start; min_pods=1 in business hours (configurable) |
 | Credit model change surprises users | Trust | Meter-only period; visible estimates before run; holds shown in UI |
-| Other third-party dependencies remain | Not fully self-hosted | Out of scope here: Anthropic (Director), fal (voice, avatars, music, video upscale), OpenAI (TTS, moderation). Tracked for later phases |
+| Other third-party dependencies remain | Not fully self-hosted | Out of scope here: Anthropic (Director), fal (voice, avatars, music, video upscale), OpenAI (TTS, moderation). Tracked for later phases; the `cineforge-audio-worker` slot (§AO) is where self-hosted audio models land |
+| **DeployPro is single-host today** (README: "Multi-node scheduling" under "Not built") | GPU pool across machines impossible until built | Infra phases I3+ are gated on the DeployPro capabilities listed in §AG; Cineforge keeps RunPod adapter active until each gate passes |
+| **DeployPro has no GPU support yet** (not mentioned in its documentation) | No DeployPro GPU workers | DeployPro work items in §AG (NVIDIA container runtime, GPU inventory, leases); RunPod remains the GPU provider meanwhile |
+| **DeployPro has no object storage or metrics yet** ("Metrics and graphs" under "Not built"; object storage not documented) | Storage and observability cannot move | Supabase Storage stays (adapter); Cineforge exposes its own Prometheus metrics; DeployPro adds S3-compatible storage and a metrics stack before I10 |
+| DeployPro API uses one global bearer token | Over-privileged automation credential for Cineforge | Request project-scoped / capability-scoped tokens in DeployPro before Cineforge automates against it (§AP) |
+| Owned GPU hardware: capacity planning, failures, power, cooling | Outages without cloud elasticity | Keep RunPod adapter as burst/overflow provider permanently configurable; N+1 GPU capacity per pool; scheduler drains failed nodes |
+| Hybrid period crosses the public internet (Render ↔ DeployPro GPUs) | Exposure of GPU gateway | JWT + mTLS + allow-list; temporary route removed at I8 |
+| Hosting Supabase services ourselves (if chosen, §AL) | Operational burden (Auth, PostgREST, Realtime, Storage API) | Stay on managed Supabase until DeployPro has backups/restore tested for Postgres; migrate DB last |
 
 ## AC. Hardware requirements
 
@@ -1148,14 +1530,31 @@ Feature flags (env + `routing_policies.rollout_percent`):
 | image | Qwen-Image / Edit (bf16) | **L40S 48 GB** or A6000/A40 48 GB | 24 GB with FP8 + offload (slower) | text encoder + transformer + VAE resident |
 | image-draft | Z-Image-Turbo | L4 24 GB / RTX 4090 24 GB | 16 GB (vendor) | can co-host ESRGAN |
 | image-utility | SDXL inpaint, ESRGAN, Depth-Anything-S | L4 24 GB | 12 GB | |
-| video-primary | LTX-2.x 13B-class | **H100 80 GB** | A100 80 GB; FP8 for 48 GB | vendor: HD ~10 s on H100 (0.9.8 distilled) |
-| video-primary (alt) | Wan 2.2 TI2V-5B 720p | RTX 4090 / L40S | 24 GB (vendor) | A14B needs 80 GB at 720p |
-| video-premium | HunyuanVideo 1.5 | A100 80 GB / H100 | 14 GB with offload (vendor, slow) | 1080p SR adds time |
+| video-48g / 24g | Wan 2.2 TI2V-5B 720p (leading production candidate) | RTX 4090 / L40S | 24 GB (vendor) | |
+| video-80g | Wan 2.2 A14B 720p | H100 / A100 80 GB | 80 GB (vendor) | |
+| video-80g (candidate, license_required) | LTX-2.x 13B-class | **H100 80 GB** | A100 80 GB; FP8 for 48 GB | vendor: HD ~10 s on H100 (0.9.8 distilled) |
+| video-80g (restricted) | HunyuanVideo 1.5 | A100 80 GB / H100 | 14 GB with offload (vendor, slow) | 1080p SR adds time; permitted territories only |
 | video-legacy | Wan 2.1 1.3B | L4 / 4090 | 8.19 GB (vendor) | existing |
 | training | LoRA (image + video families) | A100 80 GB / H100 | 48 GB for image LoRA | on-demand pool |
 
 Network volumes: ~200 GB per video deployment, ~120 GB per image deployment
 (weights + cache).
+
+### Owned hardware for DeployPro (planning profiles — to be confirmed by bake-off measurements)
+
+| Node class | Role | Suggested configuration | Notes |
+|---|---|---|---|
+| GPU-IMG | image pool, upscaling, utilities | 2× 48 GB GPUs (L40S / RTX 6000 Ada class), 32+ CPU cores, 256 GB RAM, 2–4 TB NVMe (model cache) | Qwen-Image family resident; Z-Image draft co-hosted on the second GPU |
+| GPU-VID | video models (whichever versions are eligible: Wan 2.2 first; LTX if licensed) | 2–4× 80 GB GPUs (H100 / A100 80 GB class), 64+ cores, 512 GB RAM, 4–8 TB NVMe | one model per GPU; NVLink not required for single-GPU inference |
+| GPU-PREM | premium video (HunyuanVideo 1.5 + SR) | 80 GB class GPUs | only serves users outside EU/UK/KR (license) |
+| GPU-TRAIN | LoRA / identity training, Model Lab | 80 GB class GPUs | scheduled jobs; can lend capacity to video pools when idle |
+| CPU-RENDER | FFmpeg assembly, transcoding, HLS, thumbnails, mastering | 32–64 cores, 128 GB RAM, fast NVMe scratch; optional NVENC-capable GPU | horizontally scaled render workers (§AJ) |
+| CORE | Postgres, Redis, object storage, control plane, web/API | 3 nodes for HA when DB moves; separate storage disks; backups off-site | DeployPro control plane already runs on one host today |
+| Network | private interconnect | 10–25 GbE between GPU nodes and object storage | weights and media move node↔storage, not over the internet |
+
+Minimum viable first DeployPro GPU step (infra phase I4): **one GPU-IMG node**
+— lowest VRAM requirement, highest request volume, and no license
+restrictions on the image models.
 
 ## AD. Estimated GPU resource requirements (planning estimates — to be replaced by bake-off measurements)
 
@@ -1171,7 +1570,7 @@ Assumptions: one storyboard film = 40 shots; 1 draft + 1 locked frame per shot;
 | Video 5 s (Hunyuan 1.5 720p) | ~2–5 min (A100/H100) | ~80–200 min |
 
 Image pool sizing: 1 L40S handles ~100–180 locked frames/hour; start
-`min_pods=0, max_pods=2`, scale on queue depth. Video primary: start
+`min_pods=0, max_pods=2`, scale on queue depth. Video (production model): start
 `max_pods=2` H100. Re-plan after Phase 5/12 measurements.
 
 ## AE. Testing strategy
@@ -1205,14 +1604,683 @@ Image pool sizing: 1 L40S handles ~100–180 locked frames/hour; start
 
 ---
 
+# Part II — DeployPro: Cineforge's long-term infrastructure and media-render platform
+
+## AF. Portability principles (binding for every new service)
+
+Cineforge is being developed as part of a larger infrastructure strategy using
+DeployPro. **The final production architecture must not depend permanently on
+public Render, Vercel or RunPod infrastructure.** Public cloud services used
+during development are progressively replaced by infrastructure controlled
+through DeployPro, while the existing system remains operational at every step.
+
+**Build with (portable):** Docker images · containers · PostgreSQL · Redis ·
+BullMQ · FastAPI · Node.js · Linux · NVIDIA CUDA (NVIDIA container runtime) ·
+S3-compatible object storage · standard HTTP APIs · standard internal
+networking (DNS service names, private subnets) · environment-variable
+configuration · Prometheus-format metrics · JSON logs to stdout.
+
+**Avoid in new code:** Render-specific assumptions · Render-specific APIs ·
+Render-only deployment logic · Render-only worker behavior · Render-only
+networking · Render-only storage assumptions — and the same for Vercel
+(edge runtime, Vercel KV/Blob/Edge Config, `VERCEL_*` behavior beyond
+cosmetic preview flags), RunPod (RunPod SDK/control API outside the RunPod
+adapter, RunPod proxy URL formats outside configuration) and Supabase
+(Supabase-only features outside the boundary in §AL).
+
+**Do not lock Cineforge permanently to:** Vercel · Render · RunPod · OpenAI
+image generation · third-party video APIs · third-party GPU APIs. These may be
+temporary providers during development; each sits behind an adapter that can
+be removed without changing product code.
+
+Checklist applied to every new service before merge:
+1. Ships as a Docker image built in CI; runs with `docker run` + env vars.
+2. Reads all endpoints/credentials from env (no provider hostnames in code).
+3. Health: HTTP `/livez` (liveness) and `/readyz` (readiness) — or, for
+   queue workers without HTTP, a heartbeat key in Redis + a tiny HTTP probe.
+4. Logs JSON to stdout; metrics on `/metrics` (Prometheus text format).
+5. Stateless or state on Postgres / Redis / object storage / declared volume.
+6. Graceful shutdown on SIGTERM (finish or requeue current job).
+7. Talks to other services by service name on the private network.
+8. No inbound public port unless it is the web/API edge service.
+
+## AG. DeployPro today: capabilities and gaps (from its repository)
+
+Source: `ICOFCUCAM/deploygenus` README (read 2026-10-06). DeployPro is a
+self-hosted deployment platform: `git push → clone → detect → docker build →
+run → health check → route`; control plane = Python API + PostgreSQL (as the
+deployment queue) + Traefik + web dashboard.
+
+**Capabilities Cineforge can use as-is**
+
+| DeployPro capability | Cineforge use |
+|---|---|
+| Build detection: `Dockerfile` > `deploypro.json` > project settings > framework signatures > static | Every Cineforge service ships a Dockerfile (most explicit) |
+| Process types: **web**, **worker** (`--replicas N`), **cron** (5-field, UTC), all from the same image | `cineforge-web` (web), `cineforge-worker` / `cineforge-render-worker` / `cineforge-scheduler` (worker), maintenance jobs (cron) |
+| "A preview of a branch must not start a second consumer on the same queue" (workers and cron run against production only) | Matches BullMQ exactly-once consumption; previews never consume production queues |
+| Immutable deployments; rollback = pointer move ("a restart rather than a rebuild"); `keep_warm` | Safe Cineforge releases and instant rollback |
+| Private Docker network; no deployment publishes a host port; reachable only through the router | GPU/CPU workers and data services stay private (§AN) |
+| Traefik: permanent per-deployment hostnames (container labels) + production domains (watched file); automatic TLS (Let's Encrypt; wildcard via DNS-01) | `cineforge-web` / `cineforge-api` domains and TLS |
+| Encrypted env vars (Fernet, scoped production/preview, never readable back through API); BuildKit secret mounts | All Cineforge secrets, including per-deployment GPU JWT keys |
+| Project-owned volumes (never mounted into previews); daily checksummed, restore-tested backups | Redis AOF, model cache, Postgres data (when moved) |
+| Health checks before promotion; production checked every minute, reported after two failures | Web/API health gating |
+| API: `/api/projects`, `/deploy`, `/deployments`, `/env`, `/domains`, `/volumes`, `/processes`, `/deployments/{id}/logs[/stream]`, `/promote`, `/redeploy`, `/cancel`, `/processes/{id}/run[s]`, `/webhooks/{slug}`; bearer token | CI/CD automation of Cineforge deployments |
+| Injected env: `PORT`, `DEPLOYPRO_URL`, `DEPLOYPRO_DEPLOYMENT`, `DEPLOYPRO_GIT_SHA`, `DEPLOYPRO_ENV` | Replace `VERCEL_*` preview flags |
+
+**Gaps DeployPro must close before each Cineforge migration step** (README
+lists "Multi-node scheduling", "Metrics and graphs", "Off-site backup copies",
+"Restoring the database from the CLI" as *Not built*; GPU and object storage
+are not mentioned):
+
+| # | Required DeployPro capability | Needed for | Notes |
+|---|---|---|---|
+| G1 | **Multi-node**: node agent on each server, node registration, heartbeat, private overlay network between nodes (e.g. WireGuard mesh) | I3+ (any GPU node beyond the control-plane host) | Single-host today |
+| G2 | **GPU support**: NVIDIA driver + NVIDIA container runtime on nodes; run containers with specific GPU devices; GPU inventory (model, VRAM total/free, utilization, temperature, ECC/XID errors via NVML) | I3–I6 | Not documented today |
+| G3 | **GPU workload placement + lease API** (§AP): "give me a GPU capable of X"; model-aware scheduling (§AI) | I3–I6 | Cineforge never addresses machines |
+| G4 | **Model/weights cache** per node (pull from object storage to local NVMe, keyed by weights revision, LRU eviction) | I4–I6 | Avoid re-downloading 20–60 GB per cold start |
+| G5 | **S3-compatible object storage** service with buckets, access keys scoped per bucket/prefix, presigned URLs, lifecycle rules, replication/backups | I10 | Must speak the S3 API so `StorageAdapter` is a configuration change |
+| G6 | **Metrics stack** (Prometheus scrape + dashboards + alerting) and log aggregation across nodes | I3+ (operating GPU nodes), required before I8 | "Metrics and graphs: Not built" |
+| G7 | **Scoped API tokens** (per project / per capability) instead of one global token | I3 (Cineforge automating leases) | Least privilege for `cineforge-gpu-manager` |
+| G8 | **Internal service discovery** across nodes (stable DNS names) | I7–I9 | Single Docker network today |
+| G9 | **Stateful services**: Redis with persistence; Postgres with backups, PITR and CLI restore | I9 (Redis), I11 (Postgres) | "Restoring the database from the CLI: Not built" |
+| G10 | **Off-site backups** | Before any data moves | "Off-site backup copies: Not built" (rclone/rsync suggested) |
+| G11 | **Non-HTTP health** for worker processes (heartbeat-based) | I7–I8 | Health today is HTTP-based for web |
+| G12 | **mTLS / service certificates** on the private network (optional hardening) | I3 hybrid gateway, later internal | |
+| G13 | **Resource limits & quotas** per process (CPU, RAM, GPU count) | I7+ | Protect co-located services |
+
+These are DeployPro work items, not Cineforge work items; Cineforge only
+consumes them through the contracts in §AH, §AK and §AP.
+
+## AH. GPU provider abstraction
+
+The existing lifecycle manager (`packages/gpu/lifecycle-manager.ts`,
+`runpod-control.ts`, `cluster.ts`, `fairness.ts`, `active-job-tracker.ts`) is
+abstracted rather than hard-coded to RunPod:
+
+```
+GpuProvider (interface)
+ ↓
+GpuProviderAdapter
+ ├── RunPodAdapter        (wraps today's runpod-control.ts + RunpodClient; development / burst)
+ ├── DeployProAdapter     (DeployPro GPU lease API, §AP; preferred)
+ └── FutureProviderAdapter (any other GPU provider, or a static list of workstation GPUs for development)
+```
+
+Contracts (TypeScript, design only):
+
+```ts
+export type GpuJobType = "image" | "video" | "audio" | "upscale" | "training";
+
+export interface GpuRequirements {
+  modelVersionId: string;            // registry id, e.g. "qwen-image/2511-edit"
+  workerImage: string;               // container image (digest-pinned) that runs the backend
+  backend: string;                   // BACKEND env, e.g. "image_qwen"
+  jobType: GpuJobType;
+  minVramMb: number;                 // from media_model_versions.capabilities.requirements
+  gpuClasses?: string[];             // allowed classes, e.g. ["L40S","RTX6000ADA","A100-80","H100"]
+  minComputeCapability?: string;     // e.g. "8.0"
+  minCudaDriver?: string;            // e.g. "550"
+  diskGb: number;                    // weights + scratch
+  estGpuMs: number;                  // from router estimate
+  priority: number;                  // from DeficitFairScheduler / plan tier
+  plan: "FREE" | "CREATOR" | "STUDIO" | "AGENCY" | "ENTERPRISE";
+  preferWarm: boolean;               // prefer a worker that already has this model loaded
+  exclusive: boolean;                // whole GPU (default true; one inference per GPU)
+  regionHint?: string;               // data residency, never a machine
+  labels?: Record<string, string>;
+}
+
+export interface GpuLease {
+  leaseId: string;
+  workerId: string;                  // opaque; never an IP shown to product code
+  endpoint: string;                  // private service URL (DeployPro) or proxy URL (RunPod)
+  audience: string;                  // JWT aud the worker expects (§O)
+  modelLoaded: boolean;              // false → caller waits for readiness
+  gpuClass: string; vramMb: number;
+  expiresAt: string;                 // lease TTL; renewed by heartbeat
+  provider: "runpod" | "deploypro" | string;
+}
+
+export interface GpuCapacity {          // aggregated, no machine identities
+  byClass: Array<{ gpuClass: string; total: number; free: number; warmModels: string[] }>;
+  queued: number;
+}
+
+export interface GpuProvider {
+  readonly id: string;
+  /** Ensure a worker type is registered/deployable (image + backend + env refs). */
+  ensureWorkload(spec: { workerImage: string; backend: string; envRefs: string[]; requirements: Omit<GpuRequirements, "estGpuMs" | "priority" | "plan"> }): Promise<void>;
+  /** Ask for a GPU capable of running the requirement. Resolves when assigned (or queued with ETA). */
+  acquire(req: GpuRequirements, signal?: AbortSignal): Promise<GpuLease>;
+  renew(leaseId: string): Promise<void>;
+  release(leaseId: string, outcome: { gpuMs: number; failed?: boolean }): Promise<void>;
+  capacity(): Promise<GpuCapacity>;
+  /** Optional demand hint (warm-up before a storyboard run). */
+  prewarm?(modelVersionId: string, count: number): Promise<void>;
+}
+```
+
+- **Two schedulers, two responsibilities.**
+  *Cineforge* decides **what** runs and **in which order**: model version
+  (ModelRouter, §H), user fairness and plan priority (existing
+  `DeficitFairScheduler`), retries and billing.
+  *DeployPro* decides **where** it runs: which node and GPU, model residency,
+  bin-packing, draining failed hardware (§AI).
+- RunPod adapter semantics: `acquire` = pick a running pod of the deployment
+  (start it via `runpod-control` if stopped) and return its proxy URL;
+  `release` = mark idle (lifecycle manager stops it after the idle timeout).
+  Behavior identical to today, now behind the interface.
+- Provider selection is registry configuration
+  (`media_model_deployments.provider`), so one model version can run on
+  DeployPro with RunPod as overflow (`fallbackProvider`), enabling a gradual
+  move and permanent burst capacity.
+- Developer mode: `StaticGpuProvider` reading `GPU_WORKERS=url1,url2` for a
+  local NVIDIA machine — the same contract, no cloud.
+
+## AI. Model-aware GPU scheduling (DeployPro scheduler)
+
+Do not assume every GPU can run every model. Each model version publishes its
+requirements in the registry (`media_model_versions.capabilities.requirements`):
+`minVramMb`, `recommendedVramMb`, `gpuClasses`, `minComputeCapability`,
+`diskGb`, `loadTimeSec`, `canShareGpu` (false by default), `jobType`.
+
+Flow:
+
+```
+Generation Request (Cineforge: row claimed, model version routed)
+ ↓
+Model Requirements (registry: VRAM, GPU class, compute capability, disk, job type)
+ ↓
+GPU Capability Check (DeployPro: filter nodes/GPUs that can EVER run it)
+ ↓
+Available GPU Search (DeployPro: healthy, not draining, free or soon-free; prefer warm)
+ ↓
+Worker Assignment (lease issued; capacity reserved for est. GPU time)
+ ↓
+Model Loading (container started with BACKEND + weights from node cache; skipped if warm)
+ ↓
+Generation (Cineforge worker calls the leased endpoint, JWT-authenticated)
+ ↓
+Result (outputs written to object storage via presigned URLs)
+ ↓
+Worker Availability (lease released; worker stays warm for keep-warm window or is reclaimed)
+```
+
+Placement scoring (DeployPro side; weights configurable):
+
+| Signal | Effect |
+|---|---|
+| GPU type / VRAM / compute capability / driver | hard filter (must satisfy requirements) |
+| available capacity (free GPU, free VRAM) | hard filter for exclusive jobs |
+| model loaded (warm) | strong preference — avoids 30–300 s load |
+| current workload / queue on node | prefer least-loaded |
+| queue priority & user plan | higher priority leases preempt **queue position**, never a running job |
+| estimated GPU time | short jobs packed onto nodes about to free; long jobs onto dedicated GPUs |
+| job type | training only on training-capable GPUs; never displaces interactive image work during peak |
+| node health (XID/ECC errors, thermals) | unhealthy nodes drained |
+| model weights present in node cache | prefer to avoid download |
+
+Examples (illustrative; final mapping from measurements):
+
+| Workload | GPU requirement |
+|---|---|
+| LTX (13B-class, distilled/standard) | GPU with required VRAM (80 GB class preferred; 48 GB with FP8) |
+| HunyuanVideo 1.5 (+ 1080p SR) | higher-capacity GPU (80 GB class) |
+| Image model (Qwen-Image / Edit) | 48 GB class (24 GB with FP8 + offload, slower) |
+| Draft image (Z-Image-Turbo) | 16–24 GB class |
+| Upscaling (Real-ESRGAN) | any ≥ 8 GB GPU; can share with draft image GPU |
+| LoRA training | training-capable GPU (80 GB class), long leases, preemptible by policy |
+| Audio models (future) | small GPUs or CPU, per model requirements |
+
+Model residency: a GPU keeps the last-used model loaded for a keep-warm
+window (configurable per pool: image 10 min, video 15 min); the scheduler
+counts warm workers per model version and exposes them via `capacity()` so
+Cineforge's router can prefer versions that are already warm (§H `w_warm`).
+
+Workers capable of running image models, video models, audio models,
+upscalers and training jobs are all **the same kind of DeployPro GPU worker**
+(a container on a GPU) differing only in image/backend and requirements:
+
+```
+GPU Worker 01   GPU Worker 02   GPU Worker 03   …   GPU Worker N
+(image)         (video: LTX)    (video: Hunyuan)    (training / upscale / audio)
+```
+
+## AJ. Media render pipeline ("render" has two meanings)
+
+| Term | Meaning | Today | Target |
+|---|---|---|---|
+| **Application/server rendering** | serving the web app, APIs, workers, databases, Redis, queues, auth | Vercel (web), Render (worker, Redis), Supabase (DB/Auth/Storage) | DeployPro web/worker processes and data services |
+| **Media/GPU rendering** | image generation, video generation, audio generation, FFmpeg rendering, transcoding, thumbnails, previews, upscaling, final mastering | RunPod (GPU), FFmpeg inside `apps/worker` on Render, fal (Topaz upscale, audio) | DeployPro CPU render workers + GPU workers |
+
+To avoid confusion in code and docs: "Render" (capital R, the vendor) is only
+ever named in deployment config; the media stage is called **render** (lower
+case) as in `render.processor.ts`.
+
+Target media pipeline (applies to image generation, video generation, video
+rendering, audio processing, localization, subtitles, thumbnails, posters,
+upscaling and final export):
+
+```
+Cineforge
+ ↓
+Production Job            (row in Postgres: image_generations / video_generations / render jobs …)
+ ↓
+DeployPro Scheduler       (CPU or GPU placement; Cineforge never picks the machine)
+ ↓
+CPU/GPU Worker            (cineforge-render-worker for FFmpeg; GPU workers for models)
+ ↓
+Processing
+ ↓
+Storage                   (StorageProvider; projects/{projectId}/…)
+ ↓
+Cineforge Asset           (entity_images, shots, films, voiceovers …)
+ ↓
+Preview                   (low-res proxies, thumbnails, HLS preview)
+ ↓
+Final Master              (mastered MP4/HLS, localized variants, subtitles, poster)
+```
+
+- `cineforge-render-worker`: FFmpeg assembly (`render-engine.ts`), transcode,
+  HLS ladder, thumbnails/posters, subtitle muxing, localization remux
+  (`localize.processor.ts` remux step), loudness normalization, final master.
+  Extracted from `cineforge-worker` so CPU-heavy work scales separately; same
+  BullMQ queues (`render`, `localize`) — only the process that consumes them
+  changes.
+- CPU render work uses DeployPro **worker processes with replicas** today
+  (single host) and multi-node placement later (G1). Optional NVENC GPU
+  encoding is a requirement label (`encoder: nvenc`) on the job.
+- Upscaling of video (today fal Topaz) and audio generation (today fal / OpenAI)
+  get self-hosted slots (`cineforge-upscale`, `cineforge-audio-worker`) but
+  model selection for them is out of scope of this document.
+
+## AK. Storage provider abstraction
+
+```
+StorageProvider (interface)
+ ↓
+StorageAdapter
+ ├── SupabaseStorageAdapter       (current: S3 API for worker/GPU; supabase-js signed URLs for browser)
+ ├── DeployProObjectStorageAdapter (target: DeployPro S3-compatible object storage, G5)
+ └── FutureStorageAdapter          (any S3-compatible store)
+```
+
+```ts
+export interface StorageObject { key: string; size: number; contentType?: string; etag?: string }
+export interface StorageProvider {
+  readonly id: string;
+  put(key: string, body: Uint8Array | ReadableStream, contentType: string): Promise<StorageObject>;
+  get(key: string): Promise<ReadableStream>;
+  head(key: string): Promise<StorageObject | null>;
+  delete(key: string): Promise<void>;
+  copy(fromKey: string, toKey: string): Promise<void>;
+  list(prefix: string, cursor?: string): Promise<{ objects: StorageObject[]; cursor?: string }>;
+  presignGet(key: string, ttlSec: number): Promise<string>;      // GPU inputs, browser reads
+  presignPut(key: string, contentType: string, ttlSec: number): Promise<string>; // GPU outputs, browser uploads
+}
+```
+
+- **Keys are provider-independent** (`projects/{projectId}/…`, §P). Bucket
+  names come from config. Rows store keys, never URLs.
+- The worker's `S3Storage` (`apps/worker/src/storage/storage.ts`) is already a
+  generic S3 client — it becomes the base of both adapters.
+- **GPU workers never hold storage credentials** (presigned URLs, §P) — so
+  switching providers needs no GPU change at all.
+- **Browser access** is the Supabase-specific part today
+  (`sb.storage.from(BUCKET).upload(...)`, `createSignedUrl(s)` guarded by
+  storage RLS). Behind the boundary (§AL) it becomes a **media access service**
+  (`cineforge-api`): `POST /media/sign` with the user's JWT → checks
+  `owns_project` in Postgres → returns presigned GET/PUT URLs from whichever
+  adapter is active. The browser code calls one helper (`lib/storyboard.ts
+  signedUrl` / `uploadAsset`) so the swap is local to that helper.
+- **Migration (infra phase I10):** new writes go to the DeployPro store;
+  reads use a resolver that checks the new store first then falls back to the
+  old one; a background copy job backfills by prefix with checksum
+  verification; when the old store has no unique objects, the fallback is
+  removed. Supabase Storage remains available throughout and can be retained
+  as secondary/backup.
+- No new bucket is created unless technically justified (e.g. a separate
+  public bucket on DeployPro for `cineforge-public` showcase media served via
+  CDN).
+
+## AL. Database portability
+
+Keep PostgreSQL compatibility; Supabase is the current managed environment.
+
+| Supabase-specific feature in use | Where | Portability strategy |
+|---|---|---|
+| Postgres (tables, enums, functions, triggers, RLS) | everywhere | Standard Postgres; migrations in `packages/db/supabase/migrations` stay plain SQL. Extensions used: `pgcrypto`, `vector` (pgvector) — both available on any Postgres |
+| `auth.users`, `auth.uid()` in RLS, GoTrue JWT | RLS policies, `handle_new_user` | Isolate: RLS reads the user id from the JWT claim (`request.jwt.claims` → `sub`). Self-hosted GoTrue keeps `auth.uid()` working unchanged |
+| PostgREST (browser → tables via supabase-js) | all web data access | Boundary = `apps/web/lib/supabase.ts` + `lib/*` helpers; target either self-hosted PostgREST (no app change) or `cineforge-api` endpoints |
+| Realtime (progress/status) | studio progress, generation status | Self-hosted Realtime, or `cineforge-api` SSE backed by Postgres `LISTEN/NOTIFY` |
+| Storage (+ storage RLS) | uploads, signed URLs | `StorageProvider` + media access service (§AK) |
+| Edge Functions (Deno): `stripe-checkout`, `stripe-webhook`, `team-invite` | Pricing, Teams | Move to `cineforge-api` (Node) handlers — portable HTTP |
+| Advisors / dashboard | ops | replaced by DeployPro ops tooling |
+
+Recommended path (lowest risk, no product rewrite):
+1. Now: managed Supabase; all new Cineforge services use **plain Postgres**
+   (Prisma / `pg`) and S3 — never supabase-js on the server side.
+2. Isolate: every browser call to Supabase goes through `lib/` helpers (already
+   largely true); Edge Functions move to `cineforge-api`.
+3. Target: run Postgres on DeployPro (with backups/PITR, G9/G10) and either
+   (a) the open-source Supabase services (GoTrue, PostgREST, Realtime,
+   Storage API) as DeployPro processes — RLS and browser code unchanged — or
+   (b) `cineforge-api` replacing PostgREST/Realtime for the browser. Decision
+   deferred to I11; (a) is preferred for continuity. License of each
+   self-hosted Supabase component must be verified from its repository
+   before choosing (a).
+4. Cutover by logical replication (Supabase → DeployPro Postgres), read-only
+   window, DNS/env switch, rollback by reversing replication.
+
+## AM. Redis / BullMQ on DeployPro
+
+The existing BullMQ + Redis architecture is kept. Target:
+
+```
+Cineforge
+ ↓
+Redis          (DeployPro process on the private network, AOF persistence on a DeployPro volume)
+ ↓
+BullMQ         (unchanged queues: film, scene, video, image, audio, render, localize, lora, publish, social, voice-lab)
+ ↓
+DeployPro Workers (cineforge-worker, cineforge-render-worker, cineforge-scheduler …)
+```
+
+- Configuration only: `REDIS_URL`. No code changes.
+- Today's Render Key Value is the free plan with **no persistence**; this is
+  acceptable only because rows in Postgres are the source of truth (row-first
+  pattern). On DeployPro, enable AOF persistence anyway.
+- Cutover (I9): pause producers (poller), let queues drain, switch `REDIS_URL`
+  on all workers, resume. Because jobs are rebuilt from Postgres rows on
+  restart, a drained switch loses nothing.
+- `maxmemory-policy noeviction` (BullMQ requirement); memory sized for
+  queue depth peaks; Redis not exposed outside the private network; AUTH
+  password from DeployPro encrypted env.
+
+## AN. Networking
+
+Preferred architecture:
+
+```
+PUBLIC INTERNET
+ │
+ ▼
+CDN / REVERSE PROXY            (DeployPro edge: Traefik + TLS; CDN for public media)
+ │
+ ▼
+CINEFORGE WEB                  (cineforge-web, cineforge-api — the only public services)
+ │
+ ▼
+PRIVATE NETWORK
+ │
+ ┌──────┼─────────┐
+ │      │         │
+API   QUEUE     STORAGE        (cineforge-api, Redis, object storage, Postgres)
+ │      │
+ │   WORKERS                   (cineforge-worker, cineforge-scheduler)
+ │      │
+ └──────┼─────────────┐
+        │             │
+   CPU WORKERS    GPU WORKERS  (cineforge-render-worker; image/video/audio GPU workers)
+                      │
+                  NVIDIA GPU
+```
+
+- **GPU services are never publicly accessible**; they communicate only over
+  authenticated internal networking (private network + JWT per request, §O;
+  mTLS where available, G12).
+- Service discovery by stable names (e.g. `redis.cineforge.internal`,
+  `postgres.cineforge.internal`, `objects.cineforge.internal`) — provided by
+  DeployPro (G8); Cineforge reads them from env.
+- Cross-node private traffic over an encrypted overlay (G1).
+- Egress policy: GPU workers need no internet egress in steady state (weights
+  come from object storage); allow-list only for initial weight import.
+- Public media delivery: signed URLs (private bucket) or CDN for
+  `cineforge-public` showcase objects.
+- Hybrid period exception: §O (GPU gateway with JWT + mTLS + allow-list),
+  removed at I8.
+
+## AO. Deployment model: one Docker image per service
+
+Every Cineforge service is a Docker image that DeployPro deploys and manages
+independently (and that runs on today's providers too):
+
+| Image | Source in repo | Role | DeployPro process type | Today runs on |
+|---|---|---|---|---|
+| `cineforge-web` | `apps/web` (new Dockerfile; Next.js standalone output) | web app (SSR + static) | web | Vercel |
+| `cineforge-api` | `apps/api` reused (NestJS), auth switched to Supabase/GoTrue JWT verification | media signing (§AK), moved Edge Functions (Stripe, team invite), internal admin APIs, future browser API (§AL) | web (internal + public routes) | not deployed |
+| `cineforge-worker` | `apps/worker` | BullMQ processors: film, scene, video, image, audio, localize (translation), lora, publish, social, voice-lab, notify | worker (`--replicas N`) | Render |
+| `cineforge-scheduler` | `apps/worker` entrypoint `scheduler` (poller + router + fair dispatch extracted from `project-poller.ts`) | claims rows, credit holds, enqueues jobs; single active instance (leader lock in Redis/Postgres) | worker (1 replica) | inside Render worker |
+| `cineforge-gpu-manager` | `packages/gpu` as a service | `GpuProvider` adapters, leases, warm-up, capacity reporting; on RunPod also starts/stops pods | worker (1 replica) | inside Render worker |
+| `cineforge-render-worker` | `apps/worker` entrypoint `render` | FFmpeg render/transcode/thumbnails/HLS/mastering (§AJ) | worker (replicas, CPU-heavy) | inside Render worker |
+| `cineforge-image-worker` | `apps/gpu-worker` + `BACKEND=image_*` | image generation/edit/inpaint/outpaint/upscale | GPU worker (DeployPro GPU placement) | RunPod (planned) |
+| `cineforge-video-worker` | `apps/gpu-worker` + `BACKEND=video_ltx|video_hunyuan|video_wan` (one image per backend) | video generation | GPU worker | RunPod (Wan today) |
+| `cineforge-audio-worker` | `apps/gpu-worker` + `BACKEND=audio_*` (future) | self-hosted TTS / voice / music | GPU or CPU worker | fal / OpenAI today |
+| `cineforge-trainer` | `apps/gpu-worker` + `BACKEND=train_lora` | identity LoRA training (§R) | GPU worker (long leases) | stub today |
+
+Naming note: *BullMQ processors* (TypeScript, in `cineforge-worker`) orchestrate;
+*GPU workers* (Python containers) execute models. A processor never runs
+inference itself.
+
+Build & release: CI builds and pushes all images (digest-pinned) to a registry
+DeployPro can pull from (today GHCR is used by `build-gpu-worker.yml` /
+`worker-image.yml`); DeployPro deploys by image digest or by building from the
+repo using the Dockerfile. Same images deploy to Render/RunPod during
+migration.
+
+## AP. Control plane contract (Cineforge ↔ DeployPro)
+
+Long-term, DeployPro is the control plane for: application deployment ·
+container deployment · CPU workers · GPU workers · service health · logs ·
+metrics · scaling · domains · TLS · environment variables · secrets · storage
+· networking · deployment history · resource usage. Cineforge consumes
+infrastructure through standard APIs and never controls physical
+infrastructure directly.
+
+**Cineforge must not know the physical server.** It requests "give me a GPU
+capable of running this model"; it never says "run this on server
+192.168.x.x". DeployPro decides where the job runs.
+
+Already available (DeployPro API, bearer token): projects, deploy,
+deployments, env, domains, volumes, processes, logs/stream, promote, redeploy,
+cancel, process runs, webhooks — used by Cineforge CI/CD.
+
+Proposed extensions for DeployPro to implement (G2, G3, G5, G6, G7):
+
+```
+# GPU workloads (registered once per worker image/backend)
+POST   /api/gpu/workloads                 { name, image, backend, envRefs[], requirements{minVramMb,gpuClasses[],minComputeCapability,diskGb,jobType} }
+GET    /api/gpu/workloads/{name}
+
+# Leases ("give me a GPU capable of …")
+POST   /api/gpu/leases                    GpuRequirements (§AH) → 201 GpuLease | 202 { leaseId, status:"queued", etaSec }
+GET    /api/gpu/leases/{id}               → GpuLease (status: queued|assigned|loading|ready|released|failed)
+POST   /api/gpu/leases/{id}/renew         → { expiresAt }
+DELETE /api/gpu/leases/{id}               { gpuMs, failed? }      (release)
+POST   /api/gpu/prewarm                   { workload, modelVersionId, count, ttlSec }
+
+# Capacity (aggregated; no machine identities)
+GET    /api/gpu/capacity                  → GpuCapacity (§AH)
+
+# Usage / metering source of truth for infrastructure cost
+GET    /api/usage?project=cineforge&from=&to=   → GPU-seconds by workload/class, CPU-seconds, storage GB-month, egress
+
+# Object storage (S3 API for data; control API for buckets/keys)
+POST   /api/storage/buckets               { name, public:false }
+POST   /api/storage/keys                  { bucket, prefix?, permissions:["read","write"] } → { accessKeyId, secretAccessKey }
+
+# Observability
+GET    /metrics (per node, Prometheus) · log aggregation API
+```
+Auth: DeployPro scoped tokens (G7) — `cineforge-gpu-manager` holds a token
+limited to `gpu:*` for the `cineforge` project; CI holds `deploy:*`.
+Events: DeployPro → Cineforge webhooks (lease ready, node draining, deployment
+promoted) signed with HMAC (DeployPro already verifies webhook signatures in
+constant time for inbound hooks).
+
+## AQ. DeployPro GPU pool (multiple physical servers)
+
+```
+DeployPro GPU Pool
+├── NVIDIA GPU Server A
+├── NVIDIA GPU Server B
+├── NVIDIA GPU Server C
+├── NVIDIA GPU Server D
+└── NVIDIA GPU Server N
+```
+- Servers join by installing the DeployPro node agent (G1/G2); they register
+  inventory (GPU model, count, VRAM, driver/CUDA, NVMe cache size, labels) and
+  heartbeat. The scheduler treats them as **one resource pool**.
+- Adding a server adds capacity with **no Cineforge change** (no URLs, no env,
+  no deploy). Removing one = drain (stop new leases, finish running jobs).
+- Pools are logical (by GPU class/labels), not physical: `gpu-48g`, `gpu-80g`,
+  `gpu-train`. Model versions declare requirements; the pool is derived.
+- External capacity (RunPod or any future provider) can join as a **virtual
+  node group** via `GpuProviderAdapter`, giving burst capacity without
+  changing the scheduler contract — the "GPU marketplace" model: owned servers
+  first, rented capacity as overflow, chosen by cost and availability.
+
+## AR. Combined migration roadmap (product phases + infrastructure phases)
+
+Rules: no single massive migration; **the existing system remains operational
+at every stage**; each infrastructure phase has a DeployPro gate (§AG), a
+cutover method and a rollback.
+
+Infrastructure phases (I = infrastructure):
+
+| Phase | Scope | DeployPro gate | Cutover | Rollback |
+|---|---|---|---|---|
+| **I1** | Keep current infrastructure working (Vercel, Render, RunPod, Supabase) | — | — | — |
+| **I2** | Make GPU services provider-independent: `GpuProvider` interface, RunPod adapter, presigned I/O, JWT auth, registry `provider` column (overlaps product Phases 2–4) | — | code + config | revert adapter config |
+| **I3** | Add **DeployPro GPU adapter** (`DeployProAdapter`) against the lease API; one GPU node joined | G1, G2, G3, G6, G7 (+ G12 for hybrid gateway) | adapter registered, no traffic | disable adapter |
+| **I4** | Move **image generation** to DeployPro GPU (first GPU-IMG node) | I3 + G4 | registry: image deployments `provider=deploypro`, RunPod as `fallbackProvider` | flip provider back |
+| **I5** | Move **video generation** to DeployPro GPU — the eligible production video model(s) (initially expected Wan 2.2); LTX only if its license status allows (§E) | I4 + GPU-VID node | registry per deployment | flip back |
+| **I6** | Move **HunyuanVideo** (where license permits) and remaining restricted/premium candidates to DeployPro GPU (territory rules still enforced) | I5 + GPU-PREM capacity | registry | flip back |
+| **I7** | Move **FFmpeg/render workers** to DeployPro (`cineforge-render-worker`) | G8, G11, G13; storage reachable (Supabase S3 over internet is acceptable) | start DeployPro render consumers, stop Render render consumers (same queues) | restart Render consumers |
+| **I8** | Move general **Cineforge workers** from Render to DeployPro (`cineforge-worker`, `cineforge-scheduler`, `cineforge-gpu-manager`) | I7 + G6 | same queue-consumer swap; then remove hybrid GPU gateway (GPU traffic becomes fully private) | restart Render workers |
+| **I9** | Move **Redis** to DeployPro | G9 (persistence), G10 | drain-and-switch `REDIS_URL` (§AM) | switch back |
+| **I10** | Move **object storage** where appropriate | G5, G10 | dual-read + backfill + flip (§AK) | keep Supabase Storage as fallback reader |
+| **I11** | Move **Cineforge web/API** (and, when ready, Postgres and Supabase services) where appropriate | G8, G9, G10; Postgres HA/backups; Supabase-services decision (§AL) | web: DNS cutover (Vercel kept warm for rollback); DB: logical replication cutover | DNS back; reverse replication |
+
+Interleaving with product phases (P = product, §AA):
+
+| Order | Product | Infrastructure | Why this order |
+|---|---|---|---|
+| 1 | P1 architecture | I1 | baseline |
+| 2 | P2 secure GPU | I2 (part) | auth + presigned I/O are prerequisites for any provider move |
+| 3 | P3 registry/router, P4 GPU worker refactor | I2 (complete) | provider-neutral contracts before new models |
+| 4 | P5 image model, P6 image jobs, P7 storyboard, P8 remove gpt-image-1 | (RunPod) | ship value on today's providers; no dependency on DeployPro GPU readiness |
+| 5 | — | I3, I4 (when gates pass) | image is the smallest, most license-clean GPU workload to move first |
+| 6 | P9 identity, P10 world/assets, P11 editing | I4 running | new image features land directly on DeployPro GPUs |
+| 7 | P12 model-neutral video production (Wan 2.2 benchmark; LTX only after license clearance), P13 Hunyuan (where permitted) | I5, I6 | new video models deploy straight to DeployPro where capacity exists, RunPod as overflow |
+| 8 | P14 continuity, P15 QC | I7, I8, I9 | app-tier moves once GPU tier is proven |
+| 9 | P16 Model Lab | I10, I11 | training data and outputs live on owned storage |
+
+At every row: the previous provider stays configured as fallback until the new
+path has passed production testing (§Z exit-criteria pattern).
+
+## AS. Requirement traceability
+
+Every requirement from the two directives and where this document satisfies it.
+
+**Directive 1 — Architecture directive (image engine, video engine)**
+
+| # | Requirement | Section(s) |
+|---|---|---|
+| 1 | Preserve existing architecture (Next.js/Vercel/Supabase Auth+DB+Storage; Node/BullMQ/Redis/Render/polling; FastAPI/Diffusers/CUDA/RunPod/one model per pod/lifecycle/scheduler/fairness; S3 storage, private + public buckets; RLS/ownership helpers/service role; FFmpeg; GPU API; 10 processors) | B, L, M, N, O, P, AO |
+| 2 | Model independence: Cineforge → Creative Intelligence → Media Orchestrator → Registry → Image/Video/Audio models → GPU workers | A, H, I |
+| 3 | Video strategy (revised 2.1: model-neutral; Wan 2.2 leading production candidate; LTX and HunyuanVideo pluggable candidates subject to licenses; future models); `VideoModelAdapter`, `VideoModelRegistry`, `VideoModelCapabilities`, `VideoModelVersion`, `VideoModelLicense`, `VideoModelDeployment`; UI/jobs model-agnostic | E, F, G, H, I |
+| 4 | Video Model Router: plan, quality, resolution, duration, I2V/T2V, cinematic mode, GPU availability, queue load, capability, cost, user selection, project requirements; configurable, not hard-coded | H (router algorithm, `routing_policies`), I (`RouteRequest`), AI (`capacity()` feeds load/warm) |
+| 5 | Self-hosted image engine; `resolveSeedKey` → registry → router → self-hosted model → GPU image worker → storage; T2I, I2I, inpaint, outpaint, edit, references, seed, negative prompts, LoRA, character/world references, composition, depth/structure/pose controls, upscaling | C, I, L, M, T |
+| 6 | Image model evaluation on all criteria; primary-source license verification; comparison matrix with required columns; recommendation | C, D |
+| 7 | New image abstraction fields (prompt, negativePrompt, width, height, steps, guidance, seed, referenceImages, mask, controlImages, characterId, locationId, worldId, loraAdapters, model, modelVersion, strength, denoiseStrength, outputFormat) | I (`ImageGenerationRequest`; model/modelVersion chosen by router and recorded) |
+| 8 | Owner-scoped `image_generations` table, carefully designed, JSON for model parameters | J |
+| 9 | Dedicated image queue via existing BullMQ; row → poller → BullMQ → worker → GPU → storage → completion → UI | L |
+| 10 | GPU architecture: extend `apps/gpu-worker`; image and video independently scalable; lifecycle/scheduler extended not duplicated | M, N, AH, AI |
+| 11 | GPU security: authenticate `/generate`, `/train`, `/warm` and all privileged endpoints; worker → authenticated request → GPU; not URL hiding | O, Y, AN |
+| 12 | Character Engine: identity, references, face/body references, clothing, visual attributes, identity adapter/LoRA, version, training status; shared by image + video; `characters.lora_key` integrated; trainer interface/lifecycle | R |
+| 13 | World/Location/Asset engine: character, location, world, prop, vehicle, architecture, environment, poster, key art, storyboard frame; reusable | S, J (`entity_images`) |
+| 14 | Storyboard seed frames (priority #1): script → scene → shot → requirements → context → cinematic prompt → image → frame → video | T, L |
+| 15 | Cinematic continuity: project/scene/shot/character/world/location/prev/next shot/visual bible/cinematography bible compiled into requests | U |
+| 16 | Image product priority order (storyboard → … → homepage last) | AA (phases 7–11), Z |
+| 17 | Video priority (revised 2.1): model-neutral engine; Wan 2.2 leading production candidate; LTX (license review) and Hunyuan (where permitted) via registry; Wan 2.1 legacy fallback until migration criteria met; removal criteria | E, F, G, H, Z |
+| 18 | Billing: metered images; `usage_records.kind` for video, image, audio, upscale, training, etc.; GPU ms, model, resolution, type, count; no final prices | Q |
+| 19 | Storage under `projects/{projectId}/images/…`; existing buckets and ownership rules | P, AK |
+| 20 | API contracts: `/image/generate|edit|inpaint|outpaint|upscale`, `/image/status/:jobId`, `/video/generate`, `/video/status/:jobId`; follow existing security model; no direct browser→GPU | V, O, AN |
+| 21 | Observability: job, user, project, scene, shot, model, version, worker, GPU, queue duration, generation duration, GPU ms, VRAM, retries, errors, output, quality score — image and video | X, J, K |
+| 22 | Phased implementation 1–16 | AA, AR |
+| 23 | Deliverable sections A–AE | A–AE |
+| 24 | Incremental migration; old systems kept until replacements pass production testing | Z, AR |
+| 25 | Final architectural vision diagram; unified project context from PROJECT to MASTER | A (diagrams) |
+
+**Directive 3 — Architecture review clarifications (v2.1)**
+
+| Requirement | Section(s) |
+|---|---|
+| Do not describe LTX-2 as production primary; Video Engine model-neutral; Wan 2.2 initial license-safe production candidate; LTX and HunyuanVideo pluggable candidates subject to licenses | intro callout, E, F, G, Z, AA |
+| Eligibility by territory, commercial eligibility, license status, product usage, model version, deployment availability, generation type, account/plan, internal policy | H (eligibility table) |
+| Application code never needs to know which video model is primary | intro callout, E, H, L, AO |
+| Model statuses: candidate, production_candidate, production, restricted, license_required, territory_blocked, deprecated, retired | H (`media_model_versions.status`) |
+| Wan 2.2 leading production candidate pending benchmark; LTX candidate requiring commercial-license review; HunyuanVideo only where license permits; Wan 2.1 legacy fallback until migration criteria | E (classification table), Z |
+| Image: Qwen-Image primary + Qwen-Image-Edit (subject to final verification); Z-Image-Turbo drafts; SDXL Inpainting; Real-ESRGAN; Depth Anything V2 Small; no excluded model as hidden dependency | intro callout, C (recommendation, "No hidden dependencies") |
+| Character identity Cineforge-owned: references, metadata, embeddings where commercially permitted, LoRA, constraints, reference conditioning, consistency evaluation; no InsightFace/InstantID/PuLID/IP-Adapter-FaceID unless licensing verified | R |
+| Security first phase; no unauthenticated generation/training endpoint; short-lived signed job tokens, deployment-bound, action-bound, body-bound; one-time upload/download URLs; no permanent storage credentials in GPU workers; private GPU networking | O (requirements table), AN, AA phase 2, AR I2 |
+| Universal metering (image, video, training, upscale, rendering, other GPU ops) without necessarily charging; collect cost/performance data before pricing | Q |
+| Architecture review PR, no implementation code | Status line; PR |
+
+**Directive 2 — DeployPro infrastructure requirement**
+
+| Requirement | Section(s) |
+|---|---|
+| DeployPro principle (DeployPro = infrastructure layer; Cineforge = application layer); compute/storage/network diagram; no permanent public render dependency | 0, A |
+| Render temporary; no Render-specific assumptions/APIs/deployment logic/worker behavior/networking/storage; portable stack list | AF, B (infrastructure mapping), AO |
+| No permanent RunPod dependency; Cineforge → DeployPro GPU Orchestrator → GPU Worker Pool → NVIDIA GPU → Self-hosted Model | AH, AI, AQ |
+| `GpuProvider` → `GpuProviderAdapter` → RunPodAdapter / DeployProAdapter / FutureProviderAdapter; DeployPro preferred | AH, N |
+| DeployPro GPU workers 01…N running image, video, audio, upscalers, training; scheduler aware of GPU type, VRAM, capacity, workload, model loaded, priority, plan, estimated GPU time, job type | AI, AQ |
+| Model-aware scheduling flow (request → requirements → capability check → GPU search → assignment → model loading → generation → result → availability); LTX/Hunyuan/image/LoRA examples; not every GPU runs every model | AI |
+| "Render" disambiguation: application/server rendering vs media/GPU rendering; DeployPro provides both | AJ |
+| Media render pipeline (job → scheduler → CPU/GPU worker → processing → storage → asset → preview → final master) for image, video, rendering, audio, localization, subtitles, thumbnails, posters, upscaling, export | AJ |
+| `StorageProvider` → `StorageAdapter` → SupabaseStorage / DeployProObjectStorage / FutureStorage; Supabase Storage remains during migration | AK, P |
+| Database: PostgreSQL compatibility; Supabase-specific features isolated behind a service boundary | AL |
+| Redis/BullMQ kept; deployable inside DeployPro (Cineforge → Redis → BullMQ → DeployPro Workers) | AM |
+| Private networking; public internet → CDN/reverse proxy → web → private network → API/queue/storage/workers → CPU/GPU workers; GPU never public; authenticated internal networking | AN, O |
+| One Docker image per service (cineforge-web, -worker, -api, -image-worker, -video-worker, -audio-worker, -render-worker, -scheduler, -gpu-manager) | AO |
+| DeployPro control plane for deployment, containers, CPU/GPU workers, health, logs, metrics, scaling, domains, TLS, env, secrets, storage, networking, history, resource usage; Cineforge consumes via standard APIs | AP, AG |
+| Cineforge must not know the physical server ("give me a GPU capable of running this model") | 0, AH, AP |
+| GPU marketplace / pool of multiple physical servers treated as one pool; growth without app changes | AQ |
+| Final Cineforge + DeployPro architecture diagram | A |
+| Migration phases 1–11 (keep current → provider-independent GPU → DeployPro GPU adapter → image → LTX → Hunyuan → FFmpeg/render → workers → Redis → storage → web/API), system operational at every stage | AR |
+| Critical rule: no permanent lock to Vercel, Render, RunPod, OpenAI image generation, third-party video APIs, third-party GPU APIs | AF, Z, AR |
+| Final objective & ownership split (Cineforge owns creative intelligence … user experience; DeployPro owns compute … resource management) | 0 |
+| Do not implement yet; keep compatibility with current Vercel/Render/RunPod/Supabase during migration | Status line, AR |
+
+
+---
+
 ### Decisions requested at review
 
-1. Approve **Qwen-Image + Qwen-Image-Edit** as primary image family, **Z-Image-Turbo**
-   for drafts, SDXL-inpaint + Real-ESRGAN as utilities.
-2. Approve the **legal gate on LTX** and authorize contacting Lightricks for a
-   commercial agreement; approve evaluating **Wan 2.2** as the license-safe
-   primary alternative.
-3. Accept **HunyuanVideo territory restriction** (premium unavailable in EU/UK/KR),
-   or drop it as premium in favor of LTX-hq / Wan 2.2 A14B.
-4. Approve Phase 2 (GPU security) as the first implementation step.
-5. Approve metering-without-debit for images during Phase 6–8.
+1. Approve the **model-neutral Video Engine** with the initial registry
+   classification: Wan 2.2 `production_candidate` (leading, pending final
+   benchmark), LTX `license_required` (candidate requiring commercial-license
+   review), HunyuanVideo `restricted` (only where its license permits), Wan 2.1
+   `production` legacy fallback until §Z criteria are met.
+2. Approve the **image model proposal** (provisional): Qwen-Image +
+   Qwen-Image-Edit (subject to final primary-source license verification),
+   Z-Image-Turbo for drafts, SDXL Inpainting, Real-ESRGAN, Depth Anything V2
+   Small — and the "no hidden dependencies" rule.
+3. Authorize the **LTX commercial-license review** (contact Lightricks and/or
+   counsel opinion on Attachment A item 20 and the $10M threshold).
+4. Accept **HunyuanVideo's territory restriction** (not available in EU/UK/KR,
+   outputs never used for training), or exclude it entirely.
+5. Approve **GPU security (Phase 2 / I2)** as the first implementation phase.
+6. Approve **universal metering** with charging enabled per kind (initially
+   video only) until real cost/performance data sets prices.
+7. Approve the **Cineforge-owned identity** approach without InsightFace-based
+   adapters, and the open item to select a commercially licensed embedding
+   model for consistency scoring.
+6. Adopt the **portability rules (§AF)** as binding for all new Cineforge services.
+7. Accept the **DeployPro gap list (§AG G1–G13)** as DeployPro's roadmap
+   prerequisites, and the first DeployPro GPU target being **one image node (I4)**.
+8. Choose the database target path for I11: self-hosted Supabase services on
+   DeployPro (preferred, §AL option a) or `cineforge-api` replacing
+   PostgREST/Realtime (option b) — decision can wait until I10.
