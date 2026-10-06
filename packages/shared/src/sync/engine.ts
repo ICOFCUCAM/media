@@ -9,7 +9,9 @@
 import { alignDialogue } from "./dialogue-aligner";
 import { validateDurations } from "./duration-validator";
 import { validateCues } from "./cue-validators";
+import { validateLipSync } from "./lip-sync";
 import { validateLoudness } from "./loudness";
+import { validatePicture } from "./picture-validator";
 import { policyRef } from "./policy";
 import { detectDrift, validateFrameRates } from "./rate-and-drift";
 import { planRepairs, type RepairPlan } from "./repair-planner";
@@ -41,11 +43,13 @@ const RUNNERS: Array<[SyncCheck[], (i: SyncInput) => SyncIssue[]]> = [
   [["transitions", "frame_rate", "duration", "dialogue_alignment", "music_cue", "sfx_cue", "subtitle"], analyzeTimeline],
   [["duration", "missing_media", "silence"], validateDurations],
   [["dialogue_alignment"], alignDialogue],
+  [["lip_sync"], validateLipSync],
   [["subtitle"], validateSubtitles],
   [["frame_rate"], validateFrameRates],
   [["drift"], detectDrift],
   [["music_cue", "sfx_cue"], validateCues],
   [["loudness", "clipping"], validateLoudness],
+  [["black_frames", "dropped_frames"], validatePicture],
   [["provenance"], validateProvenance],
 ];
 
