@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "../../../components/AuthProvider";
 import { AuthCard } from "../../../components/AuthCard";
 import { listProjects, type ProjectRow } from "../../../lib/projects";
 import { getSupabase } from "../../../lib/supabase";
 import { fmtDuration } from "../../../lib/system";
+import { EmptyState, PageHeader, Section, SpecList, Status } from "../../../components/cf/primitives";
 
 const STAGE_LABEL: Record<string, string> = {
   DRAFT: "Draft",
@@ -23,7 +23,6 @@ const ACTIVE = new Set(["PLANNING", "GENERATING", "RENDERING"]);
 
 export default function ProjectsPage() {
   const { enabled, loading, user } = useAuth();
-  const router = useRouter();
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
 
   useEffect(() => {
@@ -57,124 +56,174 @@ export default function ProjectsPage() {
   }
 
   const active = projects?.filter((p) => ACTIVE.has(p.status)).length ?? 0;
+  const [filter, setFilter] = useState<Filter>("all");
+  const [query, setQuery] = useState("");
+  const shown = (projects ?? []).filter(
+    (p) => FILTERS[filter].test(p) && (!query.trim() || p.title.toLowerCase().includes(query.trim().toLowerCase())),
+  );
+  // Lead with what is in production now, else the most recent production.
+  const lead = projects?.find((p) => ACTIVE.has(p.status)) ?? projects?.[0];
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Projects</h1>
-          <p className="mt-1.5 flex items-center gap-2 text-sm text-white/55">
-            Every film, series, trailer and short you're working on.
-            {active > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/10 px-2 py-0.5 text-xs text-emerald-300">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="cf-pulse-ring absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                </span>
-                {active} in production now
-              </span>
-            )}
-          </p>
-        </div>
-        <Link
-          href="/create/film"
-          className="rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-black shadow-[0_0_24px_-8px_rgba(255,255,255,0.6)] transition hover:shadow-[0_0_40px_-8px_rgba(165,180,252,0.8)]"
-        >
-          + New project
-        </Link>
-      </header>
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
+      <PageHeader
+        eyebrow="Production system / Archive"
+        title={<>The<br /><em>Archive.</em></>}
+        copy={
+          <>
+            <p>Every production has a history.</p>
+            <p>Projects is the permanent record of the films, series, trailers and shorts made inside Cineforge — and the way back into each one.</p>
+          </>
+        }
+        status={
+          active > 0
+            ? { tone: "live", label: `${active} in production now` }
+            : { tone: "idle", label: projects ? `${projects.length} productions` : "Archive" }
+        }
+        aside={
+          <Link href="/create" className="cf-btn-ink mt-7">
+            New production
+          </Link>
+        }
+      />
 
       {!enabled ? (
-        <Empty headline="Connect Supabase to save projects." hint="Set NEXT_PUBLIC_SUPABASE_URL to persist your work." />
+        <EmptyState className="mt-12" title={<>The archive needs <em>a studio.</em></>} hint="Connect Supabase (NEXT_PUBLIC_SUPABASE_URL) to persist productions." />
       ) : loading ? (
-        <p className="text-sm text-white/40">Loading…</p>
+        <p className="cf-label mt-12">Opening the archive…</p>
       ) : !user ? (
-        <AuthCard title="Sign in to see your projects" />
-      ) : !projects ? (
-        <p className="text-sm text-white/40">Loading projects…</p>
-      ) : projects.length === 0 ? (
-        <Empty headline="No projects yet." hint="Start in the Studio — your films and series collect here." />
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-white/10">
-          <table className="w-full text-sm">
-            <thead className="bg-white/[0.03] text-left text-xs uppercase tracking-wider text-white/40">
-              <tr>
-                <th className="px-4 py-2.5 font-medium">Title</th>
-                <th className="px-4 py-2.5 font-medium">Runtime</th>
-                <th className="px-4 py-2.5 font-medium">Status</th>
-                <th className="px-4 py-2.5 font-medium">Progress</th>
-                <th className="px-4 py-2.5 font-medium">Created</th>
-                <th className="px-4 py-2.5" />
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((p) => (
-                <tr
-                  key={p.id}
-                  onClick={() => router.push(`/projects/${p.id}`)}
-                  className="cursor-pointer border-t border-white/5 transition hover:bg-white/[0.04]"
-                >
-                  <td className="max-w-xs truncate px-4 py-2.5 text-white/80">{p.title}</td>
-                  <td className="px-4 py-2.5 text-white/55">{fmtDuration(p.target_seconds)}</td>
-                  <td className="px-4 py-2.5">
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${
-                        p.status === "READY"
-                          ? "border-emerald-400/40 text-emerald-300"
-                          : p.status === "FAILED"
-                            ? "border-rose-400/40 text-rose-300"
-                            : ACTIVE.has(p.status)
-                              ? "border-white/30 text-white/80"
-                              : "border-white/20 text-white/50"
-                      }`}
-                    >
-                      {ACTIVE.has(p.status) && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />}
-                      {STAGE_LABEL[p.status] ?? p.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-white/55">
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/10">
-                        <div
-                          className={`h-full transition-all ${p.status === "FAILED" ? "bg-rose-400/70" : "bg-emerald-400/70"}`}
-                          style={{ width: `${Math.round(p.progress * 100)}%` }}
-                        />
-                      </div>
-                      {Math.round(p.progress * 100)}%
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 text-white/40">{new Date(p.created_at).toLocaleDateString()}</td>
-                  <td className="px-4 py-2.5 text-right">
-                    {!ACTIVE.has(p.status) && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void onDelete(p.id, p.title);
-                        }}
-                        title="Delete project"
-                        className="rounded px-2 py-1 text-xs text-white/30 transition hover:bg-rose-500/10 hover:text-rose-300"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="py-14">
+          <AuthCard title="Sign in to see your projects" />
         </div>
+      ) : !projects ? (
+        <p className="cf-label mt-12">Loading productions…</p>
+      ) : projects.length === 0 ? (
+        <EmptyState className="mt-12" title={<>No productions <em>yet.</em></>} hint="Start in the Studio — your films and series collect here." action={{ label: "Enter the studio", href: "/create" }} />
+      ) : (
+        <>
+          {lead && <Lead project={lead} />}
+
+          <Section
+            label="All productions"
+            title={`${String(shown.length).padStart(2, "0")} productions`}
+            aside={
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search archive"
+                aria-label="Search the archive"
+                className="cf-input w-[240px] py-2.5 font-mono text-[10px] uppercase tracking-[0.1em]"
+              />
+            }
+          >
+            <div className="mb-6 flex flex-wrap gap-1.5" role="group" aria-label="Filter productions">
+              {(Object.keys(FILTERS) as Filter[]).map((f) => (
+                <button key={f} type="button" className="cf-option" aria-pressed={filter === f} onClick={() => setFilter(f)}>
+                  {FILTERS[f].label}
+                </button>
+              ))}
+            </div>
+
+            {shown.length === 0 ? (
+              <EmptyState title="Nothing matches." hint="Try another filter or search." />
+            ) : (
+              <ol className="border-t border-cf-fg">
+                {shown.map((p, i) => (
+                  <li key={p.id} className="group grid grid-cols-[36px_1fr_auto] items-center gap-4 border-b border-cf-line py-4 md:grid-cols-[36px_1.6fr_0.6fr_0.6fr_1fr_0.6fr_40px]">
+                    <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                    <Link href={`/projects/${p.id}`} className="min-w-0">
+                      <span className="block truncate font-serif text-[20px] tracking-[-0.02em] group-hover:underline group-hover:decoration-cf-line group-hover:underline-offset-4">
+                        {p.title}
+                      </span>
+                      <span className="cf-label mt-1 block md:hidden">
+                        {MODE_LABEL[p.mode] ?? p.mode} · {fmtDuration(p.target_seconds)} · {STAGE_LABEL[p.status] ?? p.status}
+                      </span>
+                    </Link>
+                    <span className="cf-label hidden md:block">{MODE_LABEL[p.mode] ?? p.mode}</span>
+                    <span className="hidden font-mono text-[10px] md:block">{fmtDuration(p.target_seconds)}</span>
+                    <span className="hidden md:block">
+                      <StateLine project={p} />
+                    </span>
+                    <span className="cf-label hidden md:block">{new Date(p.created_at).toLocaleDateString()}</span>
+                    <span className="text-right">
+                      {!ACTIVE.has(p.status) && (
+                        <button
+                          type="button"
+                          onClick={() => void onDelete(p.id, p.title)}
+                          aria-label={`Delete ${p.title}`}
+                          title="Delete project"
+                          className="h-8 w-8 border border-transparent text-cf-dim transition hover:border-cf-danger hover:text-cf-danger"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Section>
+        </>
       )}
     </div>
   );
 }
 
-function Empty({ headline, hint }: { headline: string; hint: string }) {
+type Filter = "all" | "active" | "ready" | "storyboard" | "auto" | "stopped";
+const FILTERS: Record<Filter, { label: string; test: (p: ProjectRow) => boolean }> = {
+  all: { label: "All", test: () => true },
+  active: { label: "In production", test: (p) => ACTIVE.has(p.status) },
+  ready: { label: "Ready", test: (p) => p.status === "READY" },
+  auto: { label: "Auto", test: (p) => p.mode === "auto" },
+  storyboard: { label: "Scene-by-scene", test: (p) => p.mode === "storyboard" },
+  stopped: { label: "Drafts & stopped", test: (p) => p.status === "DRAFT" || p.status === "PAUSED" || p.status === "FAILED" },
+};
+
+const MODE_LABEL: Record<string, string> = { auto: "Auto", storyboard: "Scene-by-scene" };
+
+/** Status + real progress from the projects row. */
+function StateLine({ project: p }: { project: ProjectRow }) {
+  const tone = p.status === "READY" ? "ok" : p.status === "FAILED" ? "danger" : ACTIVE.has(p.status) ? "live" : "idle";
   return (
-    <div className="flex h-72 items-center justify-center rounded-xl border border-dashed border-white/10 text-center">
-      <div className="max-w-sm">
-        <p className="text-sm text-white/70">{headline}</p>
-        <p className="mt-1 text-xs text-white/40">{hint}</p>
+    <span className="block">
+      <Status tone={tone}>{STAGE_LABEL[p.status] ?? p.status}</Status>
+      {ACTIVE.has(p.status) && (
+        <span className="mt-2 block h-[2px] w-full max-w-[140px] bg-cf-line">
+          <span className="block h-full bg-cf-fg transition-all" style={{ width: `${Math.round(p.progress * 100)}%` }} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** The lead production — what is being made now, or the latest work. */
+function Lead({ project: p }: { project: ProjectRow }) {
+  return (
+    <section className="border-b border-cf-line py-12" aria-label="Lead production">
+      <div className="cf-label mb-5">{ACTIVE.has(p.status) ? "Active production" : "Most recent"}</div>
+      <div className="cf-dark grid lg:grid-cols-[1.35fr_0.65fr]">
+        <div className="relative flex min-h-[320px] flex-col justify-end overflow-hidden p-8">
+          <div className="pointer-events-none absolute inset-[12%] border border-cf-line" aria-hidden />
+          <span className="cf-label relative">CF / {p.id.slice(0, 4).toUpperCase()}</span>
+          <h2 className="cf-display relative mt-3 text-[clamp(36px,4.5vw,64px)] leading-[0.95]">{p.title}</h2>
+          {p.prompt && p.prompt !== p.title && <p className="relative mt-4 line-clamp-2 max-w-xl text-[13px] leading-relaxed text-cf-muted">{p.prompt}</p>}
+        </div>
+        <div className="border-t border-cf-line p-8 lg:border-l lg:border-t-0">
+          <SpecList
+            rows={[
+              ["Production", STAGE_LABEL[p.status] ?? p.status],
+              ["Progress", `${Math.round(p.progress * 100)}%`],
+              ["Runtime", fmtDuration(p.target_seconds)],
+              ["Format", p.resolution],
+              ["Mode", MODE_LABEL[p.mode] ?? p.mode],
+            ]}
+          />
+          <Link href={`/projects/${p.id}`} className="cf-btn-accent mt-8 w-full">
+            Open production →
+          </Link>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
