@@ -651,6 +651,152 @@ export type Database = {
           },
         ]
       }
+      runtime_deployments: {
+        Row: {
+          approved_image: string | null
+          base_url: string
+          created_at: string
+          enforcement: string
+          id: string
+          manifest: Json | null
+          model_id: string
+          runpod_pod_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_image?: string | null
+          base_url: string
+          created_at?: string
+          enforcement?: string
+          id: string
+          manifest?: Json | null
+          model_id: string
+          runpod_pod_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_image?: string | null
+          base_url?: string
+          created_at?: string
+          enforcement?: string
+          id?: string
+          manifest?: Json | null
+          model_id?: string
+          runpod_pod_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      runtime_execution_grants: {
+        Row: {
+          authz_digest: string | null
+          body_sha256: string | null
+          completed_at: string | null
+          deployment_id: string | null
+          error_code: string | null
+          expires_at: string | null
+          gpu_ms: number | null
+          id: string
+          image_ref: string | null
+          input_keys: string[]
+          issued_at: string
+          jti: string | null
+          mode: string
+          outcome: string
+          output_bytes: number | null
+          output_keys: string[]
+          project_id: string | null
+          scope: string
+          shot_id: string | null
+        }
+        Insert: {
+          authz_digest?: string | null
+          body_sha256?: string | null
+          completed_at?: string | null
+          deployment_id?: string | null
+          error_code?: string | null
+          expires_at?: string | null
+          gpu_ms?: number | null
+          id: string
+          image_ref?: string | null
+          input_keys?: string[]
+          issued_at?: string
+          jti?: string | null
+          mode: string
+          outcome: string
+          output_bytes?: number | null
+          output_keys?: string[]
+          project_id?: string | null
+          scope: string
+          shot_id?: string | null
+        }
+        Update: {
+          authz_digest?: string | null
+          body_sha256?: string | null
+          completed_at?: string | null
+          deployment_id?: string | null
+          error_code?: string | null
+          expires_at?: string | null
+          gpu_ms?: number | null
+          id?: string
+          image_ref?: string | null
+          input_keys?: string[]
+          issued_at?: string
+          jti?: string | null
+          mode?: string
+          outcome?: string
+          output_bytes?: number | null
+          output_keys?: string[]
+          project_id?: string | null
+          scope?: string
+          shot_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runtime_execution_grants_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "runtime_deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      runtime_gateway_events: {
+        Row: {
+          actor: string
+          code: string | null
+          created_at: string
+          deployment_id: string | null
+          detail: Json
+          grant_id: string | null
+          id: string
+          type: string
+        }
+        Insert: {
+          actor: string
+          code?: string | null
+          created_at?: string
+          deployment_id?: string | null
+          detail?: Json
+          grant_id?: string | null
+          id?: string
+          type: string
+        }
+        Update: {
+          actor?: string
+          code?: string | null
+          created_at?: string
+          deployment_id?: string | null
+          detail?: Json
+          grant_id?: string | null
+          id?: string
+          type?: string
+        }
+        Relationships: []
+      }
       scene_characters: {
         Row: {
           character_id: string
