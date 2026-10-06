@@ -13,13 +13,97 @@
  * no public URL, and this needs no extra infrastructure. Low frequency is fine.
  */
 import { Queue } from "bullmq";
-import { QUEUES, type FilmJob, type VoiceLabJob, type SocialJob } from "@cineforge/shared";
+import { QUEUES, planCapSec, type FilmJob, type VoiceLabJob, type SocialJob, type RenderJob } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
+import { enqueueSceneFlow } from "./film-flow";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const filmQueue = new Queue<FilmJob>(QUEUES.film, { connection });
 const voiceLabQueue = new Queue<VoiceLabJob>(QUEUES.voiceLab, { connection });
 const socialQueue = new Queue<SocialJob>(QUEUES.social, { connection });
+const renderQueue = new Queue<RenderJob>(QUEUES.render, { connection });
+
+/** Progress marker for a claimed storyboard assembly (the web requests with 0.9). */
+const ASSEMBLY_CLAIMED = 0.92;
+
+/**
+ * Scene-by-scene (storyboard) production. The Director's Board writes
+ * requests into the rows it owns; this claims them exactly once:
+ *  - a shot set to QUEUED → QUEUED→GENERATING, then the scene's flow;
+ *  - a project set to RENDERING at progress 0.9 → progress 0.92, then the
+ *    final render (the same FFmpeg assembly an auto film gets).
+ * Credits and the plan's length ceiling are checked here — the browser can't
+ * bypass either.
+ */
+async function claimStoryboardWork(): Promise<void> {
+  const queued = await prisma.shot.findMany({
+    where: { status: "QUEUED", scene: { project: { mode: "storyboard" } } },
+    select: {
+      id: true,
+      videoKey: true,
+      sceneId: true,
+      scene: { select: { projectId: true, project: { select: { user: { select: { creditsMs: true, tier: true, role: true } } } } } },
+    },
+    take: 10,
+  });
+  for (const shot of queued) {
+    const { projectId } = shot.scene;
+    const { user } = shot.scene.project;
+    const refuse = async (message: string) => {
+      const claimed = await prisma.shot.updateMany({ where: { id: shot.id, status: "QUEUED" }, data: { status: "FAILED" } });
+      if (claimed.count !== 1) return;
+      await prisma.scene.update({ where: { id: shot.sceneId }, data: { status: "FAILED" } });
+      await prisma.project.update({ where: { id: projectId }, data: { errorMessage: message } });
+      console.log(`[poller] refused storyboard shot ${shot.id}: ${message}`);
+    };
+    if (user.creditsMs <= 0) {
+      await refuse("Out of credits — top up to keep creating");
+      continue;
+    }
+    const planned = await prisma.shot.aggregate({ where: { scene: { projectId } }, _sum: { durationSec: true } });
+    const total = planned._sum.durationSec ?? 0;
+    const cap = planCapSec(user.tier, user.role);
+    if (total > cap) {
+      await refuse(`This storyboard runs ${total}s; your plan allows ${cap}s — shorten it or upgrade`);
+      continue;
+    }
+    const claimed = await prisma.shot.updateMany({ where: { id: shot.id, status: "QUEUED" }, data: { status: "GENERATING" } });
+    if (claimed.count !== 1) continue;
+    // A re-generation after edits: drop the scene's old narration / music so
+    // they are produced again from the current script.
+    if (shot.videoKey) await prisma.audioTrack.deleteMany({ where: { sceneId: shot.sceneId } });
+    await prisma.scene.update({ where: { id: shot.sceneId }, data: { status: "GENERATING" } });
+    await prisma.project.updateMany({
+      where: { id: projectId, status: { in: ["DRAFT", "PLANNING", "READY", "FAILED"] } },
+      data: { status: "GENERATING", errorMessage: null },
+    });
+    await enqueueSceneFlow(projectId, shot.sceneId);
+    console.log(`[poller] enqueued storyboard scene ${shot.sceneId} (shot ${shot.id})`);
+  }
+
+  const assemblies = await prisma.project.findMany({
+    where: { mode: "storyboard", status: "RENDERING", progress: { lt: ASSEMBLY_CLAIMED } },
+    select: { id: true },
+    take: 5,
+  });
+  for (const p of assemblies) {
+    const claimed = await prisma.project.updateMany({
+      where: { id: p.id, status: "RENDERING", progress: { lt: ASSEMBLY_CLAIMED } },
+      data: { progress: ASSEMBLY_CLAIMED },
+    });
+    if (claimed.count !== 1) continue;
+    const notReady = await prisma.shot.count({ where: { scene: { projectId: p.id }, OR: [{ status: { not: "READY" } }, { videoKey: null }] } });
+    if (notReady > 0) {
+      await prisma.project.update({
+        where: { id: p.id },
+        data: { status: "GENERATING", errorMessage: `${notReady} scene clip(s) are not generated yet — generate every scene, then assemble` },
+      });
+      continue;
+    }
+    await renderQueue.add("final", { projectId: p.id, kind: "final" }, { jobId: `storyboard-render-${p.id}-${Date.now()}`, attempts: 2, removeOnComplete: 100 });
+    console.log(`[poller] enqueued storyboard assembly for project ${p.id}`);
+  }
+}
 
 export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_SEC ?? 5) * 1000): () => void {
   let busy = false;
@@ -117,6 +201,9 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
         await filmQueue.add("resume", { projectId: c.id }, { jobId: `film-resume-${c.id}-${windowId}`, attempts: 2, removeOnComplete: 100 });
         console.log(`[poller] resumed stalled project ${c.id} (no shot completed in ${STALL_MS / 60000} min)`);
       }
+      // ── Scene-by-scene: queued shots + assembly requests ───────────────
+      await claimStoryboardWork();
+
       // ── Voice Lab (docs/29): claim pending clones + voiceovers ─────────
       // Same producer/consumer split as films: the web writes PENDING rows,
       // we claim them atomically and enqueue. Stable jobIds dedupe re-claims.

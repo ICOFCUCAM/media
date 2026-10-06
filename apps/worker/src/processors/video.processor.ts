@@ -353,6 +353,10 @@ videoWorker.on("failed", (job, err) => {
     const reason = (err instanceof Error ? err.message : String(err)).slice(0, 300);
     console.error(`[video] shot ${job.data.shotId} failed terminally: ${reason}`);
     await prisma.shot.update({ where: { id: job.data.shotId }, data: { status: "FAILED" } }).catch(() => {});
+    // Scene-by-scene: the board shows scene status, so a failed shot fails its scene.
+    await prisma.scene
+      .updateMany({ where: { id: job.data.sceneId, project: { mode: "storyboard" } }, data: { status: "FAILED" } })
+      .catch(() => {});
     await prisma.project
       .update({ where: { id: job.data.projectId }, data: { errorMessage: `shot: ${reason}`.slice(0, 500) } })
       .catch(() => {});

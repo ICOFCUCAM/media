@@ -65,3 +65,39 @@ export async function enqueueFilmFlow(projectId: string): Promise<number> {
 
   return scenes.length;
 }
+
+/**
+ * One scene of a scene-by-scene (storyboard) project, on the same pipeline an
+ * auto film uses: its shots + narration + music, then scene-finalize (which
+ * marks the scene READY and advances project progress). Called by the poller
+ * when the Director's Board queues a scene; assembly is a separate render job.
+ */
+export async function enqueueSceneFlow(projectId: string, sceneId: string): Promise<number> {
+  const scene = await prisma.scene.findUniqueOrThrow({
+    where: { id: sceneId },
+    select: {
+      id: true,
+      index: true,
+      shots: { orderBy: { index: "asc" }, select: { id: true } },
+      project: { select: { modelId: true, user: { select: { tier: true } } } },
+    },
+  });
+  const priority = tierPriority(scene.project.user.tier as Tier);
+  await flow.add({
+    name: "scene-finalize",
+    queueName: QUEUES.scene,
+    data: { projectId, sceneId: scene.id, index: scene.index },
+    opts: { attempts: 2, removeOnComplete: 100 },
+    children: [
+      ...scene.shots.map((shot) => ({
+        name: "shot",
+        queueName: QUEUES.video,
+        data: { projectId, sceneId: scene.id, shotId: shot.id, modelId: scene.project.modelId },
+        opts: { attempts: 3, backoff: { type: "exponential", delay: 5000 }, priority },
+      })),
+      { name: "music", queueName: QUEUES.audio, data: { projectId, sceneId: scene.id, kind: "music" }, opts: { attempts: 2, priority } },
+      { name: "voice", queueName: QUEUES.audio, data: { projectId, sceneId: scene.id, kind: "voice" }, opts: { attempts: 2, priority } },
+    ],
+  });
+  return scene.shots.length;
+}
