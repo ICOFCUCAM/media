@@ -85,6 +85,18 @@ function Nav() {
       <div className="nav-right">
         <Link href="/projects" className="nav-login">Sign in</Link>
         <Link href="/create" className="nav-cta">Enter Studio</Link>
+        {/* Phones and tablets: the section links fold into a menu (no JS needed). */}
+        <details className="nav-menu">
+          <summary aria-label="Menu">Menu</summary>
+          <div className="nav-menu-panel">
+            <a href="#studio">Studio</a>
+            <a href="#capabilities">Capabilities</a>
+            <a href="#films">Films</a>
+            <a href="#marketplace">Marketplace</a>
+            <a href="#pricing">Access</a>
+            <Link href="/projects">Sign in</Link>
+          </div>
+        </details>
       </div>
     </nav>
   );
