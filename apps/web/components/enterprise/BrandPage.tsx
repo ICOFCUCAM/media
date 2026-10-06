@@ -12,7 +12,9 @@ const BUCKET = "cineforge-assets";
 /** Brand kit — logo, palette, outro line. Stored per user; the render
  *  engine picks it up for white-label outros (Agency+). */
 export function BrandPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  // Mirrors render.processor: Agency, Enterprise and admins get the branded outro.
+  const eligible = !!profile && (profile.role === "ADMIN" || profile.tier === "AGENCY" || profile.tier === "ENTERPRISE");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [primary, setPrimary] = useState("#6366f1");
   const [secondary, setSecondary] = useState("#d946ef");
@@ -75,7 +77,7 @@ export function BrandPage() {
         copy={
           <>
             <p>Your logo, palette and outro line — the identity that closes white-label exports on Agency and Enterprise plans.</p>
-            <p><strong>Stored now; applying the branded outro card on final cuts is the next render-engine step.</strong></p>
+            <p><strong>On Agency and Enterprise plans the render worker closes every final cut with this card — logo, primary colour and outro line.</strong></p>
           </>
         }
         status={{ tone: "idle", label: "Brand kit" }}
@@ -106,7 +108,7 @@ export function BrandPage() {
                     <input type="color" value={secondary} onChange={(e) => setSecondary(e.target.value)} className="h-11 w-full cursor-pointer border border-cf-line bg-transparent" />
                   </label>
                 </div>
-                <label htmlFor="brand-outro" className="cf-label mb-2 mt-7 block text-cf-fg">Outro line · closes every export</label>
+                <label htmlFor="brand-outro" className="cf-label mb-2 mt-7 block text-cf-fg">Outro line · closes every final cut</label>
                 <input id="brand-outro" value={outro} onChange={(e) => setOutro(e.target.value)} placeholder="A film by Your Studio" className="cf-input font-serif text-[18px]" />
                 <div className="mt-8 flex items-center gap-4">
                   <button type="submit" disabled={busy} className="cf-btn-ink">
@@ -116,21 +118,26 @@ export function BrandPage() {
                 </div>
               </Cell>
               <Cell>
-                <div className="cf-label">The end card</div>
-                <div className="cf-dark mt-8 flex aspect-video flex-col items-center justify-center gap-4 p-6 text-center">
-                  {logoUrl ? (
-                    /* Plain <img>: a signed, short-lived storage URL. */
-                    <img src={logoUrl} alt="Your logo" className="max-h-[38%] max-w-[50%] object-contain" />
-                  ) : (
-                    <span className="cf-label">No logo yet</span>
-                  )}
-                  <span className="font-serif text-[20px] tracking-[-0.02em]">{outro || "A film by Your Studio"}</span>
-                  <span className="flex gap-2" aria-hidden>
-                    <i className="block h-2 w-10" style={{ background: primary }} />
-                    <i className="block h-2 w-10" style={{ background: secondary }} />
-                  </span>
+                <div className="cf-label">The end card · as rendered</div>
+                {/* Mirrors the render engine: primary colour at 25% over black, centred logo, the line in the lower fifth. */}
+                <div className="relative mt-8 aspect-video overflow-hidden bg-black text-white">
+                  <div className="absolute inset-0" style={{ background: primary, opacity: 0.25 }} aria-hidden />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {logoUrl ? (
+                      /* Plain <img>: a signed, short-lived storage URL. */
+                      <img src={logoUrl} alt="Your logo" className="w-1/4 object-contain" />
+                    ) : (
+                      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-white/50">No logo yet</span>
+                    )}
+                  </div>
+                  {outro.trim() && <span className="absolute inset-x-6 bottom-[16%] text-center font-sans text-[15px]">{outro}</span>}
                 </div>
-                <p className="cf-label mt-3">A preview of the kit — not yet stamped onto renders.</p>
+                <p className="cf-label mt-3 leading-relaxed">
+                  {eligible
+                    ? "Your plan stamps this card on every final cut."
+                    : "Saved to your account — stamped on renders from the Agency plan up."}{" "}
+                  The secondary colour is kept for your own reference.
+                </p>
               </Cell>
             </Split>
           </form>
