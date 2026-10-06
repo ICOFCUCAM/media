@@ -2086,18 +2086,6 @@
   box-shadow: inset 0.18cqw 0 0.16cqw -0.04cqw rgba(70, 90, 130, 0.55);
 }
 
-/* TV — MAKE: the finished master, one quiet mark. */
-.cfh .tv-mark {
-  position: absolute;
-  z-index: 3;
-  right: 1.6%;
-  bottom: 3%;
-  font-size: 0.95cqw;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
-}
 
 /* Tablet — DIRECT: a production instrument, not a dashboard. */
 .cfh .dt {
@@ -2131,16 +2119,21 @@
 .cfh .dt-cam { right: 0.8cqw; top: 0.7cqw; padding: 0.25cqw 0.55cqw; border-radius: 0.3cqw; background: rgba(0, 0, 0, 0.45); }
 .cfh .dt-slate { left: 0.9cqw; bottom: 0.7cqw; }
 .cfh .dt-side {
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5cqw;
-  padding: 0.7cqw 0.8cqw;
+  justify-content: space-between;
+  padding: 0.5cqw 0.8cqw;
   overflow: hidden;
   border-radius: 0.6cqw;
   background: rgba(255, 255, 255, 0.035);
   box-shadow: inset 0 0 0 0.06cqw rgba(255, 255, 255, 0.07);
   min-width: 0;
 }
+.cfh .dt-side div { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6cqw; padding: 0.42cqw 0; border-top: 0.06cqw solid rgba(255, 255, 255, 0.07); }
+.cfh .dt-side div:first-child { border-top: 0; }
+.cfh .dt-side dt { font-size: 0.66cqw; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #7d7f79; }
+.cfh .dt-side dd { margin: 0; min-width: 0; font-size: 0.82cqw; color: #e9e8e3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cfh .dt-score { position: relative; display: flex; align-items: center; gap: 0.8cqw; }
 .cfh .dt-score svg { width: 3.4cqw; height: 3.4cqw; transform: rotate(-90deg); }
 .cfh .dt-ring-bg { fill: none; stroke: rgba(255, 255, 255, 0.1); stroke-width: 3; }
@@ -2664,8 +2657,9 @@
   .cfh .ws-playhead { animation: ws-scrub 3.2s linear both; }
 
   /* Release: the 16:9 master reframes to 9:16; the cut-downs land. */
-  .cfh .reveal.visible .dv-tablet { animation: cfh-land 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s both; }
-  .cfh .reveal.visible .dv-phone { animation: cfh-land 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.6s both; }
+  @keyframes rs-appear { from { opacity: 0; } to { opacity: 1; } }
+  .cfh .reveal.visible .dv-tablet { animation: rs-appear 0.9s ease 0.3s both; }
+  .cfh .reveal.visible .dv-phone { animation: rs-appear 0.9s ease 0.55s both; }
 
   /* Voice: each language arrives. */
   .cfh .vp-line { animation: vp-in 0.5s ease both; }
@@ -2678,3 +2672,71 @@
   .cfh .market .reel:hover .reel-tag { box-shadow: 0 0 0 1px var(--accent); }
 }
 
+
+/* ── Live showcase ─────────────────────────────────────── */
+.cfh .rs-shot { position: absolute; inset: 0; overflow: hidden; }
+.cfh .rs-still-box { overflow: hidden; }
+.cfh .rs-still-box img { position: absolute; max-width: none; object-fit: cover; }
+.cfh .dt-preview .rs-shot { border-radius: 0.6cqw; }
+
+/* TV playback OSD: appears after a cut, then leaves the film alone. */
+.cfh .tv-osd {
+  position: absolute;
+  z-index: 3;
+  right: 2.4%;
+  top: 4%;
+  width: 30%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.4cqw 1.2cqw;
+  color: #fff;
+  font-size: 0.95cqw;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0.1cqw 0.4cqw rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.cfh .tv-osd.is-on { opacity: 0.9; }
+.cfh .tv-osd-fmt { padding: 0.22cqw 0.5cqw; border: 0.06cqw solid rgba(255, 255, 255, 0.45); border-radius: 0.25cqw; font-size: 0.8cqw; }
+.cfh .tv-osd-time { display: flex; align-items: center; gap: 0.4cqw; justify-self: end; }
+.cfh .tv-osd-time .os-ico { height: 0.7cqw; }
+.cfh .tv-osd-bar { grid-column: 1 / -1; height: 0.16cqw; border-radius: 9px; background: rgba(255, 255, 255, 0.22); overflow: hidden; }
+.cfh .tv-osd-bar i { display: block; height: 100%; background: #fff; transition: width 1s linear; }
+
+/* Reframe guides: where 16:10 and 9:16 sit inside this shot. */
+.cfh .tv-guides { position: absolute; inset: 0; z-index: 2; opacity: 0; transition: opacity 0.6s ease; pointer-events: none; }
+.cfh .tv-guides.is-on { opacity: 1; }
+.cfh .tv-guides i { position: absolute; border: 0.08cqw solid rgba(216, 255, 98, 0.75); border-radius: 0.2cqw; }
+.cfh .tv-guides .g-tab { border-color: rgba(255, 255, 255, 0.45); border-style: dashed; }
+.cfh .tv-guides b { position: absolute; left: 0.4cqw; top: 0.3cqw; font-size: 0.7cqw; letter-spacing: 0.08em; color: rgba(216, 255, 98, 0.9); }
+.cfh .tv-guides .g-tab b { color: rgba(255, 255, 255, 0.7); }
+
+/* Storyboard: the previewed scene and the one being generated. */
+.cfh .dt-shot.is-sel { box-shadow: 0 0 0 0.14cqw rgba(255, 255, 255, 0.85); }
+.cfh .dt-shot.is-sel i { background: #96de6e; }
+.cfh .dt-gen { position: absolute; z-index: 2; left: 0.4cqw; right: 0.4cqw; bottom: 0.35cqw; height: 0.18cqw; border-radius: 9px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+.cfh .dt-gen u { display: block; height: 100%; background: var(--accent); transition: width 1s linear; }
+.cfh .dt-shot.is-live b { bottom: 0.7cqw; }
+.cfh .dp-bar i { transition: width 1s linear; }
+
+/* Parallax: the frames drift a few pixels; content does the moving. */
+.cfh .dv-tv { transform: translate3d(0, calc(var(--px, 0) * -4px), 0); }
+.cfh .dv-tablet { transform: translate3d(0, calc(var(--px, 0) * 8px), 0); }
+.cfh .dv-phone { transform: translate3d(0, calc(var(--px, 0) * 14px), 0); }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes rs-cut { from { opacity: 0.55; } to { opacity: 1; } }
+  .cfh .rs-shot { animation: rs-cut 0.45s ease-out both; }
+  .cfh .rs-shot > .rs-art { animation: cfh-kb 7s ease-out both; }
+  .cfh .dp-sub-line { animation: vp-in 0.5s ease both; }
+  .cfh .dt-side dd { animation: vp-in 0.5s ease both; }
+}
+@media (max-width: 600px) {
+  .cfh .release-caption { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 0 22px; }
+  .cfh .release-caption span + span::before { display: none; }
+  .cfh .release-caption span { display: flex; flex-direction: column; gap: 3px; }
+  .cfh .release-caption i { margin-left: 0; }
+}
