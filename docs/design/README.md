@@ -16,7 +16,7 @@ Room: **paper** = `.cf-light`, **dark** = `.cf-dark` (chosen per route in
 | `homepage.html` | `/` | `app/page.tsx`, `app/home.css` | institution black | Live showreel, real products, plans |
 | `create-anything.html` | `/create` | `PROJECT_TYPES`, `CREATION_MODES` → `components/cf/CreateGate.tsx` | paper | Resolves (type, material) to the real studio route |
 | `create-film.html` (`-v1` = earlier draft) | `/create/film?mode=…` | `FilmStudio` → `CreateStudio`, `HybridStudio`, `ScriptStudio`, `StoryboardStudio`, `ImageStudio`, `AudioStudio`, `VideoStudio`; `useCreateRun`, `RunPanel` | paper | `?mode=` read and written; `?type=` labels doc / music productions |
-| `storyboard.html` | `/create/film?mode=storyboard` | `StoryboardStudio` (Supabase persistence, Realtime scene status, Continuity Engine) | dark board in paper room | AI seed image labelled as placeholder |
+| `storyboard.html` | `/create/film?mode=storyboard` | `StoryboardStudio` (Supabase persistence, Realtime scene status, Continuity Engine) | dark board in paper room | Scenes and assembly run on the worker queues; AI seed painted at render |
 | `create-series.html`, `writers-room-series.html` | `/create/series` | `SeriesStudio` | paper | Premise, seasons, episodes, outline → `useCreateRun` |
 | `create-trailer.html` | `/create/trailer` | `TrailerStudio` | paper | Demo beat timings not reproduced |
 | `create-shorts.html`, `short-form-studio.html` | `/create/shorts` | `ShortsStudio` (`SHORT_PLATFORMS`) | paper | |
@@ -27,15 +27,15 @@ Room: **paper** = `.cf-light`, **dark** = `.cf-dark` (chosen per route in
 | `production-design-worlds.html` | `/library/worlds` | `WorldLibrary` | dark | |
 | `asset-archive.html` | `/library/assets` | `AssetLibrary` + `GeneratedMedia` | dark | |
 | `voice-room.html` | `/library/voices` | `VoiceLab` | paper | |
-| `score-room-music.html` | `/library/music` | `MusicLibrary` | paper | No music engine yet — stated |
+| `score-room-music.html` | `/library/music` | `MusicLibrary` | paper | Narration + the film score (fal text-to-music) |
 | `distribution-desk-publish.html` | `/publish` | `SocialLaunchpad` | paper | |
 | `screening-room.html` | `/publish/streaming` | `StreamingChannel` | paper + dark stage | Channel modal / access toggles have no backend — not reproduced |
 | `exchange-marketplace.html` | `/marketplace` | `MarketplaceVoices` | paper | Only community voices trade today; paid catalogues marked not open |
 | `access-pricing.html` | `/pricing` | `PricingPage` (Stripe checkout edge function) | paper | |
 | `analytics-revenue.html`, `-audience`, `-performance` | `/analytics/[section]` | `AnalyticsSection` + `Charts` | paper | |
-| `enterprise-teams.html` | `/enterprise/teams` | `TeamsPage` | paper | |
+| `enterprise-teams.html` | `/enterprise/teams` | `TeamsPage` + `team-invite` edge function | paper | Invites emailed via Supabase Auth |
 | `enterprise-permissions.html` | `/enterprise/permissions` | `PermissionsPage` | paper | |
-| `enterprise-brand.html` | `/enterprise/brand` | `BrandPage` | paper | |
+| `enterprise-brand.html` | `/enterprise/brand` | `BrandPage` | paper | Preview mirrors the rendered end card |
 | `view-creator.html` | `/view/creator` | `CreatorView` (RoleContext) | paper | New route — the VIEW family |
 | `view-studio.html` | `/view/studio` | `StudioView` | paper | |
 | `view-super-admin.html` | `/view/super` | `SuperView` (`admin_list_users`, `SUBSYSTEMS`) | paper | Admin-only data; no invented platform figures |

@@ -85,17 +85,41 @@ Before shipping a change to the studio:
    reads *Live production*, the production file link appears, and the
    project shows up in the archive with Realtime status.
 
-## Known gaps surfaced by the redesign
+## Gaps found while wiring the studio — and what happened to them
 
-These are engine or product questions, left untouched by the UI work:
+Corrections first: the plan length cap, AI seed frames and the brand-kit
+outro were already handled by the worker (`film.processor` clamps auto
+films to the plan ceiling; `resolveSeedKey` paints seed frames with
+GPT-image-1; `render.processor` stamps the kit's logo and colour for
+Agency+). An earlier version of this section said otherwise.
 
-- **Plan length caps are not enforced.** `MAX_FILM_SEC` only locks the
-  length buttons; neither the create flow nor the worker clamps
-  `target_seconds`. Free (30 s) cannot pick any film length, yet the
-  default 2-minute selection still runs.
-- **AI seed image** in the Director's Board records a placeholder seed —
-  no image provider is wired to that action.
-- **Paid marketplace, public channel pages, channel access control and a
-  music engine** have no backend; the UI marks them as not open.
-- **Team invites** are stored but not emailed (SMTP), and the **brand kit**
-  is saved but not yet stamped onto renders.
+Fixed:
+
+- **Scene-by-scene generation reached no worker.** The Director's Board
+  flipped scenes to READY with a browser timer and "assembled" a film row
+  for an MP4 that was never rendered. Board shots are now queued
+  (`QUEUED`) and claimed by the worker's poller onto the standard scene
+  flow; assembly is a claimed render request (`RENDERING` @ 0.9 → 0.92)
+  that runs the real FFmpeg final render. Credits and plan length are
+  enforced there.
+- **Length controls defaulted past the plan.** The studio clamps the
+  selected length, offers the plan ceiling when it sits below every preset,
+  and the board warns before the worker would refuse. One source for the
+  caps: `planCapSec` in `@cineforge/shared`.
+- **Brand outro line** is now drawn on the closing card (font in the
+  worker image).
+- **Film score** — a fal text-to-music model composes one score per film,
+  looped under the cut (`FAL_MUSIC_MODEL`, needs `FAL_KEY`).
+- **Team invites** are emailed through Supabase Auth and marked accepted
+  when the invitee joins (`supabase functions deploy team-invite`).
+
+Still open (need product decisions or new infrastructure):
+
+- **Paid marketplace** — listings, checkout and creator payouts (e.g.
+  Stripe Connect) have no tables or flows; the Exchange marks paid
+  catalogues as not open.
+- **Public channel pages and channel access control** — screenings are
+  private to their owner; publishing a public page needs a public flag,
+  anonymous read policies and public playback copies.
+- **Sound effects** — no SFX generator is wired; films render with
+  narration and score.
