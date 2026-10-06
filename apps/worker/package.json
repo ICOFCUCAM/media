@@ -11,7 +11,8 @@
     "lint": "eslint src",
     "test": "vitest run",
     "gateway:admin": "tsx src/gateway/admin-cli.ts",
-    "timeline:build": "tsx src/timeline/cli.ts"
+    "timeline:build": "tsx src/timeline/cli.ts",
+    "avsync:check": "tsx src/avsync/cli.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
