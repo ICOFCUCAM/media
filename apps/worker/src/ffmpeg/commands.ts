@@ -61,12 +61,15 @@ export interface AudioInputs {
  * Mix music + voice + sfx into one track, ducking music under dialogue with
  * sidechaincompress, then loudness-normalize (EBU R128).
  */
-export function audioMixArgs(inputs: AudioInputs, output: string): string[] {
+export function audioMixArgs(inputs: AudioInputs, output: string, opts: { musicLoopSec?: number } = {}): string[] {
   const args: string[] = [];
   const labels: Record<string, number> = {};
   let idx = 0;
   for (const key of ["music", "voice", "sfx"] as const) {
     if (inputs[key]) {
+      // The film score is one clip; loop it under the whole cut, bounded to the
+      // film's length so the mix (amix = longest input) always terminates.
+      if (key === "music" && opts.musicLoopSec && opts.musicLoopSec > 0) args.push("-stream_loop", "-1", "-t", String(Math.ceil(opts.musicLoopSec)));
       args.push("-i", inputs[key]!);
       labels[key] = idx++;
     }

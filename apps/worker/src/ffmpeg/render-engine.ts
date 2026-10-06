@@ -51,6 +51,7 @@ export class RenderEngine {
     scenes: SceneAssets[],
     onProgress?: (p: number) => void,
     brand?: { logoKey?: string | null; primaryColor?: string; outroText?: string | null },
+    opts: { filmSec?: number } = {},
   ): Promise<RenderResult> {
     const work = await mkdtemp(join(tmpdir(), `cineforge-${projectId}-`));
     try {
@@ -178,7 +179,7 @@ export class RenderEngine {
         const sfx = sfxKey ? await dl(sfxKey, "sfx.wav") : undefined;
         if (voice || music || sfx) {
           const mix = join(work, "mix.m4a");
-          await this.run(audioMixArgs({ music, voice, sfx }, mix));
+          await this.run(audioMixArgs({ music, voice, sfx }, mix, { musicLoopSec: opts.filmSec }));
           const muxed = join(work, "muxed.mp4");
           console.log(`[render] mux audio bed (voice=${!!voice} music=${!!music} sfx=${!!sfx})`);
           await this.run(muxArgs(body, mix, muxed));

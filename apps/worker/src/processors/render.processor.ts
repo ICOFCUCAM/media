@@ -117,6 +117,7 @@ export const renderWorker = new Worker<RenderJob>(
           assets,
           (p) => realtime.emit("render.progress", { projectId, renderJobId: job.id, progress: p }),
           kit ? { logoKey: kit.logoKey, primaryColor: kit.primaryColor, outroText: kit.outroText } : undefined,
+          { filmSec: durationSec },
         );
         mp4Key = out.mp4Key;
         hlsKey = out.hlsKey;

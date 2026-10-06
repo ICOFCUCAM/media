@@ -78,3 +78,15 @@ describe("outroTextArgs", () => {
     expect(args).toContain("-an");
   });
 });
+
+describe("audioMixArgs score loop", () => {
+  it("loops the score to the film's length when asked", () => {
+    const args = audioMixArgs({ music: "m.wav", voice: "v.m4a" }, "mix.m4a", { musicLoopSec: 92.4 });
+    const i = args.indexOf("m.wav");
+    expect(args.slice(i - 5, i + 1)).toEqual(["-stream_loop", "-1", "-t", "93", "-i", "m.wav"]);
+    expect(args.indexOf("v.m4a") - 1).toBe(args.lastIndexOf("-i"));
+  });
+  it("leaves the score alone by default", () => {
+    expect(audioMixArgs({ music: "m.wav" }, "mix.m4a")).not.toContain("-stream_loop");
+  });
+});

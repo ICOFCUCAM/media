@@ -10,7 +10,7 @@ import { SkeletonRows } from "./Skeleton";
 
 /**
  * The Score Room (docs/design/score-room-music.html). Music & audio library — every track the pipeline produced for your
- * projects (scores when the music engine lands, narration today) plus the
+ * projects (narration, and the film score when the score engine is configured) plus the
  * Voice Lab readings, all playable in one place.
  */
 
@@ -52,7 +52,7 @@ export function MusicLibrary() {
         copy={
           <>
             <p>Music is not decoration. It establishes the emotional architecture of a film.</p>
-            <p><strong>Every track your productions generated, kept beside the scenes it was made for — narration today, scores when the music engine arrives.</strong></p>
+            <p><strong>Every track your productions generated, kept beside the scenes it was made for — narration for every scene, and each film's score, composed for the whole cut.</strong></p>
           </>
         }
         status={{ tone: tracks?.length ? "live" : "idle", label: tracks ? `${tracks.length} tracks` : "Score room" }}
