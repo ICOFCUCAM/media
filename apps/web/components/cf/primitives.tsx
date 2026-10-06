@@ -182,37 +182,3 @@ export function EmptyState({
     </div>
   );
 }
-
-/** Numbered row used by pipelines, archives and indexes. */
-export function IndexRow({
-  n,
-  title,
-  meta,
-  state,
-  href,
-}: {
-  n: number | string;
-  title: ReactNode;
-  meta?: ReactNode;
-  state?: ReactNode;
-  href?: string;
-}) {
-  const body = (
-    <>
-      <span className="font-mono text-[9px] text-cf-muted">{typeof n === "number" ? String(n).padStart(2, "0") : n}</span>
-      <span className="min-w-0">
-        <span className="block truncate font-serif text-[18px] leading-tight">{title}</span>
-        {meta && <span className="mt-1 block truncate text-[11px] text-cf-muted">{meta}</span>}
-      </span>
-      {state && <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-cf-muted">{state}</span>}
-    </>
-  );
-  const cls = "grid min-h-[68px] grid-cols-[45px_1fr_auto] items-center gap-4 border-b border-cf-line py-3";
-  return href ? (
-    <Link href={href} className={`${cls} transition hover:bg-cf-soft/60`}>
-      {body}
-    </Link>
-  ) : (
-    <div className={cls}>{body}</div>
-  );
-}

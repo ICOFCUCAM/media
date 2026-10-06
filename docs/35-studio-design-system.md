@@ -46,7 +46,7 @@ it to `NAV`; the rail, navigator, breadcrumb and mobile index follow.
 
 `components/cf/primitives.tsx` (hook-free): `PageHeader`, `Section`,
 `Split` / `Cell`, `SpecList`, `Control`, `Status`, `ActionBand`,
-`EmptyState`, `IndexRow`. Client helpers: `StudioGate` (Supabase / loading /
+`EmptyState`. Client helpers: `StudioGate` (Supabase / loading /
 sign-in gate), `Pipeline` (department list driven by the run status).
 Component classes: `cf-btn-accent`, `cf-btn-ink`, `cf-btn-line`,
 `cf-option` (`aria-pressed` = selected), `cf-input`, `cf-label`,

@@ -14,7 +14,7 @@ const FILM_FAMILY = new Set(["film", "documentary", "music"]);
  * trailer, shorts, advert) own their flow; character / world / episode-first
  * starts go to their libraries.
  */
-export function pathFor(type: ProjectType, mode: CreationMode): string {
+function pathFor(type: ProjectType, mode: CreationMode): string {
   if (!mode.studio) return mode.href;
   if (!FILM_FAMILY.has(type.id)) return type.href;
   const q = new URLSearchParams({ mode: mode.studio });
