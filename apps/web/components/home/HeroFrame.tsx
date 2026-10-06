@@ -23,7 +23,7 @@ const STAGES = ["Prompt", "Storyboard", "Generation", "Final cut"] as const;
 // How long each stage holds, in ms.
 const HOLD = [1800, 1300, 1600, 2600];
 
-export function HeroFrame() {
+export function HeroFrame({ masterStill }: { masterStill?: string }) {
   const [real, setReal] = useState<ShowcaseRow | null>(null);
   const [stage, setStage] = useState(3);
   const [typed, setTyped] = useState(PROMPT.length);
@@ -64,10 +64,17 @@ export function HeroFrame() {
           <video className="hero-frame-video" src={publicUrl(real.video_path)} autoPlay muted loop playsInline preload="metadata" aria-label={real.title} />
         ) : (
           <div className={`hero-frame-image${shown ? " is-shown" : ""}`}>
-            <MasterShot idPrefix="hero" className="art-fill" />
+            {masterStill ? (
+              /* Plain <img>: the generated master still from public/frames. */
+              <img src={masterStill} alt="Ashéron-Kor at dawn: the citadel backlit by the sun, the queen and her guard on the ridge" className="art-fill still-fill" fetchPriority="high" />
+            ) : (
+              <MasterShot idPrefix="hero" className="art-fill" />
+            )}
           </div>
         )}
         {resolving && <i className="hero-frame-scan" aria-hidden />}
+        <i className="cfh-grain cf-grain" aria-hidden />
+        <i className="hero-sweep" aria-hidden />
 
         <div className="hero-frame-hud">
           <div className="hero-frame-row">

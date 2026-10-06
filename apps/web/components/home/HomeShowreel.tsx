@@ -19,14 +19,14 @@ const PLACEHOLDERS: { title: string; tag: string; scene: Scene; quality: string;
  * playable by anonymous visitors (hover to play, tap on mobile). Real films
  * fill the first frames; placeholders keep the six-frame grid complete.
  */
-export function HomeShowreel() {
+export function HomeShowreel({ stills = [] }: { stills?: (string | undefined)[] }) {
   const [rows, setRows] = useState<ShowcaseRow[]>([]);
 
   useEffect(() => {
     void listShowcase(6).then(setRows);
   }, []);
 
-  const fill = PLACEHOLDERS.slice(rows.length);
+  const fill = PLACEHOLDERS.map((p, i) => ({ ...p, still: stills[i] })).slice(rows.length);
 
   return (
     <div className="reel-grid reveal">
@@ -52,7 +52,12 @@ export function HomeShowreel() {
       ))}
       {fill.map((p) => (
         <div key={p.title} className="reel">
-          <CinemaArt seed={`${p.title} ${p.tag}`} scene={p.scene} className="art-fill" />
+          {p.still ? (
+            /* Plain <img>: a generated example still from public/frames. */
+            <img src={p.still} alt="" className="art-fill still-fill" loading="lazy" />
+          ) : (
+            <CinemaArt seed={`${p.title} ${p.tag}`} scene={p.scene} className="art-fill" />
+          )}
           {/* Player chrome: these tiles show how a finished film sits in the reel. */}
           <span className="reel-play" aria-hidden>
             <svg viewBox="0 0 24 24" width="18" height="18"><path d="M8 5.5v13l11-6.5z" fill="currentColor" /></svg>

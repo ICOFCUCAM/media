@@ -4,6 +4,7 @@ import "./home.css";
 import { HomeMotion } from "../components/home/HomeMotion";
 import { HomeShowreel } from "../components/home/HomeShowreel";
 import { HeroFrame } from "../components/home/HeroFrame";
+import { WorkspacePreview } from "../components/home/WorkspacePreview";
 import { CinemaArt, type Scene } from "../components/cf/CinemaArt";
 import { ClockIcon, ConfigCard, EngineIcon, FormatIcon } from "../components/cf/ConfigCard";
 import { WorldAtlas } from "../components/home/scenes/WorldAtlas";
@@ -12,6 +13,7 @@ import { ReleaseScreens } from "../components/home/scenes/ReleaseScreens";
 import { VoicePresenter } from "../components/home/scenes/VoicePresenter";
 import { AssetVisual } from "../components/home/scenes/AssetVisual";
 import { STUDIO_MODES } from "../lib/creation";
+import { frame } from "../lib/frames";
 import {
   NAV,
   PRODUCTS,
@@ -113,7 +115,7 @@ function Hero() {
   return (
     <section className="hero">
       <div className="hero-image" />
-      <HeroFrame />
+      <HeroFrame masterStill={frame("hero")} />
 
       <div className="hero-content">
         <div className="eyebrow hero-kicker">The film production system / 01</div>
@@ -197,7 +199,18 @@ function WorldChapter() {
     <section className="section chapter dark">
       <div className="container chapter-grid reveal">
         <div className="chapter-image chapter-atlas">
-          <WorldAtlas className="art-fill" />
+          <i className="cfh-grain cf-grain" aria-hidden />
+          {frame("world") ? (
+            <>
+              {/* Plain <img>: a static still from public/frames. */}
+              <img src={frame("world")} alt="Aerial establishing shot of the realm at dusk: river delta, red dunes, highland forest and the distant citadel" className="art-fill still-fill" loading="lazy" />
+              <div className="atlas-inset" aria-hidden>
+                <WorldAtlas className="art-fill" />
+              </div>
+            </>
+          ) : (
+            <WorldAtlas className="art-fill" />
+          )}
         </div>
 
         <div className="chapter-copy">
@@ -236,14 +249,6 @@ const WS_PRESETS: { title: string; tags: string; scene: Scene }[] = [
   { title: "Ocean voyage", tags: "Adventure · Drama", scene: "sea" },
 ];
 
-/** The five shots on the depicted timeline — drawn frames, not renders. */
-const TIMELINE: { seed: string; scene: Scene }[] = [
-  { seed: "Scene 05 savannah march", scene: "savannah" },
-  { seed: "Scene 06 war council", scene: "interior" },
-  { seed: "Scene 07 throne hall", scene: "interior" },
-  { seed: "Scene 08 the heir", scene: "figure" },
-  { seed: "Scene 09 river crossing", scene: "sea" },
-];
 
 function Workspace() {
   const studio = navSection("Studio");
@@ -315,18 +320,7 @@ function Workspace() {
                   <div className="ws-create">Create film</div>
                 </div>
                 <div className="ws-preview">
-                  <div className="scene">
-                    <CinemaArt seed="Throne hall at night" scene="interior" className="art-fill" />
-                    <div className="scene-label">SCENE 07 / INT. THRONE HALL / NIGHT</div>
-                    <div className="playhead" />
-                    <div className="timeline">
-                      {TIMELINE.map((c, i) => (
-                        <div key={c.seed} className={`clip${i === 2 ? " is-on" : ""}`}>
-                          <CinemaArt seed={c.seed} scene={c.scene} className="art-fill" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <WorkspacePreview />
                 </div>
               </div>
             </div>
@@ -385,7 +379,16 @@ function StoryChapter() {
         </div>
 
         <div className="chapter-image chapter-portrait">
-          <StoryCloseUp className="art-fill" />
+          <i className="cfh-grain cf-grain" aria-hidden />
+          {frame("story") ? (
+            <>
+              <img src={frame("story")} alt="Close-up: Amara in profile, firelit, in a burnt-orange gele" className="art-fill still-fill" loading="lazy" />
+              <span className="still-slate" aria-hidden>CU · AMARA<br /><small>SC 12 · TK 3 · 85MM</small></span>
+              <span className="still-subtitle">— Then we will build it ourselves.</span>
+            </>
+          ) : (
+            <StoryCloseUp className="art-fill" />
+          )}
         </div>
       </div>
     </section>
@@ -475,7 +478,7 @@ function Showreel() {
           <Link href="/publish/streaming" className="text-link">View complete showreel →</Link>
         </div>
 
-        <HomeShowreel />
+        <HomeShowreel stills={(["work-1", "work-2", "work-3", "work-4", "work-5", "work-6"] as const).map((s) => frame(s))} />
       </div>
     </section>
   );
@@ -493,7 +496,7 @@ function Publish() {
             One film.<br />
             <em>Every screen.</em>
           </h2>
-          <ReleaseScreens />
+          <ReleaseScreens still={frame("hero")} />
         </div>
 
         <div className="publish-copy">
@@ -548,7 +551,7 @@ function Voice() {
             story a<br />
             <em>voice.</em>
           </h2>
-          <VoicePresenter />
+          <VoicePresenter still={frame("voice")} />
         </div>
 
         <div className="voice-copy">

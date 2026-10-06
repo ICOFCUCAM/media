@@ -16,7 +16,7 @@ const LINES = [
   { code: "ES", lang: "Español", text: "Nuestra reina ha vuelto." },
 ];
 
-export function VoicePresenter() {
+export function VoicePresenter({ still }: { still?: string }) {
   const [i, setI] = useState(0);
 
   useEffect(() => {
@@ -29,11 +29,16 @@ export function VoicePresenter() {
   return (
     <figure className="vp-card" aria-label="A presenter recording narration, captioned in five languages">
       <div className="vp-stage">
-        <Presenter />
+        {still ? (
+          /* Plain <img>: the generated booth still from public/frames. */
+          <img src={still} alt="" className="vp-art still-fill" loading="lazy" />
+        ) : (
+          <Presenter />
+        )}
         <span className="vp-rec">● REC · Narrator · cloned voice</span>
         <div className="vp-caption" aria-live="polite">
           <span className="vp-lang">{line.lang}</span>
-          <span className="vp-line">{line.text}</span>
+          <span key={line.code} className="vp-line">{line.text}</span>
         </div>
       </div>
       <div className="vp-bar">
