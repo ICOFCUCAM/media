@@ -28,7 +28,7 @@ const TONE_TEXT: Record<Tone, string> = {
 /** A status line: a dot plus a mono label. */
 export function Status({ tone = "live", children, className = "" }: { tone?: Tone; children: ReactNode; className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-[0.1em] ${TONE_TEXT[tone]} ${className}`}>
+    <span className={`inline-flex items-center gap-2.5 font-sans text-[12px] font-medium uppercase tracking-[0.06em] ${TONE_TEXT[tone]} ${className}`}>
       <i className={`h-[7px] w-[7px] shrink-0 rounded-full ${TONE_DOT[tone]}`} aria-hidden />
       {children}
     </span>
@@ -53,7 +53,7 @@ export function PageHeader({
     <header className="grid gap-10 border-b border-cf-line pb-14 xl:grid-cols-[1.35fr_0.65fr] xl:gap-[8vw]">
       <div>
         <div className="cf-eyebrow mb-6">{eyebrow}</div>
-        <h1 className="cf-display text-[clamp(52px,7.5vw,128px)] leading-[0.84] [&_em]:italic">{title}</h1>
+        <h1 className="cf-display text-[clamp(44px,6.2vw,104px)] leading-[0.92] [&_em]:italic">{title}</h1>
       </div>
       <div className="max-w-[520px] self-end text-[15px] leading-[1.75] text-cf-muted [&_p+p]:mt-4 [&_strong]:font-normal [&_strong]:text-cf-fg">
         {copy}
@@ -123,9 +123,9 @@ export function SpecList({ rows, className = "" }: { rows: [ReactNode, ReactNode
   return (
     <dl className={`border-t border-cf-line ${className}`}>
       {rows.map(([k, v], i) => (
-        <div key={i} className="flex justify-between gap-5 border-b border-cf-line py-4 text-[11px]">
+        <div key={i} className="flex justify-between gap-5 border-b border-cf-line py-3.5 text-[13px]">
           <dt className="text-cf-muted">{k}</dt>
-          <dd className="text-right font-mono text-[9px] uppercase tracking-[0.08em] text-cf-fg">{v}</dd>
+          <dd className="text-right text-[13px] font-medium text-cf-fg">{v}</dd>
         </div>
       ))}
     </dl>
@@ -137,8 +137,8 @@ export function Control({ name, value, children }: { name: ReactNode; value?: Re
   return (
     <div className="mt-7 first:mt-0">
       <div className="mb-2.5 flex justify-between gap-4">
-        <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-cf-fg">{name}</span>
-        {value && <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-cf-muted">{value}</span>}
+        <span className="font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-fg">{name}</span>
+        {value && <span className="font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-muted">{value}</span>}
       </div>
       {children}
     </div>
@@ -148,10 +148,10 @@ export function Control({ name, value, children }: { name: ReactNode; value?: Re
 /** The inverse call-to-action band that closes a workspace. */
 export function ActionBand({ title, copy, children }: { title: ReactNode; copy?: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-6 bg-cf-inverse p-8 text-cf-on-inverse sm:flex-row sm:items-center sm:justify-between sm:p-10">
+    <div className="flex flex-col gap-6 rounded-lg border border-cf-line2 border-l-4 border-l-cf-accent bg-cf-panel p-8 sm:flex-row sm:items-center sm:justify-between sm:p-10">
       <div>
         <h2 className="cf-display text-[clamp(26px,3vw,36px)] leading-[1.05] [&_em]:italic">{title}</h2>
-        {copy && <p className="mt-2 max-w-xl text-[13px] leading-relaxed opacity-60">{copy}</p>}
+        {copy && <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-cf-muted">{copy}</p>}
       </div>
       <div className="flex shrink-0 flex-wrap gap-2">{children}</div>
     </div>

@@ -114,7 +114,7 @@ export function CreateStudio(props: CreateStudioProps) {
             locations, scenes, score and the final cut.
           </p>
 
-          <label htmlFor={`brief-${props.kind}`} className="mb-2.5 mt-11 block font-mono text-[9px] uppercase tracking-[0.1em]">
+          <label htmlFor={`brief-${props.kind}`} className="mb-2.5 mt-11 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">
             What do you want to make?
           </label>
           <textarea
@@ -262,7 +262,7 @@ export function CreateStudio(props: CreateStudioProps) {
               : "Your direction becomes the production brief. Sign in to run the real studio; otherwise this previews the flow."
           }
         >
-          <button type="button" onClick={reset} className="cf-btn border border-white/20 text-cf-on-inverse hover:border-white/50">
+          <button type="button" onClick={reset} className="cf-btn-line">
             Reset
           </button>
           <button type="button" onClick={onCreate} disabled={running || !prompt.trim()} className="cf-btn-accent">
@@ -289,7 +289,7 @@ function BibleCard({ kind, name, desc }: { kind: string; name: string; desc: str
   return (
     <div className="bg-cf-bg p-5">
       <div className="cf-label">{kind}</div>
-      <div className="mt-3 font-serif text-[20px] leading-tight">{name}</div>
+      <div className="mt-3 font-display font-semibold text-[20px] leading-tight">{name}</div>
       <div className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-cf-muted">{desc}</div>
     </div>
   );

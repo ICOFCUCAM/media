@@ -44,10 +44,10 @@ export function CreateGate() {
                 className={`flex min-h-[200px] flex-col p-6 text-left transition ${on ? "bg-cf-inverse text-cf-on-inverse" : "bg-cf-bg hover:bg-cf-soft"}`}
               >
                 <span className="flex items-center justify-between">
-                  <span className="font-mono text-[9px] opacity-60">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="font-mono text-[11px] opacity-60">{String(i + 1).padStart(2, "0")}</span>
                   <span className={`h-2 w-2 rounded-full ${on ? "bg-cf-accent" : "border border-cf-line"}`} aria-hidden />
                 </span>
-                <span className="mt-auto pt-10 font-serif text-[30px] leading-none tracking-[-0.04em]">{t.title}</span>
+                <span className="mt-auto pt-10 font-display font-semibold text-[30px] leading-none tracking-[-0.04em]">{t.title}</span>
                 <span className="mt-3 text-[12px] leading-relaxed opacity-60">{t.blurb}</span>
               </button>
             );
@@ -69,11 +69,11 @@ export function CreateGate() {
                 onClick={() => setMode(m)}
                 className={`flex min-h-[170px] flex-col p-5 text-left transition ${on ? "bg-cf-inverse text-cf-on-inverse" : "bg-cf-bg hover:bg-cf-soft"}`}
               >
-                <span className="flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.08em]">
+                <span className="flex items-center justify-between font-sans text-[11px] font-medium uppercase tracking-[0.06em]">
                   <span className="opacity-60">{String(i + 1).padStart(2, "0")}</span>
                   {m.status !== "live" && <span className={on ? "text-cf-accent" : "text-cf-warn"}>{m.status}</span>}
                 </span>
-                <span className="mt-auto pt-8 font-serif text-[21px] leading-tight tracking-[-0.03em]">{m.title}</span>
+                <span className="mt-auto pt-8 font-display font-semibold text-[21px] leading-tight tracking-[-0.03em]">{m.title}</span>
                 <span className="mt-2 text-[11px] leading-relaxed opacity-60">{m.blurb}</span>
               </button>
             );

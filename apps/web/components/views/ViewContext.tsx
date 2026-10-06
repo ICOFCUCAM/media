@@ -38,11 +38,11 @@ export function ViewContext({ slug }: { slug: (typeof VIEWS)[number]["slug"] }) 
               aria-current={on ? "page" : undefined}
               className={`flex min-h-[150px] flex-col p-6 transition ${on ? "bg-cf-inverse text-cf-on-inverse" : "bg-cf-bg hover:bg-cf-soft"}`}
             >
-              <span className="flex justify-between font-mono text-[9px] opacity-60">
+              <span className="flex justify-between font-mono text-[11px] opacity-60">
                 <span>{String(i + 1).padStart(2, "0")}</span>
                 {on && <span className="text-cf-accent opacity-100">Current</span>}
               </span>
-              <span className="mt-auto font-serif text-[30px] leading-none tracking-[-0.03em]">{v.title}</span>
+              <span className="mt-auto font-display font-semibold text-[30px] leading-none tracking-[-0.03em]">{v.title}</span>
               <span className="mt-2 text-[12px] opacity-60">{v.blurb}</span>
             </Link>
           );

@@ -95,12 +95,12 @@ function FilmWorkspace() {
             type="button"
             onClick={() => choose(m.id)}
             aria-pressed={mode === m.id}
-            className={`flex items-center justify-center gap-2 border-b border-r border-cf-line px-4 py-4 font-mono text-[9px] uppercase tracking-[0.08em] transition ${
+            className={`flex items-center justify-center gap-2 border-b border-r border-cf-line px-4 py-4 text-[14px] font-semibold transition ${
               mode === m.id ? "bg-cf-inverse text-cf-on-inverse" : "text-cf-muted hover:text-cf-fg"
             }`}
           >
             {m.label}
-            {m.status === "beta" && <span className={mode === m.id ? "text-cf-accent" : "text-cf-warn"}>beta</span>}
+            {m.status === "beta" && <span className={`text-[11px] font-medium uppercase tracking-[0.06em] ${mode === m.id ? "opacity-70" : "text-cf-warn"}`}>beta</span>}
           </button>
         ))}
       </nav>

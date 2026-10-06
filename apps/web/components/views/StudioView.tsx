@@ -100,13 +100,13 @@ export function StudioView() {
                 <tbody>
                   {projects.map((p, i) => (
                     <tr key={p.id} className="border-b border-cf-line">
-                      <td className="py-4 pr-4 font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(3, "0")}</td>
+                      <td className="py-4 pr-4 font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(3, "0")}</td>
                       <th scope="row" className="py-4 pr-4 font-normal">
-                        <Link href={`/projects/${p.id}`} className="font-serif text-[18px] hover:underline hover:decoration-cf-line hover:underline-offset-4">
+                        <Link href={`/projects/${p.id}`} className="font-display font-semibold text-[18px] hover:underline hover:decoration-cf-line hover:underline-offset-4">
                           {p.title}
                         </Link>
                       </th>
-                      <td className="py-4 pr-4 font-mono text-[10px]">{fmtDuration(p.target_seconds)}</td>
+                      <td className="py-4 pr-4 font-mono text-[12px]">{fmtDuration(p.target_seconds)}</td>
                       <td className="py-4 pr-4">
                         <span className="block h-[2px] w-24 bg-cf-line">
                           <span className="block h-full bg-cf-fg" style={{ width: `${Math.round(p.progress * 100)}%` }} />

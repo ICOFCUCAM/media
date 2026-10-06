@@ -96,7 +96,7 @@ export function BrandPage() {
                   ref={fileRef}
                   type="file"
                   accept="image/*"
-                  className="w-full text-[11px] text-cf-muted file:mr-3 file:border file:border-cf-line file:bg-transparent file:px-3 file:py-2 file:font-mono file:text-[9px] file:uppercase file:tracking-[0.1em] file:text-cf-fg"
+                  className="w-full text-[11px] text-cf-muted file:mr-3 file:border file:border-cf-line file:bg-transparent file:px-3 file:py-2 file:font-mono file:text-[11px] file:uppercase file:tracking-[0.1em] file:text-cf-fg"
                 />
                 <div className="mt-7 grid grid-cols-2 gap-4">
                   <label className="block">
@@ -109,7 +109,7 @@ export function BrandPage() {
                   </label>
                 </div>
                 <label htmlFor="brand-outro" className="cf-label mb-2 mt-7 block text-cf-fg">Outro line · closes every final cut</label>
-                <input id="brand-outro" value={outro} onChange={(e) => setOutro(e.target.value)} placeholder="A film by Your Studio" className="cf-input font-serif text-[18px]" />
+                <input id="brand-outro" value={outro} onChange={(e) => setOutro(e.target.value)} placeholder="A film by Your Studio" className="cf-input font-display font-semibold text-[18px]" />
                 <div className="mt-8 flex items-center gap-4">
                   <button type="submit" disabled={busy} className="cf-btn-ink">
                     {busy ? "Saving…" : "Save brand kit"}
@@ -127,7 +127,7 @@ export function BrandPage() {
                       /* Plain <img>: a signed, short-lived storage URL. */
                       <img src={logoUrl} alt="Your logo" className="w-1/4 object-contain" />
                     ) : (
-                      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-white/50">No logo yet</span>
+                      <span className="font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-white/50">No logo yet</span>
                     )}
                   </div>
                   {outro.trim() && <span className="absolute inset-x-6 bottom-[16%] text-center font-sans text-[15px]">{outro}</span>}

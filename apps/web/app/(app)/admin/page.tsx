@@ -55,12 +55,12 @@ export default function AdminPage() {
           {SUBSYSTEMS.map((s, i) => (
             <a key={s.name} href={`${REPO}/${s.doc}`} className="flex min-h-[220px] flex-col bg-cf-bg p-6 transition hover:bg-cf-soft">
               <div className="flex items-center justify-between gap-3">
-                <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
                 <Status tone={s.status === "Implemented" ? "ok" : s.status === "Stubbed" ? "warn" : "idle"}>{s.status}</Status>
               </div>
-              <h3 className="mt-6 font-serif text-[21px] leading-tight tracking-[-0.02em]">{s.name}</h3>
+              <h3 className="mt-6 font-display font-semibold text-[21px] leading-tight tracking-[-0.02em]">{s.name}</h3>
               <p className="mt-2 text-[12px] leading-relaxed text-cf-muted">{s.blurb}</p>
-              <p className="mt-auto pt-4 font-mono text-[10px] text-cf-dim">{s.doc} ↗</p>
+              <p className="mt-auto pt-4 font-mono text-[12px] text-cf-dim">{s.doc} ↗</p>
             </a>
           ))}
         </div>
@@ -70,7 +70,7 @@ export default function AdminPage() {
         <ol className="grid border-t border-cf-fg sm:grid-cols-2">
           {LIFECYCLE.map((step, i) => (
             <li key={i} className="grid grid-cols-[40px_1fr] border-b border-cf-line py-4 pr-6">
-              <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+              <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
               <span className="font-mono text-[11px] leading-relaxed">{step}</span>
             </li>
           ))}

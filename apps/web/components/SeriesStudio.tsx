@@ -69,14 +69,14 @@ export function SeriesStudio() {
         <Split>
           <Cell>
             <div className="flex items-center justify-between">
-              <label htmlFor="series-premise" className="font-mono text-[9px] uppercase tracking-[0.1em]">Premise</label>
+              <label htmlFor="series-premise" className="font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Premise</label>
               <span className="cf-label">Required</span>
             </div>
             <textarea id="series-premise" value={premise} onChange={(e) => setPremise(e.target.value)} rows={4} className="cf-input mt-2.5 resize-y p-5 leading-[1.7]" />
             <p className="cf-label mt-3 leading-relaxed">The premise founds the season architecture, episode outlines, cast, locations and the production run.</p>
 
             <div className="mt-12 flex items-end justify-between gap-4 border-b border-cf-fg pb-3">
-              <span className="font-mono text-[9px] uppercase tracking-[0.1em]">
+              <span className="font-sans text-[11px] font-medium uppercase tracking-[0.06em]">
                 Season {String(seasons).padStart(2, "0")} / Episodes
               </span>
               <span className="cf-label">{String(episodes.length).padStart(2, "0")} episodes</span>
@@ -84,13 +84,13 @@ export function SeriesStudio() {
             <ol>
               {episodes.map((e, i) => (
                 <li key={e.key} className="grid grid-cols-[36px_1fr_auto] gap-x-4 border-b border-cf-line py-5">
-                  <span className="pt-1 font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="pt-1 font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
                   <div className="min-w-0">
                     <input
                       value={e.title}
                       onChange={(ev) => patch(e.key, { title: ev.target.value })}
                       aria-label={`Episode ${i + 1} title`}
-                      className="w-full border-0 bg-transparent font-serif text-[22px] tracking-[-0.02em] text-cf-fg outline-none focus:underline focus:decoration-cf-line focus:underline-offset-8"
+                      className="w-full border-0 bg-transparent font-display font-semibold text-[22px] tracking-[-0.02em] text-cf-fg outline-none focus:underline focus:decoration-cf-line focus:underline-offset-8"
                     />
                     <input
                       value={e.logline}
@@ -105,7 +105,7 @@ export function SeriesStudio() {
                       value={e.minutes}
                       onChange={(ev) => patch(e.key, { minutes: Number(ev.target.value) })}
                       aria-label={`Episode ${i + 1} runtime`}
-                      className="border border-cf-line bg-cf-panel px-2 py-2 font-mono text-[10px] uppercase text-cf-fg outline-none focus:border-cf-fg"
+                      className="border border-cf-line bg-cf-panel px-2 py-2 font-mono text-[12px] uppercase text-cf-fg outline-none focus:border-cf-fg"
                     >
                       {[5, 10, 20, 30, 45].map((m) => (
                         <option key={m} value={m}>{m} min</option>
@@ -183,7 +183,7 @@ export function SeriesStudio() {
           title={<>Send the outline to <em>production.</em></>}
           copy={`${episodes.length} episodes · ${totalMin} minutes. The premise and every logline travel with the run.`}
         >
-          <button type="button" onClick={reset} className="cf-btn border border-white/20 text-cf-on-inverse hover:border-white/50">
+          <button type="button" onClick={reset} className="cf-btn-line">
             Reset
           </button>
           <button type="button" onClick={onCreate} disabled={running || !premise.trim() || episodes.length === 0} className="cf-btn-accent">

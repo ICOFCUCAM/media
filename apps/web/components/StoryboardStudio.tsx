@@ -329,7 +329,7 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
                 {live ? (persisted ? "Live · saved" : "Live · saves on first generate") : "Preview · sign in to save"}
               </span>
             </div>
-            <label htmlFor="board-brief" className="mb-2.5 mt-8 block font-mono text-[9px] uppercase tracking-[0.1em]">
+            <label htmlFor="board-brief" className="mb-2.5 mt-8 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">
               The brief
             </label>
             <textarea id="board-brief" value={brief} onChange={(e) => setBrief(e.target.value)} rows={3} className="cf-input resize-y p-5 leading-[1.7]" />
@@ -375,7 +375,7 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between border-b border-cf-line py-4 text-[11px]">
                   <dt className="text-cf-muted">{k}</dt>
-                  <dd className="font-mono text-[10px] uppercase">{v}</dd>
+                  <dd className="font-mono text-[12px] uppercase">{v}</dd>
                 </div>
               ))}
             </dl>
@@ -539,7 +539,7 @@ function SceneCard({
           onBlur={save}
           placeholder="Scene title"
           aria-label={`Scene ${s.index + 1} title`}
-          className="w-full border-0 border-b border-cf-line bg-transparent pb-2 font-serif text-[26px] tracking-[-0.03em] text-cf-fg outline-none placeholder:text-cf-dim focus:border-cf-fg"
+          className="w-full border-0 border-b border-cf-line bg-transparent pb-2 font-display font-semibold text-[26px] tracking-[-0.03em] text-cf-fg outline-none placeholder:text-cf-dim focus:border-cf-fg"
         />
         <label className="mt-5 block">
           <Label>Scene prompt</Label>
@@ -701,7 +701,7 @@ function SceneCard({
                     <ol className="mt-2 border-t border-cf-line">
                       {timeline.map((t) => (
                         <li key={t.index} className={`grid grid-cols-[40px_1fr] border-b border-cf-line py-2 text-[11px] ${t.index === s.index ? "text-cf-fg" : "text-cf-muted"}`}>
-                          <span className="font-mono text-[9px] text-cf-dim">S{t.index + 1}</span>
+                          <span className="font-mono text-[11px] text-cf-dim">S{t.index + 1}</span>
                           {t.event}
                         </li>
                       ))}
@@ -781,7 +781,7 @@ function SeedPreview({ scene: s }: { scene: SceneDraft }) {
 /* ── continuity UI bits ─────────────────────────────────────── */
 function ScoreBadge({ score }: { score: number }) {
   const tone = score >= 80 ? "text-cf-ok" : score >= 50 ? "text-cf-warn" : "text-cf-danger";
-  return <span className={`font-mono text-[10px] ${tone}`}>{score}%</span>;
+  return <span className={`font-mono text-[12px] ${tone}`}>{score}%</span>;
 }
 
 function Tag({ children }: { children: ReactNode }) {
@@ -824,7 +824,7 @@ function DetailField({
   );
 }
 function Label({ children }: { children: ReactNode }) {
-  return <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-cf-muted">{children}</span>;
+  return <span className="font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-muted">{children}</span>;
 }
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (

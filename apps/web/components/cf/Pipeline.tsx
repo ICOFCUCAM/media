@@ -23,10 +23,10 @@ export function Pipeline({ steps, status }: { steps: PipelineStep[]; status?: Pr
         const label = runAt < 0 ? step.idle ?? "Automatic" : status === "READY" || runAt > at ? "Done" : runAt === at ? "In progress" : "Queued";
         return (
           <li key={step.name} className="grid min-h-[60px] grid-cols-[40px_1fr_auto] items-center gap-3 border-b border-cf-line">
-            <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
-            <span className="font-serif text-[17px]">{step.name}</span>
+            <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+            <span className="font-display font-semibold text-[17px]">{step.name}</span>
             <span
-              className={`font-mono text-[9px] uppercase tracking-[0.08em] ${
+              className={`font-sans text-[11px] font-medium uppercase tracking-[0.06em] ${
                 label === "In progress" ? "text-cf-fg" : label === "Done" ? "text-cf-ok" : "text-cf-muted"
               }`}
             >

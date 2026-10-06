@@ -85,7 +85,7 @@ function Rail({ sections, active }: { sections: NavSection[]; active?: string })
               }`}
             >
               <FamilyIcon title={s.title} />
-              <span className="font-mono text-[8px] tracking-[0.12em]">{FAMILY_CODE[s.title] ?? s.title.slice(0, 2).toUpperCase()}</span>
+              <span className="font-mono text-[10px] tracking-[0.12em]">{FAMILY_CODE[s.title] ?? s.title.slice(0, 2).toUpperCase()}</span>
             </Link>
           );
         })}
@@ -155,7 +155,7 @@ function Navigator({ section, pathname }: { section: NavSection; pathname: strin
       <div className="flex h-[78px] items-end border-b border-cf-line px-6 pb-5">
         <div>
           <div className="cf-label">Cineforge</div>
-          <div className="mt-1 font-serif text-[22px] leading-none tracking-[-0.03em]">{section.title}</div>
+          <div className="mt-1 font-display font-semibold text-[22px] leading-none tracking-[-0.03em]">{section.title}</div>
         </div>
       </div>
       <nav className="flex-1 overflow-y-auto px-3 py-5">
@@ -170,7 +170,7 @@ function Navigator({ section, pathname }: { section: NavSection; pathname: strin
                 on ? "bg-cf-inverse text-cf-on-inverse" : "text-cf-muted hover:bg-cf-soft hover:text-cf-fg"
               }`}
             >
-              <span className={`font-mono text-[9px] ${on ? "opacity-60" : "text-cf-dim"}`}>{String(i + 1).padStart(2, "0")}</span>
+              <span className={`font-mono text-[11px] ${on ? "opacity-60" : "text-cf-dim"}`}>{String(i + 1).padStart(2, "0")}</span>
               {item.label}
             </Link>
           );
@@ -194,7 +194,7 @@ function Navigator({ section, pathname }: { section: NavSection; pathname: strin
               onClick={() => setRole(r.id as Role)}
               title={r.blurb}
               aria-pressed={role === r.id}
-              className={`py-2 font-mono text-[9px] uppercase tracking-[0.08em] transition ${
+              className={`py-2 font-sans text-[11px] font-medium uppercase tracking-[0.06em] transition ${
                 role === r.id ? "bg-cf-inverse text-cf-on-inverse" : "text-cf-muted hover:text-cf-fg"
               }`}
             >
@@ -216,7 +216,7 @@ function Topbar({ crumbs, onMenu, menuRef }: { crumbs: string[]; onMenu: () => v
         <button ref={menuRef} type="button" onClick={onMenu} className="cf-btn-line px-3 py-2 lg:hidden" aria-label="Open the studio index" aria-haspopup="dialog">
           Index
         </button>
-        <nav aria-label="Breadcrumb" className="min-w-0 truncate font-mono text-[10px] uppercase tracking-[0.14em] text-cf-muted">
+        <nav aria-label="Breadcrumb" className="min-w-0 truncate font-sans text-[12px] font-medium uppercase tracking-[0.06em] text-cf-muted">
           <Link href="/" className="hover:text-cf-fg">Cineforge</Link>
           {crumbs.map((c, i) => (
             <span key={c}>
@@ -237,7 +237,7 @@ function Account() {
 
   if (!enabled) {
     return (
-      <span className="hidden font-mono text-[9px] uppercase tracking-[0.1em] text-cf-muted sm:inline" title="Set NEXT_PUBLIC_SUPABASE_URL to persist work">
+      <span className="hidden font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-muted sm:inline" title="Set NEXT_PUBLIC_SUPABASE_URL to persist work">
         Preview studio
       </span>
     );
@@ -261,7 +261,7 @@ function Account() {
   return (
     <div className="flex items-center gap-3 sm:gap-5">
       {profile && (
-        <Link href="/pricing" className="hidden font-mono text-[9px] uppercase tracking-[0.1em] text-cf-muted hover:text-cf-fg sm:inline lg:hidden xl:inline">
+        <Link href="/pricing" className="hidden font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-muted hover:text-cf-fg sm:inline lg:hidden xl:inline">
           {profile.tier} · {msToCredits(profile.creditsMs).toLocaleString()} credits
         </Link>
       )}
@@ -304,7 +304,7 @@ function Drawer({ sections, pathname, onClose }: { sections: NavSection[]; pathn
                     key={item.href}
                     href={item.href}
                     aria-current={on ? "page" : undefined}
-                    className={`block py-2 font-serif text-[20px] tracking-[-0.02em] ${on ? "text-cf-fg" : "text-cf-muted"}`}
+                    className={`block py-2 font-display font-semibold text-[20px] tracking-[-0.02em] ${on ? "text-cf-fg" : "text-cf-muted"}`}
                   >
                     {item.label}
                   </Link>
@@ -328,7 +328,7 @@ function Drawer({ sections, pathname, onClose }: { sections: NavSection[]; pathn
                 type="button"
                 onClick={() => setRole(r.id as Role)}
                 aria-pressed={role === r.id}
-                className={`py-2.5 font-mono text-[9px] uppercase tracking-[0.08em] ${role === r.id ? "bg-cf-inverse text-cf-on-inverse" : "text-cf-muted"}`}
+                className={`py-2.5 font-sans text-[11px] font-medium uppercase tracking-[0.06em] ${role === r.id ? "bg-cf-inverse text-cf-on-inverse" : "text-cf-muted"}`}
               >
                 {r.id === "owner" ? "Studio" : r.id === "admin" ? "Super" : "Creator"}
               </button>

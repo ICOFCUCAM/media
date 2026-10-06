@@ -69,8 +69,8 @@ export function AssetLibrary({ children }: { children?: ReactNode }) {
               <form onSubmit={onCreate}>
                 <div className="cf-label">Catalogue an asset</div>
                 <h2 className="cf-display mt-8 text-[clamp(30px,3vw,42px)] leading-none">Add to the archive.</h2>
-                <label htmlFor="asset-name" className="mb-2 mt-7 block font-mono text-[9px] uppercase tracking-[0.1em]">Name</label>
-                <input id="asset-name" value={name} required onChange={(e) => setName(e.target.value)} placeholder="Royal carriage" className="cf-input font-serif text-[18px]" />
+                <label htmlFor="asset-name" className="mb-2 mt-7 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Name</label>
+                <input id="asset-name" value={name} required onChange={(e) => setName(e.target.value)} placeholder="Royal carriage" className="cf-input font-display font-semibold text-[18px]" />
                 <div className="mt-6">
                   <Control name="Category" value={category}>
                     <div className="flex flex-wrap gap-1.5" role="group" aria-label="Asset category">
@@ -82,7 +82,7 @@ export function AssetLibrary({ children }: { children?: ReactNode }) {
                     </div>
                   </Control>
                 </div>
-                <label htmlFor="asset-desc" className="mb-2 mt-6 block font-mono text-[9px] uppercase tracking-[0.1em]">Description</label>
+                <label htmlFor="asset-desc" className="mb-2 mt-6 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Description</label>
                 <textarea id="asset-desc" value={description} required onChange={(e) => setDescription(e.target.value)} placeholder="Materials, era, distinctive details…" rows={4} className="cf-input resize-y" />
                 <button type="submit" disabled={busy || !name || !description} className="cf-btn-accent mt-8">
                   {busy ? "Cataloguing…" : "Create asset"}
@@ -120,10 +120,10 @@ export function AssetLibrary({ children }: { children?: ReactNode }) {
                 {shown.map((a, i) => (
                   <article key={a.id} className="flex min-h-[200px] flex-col bg-cf-bg p-5">
                     <div className="flex justify-between">
-                      <span className="font-mono text-[9px] text-cf-muted">A / {String(i + 1).padStart(3, "0")}</span>
+                      <span className="font-mono text-[11px] text-cf-muted">A / {String(i + 1).padStart(3, "0")}</span>
                       <span className="cf-label">{a.category}</span>
                     </div>
-                    <h3 className="mt-auto pt-10 font-serif text-[24px] leading-tight tracking-[-0.03em]">{a.name}</h3>
+                    <h3 className="mt-auto pt-10 font-display font-semibold text-[24px] leading-tight tracking-[-0.03em]">{a.name}</h3>
                     <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-cf-muted">{a.description}</p>
                   </article>
                 ))}

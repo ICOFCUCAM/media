@@ -276,8 +276,8 @@ function Intake({
         <ol className="mt-9 border-t border-cf-line">
           {next.map((n, i) => (
             <li key={n} className="grid min-h-[60px] grid-cols-[40px_1fr] items-center gap-3 border-b border-cf-line">
-              <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
-              <span className="font-serif text-[17px] leading-snug">{n}</span>
+              <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+              <span className="font-display font-semibold text-[17px] leading-snug">{n}</span>
             </li>
           ))}
         </ol>
@@ -321,7 +321,7 @@ function Drop({
   return (
     <div className="border border-dashed border-cf-line px-6 py-10 text-center">
       <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={(e) => onPick(e.target.files?.[0] ?? null)} />
-      <p className="font-serif text-[22px] leading-tight">{name ?? empty}</p>
+      <p className="font-display font-semibold text-[22px] leading-tight">{name ?? empty}</p>
       {name && <p className="cf-label mt-2">Loaded</p>}
       <button type="button" onClick={() => inputRef.current?.click()} className="cf-btn-line mt-5">
         {name ? "Choose another" : "Choose file"}

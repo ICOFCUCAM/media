@@ -40,8 +40,8 @@ export function MarketplaceVoices() {
         <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 lg:grid-cols-4">
           {voices.map((v, i) => (
             <article key={v.id} className="flex min-h-[170px] flex-col bg-cf-bg p-5">
-              <span className="font-mono text-[9px] text-cf-muted">V / {String(i + 1).padStart(3, "0")}</span>
-              <h3 className="mt-auto truncate pt-8 font-serif text-[24px] tracking-[-0.03em]">{v.name}</h3>
+              <span className="font-mono text-[11px] text-cf-muted">V / {String(i + 1).padStart(3, "0")}</span>
+              <h3 className="mt-auto truncate pt-8 font-display font-semibold text-[24px] tracking-[-0.03em]">{v.name}</h3>
               <p className="mt-2 line-clamp-2 text-[11px] text-cf-muted">{v.share_terms || "No terms specified"}</p>
             </article>
           ))}

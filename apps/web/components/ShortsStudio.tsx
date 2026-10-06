@@ -67,9 +67,9 @@ export function ShortsStudio() {
                 onClick={() => pickPlatform(p.id)}
                 className={`flex min-h-[120px] flex-col p-4 text-left transition ${on ? "bg-cf-inverse text-cf-on-inverse" : "bg-cf-bg hover:bg-cf-soft"}`}
               >
-                <span className="font-mono text-[9px] opacity-60">{String(i + 1).padStart(2, "0")}</span>
-                <span className="mt-auto font-serif text-[19px] leading-tight">{p.name}</span>
-                <span className="mt-1 font-mono text-[9px] uppercase opacity-60">
+                <span className="font-mono text-[11px] opacity-60">{String(i + 1).padStart(2, "0")}</span>
+                <span className="mt-auto font-display font-semibold text-[19px] leading-tight">{p.name}</span>
+                <span className="mt-1 font-mono text-[11px] uppercase opacity-60">
                   {p.aspect} · up to {Math.max(...p.durations)}s
                 </span>
               </button>
@@ -81,17 +81,17 @@ export function ShortsStudio() {
       <Section label="02 — Short architecture" title="Define the piece.">
         <Split>
           <Cell>
-            <label htmlFor="short-hook" className="flex justify-between font-mono text-[9px] uppercase tracking-[0.1em]">
+            <label htmlFor="short-hook" className="flex justify-between font-sans text-[11px] font-medium uppercase tracking-[0.06em]">
               <span>The opening hook</span>
               <span className="text-cf-muted">First 2 seconds</span>
             </label>
-            <input id="short-hook" value={hook} onChange={(e) => setHook(e.target.value)} className="cf-input mt-2.5 font-serif text-[20px]" />
+            <input id="short-hook" value={hook} onChange={(e) => setHook(e.target.value)} className="cf-input mt-2.5 font-display font-semibold text-[20px]" />
             <p className="cf-label mt-3 leading-relaxed">The opening frame and first line give the audience a reason to keep watching.</p>
 
-            <label htmlFor="short-caption" className="mt-9 block font-mono text-[9px] uppercase tracking-[0.1em]">Caption</label>
+            <label htmlFor="short-caption" className="mt-9 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Caption</label>
             <textarea id="short-caption" value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} placeholder="On-screen / post caption" className="cf-input mt-2.5 resize-y" />
 
-            <label htmlFor="short-tags" className="mt-7 block font-mono text-[9px] uppercase tracking-[0.1em]">Hashtags</label>
+            <label htmlFor="short-tags" className="mt-7 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Hashtags</label>
             <input id="short-tags" value={hashtags} onChange={(e) => setHashtags(e.target.value)} className="cf-input mt-2.5" />
 
             <div className="mt-9">
@@ -112,7 +112,7 @@ export function ShortsStudio() {
                 style={{ aspectRatio: platform.aspect.replace(":", " / ") }}
                 aria-hidden
               >
-                <span className="font-serif text-[13px] leading-snug">{hook}</span>
+                <span className="font-display font-semibold text-[13px] leading-snug">{hook}</span>
               </div>
             </div>
             <SpecList className="mt-8" rows={[["Platform", platform.name], ["Format", `${platform.aspect} · ${seconds}s`], ["Engine", "Wan 2.1"]]} />
@@ -145,7 +145,7 @@ export function ShortsStudio() {
 
       <div className="mt-14">
         <ActionBand title={<>Make it for <em>{platform.name}.</em></>} copy={`${platform.aspect} · ${seconds}s · opens on “${hook}”.`}>
-          <button type="button" onClick={reset} className="cf-btn border border-white/20 text-cf-on-inverse hover:border-white/50">
+          <button type="button" onClick={reset} className="cf-btn-line">
             Reset
           </button>
           <button type="button" onClick={onCreate} disabled={running || !hook.trim()} className="cf-btn-accent">

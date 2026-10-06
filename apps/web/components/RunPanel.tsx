@@ -54,7 +54,7 @@ export function RunPanel({
           <li
             key={s}
             aria-current={i === idx ? "step" : undefined}
-            className={`flex items-center justify-between gap-2 border-b border-r border-cf-line px-4 py-4 font-mono text-[9px] uppercase tracking-[0.1em] ${
+            className={`flex items-center justify-between gap-2 border-b border-r border-cf-line px-4 py-4 font-sans text-[11px] font-medium uppercase tracking-[0.06em] ${
               i === idx ? "bg-cf-inverse text-cf-on-inverse" : i < idx ? "text-cf-fg" : "text-cf-dim"
             }`}
           >
@@ -165,12 +165,12 @@ function SceneCard({ scene }: { scene: LiveScene }) {
   return (
     <div className="bg-cf-bg p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="truncate font-serif text-[16px]">
-          <span className="mr-2 font-mono text-[9px] text-cf-muted">{String(scene.index + 1).padStart(2, "0")}</span>
+        <span className="truncate font-display font-semibold text-[16px]">
+          <span className="mr-2 font-mono text-[11px] text-cf-muted">{String(scene.index + 1).padStart(2, "0")}</span>
           {scene.heading ?? `Scene ${scene.index + 1}`}
         </span>
         <span
-          className={`flex shrink-0 items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.08em] ${
+          className={`flex shrink-0 items-center gap-1.5 font-sans text-[11px] font-medium uppercase tracking-[0.06em] ${
             scene.status === "READY" ? "text-cf-ok" : active ? "text-cf-fg" : "text-cf-muted"
           }`}
         >
@@ -194,7 +194,7 @@ function ShotTile({ shot }: { shot: LiveShot }) {
         {/* Plain <img>: a signed, short-lived storage URL next/image cannot optimise. */}
         <img src={shot.thumbUrl} alt={`Shot ${shot.index + 1}`} className="h-full w-full object-cover" />
         {shot.gpuMs ? (
-          <span className="absolute bottom-0.5 right-1 bg-black/70 px-1 font-mono text-[8px] text-white/80">{Math.round(shot.gpuMs / 1000)}s</span>
+          <span className="absolute bottom-0.5 right-1 bg-black/70 px-1 font-mono text-[10px] text-white/80">{Math.round(shot.gpuMs / 1000)}s</span>
         ) : null}
       </div>
     );
@@ -225,7 +225,7 @@ function Timeline({ events }: { events: { at: number; label: string }[] }) {
       <ol className="mt-3">
         {events.map((e, i) => (
           <li key={i} className="grid grid-cols-[80px_1fr] gap-3 border-b border-cf-line py-2.5 text-[12px]">
-            <span className="font-mono text-[10px] text-cf-muted">{new Date(e.at).toLocaleTimeString([], { hour12: false })}</span>
+            <span className="font-mono text-[12px] text-cf-muted">{new Date(e.at).toLocaleTimeString([], { hour12: false })}</span>
             <span className={i === events.length - 1 ? "text-cf-fg" : "text-cf-muted"}>{e.label}</span>
           </li>
         ))}
@@ -356,7 +356,7 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
   return (
     <div className="border-b border-r border-cf-line px-4 py-5">
       <dt className="cf-label">{label}</dt>
-      <dd className={`mt-2 font-serif text-[28px] leading-none tracking-[-0.03em] ${accent ? "text-cf-ok" : ""}`}>{value}</dd>
+      <dd className={`mt-2 font-display font-semibold text-[28px] leading-none tracking-[-0.03em] ${accent ? "text-cf-ok" : ""}`}>{value}</dd>
     </div>
   );
 }

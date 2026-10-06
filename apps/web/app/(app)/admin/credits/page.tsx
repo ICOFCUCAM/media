@@ -127,7 +127,7 @@ export default function AdminCreditsPage() {
                   <tbody>
                     {users.map((u) => (
                       <tr key={u.id} className="border-b border-cf-line">
-                        <th scope="row" className="py-4 pr-4 text-left font-serif text-[17px] font-normal">
+                        <th scope="row" className="py-4 pr-4 text-left font-display font-semibold text-[17px] font-normal">
                           {u.email}
                           {u.role === "ADMIN" && <span className="cf-label ml-3">admin</span>}
                         </th>

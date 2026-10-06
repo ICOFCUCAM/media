@@ -39,8 +39,8 @@ export default function MarketplacePage() {
             const open = c.id === "voices";
             return (
               <li key={c.id} className="grid gap-3 border-b border-cf-line py-5 md:grid-cols-[44px_1fr_1.4fr_auto] md:items-center">
-                <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
-                <span className="font-serif text-[22px] tracking-[-0.02em]">{c.name}</span>
+                <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                <span className="font-display font-semibold text-[22px] tracking-[-0.02em]">{c.name}</span>
                 <span className="text-[13px] text-cf-muted">{c.blurb}</span>
                 <Status tone={open ? "live" : "idle"}>{open ? "Open · community" : "Not open yet"}</Status>
               </li>
@@ -58,7 +58,7 @@ export default function MarketplacePage() {
           ].map(([k, v]) => (
             <div key={k} className="min-h-[150px] bg-cf-bg p-6">
               <div className="cf-label">{k}</div>
-              <p className="mt-8 font-serif text-[18px] leading-snug">{v}</p>
+              <p className="mt-8 font-display font-semibold text-[18px] leading-snug">{v}</p>
             </div>
           ))}
         </div>

@@ -217,7 +217,7 @@ export function VoiceLab() {
   const readyVoices = [...(voices ?? []).filter((v) => v.status === "READY"), ...(community ?? [])];
 
   const fileCls =
-    "w-full text-[11px] text-cf-muted file:mr-3 file:border file:border-cf-line file:bg-transparent file:px-3 file:py-2 file:font-mono file:text-[9px] file:uppercase file:tracking-[0.1em] file:text-cf-fg hover:file:border-cf-fg";
+    "w-full text-[11px] text-cf-muted file:mr-3 file:border file:border-cf-line file:bg-transparent file:px-3 file:py-2 file:font-mono file:text-[11px] file:uppercase file:tracking-[0.1em] file:text-cf-fg hover:file:border-cf-fg";
   return (
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
       <PageHeader
@@ -256,7 +256,7 @@ export function VoiceLab() {
                   {(voices ?? []).map((v) => (
                     <li key={v.id} className="border-b border-cf-line py-3">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="truncate font-serif text-[17px]">{v.name}</span>
+                        <span className="truncate font-display font-semibold text-[17px]">{v.name}</span>
                         <StatusChip status={v.status} error={v.error_message} />
                       </div>
                       {v.status === "READY" && (
@@ -366,7 +366,7 @@ export function VoiceLab() {
                   {pendingReview!.map((v) => (
                     <li key={v.id} className="flex items-center justify-between gap-3 border-b border-cf-line py-3">
                       <div className="min-w-0">
-                        <div className="truncate font-serif text-[17px]">{v.name}</div>
+                        <div className="truncate font-display font-semibold text-[17px]">{v.name}</div>
                         <div className="truncate text-[11px] text-cf-muted">Terms: {v.share_terms || "—"}</div>
                       </div>
                       <div className="flex shrink-0 gap-2">
@@ -389,7 +389,7 @@ export function VoiceLab() {
                 <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 lg:grid-cols-3">
                   {community!.map((v) => (
                     <div key={v.id} className="bg-cf-bg px-4 py-3">
-                      <div className="truncate font-serif text-[17px]">{v.name}</div>
+                      <div className="truncate font-display font-semibold text-[17px]">{v.name}</div>
                       <div className="truncate text-[11px] text-cf-muted" title={v.share_terms ?? undefined}>
                         {v.share_terms || "No terms specified"}
                       </div>
@@ -433,7 +433,7 @@ export function VoiceLab() {
 function Dept({ n, title, copy }: { n: string; title: string; copy: string }) {
   return (
     <div>
-      <span className="font-mono text-[9px] text-cf-muted">{n}</span>
+      <span className="font-mono text-[11px] text-cf-muted">{n}</span>
       <h3 className="cf-display mt-4 text-[30px] leading-none">{title}</h3>
       <p className="mt-2 text-[12px] leading-relaxed text-cf-muted">{copy}</p>
     </div>
@@ -450,7 +450,7 @@ function VoiceoverCard({ row, voices, onDelete }: { row: VoiceoverRow; voices: V
   return (
     <li className="grid gap-3 border-b border-cf-line py-4 md:grid-cols-[1fr_1.2fr_auto] md:items-center">
       <div className="min-w-0">
-        <div className="truncate font-serif text-[19px]">{row.title}</div>
+        <div className="truncate font-display font-semibold text-[19px]">{row.title}</div>
         <div className="cf-label mt-1">
           {voiceName} · {lang}
         </div>
@@ -479,7 +479,7 @@ function AvatarCard({ row, onDelete }: { row: AvatarRow; onDelete: () => void })
         </div>
       )}
       <div className="mt-3 flex items-center justify-between gap-2">
-        <div className="truncate font-serif text-[17px]">{row.title}</div>
+        <div className="truncate font-display font-semibold text-[17px]">{row.title}</div>
         <span className="flex shrink-0 items-center gap-3">
           <StatusChip status={row.status} error={row.error_message} />
           <DeleteBtn label={row.title} onDelete={onDelete} />

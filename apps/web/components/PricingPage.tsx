@@ -98,14 +98,14 @@ export function PricingPage() {
                 className={`flex min-h-[520px] flex-col border-b border-r border-cf-line p-6 ${orphan ? "md:col-span-2 xl:col-span-1" : ""} ${p.highlight ? "bg-cf-inverse text-cf-on-inverse" : "bg-cf-bg"}`}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="font-mono text-[10px] uppercase tracking-[0.12em]">{p.name}</h2>
+                  <h2 className="font-sans text-[12px] font-medium uppercase tracking-[0.06em]">{p.name}</h2>
                   {current ? (
-                    <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-cf-ok">Your plan</span>
+                    <span className="font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-ok">Your plan</span>
                   ) : (
-                    p.highlight && <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-cf-accent">Most chosen</span>
+                    p.highlight && <span className="font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-accent">Most chosen</span>
                   )}
                 </div>
-                <div className="mt-9 font-serif text-[46px] leading-none tracking-[-0.05em]">
+                <div className="mt-9 font-display font-semibold text-[46px] leading-none tracking-[-0.05em]">
                   ${p.priceMonthly}
                   <span className="ml-1 font-sans text-[12px] tracking-normal opacity-50">/mo</span>
                 </div>
@@ -149,7 +149,7 @@ export function PricingPage() {
             >
               <span className="cf-label">{busy === t.id ? "Opening checkout…" : "Credit pack"}</span>
               <span className="cf-display mt-auto text-[40px] leading-none">{t.credits.toLocaleString()}</span>
-              <span className="mt-2 flex justify-between font-mono text-[10px] uppercase tracking-[0.1em]">
+              <span className="mt-2 flex justify-between font-sans text-[12px] font-medium uppercase tracking-[0.06em]">
                 <span className="text-cf-muted">credits</span>
                 <span>${t.price}</span>
               </span>
@@ -166,8 +166,8 @@ export function PricingPage() {
           {FAQ.map((f, i) => (
             <details key={f.q} className="group border-b border-cf-line">
               <summary className="grid cursor-pointer list-none grid-cols-[44px_1fr_auto] items-center gap-4 py-5">
-                <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
-                <span className="font-serif text-[20px] tracking-[-0.02em]">{f.q}</span>
+                <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                <span className="font-display font-semibold text-[20px] tracking-[-0.02em]">{f.q}</span>
                 <span className="cf-label group-open:hidden">+</span>
                 <span className="cf-label hidden group-open:inline">−</span>
               </summary>

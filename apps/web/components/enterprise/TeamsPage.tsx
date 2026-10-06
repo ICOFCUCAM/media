@@ -135,7 +135,7 @@ export function TeamsPage() {
           <Section label="Members" title={`${String(active).padStart(2, "0")} in the company`}>
             <ol className="border-t border-cf-fg">
               <li className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-cf-line py-4 md:grid-cols-[1.4fr_0.6fr_0.6fr_80px]">
-                <span className="font-serif text-[19px]">You</span>
+                <span className="font-display font-semibold text-[19px]">You</span>
                 <span className="cf-label hidden md:block">Owner</span>
                 <Status tone="ok">Active</Status>
                 <span className="hidden md:block" />
@@ -143,7 +143,7 @@ export function TeamsPage() {
               {(invites ?? []).map((i) => (
                 <li key={i.id} className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-cf-line py-4 md:grid-cols-[1.4fr_0.6fr_0.6fr_80px]">
                   <span className="min-w-0">
-                    <span className="block truncate font-serif text-[19px]">{i.email}</span>
+                    <span className="block truncate font-display font-semibold text-[19px]">{i.email}</span>
                     <span className="cf-label mt-1 block md:hidden">{i.role.toLowerCase()}</span>
                   </span>
                   <span className="cf-label hidden md:block">{i.role.charAt(0) + i.role.slice(1).toLowerCase()}</span>

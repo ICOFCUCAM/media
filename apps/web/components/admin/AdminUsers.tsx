@@ -77,7 +77,7 @@ export function AdminUsers() {
         <tbody>
           {(rows ?? []).map((r) => (
             <tr key={r.id} className="border-b border-cf-line">
-              <th scope="row" className="max-w-[260px] truncate py-4 pr-4 text-left font-serif text-[17px] font-normal">
+              <th scope="row" className="max-w-[260px] truncate py-4 pr-4 text-left font-display font-semibold text-[17px] font-normal">
                 {r.email}
               </th>
               <td className="py-4 pr-4">
@@ -88,7 +88,7 @@ export function AdminUsers() {
                   value={r.tier}
                   onChange={(e) => void setTier(r.id, e.target.value)}
                   aria-label={`Tier for ${r.email}`}
-                  className="border border-cf-line bg-cf-panel px-2 py-1.5 font-mono text-[10px] uppercase text-cf-fg outline-none focus:border-cf-fg"
+                  className="border border-cf-line bg-cf-panel px-2 py-1.5 font-mono text-[12px] uppercase text-cf-fg outline-none focus:border-cf-fg"
                 >
                   {TIERS.map((t) => (
                     <option key={t} value={t}>{t}</option>

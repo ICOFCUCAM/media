@@ -97,7 +97,7 @@ export function StreamingChannel() {
                 <div className="mb-5 flex items-end justify-between gap-4">
                   <div>
                     <div className="cf-label">Featured screening</div>
-                    <div className="mt-2 font-serif text-[28px] leading-none tracking-[-0.03em]">{current?.title}</div>
+                    <div className="mt-2 font-display font-semibold text-[28px] leading-none tracking-[-0.03em]">{current?.title}</div>
                   </div>
                   <span className="cf-label">Master / {fmtDuration(Math.round(current?.duration ?? 0))}</span>
                 </div>
@@ -147,9 +147,9 @@ export function StreamingChannel() {
                           aria-pressed={on}
                           className={`grid w-full grid-cols-[44px_1fr_auto] items-center gap-4 px-2 py-5 text-left transition ${on ? "bg-cf-soft" : "hover:bg-cf-soft/60"}`}
                         >
-                          <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                          <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
                           <span className="min-w-0">
-                            <span className="block truncate font-serif text-[19px]">{t.title}</span>
+                            <span className="block truncate font-display font-semibold text-[19px]">{t.title}</span>
                             <span className="cf-label mt-1 block">
                               {fmtDuration(Math.round(t.duration))}
                               {t.locales.length ? ` · ${t.locales.length + 1} languages` : ""}
@@ -173,7 +173,7 @@ export function StreamingChannel() {
                   ].map(([k, v, note]) => (
                     <div key={k} className="min-h-[160px] bg-cf-bg p-5">
                       <div className="cf-label">{k}</div>
-                      <div className="mt-8 font-serif text-[22px] tracking-[-0.03em]">{v}</div>
+                      <div className="mt-8 font-display font-semibold text-[22px] tracking-[-0.03em]">{v}</div>
                       <p className="mt-1.5 text-[11px] text-cf-muted">{note}</p>
                     </div>
                   ))}

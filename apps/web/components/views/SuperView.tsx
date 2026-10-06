@@ -103,8 +103,8 @@ export function SuperView() {
               <ol className="border-t border-cf-fg">
                 {SUBSYSTEMS.map((s, i) => (
                   <li key={s.name} className="grid gap-3 border-b border-cf-line py-4 md:grid-cols-[36px_1fr_auto] md:items-center">
-                    <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
-                    <span className="font-serif text-[18px]">{s.name}</span>
+                    <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                    <span className="font-display font-semibold text-[18px]">{s.name}</span>
                     <Status tone={s.status === "Implemented" ? "ok" : s.status === "Stubbed" ? "warn" : "idle"}>{s.status}</Status>
                   </li>
                 ))}

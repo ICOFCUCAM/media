@@ -67,7 +67,7 @@ export function CreatorView() {
                   {ordered.map((p) => (
                     <li key={p.id} className="border-b border-cf-line">
                       <Link href={`/projects/${p.id}`} className="grid grid-cols-[1fr_auto] items-center gap-4 py-4 hover:bg-cf-soft/60">
-                        <span className="truncate font-serif text-[20px]">{p.title}</span>
+                        <span className="truncate font-display font-semibold text-[20px]">{p.title}</span>
                         <Status tone={ACTIVE.has(p.status) ? "live" : p.status === "READY" ? "ok" : p.status === "FAILED" ? "danger" : "idle"}>{p.status.toLowerCase()}</Status>
                       </Link>
                     </li>
@@ -85,7 +85,7 @@ export function CreatorView() {
                 ].map(([k, v, href]) => (
                   <li key={k as string} className="border-b border-cf-line">
                     <Link href={href as string} className="flex items-baseline justify-between py-4 hover:bg-cf-soft/60">
-                      <span className="font-serif text-[20px]">{k}</span>
+                      <span className="font-display font-semibold text-[20px]">{k}</span>
                       <span className="cf-display text-[32px] leading-none">{v ?? "—"}</span>
                     </Link>
                   </li>

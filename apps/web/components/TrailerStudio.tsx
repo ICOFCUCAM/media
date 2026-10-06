@@ -55,7 +55,7 @@ export function TrailerStudio() {
         <Split>
           <Cell>
             <div className="flex items-center justify-between">
-              <label htmlFor="trailer-subject" className="font-mono text-[9px] uppercase tracking-[0.1em]">Source / story</label>
+              <label htmlFor="trailer-subject" className="font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Source / story</label>
               <span className="cf-label">Required</span>
             </div>
             <textarea id="trailer-subject" value={subject} onChange={(e) => setSubject(e.target.value)} rows={4} className="cf-input mt-2.5 resize-y p-5 leading-[1.7]" />
@@ -113,7 +113,7 @@ export function TrailerStudio() {
 
       <div className="mt-14">
         <ActionBand title={<>Make the <em>cut.</em></>} copy={`${type} trailer · ${seconds}s · ${music} score · ${vo === "None" ? "no voiceover" : `${vo.toLowerCase()} voiceover`}.`}>
-          <button type="button" onClick={reset} className="cf-btn border border-white/20 text-cf-on-inverse hover:border-white/50">
+          <button type="button" onClick={reset} className="cf-btn-line">
             Reset
           </button>
           <button type="button" onClick={onCreate} disabled={running || !subject.trim()} className="cf-btn-accent">

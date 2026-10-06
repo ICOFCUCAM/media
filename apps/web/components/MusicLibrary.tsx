@@ -89,9 +89,9 @@ function TrackRow({ n, row }: { n: number; row: TrackRow }) {
   }, [row.key]);
   return (
     <li className="grid gap-3 border-b border-cf-line py-4 md:grid-cols-[36px_1fr_0.5fr_1.2fr] md:items-center">
-      <span className="font-mono text-[9px] text-cf-muted">{String(n).padStart(2, "0")}</span>
+      <span className="font-mono text-[11px] text-cf-muted">{String(n).padStart(2, "0")}</span>
       <div className="min-w-0">
-        <div className="truncate font-serif text-[19px]">{row.title}</div>
+        <div className="truncate font-display font-semibold text-[19px]">{row.title}</div>
         <div className="cf-label mt-1">{new Date(row.created_at).toLocaleDateString()}</div>
       </div>
       <span className="cf-label">{row.kind.toLowerCase()}</span>

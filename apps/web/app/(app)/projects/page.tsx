@@ -113,7 +113,7 @@ export default function ProjectsPage() {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search archive"
                 aria-label="Search the archive"
-                className="cf-input w-[240px] py-2.5 font-mono text-[10px] uppercase tracking-[0.1em]"
+                className="cf-input w-[240px] py-2.5 font-sans text-[12px] font-medium uppercase tracking-[0.06em]"
               />
             }
           >
@@ -131,9 +131,9 @@ export default function ProjectsPage() {
               <ol className="border-t border-cf-fg">
                 {shown.map((p, i) => (
                   <li key={p.id} className="group grid grid-cols-[36px_1fr_auto] items-center gap-4 border-b border-cf-line py-4 md:grid-cols-[36px_1.6fr_0.6fr_0.6fr_1fr_0.6fr_40px]">
-                    <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                    <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
                     <Link href={`/projects/${p.id}`} className="min-w-0">
-                      <span className="block truncate font-serif text-[20px] tracking-[-0.02em] group-hover:underline group-hover:decoration-cf-line group-hover:underline-offset-4">
+                      <span className="block truncate font-display font-semibold text-[20px] tracking-[-0.02em] group-hover:underline group-hover:decoration-cf-line group-hover:underline-offset-4">
                         {p.title}
                       </span>
                       <span className="cf-label mt-1 block md:hidden">
@@ -141,7 +141,7 @@ export default function ProjectsPage() {
                       </span>
                     </Link>
                     <span className="cf-label hidden md:block">{MODE_LABEL[p.mode] ?? p.mode}</span>
-                    <span className="hidden font-mono text-[10px] md:block">{fmtDuration(p.target_seconds)}</span>
+                    <span className="hidden font-mono text-[12px] md:block">{fmtDuration(p.target_seconds)}</span>
                     <span className="hidden md:block">
                       <StateLine project={p} />
                     </span>

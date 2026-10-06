@@ -60,8 +60,8 @@ export function WorldLibrary() {
               <form onSubmit={onCreate}>
                 <div className="cf-label">New location</div>
                 <h2 className="cf-display mt-8 text-[clamp(30px,3vw,42px)] leading-none">Describe the place.</h2>
-                <label htmlFor="world-name" className="mb-2 mt-7 block font-mono text-[9px] uppercase tracking-[0.1em]">Name</label>
-                <input id="world-name" value={name} required onChange={(e) => setName(e.target.value)} placeholder="Old Lagos" className="cf-input font-serif text-[18px]" />
+                <label htmlFor="world-name" className="mb-2 mt-7 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Name</label>
+                <input id="world-name" value={name} required onChange={(e) => setName(e.target.value)} placeholder="Old Lagos" className="cf-input font-display font-semibold text-[18px]" />
                 <div className="mt-6">
                   <Control name="Kind" value={kind}>
                     <div className="flex flex-wrap gap-1.5" role="group" aria-label="Location kind">
@@ -73,7 +73,7 @@ export function WorldLibrary() {
                     </div>
                   </Control>
                 </div>
-                <label htmlFor="world-desc" className="mb-2 mt-6 block font-mono text-[9px] uppercase tracking-[0.1em]">Description</label>
+                <label htmlFor="world-desc" className="mb-2 mt-6 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Description</label>
                 <textarea id="world-desc" value={description} required onChange={(e) => setDescription(e.target.value)} placeholder="Architecture, era, mood, weather…" rows={4} className="cf-input resize-y" />
                 <button type="submit" disabled={busy || !name || !description} className="cf-btn-accent mt-8">
                   {busy ? "Building…" : "Create world"}
@@ -99,9 +99,9 @@ export function WorldLibrary() {
               <ol className="border-t border-cf-fg">
                 {items.map((l, i) => (
                   <li key={l.id} className="grid gap-4 border-b border-cf-line py-6 md:grid-cols-[36px_1fr_1.4fr_auto] md:items-start">
-                    <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                    <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
                     <div>
-                      <h3 className="font-serif text-[26px] leading-none tracking-[-0.03em]">{l.name}</h3>
+                      <h3 className="font-display font-semibold text-[26px] leading-none tracking-[-0.03em]">{l.name}</h3>
                       <span className="cf-label mt-2 block">
                         {l.kind}
                         {l.projects?.title && l.projects.title !== "Library" ? ` · from “${l.projects.title}”` : " · Library"}

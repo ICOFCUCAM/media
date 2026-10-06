@@ -51,7 +51,7 @@ export function PermissionsPage() {
             <tbody>
               {MATRIX.map((r) => (
                 <tr key={r.capability} className="border-b border-cf-line">
-                  <th scope="row" className="py-4 pr-4 text-left font-serif text-[17px] font-normal">{r.capability}</th>
+                  <th scope="row" className="py-4 pr-4 text-left font-display font-semibold text-[17px] font-normal">{r.capability}</th>
                   {[r.owner, r.producer, r.editor, r.viewer, r.admin].map((v, i) => (
                     <td key={i} className="px-3 py-4 text-center">
                       {v ? (
@@ -63,7 +63,7 @@ export function PermissionsPage() {
                       )}
                     </td>
                   ))}
-                  <td className="py-4 pl-4 font-mono text-[10px] text-cf-muted">{r.enforced}</td>
+                  <td className="py-4 pl-4 font-mono text-[12px] text-cf-muted">{r.enforced}</td>
                 </tr>
               ))}
             </tbody>

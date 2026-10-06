@@ -70,7 +70,7 @@ export function AdminModeration() {
             {(pending ?? []).map((v) => (
               <li key={v.id} className="flex flex-wrap items-center justify-between gap-4 border-b border-cf-line py-4">
                 <div className="min-w-0">
-                  <div className="truncate font-serif text-[19px]">{v.name}</div>
+                  <div className="truncate font-display font-semibold text-[19px]">{v.name}</div>
                   <div className="cf-label mt-1 truncate">Terms: {v.share_terms || "—"}</div>
                 </div>
                 <div className="flex shrink-0 gap-2">
@@ -94,7 +94,7 @@ export function AdminModeration() {
           <ol className="border-t border-cf-fg">
             {(failures ?? []).map((f, i) => (
               <li key={i} className="grid gap-2 border-b border-cf-line py-4 md:grid-cols-[1fr_1.4fr_auto] md:items-start md:gap-6">
-                <span className="truncate font-serif text-[18px]">{f.title || "Untitled"}</span>
+                <span className="truncate font-display font-semibold text-[18px]">{f.title || "Untitled"}</span>
                 <p className="line-clamp-2 text-[12px] text-cf-danger">{f.error}</p>
                 <span className="flex items-center gap-4">
                   <span className="cf-label">{f.kind}</span>

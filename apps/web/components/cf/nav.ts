@@ -52,13 +52,10 @@ export function crumbsFor(pathname: string): string[] {
 }
 
 /**
- * Which room a page lives in (docs/design): production rooms are dark, the
- * editorial studio is paper.
+ * Which room a page lives in. Every studio page is the dark screening room:
+ * footage reads best on black, and it continues the homepage. (The paper room
+ * is kept for editorial surfaces; no route uses it today.)
  */
-const DARK_ROOMS = ["/library/characters", "/library/worlds", "/library/assets", "/projects/"];
-
-export function roomFor(pathname: string): Room {
-  return DARK_ROOMS.some((p) => (p.endsWith("/") ? pathname.startsWith(p) : pathname === p || pathname.startsWith(p + "/")))
-    ? "dark"
-    : "light";
+export function roomFor(_pathname: string): Room {
+  return "dark";
 }

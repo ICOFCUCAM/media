@@ -111,7 +111,7 @@ export function SocialLaunchpad() {
   }
 
   const fileCls =
-    "w-full text-[11px] text-cf-muted file:mr-3 file:border file:border-cf-line file:bg-transparent file:px-3 file:py-2 file:font-mono file:text-[9px] file:uppercase file:tracking-[0.1em] file:text-cf-fg hover:file:border-cf-fg";
+    "w-full text-[11px] text-cf-muted file:mr-3 file:border file:border-cf-line file:bg-transparent file:px-3 file:py-2 file:font-mono file:text-[11px] file:uppercase file:tracking-[0.1em] file:text-cf-fg hover:file:border-cf-fg";
   return (
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
       <PageHeader
@@ -196,7 +196,7 @@ function LaunchCard({ row, onLaunch }: { row: LaunchRow; onLaunch: () => void })
     <li className="border-b border-cf-line py-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0">
-          <div className="truncate font-serif text-[22px] tracking-[-0.02em]">{row.brief || "Untitled launch"}</div>
+          <div className="truncate font-display font-semibold text-[22px] tracking-[-0.02em]">{row.brief || "Untitled launch"}</div>
           <div className="cf-label mt-1">{new Date(row.created_at).toLocaleString()}</div>
         </div>
         <div className="flex items-center gap-4">
@@ -222,17 +222,17 @@ function LaunchCard({ row, onLaunch }: { row: LaunchRow; onLaunch: () => void })
                   <span className="cf-label text-cf-fg">{meta.label}</span>
                   {result && <Status tone={result.status === "published" ? "ok" : result.status === "skipped" ? "idle" : "danger"}>{result.status}</Status>}
                 </div>
-                <div className="mt-3 truncate font-serif text-[16px]" title={k.title}>
+                <div className="mt-3 truncate font-display font-semibold text-[16px]" title={k.title}>
                   {k.title}
                 </div>
                 <p className="mt-1 line-clamp-3 text-[11px] leading-relaxed text-cf-muted">{k.description}</p>
-                <p className="mt-2 truncate font-mono text-[10px] text-cf-muted">{k.hashtags?.map((h) => `#${h.replace(/^#/, "")}`).join(" ")}</p>
+                <p className="mt-2 truncate font-mono text-[12px] text-cf-muted">{k.hashtags?.map((h) => `#${h.replace(/^#/, "")}`).join(" ")}</p>
                 {result?.url && (
                   <a href={result.url} target="_blank" rel="noreferrer" className="cf-link mt-3 inline-block">
                     View post ↗
                   </a>
                 )}
-                {result?.detail && <p className="mt-2 text-[10px] text-cf-muted">{result.detail}</p>}
+                {result?.detail && <p className="mt-2 text-[12px] text-cf-muted">{result.detail}</p>}
                 {!result && <p className="cf-label mt-3 leading-relaxed">{meta.hint}</p>}
               </div>
             );

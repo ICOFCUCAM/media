@@ -86,7 +86,7 @@ export function CharacterLibrary() {
                 <div className="cf-label">New character</div>
                 <h2 className="cf-display mt-8 text-[clamp(30px,3vw,42px)] leading-none">Open a casting call.</h2>
                 <Field id="char-name" label="Name">
-                  <input id="char-name" value={name} required onChange={(e) => setName(e.target.value)} placeholder="Amara" className="cf-input font-serif text-[18px]" />
+                  <input id="char-name" value={name} required onChange={(e) => setName(e.target.value)} placeholder="Amara" className="cf-input font-display font-semibold text-[18px]" />
                 </Field>
                 <Field id="char-look" label="Appearance">
                   <textarea id="char-look" value={appearance} required rows={3} onChange={(e) => setAppearance(e.target.value)} placeholder="Age, build, features, wardrobe…" className="cf-input resize-y" />
@@ -132,11 +132,11 @@ export function CharacterLibrary() {
                           <span className="cf-label text-cf-dim">No portrait yet</span>
                         </div>
                       )}
-                      <span className="absolute left-4 top-4 font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                      <span className="absolute left-4 top-4 font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
                     </div>
                     <div className="flex flex-1 flex-col p-5">
                       <div className="flex items-baseline justify-between gap-3">
-                        <h3 className="font-serif text-[26px] leading-none tracking-[-0.03em]">{c.name}</h3>
+                        <h3 className="font-display font-semibold text-[26px] leading-none tracking-[-0.03em]">{c.name}</h3>
                         <span className="cf-label truncate">{c.projects?.title === "Library" || !c.projects ? "Library" : c.projects.title}</span>
                       </div>
                       <p className="mt-3 line-clamp-3 text-[12px] leading-relaxed text-cf-muted">{c.appearance}</p>
@@ -158,7 +158,7 @@ export function CharacterLibrary() {
 function Field({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
   return (
     <div className="mt-6">
-      <label htmlFor={id} className="mb-2 block font-mono text-[9px] uppercase tracking-[0.1em]">
+      <label htmlFor={id} className="mb-2 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">
         {label}
       </label>
       {children}

@@ -37,7 +37,7 @@ export function BarChart({ bars, unit }: { bars: Bar[]; unit?: string }) {
       </div>
       <div className="mt-2 hidden gap-1 sm:flex" aria-hidden>
         {bars.map((b, i) => (
-          <span key={i} className="flex-1 text-center font-mono text-[8px] text-cf-muted">
+          <span key={i} className="flex-1 text-center font-mono text-[10px] text-cf-muted">
             {b.label}
           </span>
         ))}
@@ -67,14 +67,14 @@ export function RankList({ rows, unit }: { rows: { label: string; value: number 
     <ol className="border-t border-cf-line">
       {rows.map((r, i) => (
         <li key={r.label} className="grid grid-cols-[36px_1fr_auto] items-center gap-3 border-b border-cf-line py-3">
-          <span className="font-mono text-[9px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+          <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
           <span className="min-w-0">
-            <span className="block truncate font-serif text-[16px]">{r.label}</span>
+            <span className="block truncate font-display font-semibold text-[16px]">{r.label}</span>
             <span className="mt-1.5 block h-[2px] bg-cf-line">
               <span className="block h-full bg-cf-fg" style={{ width: `${(r.value / max) * 100}%` }} />
             </span>
           </span>
-          <span className="font-mono text-[10px]">
+          <span className="font-mono text-[12px]">
             {r.value.toLocaleString()}
             {unit ? ` ${unit}` : ""}
           </span>

@@ -3,10 +3,10 @@
 @tailwind utilities;
 
 /* ── Cineforge rooms ──────────────────────────────────────────────
- * Channel triplets consumed by the `cf-*` Tailwind colors. A page picks a
- * room: .cf-light (editorial paper — studio, publishing, account, analytics,
- * enterprise) or .cf-dark (production rooms — casting, worlds, assets,
- * storyboard, cutting room). The homepage black is the shared anchor.
+ * Channel triplets consumed by the `cf-*` Tailwind colors. The studio is a
+ * dark screening room (.cf-dark) — easy on the eyes for long sessions with
+ * footage, and continuous with the homepage black. The paper room
+ * (.cf-light) remains for printed / editorial surfaces.
  */
 :root,
 .cf-light {
@@ -27,20 +27,20 @@
 }
 
 .cf-dark {
-  --cf-bg: 8 9 8;
-  --cf-panel: 13 15 13;
-  --cf-soft: 20 22 20;
-  --cf-fg: 240 241 235;
-  --cf-muted: 152 156 150;
-  --cf-dim: 98 103 97;
-  --cf-line: 33 35 33;
-  --cf-line2: 70 73 70;
+  --cf-bg: 11 12 11;
+  --cf-panel: 20 22 20;
+  --cf-soft: 28 31 28;
+  --cf-fg: 242 241 236;
+  --cf-muted: 170 172 165;
+  --cf-dim: 118 122 116;
+  --cf-line: 40 43 40;
+  --cf-line2: 74 78 74;
   --cf-accent: 216 255 67;
-  --cf-inverse: 240 241 235;
-  --cf-on-inverse: 8 9 8;
-  --cf-ok: 160 220 110;
-  --cf-warn: 216 169 40;
-  --cf-danger: 255 118 107;
+  --cf-inverse: 242 241 236;
+  --cf-on-inverse: 11 12 11;
+  --cf-ok: 150 222 110;
+  --cf-warn: 236 186 72;
+  --cf-danger: 255 122 110;
 }
 
 .cf-light,
@@ -80,41 +80,49 @@ html {
 /* ── Cineforge components ─────────────────────────────────────── */
 @layer components {
   .cf-mono {
-    @apply font-mono uppercase tracking-[0.12em];
+    @apply font-mono uppercase tracking-[0.08em];
   }
+  /* Section kickers: small, readable caps in the sans — not tiny mono. */
   .cf-eyebrow {
-    @apply font-mono text-[10px] uppercase tracking-[0.16em] text-cf-muted;
+    @apply font-sans text-[12px] font-medium uppercase tracking-[0.1em] text-cf-muted;
   }
   .cf-label {
-    @apply font-mono text-[9px] uppercase tracking-[0.12em] text-cf-muted;
+    @apply font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-muted;
   }
+  /* Headlines speak the homepage's Manrope; italic accents stay serif ("Direct the film."). */
   .cf-display {
-    @apply font-serif font-normal tracking-[-0.045em];
+    @apply font-display font-semibold tracking-[-0.045em];
+  }
+  .cf-display em,
+  .font-display em {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 400;
+    letter-spacing: -0.03em;
   }
   .cf-btn {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-3.5 font-mono text-[10px] uppercase tracking-[0.1em] transition disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-5 py-3 font-sans text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-40;
   }
   .cf-btn-accent {
-    @apply cf-btn bg-cf-accent text-[#10100f] hover:brightness-95;
+    @apply cf-btn bg-cf-accent text-[#10100f] shadow-[0_0_0_1px_rgba(0,0,0,.05)] hover:brightness-105;
   }
   .cf-btn-ink {
     @apply cf-btn bg-cf-inverse text-cf-on-inverse hover:opacity-90;
   }
   .cf-btn-line {
-    @apply cf-btn border border-cf-line text-cf-fg hover:border-cf-fg;
+    @apply cf-btn border border-cf-line2 text-cf-fg hover:border-cf-fg hover:bg-cf-soft;
   }
   .cf-option {
-    @apply border border-cf-line px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.08em] text-cf-muted transition hover:border-cf-fg hover:text-cf-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-cf-line disabled:hover:text-cf-muted;
+    @apply rounded-md border border-cf-line2 px-3.5 py-2 text-left font-sans text-[13px] font-medium text-cf-muted transition hover:border-cf-fg hover:text-cf-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-cf-line2 disabled:hover:text-cf-muted;
   }
   .cf-option[aria-pressed="true"],
   .cf-option.is-active {
-    @apply border-cf-inverse bg-cf-inverse text-cf-on-inverse;
+    @apply border-cf-accent bg-cf-accent text-[#10100f];
   }
   .cf-input {
-    @apply w-full border border-cf-line bg-cf-panel px-4 py-3 text-sm text-cf-fg outline-none transition placeholder:text-cf-dim focus:border-cf-fg;
+    @apply w-full rounded-md border border-cf-line2 bg-cf-panel px-4 py-3 text-[14px] text-cf-fg outline-none transition placeholder:text-cf-dim focus:border-cf-accent;
   }
   .cf-link {
-    @apply font-mono text-[10px] uppercase tracking-[0.12em] text-cf-fg underline-offset-4 hover:underline;
+    @apply font-sans text-[13px] font-semibold text-cf-fg underline-offset-4 hover:text-cf-accent hover:underline;
   }
 }
 
