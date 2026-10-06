@@ -64,10 +64,22 @@ function Figure({ x, y, h, spear, shield }: { x: number; y: number; h: number; s
   );
 }
 
-export function MasterShot({ className = "", focus = "xMidYMid", idPrefix = "ms" }: { className?: string; focus?: "xMidYMid" | "xMinYMid" | "xMaxYMid"; /** Unique per instance on a page (SVG ids are global). */ idPrefix?: string }) {
+export function MasterShot({
+  className = "",
+  focus = "xMidYMid",
+  idPrefix = "ms",
+  view,
+}: {
+  className?: string;
+  focus?: "xMidYMid" | "xMinYMid" | "xMaxYMid";
+  /** Unique per instance on a page (SVG ids are global). */
+  idPrefix?: string;
+  /** A reframe window "x y w h" in the 1600×900 master — for adaptive crops. */
+  view?: string;
+}) {
   const p = idPrefix;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio={`${focus} slice`} className={className} role="img" aria-label="Ashéron-Kor at dawn: a citadel of tapered towers backlit by the sun, a queen and her guard on the ridge">
+    <svg viewBox={view ?? `0 0 ${W} ${H}`} preserveAspectRatio={`${focus} slice`} className={className} role="img" aria-label="Ashéron-Kor at dawn: a citadel of tapered towers backlit by the sun, a queen and her guard on the ridge">
       <defs>
         <linearGradient id={`${p}-sky`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#100d1f" />

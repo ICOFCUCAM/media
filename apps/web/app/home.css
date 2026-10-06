@@ -1971,159 +1971,184 @@
 .cfh .ws-preview .scene { height: 100%; min-height: 360px; border-radius: 12px; }
 
 /* Release — ONE FILM. EVERY SCREEN. Staged as product photography. */
-.cfh .release-showcase { margin: 56px 0 0; width: min(100%, 660px); }
+.cfh .release-showcase { position: relative; margin: 56px 0 0; width: min(100%, 680px); }
+/* Studio environment: a soft key from above-left, light falling off into the
+   section's own cream at every edge (no card, no hard boundary), and a floor
+   plane where the devices rest. */
+.cfh .release-showcase::before {
+  content: "";
+  position: absolute;
+  inset: -14% -18% -10%;
+  z-index: 0;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(closest-side, #000 62%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 62%, transparent 100%);
+  background:
+    radial-gradient(48% 42% at 44% 30%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 72%),
+    radial-gradient(70% 60% at 50% 46%, rgba(214, 208, 196, 0) 40%, rgba(196, 188, 174, 0.38) 78%, rgba(196, 188, 174, 0) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 58%, rgba(92, 78, 60, 0.07) 72%, rgba(92, 78, 60, 0.05) 86%, rgba(0, 0, 0, 0) 100%);
+}
 .cfh .release-stage {
   position: relative;
+  z-index: 1;
   aspect-ratio: 100 / 72;
   container-type: inline-size;
-  overflow: visible;
-}
-/* Studio light: a soft key from above, a floor plane falling into shade. */
-.cfh .release-stage::before {
-  content: "";
-  position: absolute;
-  inset: -8% -10% 0;
-  background: radial-gradient(60% 55% at 46% 30%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 70%);
-  pointer-events: none;
-}
-.cfh .release-stage::after {
-  content: "";
-  position: absolute;
-  left: -10%;
-  right: -10%;
-  bottom: -4%;
-  height: 42%;
-  background: linear-gradient(180deg, rgba(60, 48, 36, 0) 0%, rgba(60, 48, 36, 0.08) 45%, rgba(60, 48, 36, 0.08) 70%, rgba(60, 48, 36, 0) 100%);
-  pointer-events: none;
 }
 .cfh .rs-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
-/* Shared device construction: metal edge → black glass border → screen. */
+/* Shared construction: metal band → black glass border → panel. */
 .cfh .dv-metal { position: relative; }
-.cfh .dv-bezel { position: relative; background: #050506; }
+.cfh .dv-bezel { position: relative; background: #030304; }
 .cfh .dv-screen { position: relative; overflow: hidden; background: #000; }
+/* Glass: a long soft reflection, a faint top sheen and a hairline edge. */
 .cfh .dv-glass {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
   background:
-    linear-gradient(118deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 22%, rgba(255, 255, 255, 0) 38%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 12%);
+    linear-gradient(112deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.035) 26%, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 10%);
+  box-shadow: inset 0 0 0 0.06cqw rgba(255, 255, 255, 0.07);
   mix-blend-mode: screen;
 }
 
-/* Cinema display: wall-mounted, ultra-thin, hairline graphite edge. */
-.cfh .dv-tv { position: absolute; z-index: 1; left: 8%; top: 0; width: 78%; }
+/* Cinema display: near edge-to-edge glass in a hairline anodised frame. */
+.cfh .dv-tv { position: absolute; z-index: 1; left: 9%; top: 0; width: 76%; }
 .cfh .dv-tv-glow {
   position: absolute;
-  inset: 4% 2% -6%;
+  inset: 6% 4% -4%;
   z-index: -1;
-  filter: blur(4.5cqw) saturate(1.5);
-  opacity: 0.55;
-  transform: scale(1.04);
+  filter: blur(5cqw) saturate(1.5);
+  opacity: 0.5;
 }
-.cfh .dv-tv-glow .rs-art { border-radius: 2cqw; }
 .cfh .dv-tv-metal {
-  padding: 0.22cqw;
-  border-radius: 0.7cqw;
-  background: linear-gradient(135deg, #8d8f94 0%, #3b3c40 22%, #1d1e21 50%, #4a4b50 78%, #a3a5aa 100%);
+  padding: 0.11cqw;
+  border-radius: 0.45cqw;
+  background: linear-gradient(160deg, #b9bbc0 0%, #55575c 30%, #2a2b2e 55%, #6b6d72 82%, #c4c6ca 100%);
   box-shadow:
-    0 2.6cqw 4.5cqw -2cqw rgba(30, 22, 14, 0.42),
-    0 0.6cqw 1.2cqw rgba(30, 22, 14, 0.14);
+    0 0.1cqw 0.2cqw rgba(40, 30, 20, 0.18),
+    0 1.6cqw 3.2cqw -1.4cqw rgba(40, 30, 20, 0.28);
 }
-.cfh .dv-tv-bezel { padding: 0.42cqw; border-radius: 0.5cqw; }
-.cfh .dv-tv-screen { aspect-ratio: 16 / 9; border-radius: 0.15cqw; }
+.cfh .dv-tv-bezel { padding: 0.2cqw; border-radius: 0.36cqw; }
+.cfh .dv-tv-screen { aspect-ratio: 16 / 9; border-radius: 0.12cqw; }
 
-/* Tablet: large-format 16:10, brushed silver-graphite chassis, three-quarter view. */
-.cfh .dv-tablet { position: absolute; z-index: 2; left: 1.5%; bottom: 2%; width: 47%; perspective: 1400px; }
-.cfh .dv-tablet-tilt { transform: rotateY(17deg) rotateX(3deg) rotateZ(-1deg); transform-origin: 30% 60%; }
+/* Tablet: ultra-thin pro slab, thin symmetric border, three-quarter view. */
+.cfh .dv-tablet { position: absolute; z-index: 2; left: 0; bottom: 2%; width: 51%; perspective: 1600px; }
+.cfh .dv-tablet-tilt { transform: rotateY(15deg) rotateX(2.5deg) rotateZ(-0.6deg); transform-origin: 30% 60%; }
 .cfh .dv-tablet-metal {
-  padding: 0.32cqw;
-  border-radius: 2.1cqw;
-  background: linear-gradient(140deg, #eceef1 0%, #a9abb1 18%, #5b5d63 46%, #8e9096 74%, #e3e5e9 100%);
+  padding: 0.2cqw;
+  border-radius: 1.7cqw;
+  background: linear-gradient(140deg, #f2f3f5 0%, #b4b6bb 16%, #6a6c72 44%, #9a9ca2 72%, #eceef1 100%);
   box-shadow:
-    -0.55cqw 0.1cqw 0 #6e7076,
-    -0.6cqw 0.15cqw 0 #3e4045,
-    -2cqw 3cqw 4cqw -1.5cqw rgba(30, 22, 14, 0.45);
+    -0.32cqw 0.06cqw 0 #868890,
+    -0.36cqw 0.1cqw 0 #4a4c51,
+    0 0.2cqw 0.4cqw rgba(40, 30, 20, 0.16),
+    -1.4cqw 2.2cqw 3.2cqw -1.4cqw rgba(40, 30, 20, 0.32);
 }
-.cfh .dv-tablet-bezel { padding: 1.05cqw; border-radius: 1.8cqw; }
+.cfh .dv-tablet-bezel { padding: 0.62cqw; border-radius: 1.52cqw; }
 .cfh .dv-tablet-cam {
   position: absolute;
+  z-index: 3;
   left: 50%;
-  top: 0.32cqw;
-  width: 0.5cqw;
-  height: 0.5cqw;
+  top: 0.16cqw;
+  width: 0.3cqw;
+  height: 0.3cqw;
   transform: translateX(-50%);
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #33415e, #040406 70%);
+  background: radial-gradient(circle at 35% 35%, #3b4a68, #020203 70%);
 }
-.cfh .dv-tablet-screen { aspect-ratio: 16 / 10; border-radius: 0.9cqw; }
+.cfh .dv-tablet-screen { aspect-ratio: 16 / 10; border-radius: 1cqw; }
 
-/* Phone: flagship proportions, titanium edge, island, side keys, slight angle. */
-.cfh .dv-phone { position: absolute; z-index: 3; right: 4%; bottom: 1%; width: 17.5%; perspective: 1200px; }
-.cfh .dv-phone-tilt { transform: rotateY(-16deg) rotateX(2deg) rotateZ(2.5deg); transform-origin: 50% 70%; }
+/* Phone: flagship slab — brushed titanium band, thin even border, pill camera. */
+.cfh .dv-phone { position: absolute; z-index: 3; right: 4%; bottom: 1%; width: 17%; perspective: 1300px; }
+.cfh .dv-phone-tilt { transform: rotateY(-14deg) rotateX(2deg) rotateZ(2deg); transform-origin: 50% 70%; }
 .cfh .dv-phone-metal {
-  padding: 0.38cqw;
-  border-radius: 3.9cqw;
-  background: linear-gradient(150deg, #d8d4cc 0%, #8f8b84 20%, #4c4a46 48%, #7d7a74 76%, #cfcbc3 100%);
+  padding: 0.24cqw;
+  border-radius: 3.5cqw;
+  background: linear-gradient(155deg, #e4e0d8 0%, #a29e96 18%, #5a5853 46%, #8c8982 74%, #dcd8d0 100%);
   box-shadow:
-    0.5cqw 0.1cqw 0 #5d5a55,
-    0.55cqw 0.15cqw 0 #34322f,
-    2cqw 3cqw 4cqw -1.4cqw rgba(30, 22, 14, 0.5);
+    0.3cqw 0.06cqw 0 #6f6c66,
+    0.34cqw 0.1cqw 0 #3b3936,
+    0 0.2cqw 0.4cqw rgba(40, 30, 20, 0.18),
+    1.4cqw 2.2cqw 3cqw -1.2cqw rgba(40, 30, 20, 0.36);
 }
 .cfh .dv-phone-metal::before,
 .cfh .dv-phone-metal::after {
   content: "";
   position: absolute;
-  width: 0.32cqw;
+  width: 0.22cqw;
   border-radius: 1px;
-  background: linear-gradient(90deg, #6c6964, #aaa59d);
+  background: linear-gradient(90deg, #77736c, #bdb8af);
 }
-.cfh .dv-phone-metal::before { left: -0.3cqw; top: 19%; height: 7%; box-shadow: 0 4.2cqw 0 #8f8b84, 0 7.4cqw 0 #8f8b84; }
-.cfh .dv-phone-metal::after { right: -0.3cqw; top: 27%; height: 12%; }
-.cfh .dv-phone-bezel { padding: 0.55cqw; border-radius: 3.55cqw; }
-.cfh .dv-phone-screen { aspect-ratio: 9 / 19.5; border-radius: 3.1cqw; }
+.cfh .dv-phone-metal::before { left: -0.2cqw; top: 20%; height: 6%; box-shadow: 0 3.6cqw 0 #9a968e, 0 6.4cqw 0 #9a968e; }
+.cfh .dv-phone-metal::after { right: -0.2cqw; top: 28%; height: 11%; }
+.cfh .dv-phone-bezel { padding: 0.34cqw; border-radius: 3.28cqw; }
+.cfh .dv-phone-screen { aspect-ratio: 9 / 19.5; border-radius: 2.95cqw; }
 .cfh .dv-island {
   position: absolute;
   z-index: 3;
   left: 50%;
-  top: 2.4%;
-  width: 30%;
-  height: 3.1%;
+  top: 2.2%;
+  width: 27%;
+  height: 2.7%;
   transform: translateX(-50%);
   border-radius: 999px;
   background: #000;
-  box-shadow: inset 0.25cqw 0 0.2cqw -0.05cqw rgba(60, 80, 120, 0.6);
+  box-shadow: inset 0.18cqw 0 0.16cqw -0.04cqw rgba(70, 90, 130, 0.55);
 }
 
-/* Contact shadows on the floor plane. */
-.cfh .dv-floor-shadow {
+/* Contact shadows: a tight core where the device meets the floor, a soft penumbra. */
+.cfh .dv-contact {
   position: absolute;
-  left: 8%;
-  right: 8%;
-  bottom: -4%;
-  height: 7%;
+  left: 6%;
+  right: 6%;
+  bottom: -2.5%;
+  height: 4%;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(30, 22, 14, 0.38), rgba(30, 22, 14, 0));
-  filter: blur(0.6cqw);
+  background:
+    radial-gradient(closest-side, rgba(30, 22, 14, 0.42), rgba(30, 22, 14, 0) 70%),
+    radial-gradient(closest-side, rgba(30, 22, 14, 0.12), rgba(30, 22, 14, 0));
+  filter: blur(0.35cqw);
+}
+.cfh .dv-contact::after {
+  content: "";
+  position: absolute;
+  inset: -120% -12%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(30, 22, 14, 0.12), rgba(30, 22, 14, 0));
+  filter: blur(1cqw);
 }
 
+/* The format legend — quiet, editorial. */
 .cfh .release-caption {
+  position: relative;
+  z-index: 1;
   display: flex;
-  gap: 22px;
-  margin-top: 22px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  align-items: center;
+  gap: 0;
+  margin-top: 26px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #7a766d;
+  color: #8f8a80;
 }
+.cfh .release-caption span + span::before {
+  content: "";
+  display: inline-block;
+  width: 22px;
+  height: 1px;
+  margin: 0 14px 3px;
+  background: #c9c4b9;
+}
+.cfh .release-caption i { font-style: normal; color: #b3ada2; }
 @media (max-width: 600px) {
   .cfh .release-showcase { margin-top: 36px; }
-  .cfh .dv-tablet { width: 50%; }
-  .cfh .dv-phone { width: 22%; }
-  .cfh .release-caption { gap: 14px; font-size: 10px; }
+  .cfh .dv-tablet { width: 54%; }
+  .cfh .dv-phone { width: 21%; }
+  .cfh .release-caption { font-size: 9.5px; letter-spacing: 0.14em; }
+  .cfh .release-caption span + span::before { width: 12px; margin: 0 8px 3px; }
 }
 
 /* Voice — the presenter in the booth. */
