@@ -4,7 +4,16 @@ import "./home.css";
 import { HomeMotion } from "../components/home/HomeMotion";
 import { HomeShowreel } from "../components/home/HomeShowreel";
 import { HeroFrame } from "../components/home/HeroFrame";
+import { WorkspacePreview } from "../components/home/WorkspacePreview";
+import { CinemaArt, type Scene } from "../components/cf/CinemaArt";
+import { ClockIcon, ConfigCard, EngineIcon, FormatIcon } from "../components/cf/ConfigCard";
+import { WorldAtlas } from "../components/home/scenes/WorldAtlas";
+import { StoryCloseUp } from "../components/home/scenes/StoryCloseUp";
+import { ReleaseScreens } from "../components/home/scenes/ReleaseScreens";
+import { VoicePresenter } from "../components/home/scenes/VoicePresenter";
+import { AssetVisual } from "../components/home/scenes/AssetVisual";
 import { STUDIO_MODES } from "../lib/creation";
+import { frame } from "../lib/frames";
 import {
   NAV,
   PRODUCTS,
@@ -84,6 +93,18 @@ function Nav() {
       <div className="nav-right">
         <Link href="/projects" className="nav-login">Sign in</Link>
         <Link href="/create" className="nav-cta">Enter Studio</Link>
+        {/* Phones and tablets: the section links fold into a menu (no JS needed). */}
+        <details className="nav-menu">
+          <summary aria-label="Menu">Menu</summary>
+          <div className="nav-menu-panel">
+            <a href="#studio">Studio</a>
+            <a href="#capabilities">Capabilities</a>
+            <a href="#films">Films</a>
+            <a href="#marketplace">Marketplace</a>
+            <a href="#pricing">Access</a>
+            <Link href="/projects">Sign in</Link>
+          </div>
+        </details>
       </div>
     </nav>
   );
@@ -94,7 +115,7 @@ function Hero() {
   return (
     <section className="hero">
       <div className="hero-image" />
-      <HeroFrame />
+      <HeroFrame masterStill={frame("hero")} />
 
       <div className="hero-content">
         <div className="eyebrow hero-kicker">The film production system / 01</div>
@@ -177,7 +198,20 @@ function WorldChapter() {
   return (
     <section className="section chapter dark">
       <div className="container chapter-grid reveal">
-        <div className="chapter-image" data-frame="CINEFORGE / FRAME 001" />
+        <div className="chapter-image chapter-atlas">
+          <i className="cfh-grain cf-grain" aria-hidden />
+          {frame("world") ? (
+            <>
+              {/* Plain <img>: a static still from public/frames. */}
+              <img src={frame("world")} alt="Aerial establishing shot of the realm at dusk: river delta, red dunes, highland forest and the distant citadel" className="art-fill still-fill" loading="lazy" />
+              <div className="atlas-inset" aria-hidden>
+                <WorldAtlas className="art-fill" />
+              </div>
+            </>
+          ) : (
+            <WorldAtlas className="art-fill" />
+          )}
+        </div>
 
         <div className="chapter-copy">
           <div className="chapter-number">01 / WORLD</div>
@@ -209,6 +243,13 @@ function WorldChapter() {
 }
 
 /* ── Chapter 02 · Workspace ────────────────────────────────────────── */
+const WS_PRESETS: { title: string; tags: string; scene: Scene }[] = [
+  { title: "Kingdom epic", tags: "Epic · Historical", scene: "kingdom" },
+  { title: "Neon noir", tags: "Thriller · Sci-Fi", scene: "city" },
+  { title: "Ocean voyage", tags: "Adventure · Drama", scene: "sea" },
+];
+
+
 function Workspace() {
   const studio = navSection("Studio");
   const production = navSection("Production");
@@ -246,16 +287,41 @@ function Workspace() {
             ))}
           </aside>
 
-          <div className="studio-main">
-            <div className="scene">
-              <div className="scene-label">SCENE 07 / EXT. ASHÉRON-KOR / DAWN</div>
-              <div className="playhead" />
-              <div className="timeline">
-                <div className="clip" />
-                <div className="clip" />
-                <div className="clip" />
-                <div className="clip" />
-                <div className="clip" />
+          <div className="studio-main cf-dark">
+            {/* A miniature of the real Create Film studio, built from its own components. */}
+            <div className="ws-shot" role="img" aria-label="The Create Film studio: start from an example, describe the film, configure length, engine and format, then create — with the production preview alongside">
+              <div className="ws-tabs" aria-hidden>
+                {["Auto", "Hybrid", "Scene-by-Scene", "Script", "Image"].map((t, i) => (
+                  <span key={t} className={i === 0 ? "is-on" : ""}>{t}</span>
+                ))}
+              </div>
+              <div className="ws-room" aria-hidden>
+                <div className="ws-controls">
+                  <div className="ws-label ws-optional">Start from an example</div>
+                  <div className="ws-presets">
+                    {WS_PRESETS.map((p, i) => (
+                      <span key={p.title} className="cf-preset" aria-pressed={i === 0}>
+                        <span className="cf-preset-thumb">
+                          <CinemaArt seed={p.title} scene={p.scene} className="h-full w-full" />
+                        </span>
+                        <span className="cf-preset-title">{p.title}</span>
+                        <span className="cf-preset-tags">{p.tags}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="ws-label ws-optional">Describe your film</div>
+                  <div className="ws-brief">An epic about an African kingdom fighting for its independence, told over three generations.</div>
+                  <div className="ws-label">Configure</div>
+                  <div className="cf-config-grid ws-config">
+                    <ConfigCard tone="length" icon={<ClockIcon />} label="Length" main="2 minutes" secondary="Final runtime" options={[]} />
+                    <ConfigCard tone="engine" icon={<EngineIcon />} label="Engine" main="Cinematic" secondary="Kling 2.1" options={[]} />
+                    <ConfigCard tone="format" icon={<FormatIcon />} label="Format" main="1080p" secondary="Full HD" options={[]} />
+                  </div>
+                  <div className="ws-create">Create film</div>
+                </div>
+                <div className="ws-preview">
+                  <WorkspacePreview />
+                </div>
               </div>
             </div>
 
@@ -273,7 +339,7 @@ function Workspace() {
             {[
               ["Camera", "35mm"],
               ["Lens", "50mm"],
-              ["Lighting", "Dawn"],
+              ["Lighting", "Torchlight"],
               ["Character", "Locked"],
               ["World", "Locked"],
               ["Sound", "Original"],
@@ -312,7 +378,18 @@ function StoryChapter() {
           <Link href="/library/characters" className="text-link">Build your cast →</Link>
         </div>
 
-        <div className="chapter-image" data-frame="CINEFORGE / FRAME 002" />
+        <div className="chapter-image chapter-portrait">
+          <i className="cfh-grain cf-grain" aria-hidden />
+          {frame("story") ? (
+            <>
+              <img src={frame("story")} alt="Close-up: Amara in profile, firelit, in a burnt-orange gele" className="art-fill still-fill" loading="lazy" />
+              <span className="still-slate" aria-hidden>CU · AMARA<br /><small>SC 12 · TK 3 · 85MM</small></span>
+              <span className="still-subtitle">— Then we will build it ourselves.</span>
+            </>
+          ) : (
+            <StoryCloseUp className="art-fill" />
+          )}
+        </div>
       </div>
     </section>
   );
@@ -324,7 +401,7 @@ const CAPABILITIES: { title: string; body: string; href: string; go: string }[] 
     title: "Create",
     body: "Turn an idea into a production. Develop scripts, characters, scenes, locations and shots inside the same creative environment.",
     href: "/create",
-    go: "Create anything",
+    go: "New production",
   },
   {
     title: "Direct",
@@ -353,16 +430,18 @@ function Capabilities() {
         <div className="eyebrow reveal">The system</div>
         <div style={{ height: 55 }} />
 
-        {CAPABILITIES.map((c, i) => (
-          <Link key={c.title} href={c.href} className="capability reveal">
-            <div className="capability-number">{String(i + 1).padStart(2, "0")}</div>
-            <h3>{c.title}</h3>
-            <div>
-              <p>{c.body}</p>
-              <span className="capability-go">{c.go} →</span>
-            </div>
-          </Link>
-        ))}
+        <div className="capability-track">
+          {CAPABILITIES.map((c, i) => (
+            <Link key={c.title} href={c.href} className="capability reveal">
+              <div className="capability-number">{String(i + 1).padStart(2, "0")}</div>
+              <h3>{c.title}</h3>
+              <div>
+                <p>{c.body}</p>
+                <span className="capability-go">{c.go} →</span>
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -399,7 +478,7 @@ function Showreel() {
           <Link href="/publish/streaming" className="text-link">View complete showreel →</Link>
         </div>
 
-        <HomeShowreel />
+        <HomeShowreel stills={(["work-1", "work-2", "work-3", "work-4", "work-5", "work-6"] as const).map((s) => frame(s))} />
       </div>
     </section>
   );
@@ -417,6 +496,7 @@ function Publish() {
             One film.<br />
             <em>Every screen.</em>
           </h2>
+          <ReleaseScreens still={frame("hero")} />
         </div>
 
         <div className="publish-copy">
@@ -436,6 +516,11 @@ function Publish() {
             <div className="channel">
               <span>Private Channel</span>
               <span>1080p HLS</span>
+            </div>
+            {/* Phones show the first five channels and this count instead of all of them. */}
+            <div className="channel channel-more" aria-hidden>
+              <span>+ {SOCIAL_CHANNELS.length + 1 - 5} more channels</span>
+              <span />
             </div>
           </div>
 
@@ -466,6 +551,7 @@ function Voice() {
             story a<br />
             <em>voice.</em>
           </h2>
+          <VoicePresenter still={frame("voice")} />
         </div>
 
         <div className="voice-copy">
@@ -477,12 +563,6 @@ function Voice() {
             One production can speak to audiences across languages without losing the identity of the
             original work.
           </p>
-
-          <div className="voice-wave" aria-hidden>
-            {Array.from({ length: 21 }).map((_, i) => (
-              <span key={i} style={{ animationDelay: `${(i % 7) * 0.09}s` }} />
-            ))}
-          </div>
 
           <div className="channel-list">
             {VOICE_FEATURES.map(([title, chip]) => (
@@ -519,6 +599,7 @@ function Marketplace() {
         <div className="reel-grid reveal">
           {MARKETPLACE_ITEMS.map((m) => (
             <Link key={m.name} href="/marketplace" className="reel">
+              <AssetVisual kind={m.kind} name={m.name} className="art-fill" />
               <span className="reel-tag">Keep 90%</span>
               <div className="reel-info">
                 <span>{m.kind} · {m.name}</span>

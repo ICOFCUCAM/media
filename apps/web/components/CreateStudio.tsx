@@ -1,15 +1,16 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { estimateMs, fmtDuration, MODELS, modelAllowed } from "../lib/system";
+import { estimateMs, fmtDuration, MODELS, modelAllowed, planScenes, planShots } from "../lib/system";
 import type { ProjectStatus } from "../lib/demo";
 import { useCreateRun } from "../lib/useCreateRun";
 import { useAuth } from "./AuthProvider";
 import { MAX_FILM_SEC, RESOLUTIONS, DEFAULT_RES, resolutionAllowed, type Resolution } from "../lib/plans";
 import { RunPanel } from "./RunPanel";
 import type { ShortPlatform } from "../lib/products";
-import { Pipeline, type PipelineStep } from "./cf/Pipeline";
-import { ActionBand, Cell, Control, PageHeader, SpecList, Split } from "./cf/primitives";
+import { Chips, ExampleShelf, Field, StudioFooter, StudioGrid, StudioPage, UnlockRow, type Example } from "./cf/StudioLayout";
+import { NotifyToggle } from "./cf/NotifyToggle";
+import { ClockIcon, ConfigCard, EngineIcon, FormatIcon } from "./cf/ConfigCard";
 
 const STAGE_LABEL: Record<ProjectStatus, string> = {
   PLANNING: "Writing",
@@ -30,21 +31,11 @@ export interface CreateStudioProps {
   cta?: string;
   /** Production label for the specification (e.g. "Documentary"); defaults from kind. */
   production?: string;
-  /** Replaces the default page header when the studio is not embedded. */
-  header?: ReactNode;
+  /** One-tap starting briefs; defaults by kind. */
+  examples?: Example[];
   /** Render without the outer container/header (when nested under a workspace). */
   embedded?: boolean;
 }
-
-/** The six departments every run passes through, and the run status that owns each. */
-const PIPELINE: PipelineStep[] = [
-  { name: "Screenplay", at: "PLANNING" },
-  { name: "Characters", at: "PLANNING" },
-  { name: "Worlds & locations", at: "PLANNING" },
-  { name: "Scene generation", at: "GENERATING" },
-  { name: "Sound & score", at: "RENDERING" },
-  { name: "Final cut", at: "RENDERING" },
-];
 
 const KIND_LABEL: Record<CreateStudioProps["kind"], string> = {
   film: "Film",
@@ -101,186 +92,150 @@ export function CreateStudio(props: CreateStudioProps) {
 
   function onCreate() {
     void run({ prompt, modelId, targetSeconds: effSeconds, resolution: effectiveRes });
+    // Phones: the preview sits under the options — bring it into view.
+    if (window.innerWidth < 1024) document.getElementById("studio-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  const body = (
+  // Plan-aware options: offer only what this plan can run, then one line
+  // naming what a higher plan adds (instead of a wall of locked buttons).
+  const runnable = durations.filter((d) => d.value <= maxSec);
+  const formats = RESOLUTIONS.filter((r) => resAllowed(r.id));
+  const models = MODELS.filter((m) => isAdmin || modelAllowed(m.id, tier));
+  const unlocks = [
+    ...(runnable.length < durations.length ? [`up to ${durations[durations.length - 1]!.label} runtimes`] : []),
+    ...(formats.length < RESOLUTIONS.length ? [RESOLUTIONS.filter((r) => !resAllowed(r.id)).map((r) => r.label).join(" / ")] : []),
+    ...(models.length < MODELS.length ? ["the cinematic engine"] : []),
+  ];
+  const examples = props.examples ?? EXAMPLES[props.kind] ?? [];
+  const aspect = props.platforms?.find((p) => p.id === platform)?.aspect ?? "16:9";
+  const resRange = formats.length > 1 ? `${RES_SHORT[formats[0]!.id]}–${RES_SHORT[formats[formats.length - 1]!.id]}` : RES_SHORT[formats[0]?.id ?? effectiveRes];
+
+  const controls = (
     <>
-      <Split>
-        <Cell className="lg:min-h-[600px]">
-          <div className="cf-label">Creative direction</div>
-          <h2 className="cf-display mt-9 text-[clamp(32px,3.4vw,45px)] leading-none">Start with the story.</h2>
-          <p className="mt-3 max-w-[600px] text-[13px] leading-[1.7] text-cf-muted">
-            Describe the {noun} you want to make. Cineforge translates the direction into screenplay, cast,
-            locations, scenes, score and the final cut.
-          </p>
+      {examples.length > 0 && <ExampleShelf examples={examples} value={prompt} onPick={setPrompt} />}
 
-          <label htmlFor={`brief-${props.kind}`} className="mb-2.5 mt-11 block font-sans text-[11px] font-medium uppercase tracking-[0.06em]">
-            What do you want to make?
-          </label>
-          <textarea
-            id={`brief-${props.kind}`}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            rows={6}
-            className="cf-input min-h-[170px] resize-y p-5 leading-[1.7]"
-          />
+      <Field label={`Describe your ${noun}`} htmlFor={`brief-${props.kind}`}>
+        <textarea
+          id={`brief-${props.kind}`}
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          rows={3}
+          className="cf-input min-h-[92px] resize-y leading-[1.6]"
+        />
+      </Field>
 
-          <div className="mt-8">
-            {props.platforms && (
-              <Control name="Placement" value={props.platforms.find((p) => p.id === platform)?.aspect}>
-                <div className="flex flex-wrap gap-1.5">
-                  {props.platforms.map((p) => (
-                    <button key={p.id} type="button" className="cf-option" aria-pressed={platform === p.id} onClick={() => setPlatform(p.id)}>
-                      {p.name}
-                    </button>
-                  ))}
-                </div>
-              </Control>
-            )}
+      {props.platforms && (
+        <Field label="Placement" value={props.platforms.find((p) => p.id === platform)?.aspect}>
+          <Chips>
+            {props.platforms.map((p) => (
+              <button key={p.id} type="button" className="cf-option" aria-pressed={platform === p.id} onClick={() => setPlatform(p.id)}>
+                {p.name}
+              </button>
+            ))}
+          </Chips>
+        </Field>
+      )}
 
-            <Control name={props.kind === "series" ? "Total runtime" : "Length"} value={fmtDuration(effSeconds)}>
-              <div className="flex flex-wrap gap-1.5">
-                {durations.map((d) => {
-                  const locked = d.value > maxSec;
-                  return (
-                    <button
-                      key={d.value}
-                      type="button"
-                      className="cf-option"
-                      aria-pressed={effSeconds === d.value}
-                      disabled={locked}
-                      title={locked ? "Longer productions need a higher plan — see Plans & Credits" : undefined}
-                      onClick={() => setSeconds(d.value)}
-                    >
-                      {d.label}
-                      {locked && <span className="sr-only"> (needs a higher plan)</span>}
-                    </button>
-                  );
-                })}
-              </div>
-              {maxSec < Math.max(...durations.map((d) => d.value)) && (
-                <p className="cf-label mt-2.5 leading-relaxed">
-                  Your {isAdmin ? "" : tier.toLowerCase() + " "}plan runs up to {fmtDuration(maxSec)} — longer lengths open on higher plans.
-                </p>
-              )}
-            </Control>
-
-            <Control name="Quality" value={quality}>
-              <div className="flex flex-wrap gap-1.5">
-                {MODELS.map((m) => {
-                  const allowed = isAdmin || modelAllowed(m.id, tier);
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      className="cf-option"
-                      aria-pressed={modelId === m.id}
-                      disabled={!allowed}
-                      title={allowed ? undefined : "The cinematic engine is part of the Studio plan"}
-                      onClick={() => setModelId(m.id)}
-                    >
-                      {m.klass === "premium" ? "Cinematic" : "Standard"} · {m.name}
-                      {!allowed && <span className="ml-1.5 opacity-70">— Studio</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </Control>
-
-            <Control name="Master format" value={RESOLUTIONS.find((r) => r.id === effectiveRes)?.label}>
-              <div className="flex flex-wrap gap-1.5">
-                {RESOLUTIONS.map((r) => {
-                  const locked = !resAllowed(r.id);
-                  return (
-                    <button
-                      key={r.id}
-                      type="button"
-                      className="cf-option"
-                      aria-pressed={effectiveRes === r.id}
-                      disabled={locked}
-                      title={locked ? `${r.label} needs a higher plan — see Plans & Credits` : r.note}
-                      onClick={() => setResolution(r.id)}
-                    >
-                      {r.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </Control>
+      <Field label="Configure">
+        <div className="cf-config-host">
+          <div className="cf-config-grid">
+            <ConfigCard
+              tone="length"
+              icon={<ClockIcon />}
+              label={props.kind === "series" ? "Total runtime" : "Length"}
+              main={fmtLong(effSeconds)}
+              secondary={
+                runnable.length < durations.length
+                  ? effSeconds === allowedMax
+                    ? "Maximum for your plan"
+                    : `Up to ${fmtLong(allowedMax)} on your plan`
+                  : "Final runtime"
+              }
+              meta={`${planScenes(effSeconds)} scenes · ${planShots(effSeconds)} shots`}
+              options={runnable.map((d) => ({ value: String(d.value), label: d.label }))}
+              value={String(effSeconds)}
+              onChange={(v) => setSeconds(Number(v))}
+              hint={runnable.length === 1 ? "Longer lengths open on higher plans" : undefined}
+            />
+            <ConfigCard
+              tone="engine"
+              icon={<EngineIcon />}
+              label="Quality & engine"
+              main={quality}
+              secondary={engineLine(model?.name ?? modelId)}
+              meta={`${quality === "Cinematic" ? "Cinematic motion" : "Fast production"} · ${resRange}`}
+              options={models.map((m) => ({ value: m.id, label: `${m.klass === "premium" ? "Cinematic" : "Standard"} — ${m.name}` }))}
+              value={modelId}
+              onChange={setModelId}
+              hint={models.length === 1 ? "The cinematic engine is part of the Studio plan" : undefined}
+            />
+            <ConfigCard
+              tone="format"
+              icon={<FormatIcon />}
+              label="Format"
+              main={RES_SHORT[effectiveRes]}
+              secondary={RES_QUALITY[effectiveRes]}
+              meta={`MP4 · ${aspect}`}
+              options={formats.map((r) => ({ value: r.id, label: `${r.label} — ${r.note}` }))}
+              value={effectiveRes}
+              onChange={(v) => setResolution(v as Resolution)}
+              hint={formats.length === 1 ? "Higher formats open on higher plans" : undefined}
+            />
           </div>
-        </Cell>
-
-        <Cell className="lg:min-h-[600px]">
-          <div className="cf-label">Production specification</div>
-          <h2 className="cf-display mb-6 mt-9 text-[30px] leading-none">The production plan.</h2>
-          <SpecList
-            rows={[
-              ["Production", production],
-              ["Runtime", fmtDuration(effSeconds)],
-              ["Quality", `${quality} · ${model?.name ?? modelId}`],
-              ["Format", effectiveRes],
-              ...(props.platforms ? ([["Aspect", props.platforms.find((p) => p.id === platform)?.aspect ?? "16:9"]] as [string, string][]) : []),
-              ["Ready in", `~${readyEstimate}`],
-              ["Plan", isAdmin ? "Admin" : tier],
-            ]}
-          />
-          <div className="mt-10">
-            <Pipeline steps={PIPELINE} status={state?.status} />
-          </div>
-        </Cell>
-      </Split>
-
-      <section className="mt-14 border-t border-cf-fg" aria-label="Production preview">
-        <div className="flex items-center justify-between border-b border-cf-line py-4">
-          <span className="cf-label text-cf-fg">Production preview</span>
-          <span className="cf-label">{state ? (state.live ? "Live production" : "Preview simulation") : "Waiting for direction"}</span>
         </div>
-        <div className={state ? "pt-8" : ""}>
-          <RunPanel state={state} stageLabels={STAGE_LABEL} readyTitle="Your cut is ready" artSeed={prompt} emptyHint={<EmptyHint noun={noun} />} />
-        </div>
-        {state && (state.characters.length > 0 || state.locations.length > 0) && (
-          <div className="mt-10">
-            <div className="cf-label mb-3">Production bible</div>
-            <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2">
-              {state.characters.map((c) => (
-                <BibleCard key={c.name} kind="Cast" name={c.name} desc={c.appearance} />
-              ))}
-              {state.locations.map((l) => (
-                <BibleCard key={l.name} kind="Location" name={l.name} desc={l.description} />
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
+      </Field>
 
-      <div className="mt-14">
-        <ActionBand
-          title={<>Ready to make the <em>{noun}?</em></>}
-          copy={
-            state?.live
-              ? "Live — the studio is doing the real work. Progress is saved to Projects."
-              : "Your direction becomes the production brief. Sign in to run the real studio; otherwise this previews the flow."
-          }
-        >
-          <button type="button" onClick={reset} className="cf-btn-line">
-            Reset
-          </button>
-          <button type="button" onClick={onCreate} disabled={running || !prompt.trim()} className="cf-btn-accent">
-            {running ? "In production…" : props.cta ?? "Create"}
-          </button>
-        </ActionBand>
-      </div>
+      <UnlockRow plan={isAdmin ? "Admin" : tier.charAt(0) + tier.slice(1).toLowerCase()} items={unlocks} />
     </>
   );
 
+  const footer = (
+    <StudioFooter
+      rows={[
+        ["Final runtime", fmtDuration(effSeconds)],
+        ["Ready in", `~${readyEstimate}`],
+      ]}
+      note={<NotifyToggle state={state} />}
+    >
+      <button type="button" onClick={onCreate} disabled={running || !prompt.trim()} className="cf-btn-accent flex-1">
+        {running ? "In production…" : props.cta ?? "Create"}
+      </button>
+      <button type="button" onClick={reset} className="cf-btn-line">
+        Reset
+      </button>
+    </StudioFooter>
+  );
+
+  const preview = (
+    <section aria-label="Production preview" className={state ? "" : "lg:h-full"}>
+      <RunPanel state={state} stageLabels={STAGE_LABEL} readyTitle="Your cut is ready" artSeed={prompt} fill emptyHint={<EmptyHint noun={noun} />} />
+      {state && (state.characters.length > 0 || state.locations.length > 0) && (
+        <div className="mt-6">
+          <div className="cf-label mb-3">Production bible</div>
+          <div className="grid gap-px overflow-hidden rounded-lg border border-cf-line bg-cf-line sm:grid-cols-2">
+            {state.characters.map((c) => (
+              <BibleCard key={c.name} kind="Cast" name={c.name} desc={c.appearance} />
+            ))}
+            {state.locations.map((l) => (
+              <BibleCard key={l.name} kind="Location" name={l.name} desc={l.description} />
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+
+  const body = <StudioGrid controls={controls} footer={footer} preview={preview} />;
+
   if (props.embedded) return body;
   return (
-    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
-      {props.header ?? (
-        <PageHeader eyebrow={`${production} production / 01`} title={props.heading} copy={<p>{props.blurb}</p>} status={{ label: `${production} studio ready` }} />
-      )}
-      <div className="pt-12">{body}</div>
-    </div>
+    <StudioPage
+      title={props.heading}
+      subtitle={props.blurb}
+      badge={state?.live ? { tone: "live", label: "Live · saved to Projects" } : { tone: "warn", label: "Preview" }}
+    >
+      {body}
+    </StudioPage>
   );
 }
 
@@ -297,8 +252,49 @@ function BibleCard({ kind, name, desc }: { kind: string; name: string; desc: str
 function EmptyHint({ noun }: { noun: string }) {
   return (
     <div>
-      <p className="cf-display text-[clamp(38px,5vw,62px)] leading-none">Your {noun} begins here.</p>
-      <p className="cf-label mt-3">Describe it above · then enter production</p>
+      <p className="cf-display text-[clamp(32px,4vw,52px)] leading-none">Your {noun} begins here.</p>
+      <p className="mt-3 text-[14px] text-white/80">Describe it, then press Create.</p>
     </div>
   );
 }
+
+/** Starting briefs per studio — one tap fills the brief. */
+const EXAMPLES: Partial<Record<CreateStudioProps["kind"], Example[]>> = {
+  film: [
+    { title: "Kingdom epic", tags: "Epic · Historical · Drama", brief: "An epic about an African kingdom fighting for its independence, told over three generations." },
+    { title: "Neon noir", tags: "Thriller · Sci-Fi · Urban", brief: "A neon-noir detective story in a rain-soaked megacity, where a missing hologram singer holds the key to a conspiracy." },
+    { title: "Ocean voyage", tags: "Adventure · Drama", brief: "Two sisters sail a wooden boat across the ocean to find the island their grandmother described in her letters." },
+    { title: "Savannah drought", tags: "Documentary · Nature", brief: "A documentary-style story of a savannah village and its herd surviving the longest drought in living memory." },
+    { title: "Space station", tags: "Sci-Fi · Thriller", brief: "A sci-fi thriller aboard a failing space station, where the last engineer must choose who boards the only escape pod." },
+  ],
+  advert: [
+    { title: "Product launch", tags: "Tech · Launch spot", brief: "A 15-second launch spot for wireless earbuds: night city, bass drop, slow-motion reveal, end on the logo and 'Hear everything.'" },
+    { title: "Food delivery", tags: "Lifestyle · Warm", brief: "A warm 15-second advert for a food delivery app: family dinner arrives in the rain, smiles, end card 'Dinner, sorted.'" },
+    { title: "Fitness app", tags: "Sport · Energetic", brief: "An energetic 15-second ad for a fitness app: sunrise runs, quick cuts, coach voiceover, end on 'Start today.'" },
+    { title: "Coffee brand", tags: "Lifestyle · Cosy", brief: "A cosy 15-second coffee advert: morning light, steam, a sleepy studio waking up, end card 'Your first good idea.'" },
+  ],
+};
+
+/* ── card copy helpers ──────────────────────────────────────── */
+/** "30 seconds", "2 minutes", "1 min 30 s". */
+function fmtLong(sec: number): string {
+  if (sec < 60) return `${sec} seconds`;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  if (s) return `${m} min ${s} s`;
+  return m === 1 ? "1 minute" : `${m} minutes`;
+}
+
+/** "Wan 2.1 · own GPU" → "Wan 2.1 · GPU rendering"; cloud engines say so. */
+function engineLine(name: string): string {
+  const [engine, host] = name.split(" · ");
+  return `${engine} · ${host?.includes("GPU") ? "GPU rendering" : "cloud rendering"}`;
+}
+
+const RES_SHORT: Record<Resolution, string> = { "480p": "480p", "720p": "720p", "1080p": "1080p", "4k": "4K" };
+const RES_QUALITY: Record<Resolution, string> = {
+  "480p": "Draft quality",
+  "720p": "HD quality",
+  "1080p": "Full HD master",
+  "4k": "4K upscaled master",
+};

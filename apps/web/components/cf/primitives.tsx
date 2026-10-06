@@ -133,7 +133,7 @@ export function Split({ children, ratio = "wide" }: { children: ReactNode; ratio
   return (
     <div
       className={`grid gap-px border border-cf-line bg-cf-line ${
-        ratio === "wide" ? "lg:grid-cols-[1.35fr_0.65fr]" : "lg:grid-cols-2"
+        ratio === "wide" ? "xl:grid-cols-[1.35fr_0.65fr]" : "lg:grid-cols-2"
       }`}
     >
       {children}

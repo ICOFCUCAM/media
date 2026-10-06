@@ -16,6 +16,7 @@ import { Queue } from "bullmq";
 import { QUEUES, planCapSec, type FilmJob, type VoiceLabJob, type SocialJob, type RenderJob } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
 import { enqueueSceneFlow } from "./film-flow";
+import { notifyFinish } from "../notify";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const filmQueue = new Queue<FilmJob>(QUEUES.film, { connection });
@@ -124,10 +125,11 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
         // Hard credit gate — the authoritative check (the web shows a friendly
         // version, but only this one can't be bypassed). No credits, no GPU.
         if (p.user.creditsMs <= 0) {
-          await prisma.project.updateMany({
+          const rejected = await prisma.project.updateMany({
             where: { id: p.id, status: "PLANNING" },
             data: { status: "FAILED", errorMessage: "Out of credits — top up to keep creating" },
           });
+          if (rejected.count) await notifyFinish(p.id, "FAILED", "Out of credits — top up to keep creating");
           console.log(`[poller] rejected project ${p.id}: user out of credits`);
           continue;
         }

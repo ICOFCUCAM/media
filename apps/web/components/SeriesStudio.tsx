@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import { useCreateRun } from "../lib/useCreateRun";
 import { RunPanel } from "./RunPanel";
 import type { ProjectStatus } from "../lib/demo";
-import { ActionBand, Cell, PageHeader, Section, SpecList, Split } from "./cf/primitives";
-import { Pipeline, type PipelineStep } from "./cf/Pipeline";
+import { usePlan } from "../lib/usePlan";
+import { fmtDuration } from "../lib/system";
+import { ExampleShelf, Field, StudioFooter, StudioGrid, StudioPage, UnlockRow } from "./cf/StudioLayout";
+import { NotifyToggle } from "./cf/NotifyToggle";
 
 const STAGE_LABELS: Record<ProjectStatus, string> = {
   PLANNING: "Writing the bible",
@@ -49,157 +51,125 @@ export function SeriesStudio() {
   function onCreate() {
     const outline = episodes.map((e, i) => `Ep${i + 1}: ${e.title} — ${e.logline}`).join("\n");
     run({ prompt: `${premise}\n\nSeason outline:\n${outline}`, modelId: "wan-2.1", targetSeconds: totalMin * 60 });
+    if (window.innerWidth < 1024) document.getElementById("studio-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  const plan = usePlan();
+  const clamped = totalMin * 60 > plan.maxSec;
+
   return (
-    <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
-      <PageHeader
-        eyebrow="Writers' room / Series architecture"
-        title={<>Build the<br /><em>series.</em></>}
-        copy={
+    <StudioPage
+      title="Create a Series"
+      subtitle="Shape the season and every episode — characters and story logic persist across all of them."
+      badge={state?.live ? { tone: "live", label: "Live · saved to Projects" } : { tone: "warn", label: "Preview" }}
+    >
+      <StudioGrid
+        controls={
           <>
-            <p>Establish the world, define the season and shape every episode before production begins.</p>
-            <p><strong>Characters persist. Story logic persists. The production moves as one continuous system.</strong></p>
+            <ExampleShelf examples={EXAMPLES} value={premise} onPick={setPremise} />
+            <Field label="Premise" htmlFor="series-premise">
+              <textarea id="series-premise" value={premise} onChange={(e) => setPremise(e.target.value)} rows={3} className="cf-input min-h-[96px] resize-y leading-[1.6]" />
+            </Field>
+
+            <Field
+              label={`Season ${seasons} · episodes`}
+              value={
+                <span className="inline-flex items-center rounded-md border border-cf-line2">
+                  <button type="button" onClick={() => setSeasons(Math.max(1, seasons - 1))} aria-label="Previous season" className="h-8 w-8 text-[15px] text-cf-muted hover:text-cf-fg">−</button>
+                  <span className="w-6 text-center text-[13px] text-cf-fg" aria-live="polite">{seasons}</span>
+                  <button type="button" onClick={() => setSeasons(seasons + 1)} aria-label="Next season" className="h-8 w-8 text-[15px] text-cf-muted hover:text-cf-fg">+</button>
+                </span>
+              }
+            >
+              <ol className="overflow-hidden rounded-md border border-cf-line">
+                {episodes.map((e, i) => (
+                  <li key={e.key} className="grid grid-cols-[22px_minmax(0,1fr)_auto] items-start gap-x-2.5 border-b border-cf-line bg-cf-bg px-3 py-2.5 last:border-b-0">
+                    <span className="pt-2 font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
+                    <div className="min-w-0">
+                      <input
+                        value={e.title}
+                        onChange={(ev) => patch(e.key, { title: ev.target.value })}
+                        aria-label={`Episode ${i + 1} title`}
+                        className="w-full border-0 bg-transparent py-1 font-display text-[16px] font-semibold text-cf-fg outline-none focus:underline focus:decoration-cf-line focus:underline-offset-4"
+                      />
+                      <input
+                        value={e.logline}
+                        onChange={(ev) => patch(e.key, { logline: ev.target.value })}
+                        placeholder="Logline — what happens this episode"
+                        aria-label={`Episode ${i + 1} logline`}
+                        className="w-full border-0 bg-transparent py-1 text-[13px] text-cf-muted outline-none placeholder:text-cf-dim focus:text-cf-fg"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={e.minutes}
+                        onChange={(ev) => patch(e.key, { minutes: Number(ev.target.value) })}
+                        aria-label={`Episode ${i + 1} runtime`}
+                        className="min-h-[40px] rounded-md border border-cf-line2 bg-cf-panel px-1.5 text-[13px] text-cf-fg outline-none focus:border-cf-accent"
+                      >
+                        {[5, 10, 20, 30, 45].map((m) => (
+                          <option key={m} value={m}>{m}m</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => removeEp(e.key)}
+                        aria-label={`Remove episode ${i + 1}`}
+                        className="flex h-10 w-10 items-center justify-center rounded-md text-cf-muted transition hover:bg-cf-soft hover:text-cf-fg"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <button type="button" onClick={addEp} className="cf-btn-line mt-2.5 w-full">
+                + Add episode
+              </button>
+            </Field>
+
+            <UnlockRow plan={plan.name} items={clamped ? [`full ${totalMin}-minute seasons (this plan renders ${fmtDuration(plan.maxSec)} of it)`] : []} />
           </>
         }
-        status={{ tone: state?.live ? "live" : "idle", label: state ? (state.live ? "Live production" : "Preview simulation") : "Writers' room open" }}
-      />
-
-      <Section label="01 — Series architecture" title="Define the production.">
-        <Split>
-          <Cell>
-            <div className="flex items-center justify-between">
-              <label htmlFor="series-premise" className="font-sans text-[11px] font-medium uppercase tracking-[0.06em]">Premise</label>
-              <span className="cf-label">Required</span>
-            </div>
-            <textarea id="series-premise" value={premise} onChange={(e) => setPremise(e.target.value)} rows={4} className="cf-input mt-2.5 resize-y p-5 leading-[1.7]" />
-            <p className="cf-label mt-3 leading-relaxed">The premise founds the season architecture, episode outlines, cast, locations and the production run.</p>
-
-            <div className="mt-12 flex items-end justify-between gap-4 border-b border-cf-fg pb-3">
-              <span className="font-sans text-[11px] font-medium uppercase tracking-[0.06em]">
-                Season {String(seasons).padStart(2, "0")} / Episodes
-              </span>
-              <span className="cf-label">{String(episodes.length).padStart(2, "0")} episodes</span>
-            </div>
-            <ol>
-              {episodes.map((e, i) => (
-                <li key={e.key} className="grid grid-cols-[36px_1fr_auto] gap-x-4 border-b border-cf-line py-5">
-                  <span className="pt-1 font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
-                  <div className="min-w-0">
-                    <input
-                      value={e.title}
-                      onChange={(ev) => patch(e.key, { title: ev.target.value })}
-                      aria-label={`Episode ${i + 1} title`}
-                      className="w-full border-0 bg-transparent font-display font-semibold text-[22px] tracking-[-0.02em] text-cf-fg outline-none focus:underline focus:decoration-cf-line focus:underline-offset-8"
-                    />
-                    <input
-                      value={e.logline}
-                      onChange={(ev) => patch(e.key, { logline: ev.target.value })}
-                      placeholder="Logline — what happens this episode"
-                      aria-label={`Episode ${i + 1} logline`}
-                      className="mt-1.5 w-full border-0 bg-transparent text-[13px] text-cf-muted outline-none placeholder:text-cf-dim focus:text-cf-fg"
-                    />
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <select
-                      value={e.minutes}
-                      onChange={(ev) => patch(e.key, { minutes: Number(ev.target.value) })}
-                      aria-label={`Episode ${i + 1} runtime`}
-                      className="border border-cf-line bg-cf-panel px-2 py-2 font-mono text-[12px] uppercase text-cf-fg outline-none focus:border-cf-fg"
-                    >
-                      {[5, 10, 20, 30, 45].map((m) => (
-                        <option key={m} value={m}>{m} min</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => removeEp(e.key)}
-                      aria-label={`Remove episode ${i + 1}`}
-                      className="flex h-[34px] w-[34px] items-center justify-center border border-cf-line text-cf-muted transition hover:border-cf-fg hover:text-cf-fg"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ol>
-            <button type="button" onClick={addEp} className="cf-btn-line mt-6">
-              + Add episode
+        footer={
+          <StudioFooter
+            rows={[
+              ["Episodes", String(episodes.length)],
+              ["Season", `${totalMin} min`],
+            ]}
+            note={<NotifyToggle state={state} />}
+          >
+            <button type="button" onClick={onCreate} disabled={running || !premise.trim() || episodes.length === 0} className="cf-btn-accent flex-1">
+              {running ? "Creating season…" : "Create series"}
             </button>
-          </Cell>
-
-          <Cell>
-            <div className="cf-label">Season architecture</div>
-            <div className="mt-8 flex items-center justify-between border-b border-t border-cf-line py-4">
-              <span className="text-[11px] text-cf-muted">Season</span>
-              <div className="inline-flex items-center border border-cf-line">
-                <button type="button" onClick={() => setSeasons(Math.max(1, seasons - 1))} aria-label="Previous season" className="px-3 py-1.5 text-cf-muted hover:text-cf-fg">−</button>
-                <span className="w-8 text-center font-mono text-[11px]" aria-live="polite">{seasons}</span>
-                <button type="button" onClick={() => setSeasons(seasons + 1)} aria-label="Next season" className="px-3 py-1.5 text-cf-muted hover:text-cf-fg">+</button>
-              </div>
-            </div>
-            <div className="border-b border-cf-line py-6">
-              <div className="cf-label">Season runtime</div>
-              <div className="cf-display mt-2 text-[56px] leading-none">{totalMin}</div>
-              <div className="cf-label mt-1">minutes · {episodes.length} episodes</div>
-            </div>
-            <SpecList
-              className="mt-8"
-              rows={[
-                ["Persistent cast", "✓"],
-                ["Persistent worlds", "✓"],
-                ["Story continuity", "✓"],
-                ["Engine", "Wan 2.1"],
-              ]}
-            />
-            <div className="cf-label mb-3 mt-10">Production pipeline</div>
-            <Pipeline steps={SERIES_PIPELINE} status={state?.status} />
-          </Cell>
-        </Split>
-      </Section>
-
-      <section className="mt-14 border-t border-cf-fg" aria-label="Season preview">
-        <div className="flex items-center justify-between border-b border-cf-line py-4">
-          <span className="cf-label text-cf-fg">02 — Season production</span>
-          <span className="cf-label">{state ? STAGE_LABELS[state.status] : "Waiting for the outline"}</span>
-        </div>
-        <div className={state ? "pt-8" : ""}>
+            <button type="button" onClick={reset} className="cf-btn-line">
+              Reset
+            </button>
+          </StudioFooter>
+        }
+        preview={
           <RunPanel
             state={state}
             stageLabels={STAGE_LABELS}
-            readyTitle="Season ready"
+            readyTitle="Season ready" fill
             artSeed={premise}
             emptyHint={
               <div>
-                <p className="cf-display text-[clamp(38px,5vw,62px)] leading-none">The season begins here.</p>
-                <p className="cf-label mt-3">Characters keep their look · the story holds across episodes</p>
+                <p className="cf-display text-[clamp(32px,4vw,52px)] leading-none">The season begins here.</p>
+                <p className="mt-3 text-[14px] text-white/80">Characters keep their look · the story holds across episodes.</p>
               </div>
             }
           />
-        </div>
-      </section>
-
-      <div className="mt-14">
-        <ActionBand
-          title={<>Send the outline to <em>production.</em></>}
-          copy={`${episodes.length} episodes · ${totalMin} minutes. The premise and every logline travel with the run.`}
-        >
-          <button type="button" onClick={reset} className="cf-btn-line">
-            Reset
-          </button>
-          <button type="button" onClick={onCreate} disabled={running || !premise.trim() || episodes.length === 0} className="cf-btn-accent">
-            {running ? "Creating season…" : "Create series"}
-          </button>
-        </ActionBand>
-      </div>
-    </div>
+        }
+      />
+    </StudioPage>
   );
 }
 
-const SERIES_PIPELINE: PipelineStep[] = [
-  { name: "Series bible", at: "PLANNING", idle: "Story" },
-  { name: "Episode architecture", at: "PLANNING", idle: "Structure" },
-  { name: "Characters & worlds", at: "PLANNING", idle: "Continuity" },
-  { name: "Episode generation", at: "GENERATING", idle: "Wan 2.1" },
-  { name: "Season assembly", at: "RENDERING", idle: "Render" },
+const EXAMPLES = [
+  { title: "Megacity thriller", tags: "Political · Thriller", brief: "A political thriller set in a near-future megacity, following a journalist uncovering a conspiracy." },
+  { title: "Royal dynasty", tags: "Period · Drama", brief: "A royal dynasty fractures when the youngest heir refuses the throne and joins the rebels." },
+  { title: "Island mystery", tags: "Mystery · Survival", brief: "Strangers wash ashore on an island that rewrites itself every night — and only one of them remembers." },
+  { title: "Space colony", tags: "Sci-Fi · Drama", brief: "The first colony ship wakes up a century early, orbiting a planet that was supposed to be empty." },
 ];
+

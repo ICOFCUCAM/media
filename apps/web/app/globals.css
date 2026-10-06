@@ -176,3 +176,254 @@ html {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Touch screens: 44px targets, and 16px form text so iOS never zooms on focus. */
+@media (pointer: coarse) {
+  .cf-btn,
+  .cf-btn-accent,
+  .cf-btn-ink,
+  .cf-btn-line,
+  .cf-option {
+    min-height: 44px;
+  }
+  :is(input, select, textarea):not(.font-display) {
+    font-size: 16px !important;
+  }
+}
+
+/* ── Configuration cards (components/cf/ConfigCard.tsx) ─────────────────
+   Dark graphite cards; each setting carries a restrained tone (length
+   cyan, engine violet, format teal) on its icon well and hover edge. The
+   CineForge accent marks the active value and the focused card. */
+.cf-config-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.cf-config-host {
+  container-type: inline-size;
+}
+@container (min-width: 400px) {
+  .cf-config-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.cf-config {
+  --tone: 94 200 255;
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 13px 13px 12px;
+  border-radius: 12px;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.012) 60%),
+    rgb(17 18 17);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 1px 2px rgb(0 0 0 / 0.45);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+.cf-config[data-tone="engine"] {
+  --tone: 170 140 255;
+}
+.cf-config[data-tone="format"] {
+  --tone: 64 214 184;
+}
+.cf-config:hover {
+  transform: translateY(-1px);
+  border-color: rgb(var(--tone) / 0.38);
+  background-color: rgb(21 22 21);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 10px 26px -14px rgb(var(--tone) / 0.45);
+}
+.cf-config[data-static]:hover {
+  transform: none;
+}
+.cf-config:focus-within {
+  border-color: rgb(var(--cf-accent) / 0.85);
+  box-shadow:
+    0 0 0 3px rgb(var(--cf-accent) / 0.16),
+    0 10px 26px -14px rgb(var(--cf-accent) / 0.35);
+}
+.cf-config[aria-disabled="true"] {
+  opacity: 0.55;
+}
+.cf-config-icon {
+  display: grid;
+  height: 28px;
+  width: 28px;
+  place-items: center;
+  border-radius: 8px;
+  color: rgb(var(--tone));
+  background: rgb(var(--tone) / 0.1);
+  border: 1px solid rgb(var(--tone) / 0.24);
+  box-shadow: 0 0 16px -6px rgb(var(--tone) / 0.6);
+}
+.cf-config-check {
+  display: grid;
+  height: 16px;
+  width: 16px;
+  place-items: center;
+  border-radius: 999px;
+  color: #10100f;
+  background: rgb(var(--cf-accent));
+  box-shadow: 0 0 10px -2px rgb(var(--cf-accent) / 0.6);
+}
+.cf-config-label {
+  margin-top: 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgb(var(--cf-muted));
+}
+.cf-config-value {
+  margin-top: 3px;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-manrope), Manrope, sans-serif;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: rgb(var(--cf-fg));
+}
+.cf-config-chevron {
+  flex-shrink: 0;
+  color: rgb(var(--cf-dim));
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+.cf-config:hover .cf-config-chevron,
+.cf-config:focus-within .cf-config-chevron {
+  color: rgb(var(--cf-accent));
+  transform: translateY(1px);
+}
+.cf-config-sub {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgb(var(--cf-muted));
+}
+.cf-config-meta {
+  margin-top: auto;
+  padding-top: 9px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgb(var(--cf-dim));
+  font-variant-numeric: tabular-nums;
+}
+.cf-config-sub + .cf-config-meta {
+  border-top: 1px solid rgb(255 255 255 / 0.06);
+  margin-top: 9px;
+}
+.cf-config-select {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  cursor: pointer;
+  opacity: 0;
+  border-radius: 12px;
+  /* Keep the native picker readable when it opens. */
+  color: #111;
+  font-size: 16px;
+}
+
+/* ── Example presets (ExampleShelf) ───────────────────────────────────── */
+.cf-preset {
+  position: relative;
+  display: flex;
+  width: 140px;
+  flex-shrink: 0;
+  flex-direction: column;
+  border-radius: 12px;
+  padding: 5px 5px 8px;
+  text-align: left;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(17 18 17);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.cf-preset:hover {
+  transform: translateY(-1px);
+  border-color: rgb(255 255 255 / 0.2);
+  box-shadow: 0 12px 28px -16px rgb(0 0 0 / 0.9);
+}
+.cf-preset:focus-visible {
+  outline: none;
+  border-color: rgb(var(--cf-accent) / 0.85);
+  box-shadow: 0 0 0 3px rgb(var(--cf-accent) / 0.18);
+}
+.cf-preset[aria-pressed="true"] {
+  border-color: rgb(var(--cf-accent) / 0.9);
+  box-shadow:
+    0 0 0 1px rgb(var(--cf-accent) / 0.35),
+    0 10px 28px -14px rgb(var(--cf-accent) / 0.45);
+}
+.cf-preset-thumb {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  aspect-ratio: 16 / 9;
+}
+.cf-preset-thumb > * {
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.cf-preset:hover .cf-preset-thumb > :first-child {
+  transform: scale(1.06);
+}
+.cf-preset .cf-config-check {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  opacity: 0;
+  transform: scale(0.7);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.cf-preset[aria-pressed="true"] .cf-config-check {
+  opacity: 1;
+  transform: none;
+}
+.cf-preset-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 7px 4px 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(var(--cf-fg));
+}
+.cf-preset-tags {
+  margin: 2px 4px 0;
+  font-size: 11px;
+  color: rgb(var(--cf-muted));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cf-config,
+  .cf-preset,
+  .cf-preset-thumb > * {
+    transition: none;
+  }
+  .cf-config:hover,
+  .cf-preset:hover {
+    transform: none;
+  }
+}

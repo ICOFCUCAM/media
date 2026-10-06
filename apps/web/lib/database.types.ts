@@ -50,11 +50,18 @@ export interface Database {
           role: "USER" | "ADMIN";
           tier: "FREE" | "CREATOR" | "STUDIO" | "AGENCY" | "ENTERPRISE";
           credits_ms: number;
+          notify_on_finish: boolean;
           created_at: string;
           updated_at: string;
         };
         Insert: { id: string; email: string; display_name?: string | null };
-        Update: { display_name?: string | null; tier?: Database["public"]["Tables"]["users"]["Row"]["tier"]; credits_ms?: number };
+        Update: { display_name?: string | null; tier?: Database["public"]["Tables"]["users"]["Row"]["tier"]; credits_ms?: number; notify_on_finish?: boolean };
+        Relationships: [];
+      };
+      marketplace_waitlist: {
+        Row: { user_id: string; catalogue: string; created_at: string };
+        Insert: { user_id: string; catalogue: string };
+        Update: never;
         Relationships: [];
       };
       projects: {

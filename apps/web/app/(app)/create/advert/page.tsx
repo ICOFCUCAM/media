@@ -1,7 +1,6 @@
 "use client";
 
 import { CreateStudio } from "../../../../components/CreateStudio";
-import { PageHeader } from "../../../../components/cf/primitives";
 import { AD_PRESETS } from "../../../../lib/ads";
 
 /**
@@ -15,20 +14,7 @@ export default function CreateAdvertPage() {
     <CreateStudio
       kind="advert"
       heading="Create an Advert"
-      blurb=""
-      header={
-        <PageHeader
-          eyebrow="Commercial studio / Brand film"
-          title={<>Make the<br /><em>case.</em></>}
-          copy={
-            <>
-              <p>Build a commercial that gives a product, service or idea a reason to matter. Pick a placement, describe the product and the feeling.</p>
-              <p><strong>The Director writes a spot with a call-to-action; the studio films it in the placement&apos;s exact format.</strong></p>
-            </>
-          }
-          status={{ label: "Commercial studio ready" }}
-        />
-      }
+      blurb="Pick a placement, describe the product and the feeling — the studio writes a spot with a call-to-action and films it in that exact format."
       durations={[
         { label: "6s bumper", value: 6 },
         { label: "15s", value: 15 },

@@ -9,7 +9,7 @@
   --black: #080808;
   --black-soft: #101010;
   --white: #f4f2ed;
-  --muted: #9c9a94;
+  --muted: #aaaca5;
   --line: rgba(244,242,237,.15);
   --line-soft: rgba(244,242,237,.08);
   --accent: #d8ff62;
@@ -48,10 +48,11 @@
 }
 
 .cfh .eyebrow {
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: .16em;
-  font-size: 11px;
+  letter-spacing: .1em;
+  font-size: 12px;
   color: var(--muted);
 }
 
@@ -277,9 +278,10 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
-  letter-spacing: .12em;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: rgba(244,242,237,.78);
   text-shadow: 0 1px 8px rgba(0,0,0,.6);
@@ -343,9 +345,10 @@
 }
 
 .cfh .hero-prompt span {
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
-  letter-spacing: .14em;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -353,8 +356,9 @@
 .cfh .hero-prompt p {
   margin: 8px 0 0;
   min-height: 3.6em;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 11px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   line-height: 1.6;
   color: #d9d6cf;
 }
@@ -396,9 +400,10 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
-  letter-spacing: .14em;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: #5c5a55;
 }
@@ -473,9 +478,10 @@
 
 .cfh .metric-label {
   margin-top: 12px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
-  letter-spacing: .14em;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -553,8 +559,9 @@
   right: 5vw;
   display: flex;
   justify-content: space-between;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   color: #76746e;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -633,6 +640,8 @@
 .cfh .chapter-image::before {
   content: "";
   position: absolute;
+  z-index: 1;
+  pointer-events: none;
   inset: 12%;
   border: 1px solid rgba(244,242,237,.17);
 }
@@ -642,10 +651,11 @@
   position: absolute;
   bottom: 25px;
   left: 28px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   color: #aaa69c;
-  letter-spacing: .12em;
+  letter-spacing: .1em;
 }
 
 .cfh .chapter-grid {
@@ -660,10 +670,11 @@
 }
 
 .cfh .chapter-number {
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 10px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   color: var(--accent);
-  letter-spacing: .15em;
+  letter-spacing: .1em;
   margin-bottom: 35px;
 }
 
@@ -700,16 +711,17 @@
   gap: 20px;
   padding: 14px 0;
   border-bottom: 1px solid var(--line-soft);
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 10px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: .1em;
-  color: #aaa69d;
+  color: #c4c2bb;
   transition: color .3s ease, padding .3s ease;
 }
 
 .cfh .chapter-index a span:last-child {
-  color: #66645f;
+  color: #8d8f88;
   text-align: right;
 }
 
@@ -774,11 +786,12 @@
 }
 
 .cfh .studio-sidebar h4 {
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: .15em;
-  color: #66645f;
+  letter-spacing: .1em;
+  color: #8d8f88;
   margin: 0 0 25px;
 }
 
@@ -794,7 +807,7 @@
   display: block;
   padding: 11px 0;
   font-size: 12px;
-  color: #77756f;
+  color: #a9aba4;
   transition: color .3s ease;
 }
 
@@ -845,9 +858,10 @@
   position: absolute;
   top: 18px;
   left: 18px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
-  color: #85827a;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  color: #d6d4cc;
 }
 
 .cfh .playhead {
@@ -894,11 +908,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 18px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: .12em;
-  color: #66645f;
+  letter-spacing: .1em;
+  color: #8d8f88;
 }
 
 .cfh .pipeline span:first-child {
@@ -911,11 +926,12 @@
 }
 
 .cfh .inspector {
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
-  color: #66645f;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  color: #8d8f88;
   text-transform: uppercase;
-  letter-spacing: .13em;
+  letter-spacing: .1em;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--line-soft);
   margin-bottom: 20px;
@@ -926,7 +942,7 @@
   justify-content: space-between;
   margin: 17px 0;
   font-size: 11px;
-  color: #aaa69d;
+  color: #c4c2bb;
 }
 
 .cfh .parameter span:last-child {
@@ -971,8 +987,9 @@
 }
 
 .cfh .capability-number {
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 11px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   color: #77746d;
 }
 
@@ -994,10 +1011,11 @@
 .cfh .capability-go {
   display: block;
   margin-top: 18px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 10px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: .12em;
+  letter-spacing: .1em;
   color: #101010;
 }
 
@@ -1121,8 +1139,9 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: .1em;
   color: #c4c0b7;
@@ -1140,8 +1159,9 @@
   z-index: 1;
   top: 18px;
   right: 20px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: .1em;
   color: var(--accent);
@@ -1202,8 +1222,9 @@
   border-bottom: 1px solid #c7c4bb;
   display: flex;
   justify-content: space-between;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 10px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: .1em;
 }
@@ -1383,10 +1404,11 @@
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 10px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: .12em;
+  letter-spacing: .1em;
 }
 
 .cfh .price-flag {
@@ -1501,10 +1523,11 @@
   color: #77746e;
   display: flex;
   justify-content: space-between;
-  font-family: var(--font-dm-mono), "DM Mono", monospace;
-  font-size: 9px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: .12em;
+  letter-spacing: .1em;
 }
 
 .cfh .footer-links {
@@ -1678,4 +1701,1042 @@
   .cfh .hero-caret,
   .cfh .hero-scroll::after { animation: none; }
   .cfh .hero-image { transition: none; }
+}
+
+/* ------------------------------
+   DRAWN FRAMES — CinemaArt fills every frame that has no footage yet
+------------------------------ */
+
+.cfh .art-fill {
+  position: absolute;
+  inset: 0;
+}
+
+.cfh .scene { background: #0b0c0b; }
+.cfh .scene::before { display: none; }
+.cfh .scene-label,
+.cfh .playhead,
+.cfh .timeline { z-index: 2; }
+.cfh .scene-label {
+  padding: 4px 8px;
+  border: 1px solid rgba(255,255,255,.3);
+  background: rgba(0,0,0,.35);
+  color: #fff;
+  letter-spacing: .08em;
+}
+.cfh .timeline { background: rgba(0,0,0,.55); backdrop-filter: blur(6px); }
+.cfh .clip { position: relative; overflow: hidden; background: #111; }
+.cfh .clip.is-on { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cfh .pipeline span:first-child { font-weight: 600; }
+.cfh .studio-item.active { color: var(--black); background: var(--white); padding-left: 10px; margin: 0 -10px; border-radius: 4px; }
+.cfh .hero-board i { position: relative; overflow: hidden; }
+.cfh .hero-board i .art-fill { opacity: 0; transition: opacity .5s ease; transition-delay: inherit; }
+.cfh .hero-board i.is-on .art-fill { opacity: 1; }
+
+/* ------------------------------
+   PHONES & TABLETS
+------------------------------ */
+
+.cfh .nav-menu { display: none; position: relative; }
+.cfh .nav-menu summary {
+  list-style: none;
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.cfh .nav-menu summary::-webkit-details-marker { display: none; }
+.cfh .nav-menu[open] summary { border-color: var(--accent); color: var(--accent); }
+.cfh .nav-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  background: #121311;
+  border: 1px solid var(--line);
+  box-shadow: 0 20px 50px rgba(0,0,0,.5);
+}
+.cfh .nav-menu-panel a {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 15px;
+  color: var(--white);
+}
+.cfh .nav-menu-panel a:hover { background: rgba(255,255,255,.06); }
+
+@media (max-width: 1100px) {
+  /* The living frame returns in the flow, above the title. */
+  .cfh .hero {
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: stretch;
+    padding-top: 110px;
+    min-height: auto;
+  }
+  .cfh .hero-stage {
+    display: flex;
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 100%;
+    max-width: 720px;
+    transform: none;
+    margin-bottom: 48px;
+  }
+  .cfh .hero-content { padding-bottom: 80px; }
+}
+
+@media (max-width: 900px) {
+  .cfh .nav {
+    padding: 14px 5vw;
+    background: rgba(8,8,8,.86);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .cfh .nav-menu { display: block; }
+  .cfh .nav-cta { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
+@media (max-width: 600px) {
+  .cfh .nav-cta { padding: 0 12px; font-size: 11px; letter-spacing: .06em; }
+  .cfh .hero { padding-top: 92px; }
+  .cfh .hero-stage { margin-bottom: 36px; gap: 12px; }
+  .cfh .hero-desk { grid-template-columns: 1fr; }
+  .cfh .hero-board { display: none; }
+  .cfh .hero-flow { gap: 10px; flex-wrap: wrap; }
+  .cfh .hero-content { padding-bottom: 56px; }
+}
+
+/* Touch: text links get a finger-sized hit area. */
+@media (pointer: coarse) {
+  .cfh .text-link,
+  .cfh .nav-center a,
+  .cfh .nav-login,
+  .cfh .footer-links a { display: inline-flex; align-items: center; min-height: 44px; }
+  .cfh .nav-cta { min-height: 44px; display: inline-flex; align-items: center; }
+  .cfh .footer-links { gap: 4px 20px; }
+}
+.cfh .nav-cta { white-space: nowrap; }
+@media (max-width: 900px) {
+  .cfh .nav-login { display: none !important; }
+  .cfh .nav-right { gap: 10px; }
+}
+
+/* Phones: long stacks become swipeable rows so the page stays short (docs/36 §8). */
+.cfh .channel-more { display: none; }
+
+@media (max-width: 600px) {
+  .cfh .section { padding: 72px 6vw; }
+
+  .cfh .capability-track,
+  .cfh .reel-grid,
+  .cfh .price-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    margin: 0 -6vw;
+    padding: 0 6vw 6px;
+    scrollbar-width: none;
+    scroll-padding-inline: 6vw;
+    border-top: none;
+  }
+  .cfh .capability-track::-webkit-scrollbar,
+  .cfh .reel-grid::-webkit-scrollbar,
+  .cfh .price-row::-webkit-scrollbar { display: none; }
+
+  .cfh .capability-track .capability {
+    flex: 0 0 84%;
+    scroll-snap-align: start;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 26px 22px;
+    border: 1px solid #cbc9c2;
+  }
+  .cfh .capability-track .capability > div:last-child { grid-column: auto; }
+
+  .cfh .reel-grid .reel { flex: 0 0 84%; scroll-snap-align: start; }
+
+  .cfh .price-row .price {
+    flex: 0 0 84%;
+    scroll-snap-align: start;
+    min-height: 0;
+    border: 1px solid #c7c4bb;
+  }
+
+  .cfh .publish .channel-list .channel:nth-child(n + 6):not(.channel-more) { display: none; }
+  .cfh .publish .channel-more { display: flex; color: #74716b; }
+}
+
+/* ------------------------------
+   SECTION VISUALS — each chapter has its own image language
+------------------------------ */
+
+/* Hero slate: location / time / lens beside the slug. */
+.cfh .hero-frame-meta { color: rgba(255,255,255,.62); }
+
+/* World (atlas) and Story (close-up) carry their own framing — no inset frame line. */
+.cfh .chapter-atlas::before,
+.cfh .chapter-portrait::before { display: none; }
+.cfh .chapter-atlas { background: #0a1820; }
+.cfh .chapter-portrait { background: #070c10; }
+
+/* Production — a miniature of the real Create Film studio. */
+.cfh .studio-main.cf-dark { background: #0d0e0d; }
+.cfh .ws-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  background: #141614;
+  width: max-content;
+  max-width: 100%;
+  overflow: hidden;
+}
+.cfh .ws-tabs span {
+  padding: 7px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #a9aba4;
+  white-space: nowrap;
+}
+.cfh .ws-tabs span.is-on { background: #f2f1ec; color: #0b0c0b; }
+.cfh .ws-room {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 14px;
+}
+.cfh .ws-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  background: #141614;
+  min-width: 0;
+}
+.cfh .ws-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #a9aba4;
+}
+.cfh .ws-presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.cfh .ws-presets .cf-preset { width: auto; padding: 4px 4px 6px; }
+.cfh .ws-presets .cf-preset-title { font-size: 10px; margin-top: 5px; }
+.cfh .ws-presets .cf-preset-tags { font-size: 9.5px; }
+.cfh .ws-brief {
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px;
+  background: #0f110f;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #f2f1ec;
+}
+.cfh .ws-config { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.cfh .ws-config .cf-config { padding: 10px; }
+.cfh .ws-config .cf-config-icon { width: 24px; height: 24px; }
+.cfh .ws-config .cf-config-label { margin-top: 8px; font-size: 9.5px; }
+.cfh .ws-config .cf-config-value { font-size: 15px; }
+.cfh .ws-config .cf-config-sub { font-size: 11px; }
+.cfh .ws-create {
+  margin-top: 2px;
+  padding: 11px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #10100f;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+.cfh .ws-preview { min-width: 0; }
+.cfh .ws-preview .scene { height: 100%; min-height: 360px; border-radius: 12px; }
+
+/* Release — ONE FILM. EVERY SCREEN. Staged as product photography. */
+.cfh .release-showcase { position: relative; margin: 56px 0 0; width: min(100%, 680px); }
+/* Studio environment: a soft key from above-left, light falling off into the
+   section's own cream at every edge (no card, no hard boundary), and a floor
+   plane where the devices rest. */
+.cfh .release-showcase::before {
+  content: "";
+  position: absolute;
+  inset: -14% -18% -10%;
+  z-index: 0;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(closest-side, #000 62%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 62%, transparent 100%);
+  background:
+    radial-gradient(48% 42% at 44% 30%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 72%),
+    radial-gradient(70% 60% at 50% 46%, rgba(214, 208, 196, 0) 40%, rgba(196, 188, 174, 0.38) 78%, rgba(196, 188, 174, 0) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 58%, rgba(92, 78, 60, 0.07) 72%, rgba(92, 78, 60, 0.05) 86%, rgba(0, 0, 0, 0) 100%);
+}
+.cfh .release-stage {
+  position: relative;
+  z-index: 1;
+  aspect-ratio: 100 / 72;
+  container-type: inline-size;
+}
+.cfh .rs-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* Shared construction: metal band → black glass border → panel. */
+.cfh .dv-metal { position: relative; }
+.cfh .dv-bezel { position: relative; background: #030304; }
+.cfh .dv-screen { position: relative; overflow: hidden; background: #000; }
+/* Glass: a long soft reflection, a faint top sheen and a hairline edge. */
+.cfh .dv-glass {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.035) 26%, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 10%);
+  box-shadow: inset 0 0 0 0.06cqw rgba(255, 255, 255, 0.07);
+  mix-blend-mode: screen;
+}
+
+/* Cinema display: near edge-to-edge glass in a hairline anodised frame. */
+.cfh .dv-tv { position: absolute; z-index: 1; left: 9%; top: 0; width: 76%; }
+.cfh .dv-tv-glow {
+  position: absolute;
+  inset: 6% 4% -4%;
+  z-index: -1;
+  filter: blur(5cqw) saturate(1.5);
+  opacity: 0.5;
+}
+.cfh .dv-tv-metal {
+  padding: 0.11cqw;
+  border-radius: 0.45cqw;
+  background: linear-gradient(160deg, #b9bbc0 0%, #55575c 30%, #2a2b2e 55%, #6b6d72 82%, #c4c6ca 100%);
+  box-shadow:
+    0 0.1cqw 0.2cqw rgba(40, 30, 20, 0.18),
+    0 1.6cqw 3.2cqw -1.4cqw rgba(40, 30, 20, 0.28);
+}
+.cfh .dv-tv-bezel { padding: 0.2cqw; border-radius: 0.36cqw; }
+.cfh .dv-tv-screen { aspect-ratio: 16 / 9; border-radius: 0.12cqw; }
+
+/* Tablet: ultra-thin pro slab, thin symmetric border, three-quarter view. */
+.cfh .dv-tablet { position: absolute; z-index: 2; left: 0; bottom: 2%; width: 51%; perspective: 1600px; }
+.cfh .dv-tablet-tilt { transform: rotateY(15deg) rotateX(2.5deg) rotateZ(-0.6deg); transform-origin: 30% 60%; }
+.cfh .dv-tablet-metal {
+  padding: 0.2cqw;
+  border-radius: 1.7cqw;
+  background: linear-gradient(140deg, #f2f3f5 0%, #b4b6bb 16%, #6a6c72 44%, #9a9ca2 72%, #eceef1 100%);
+  box-shadow:
+    0 0.2cqw 0.4cqw rgba(40, 30, 20, 0.16),
+    -1.4cqw 2.2cqw 3.2cqw -1.4cqw rgba(40, 30, 20, 0.32);
+}
+.cfh .dv-tablet-bezel { padding: 0.62cqw; border-radius: 1.52cqw; }
+.cfh .dv-tablet-cam {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 0.16cqw;
+  width: 0.3cqw;
+  height: 0.3cqw;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #3b4a68, #020203 70%);
+}
+.cfh .dv-tablet-screen { aspect-ratio: 16 / 10; border-radius: 1cqw; }
+
+/* Phone: flagship slab — brushed titanium band, thin even border, pill camera. */
+.cfh .dv-phone { position: absolute; z-index: 3; right: 3%; bottom: 1%; width: 19%; perspective: 1300px; }
+.cfh .dv-phone-tilt { transform: rotateY(-14deg) rotateX(-3deg) rotateZ(2deg); transform-origin: 50% 70%; }
+.cfh .dv-phone-metal {
+  padding: 0.24cqw;
+  border-radius: 3.5cqw;
+  background: linear-gradient(155deg, #e4e0d8 0%, #a29e96 18%, #5a5853 46%, #8c8982 74%, #dcd8d0 100%);
+  box-shadow:
+    0.3cqw 0.06cqw 0 #6f6c66,
+    0.34cqw 0.1cqw 0 #3b3936,
+    0 0.2cqw 0.4cqw rgba(40, 30, 20, 0.18),
+    1.4cqw 2.2cqw 3cqw -1.2cqw rgba(40, 30, 20, 0.36);
+}
+.cfh .dv-phone-bezel { padding: 0.34cqw; border-radius: 3.28cqw; }
+.cfh .dv-phone-screen { aspect-ratio: 9 / 19.5; border-radius: 2.95cqw; }
+.cfh .dv-island {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 2.2%;
+  width: 27%;
+  height: 2.7%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: #000;
+  box-shadow: inset 0.18cqw 0 0.16cqw -0.04cqw rgba(70, 90, 130, 0.55);
+}
+
+
+/* Tablet — DIRECT: a production instrument, not a dashboard. */
+.cfh .dt {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 0.8cqw;
+  padding: 0.6cqw 1.2cqw 1.2cqw;
+  background: radial-gradient(120% 90% at 30% 0%, #17181a, #0a0b0b 70%);
+  color: #f2f1ec;
+  font-family: var(--font-inter), Inter, sans-serif;
+}
+.cfh .dt-head { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; }
+.cfh .dt-title { font-family: var(--serif); font-style: italic; font-size: 1.75cqw; line-height: 1; }
+.cfh .dt-title small { margin-left: 0.6cqw; font-family: var(--font-inter), Inter, sans-serif; font-style: normal; font-size: 0.85cqw; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #8d8f88; }
+.cfh .dt-status { display: flex; align-items: center; gap: 0.45cqw; font-size: 0.9cqw; color: #c9cbc4; }
+.cfh .dt-status i { width: 0.6cqw; height: 0.6cqw; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0.8cqw var(--accent); }
+.cfh .dt-preview { position: relative; overflow: hidden; border-radius: 0.6cqw; }
+.cfh .dt-cam,
+.cfh .dt-slate {
+  position: absolute;
+  z-index: 2;
+  font-size: 0.8cqw;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+.cfh .dt-cam { right: 0.8cqw; top: 0.7cqw; padding: 0.25cqw 0.55cqw; border-radius: 0.3cqw; background: rgba(0, 0, 0, 0.45); }
+.cfh .dt-slate { left: 0.9cqw; bottom: 0.7cqw; }
+.cfh .dt-side {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.5cqw 0.8cqw;
+  overflow: hidden;
+  border-radius: 0.6cqw;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 0 0 0.06cqw rgba(255, 255, 255, 0.07);
+  min-width: 0;
+}
+.cfh .dt-side div { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6cqw; padding: 0.42cqw 0; border-top: 0.06cqw solid rgba(255, 255, 255, 0.07); }
+.cfh .dt-side div:first-child { border-top: 0; }
+.cfh .dt-side dt { font-size: 0.66cqw; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #7d7f79; }
+.cfh .dt-side dd { margin: 0; min-width: 0; font-size: 0.82cqw; color: #e9e8e3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cfh .dt-score { position: relative; display: flex; align-items: center; gap: 0.8cqw; }
+.cfh .dt-score svg { width: 3.4cqw; height: 3.4cqw; transform: rotate(-90deg); }
+.cfh .dt-ring-bg { fill: none; stroke: rgba(255, 255, 255, 0.1); stroke-width: 3; }
+.cfh .dt-ring { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+.cfh .dt-score-n { position: absolute; left: 0; width: 3.4cqw; text-align: center; font-family: var(--font-manrope), Manrope, sans-serif; font-size: 1.2cqw; font-weight: 700; }
+.cfh .dt-score-l { font-size: 0.85cqw; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #a9aba4; }
+.cfh .dt-rows { margin: 0; display: flex; flex-direction: column; gap: 0.35cqw; }
+.cfh .dt-rows div { display: flex; flex-direction: column; gap: 0; padding-top: 0.35cqw; border-top: 0.06cqw solid rgba(255, 255, 255, 0.07); }
+.cfh .dt-rows dt { font-size: 0.72cqw; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #7d7f79; }
+.cfh .dt-rows dd { margin: 0; font-size: 0.84cqw; color: #e9e8e3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cfh .dt-board { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.5cqw; }
+.cfh .dt-shot { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 0.35cqw; }
+.cfh .dt-shot b { position: absolute; z-index: 2; left: 0.4cqw; bottom: 0.25cqw; font-size: 0.7cqw; font-weight: 600; color: rgba(255, 255, 255, 0.85); }
+.cfh .dt-shot i { position: absolute; z-index: 2; right: 0.4cqw; top: 0.4cqw; width: 0.55cqw; height: 0.55cqw; border-radius: 50%; }
+.cfh .dt-shot.is-ready i { background: #96de6e; }
+.cfh .dt-shot.is-live { box-shadow: 0 0 0 0.14cqw var(--accent); }
+.cfh .dt-shot.is-live i { background: var(--accent); box-shadow: 0 0 0.6cqw var(--accent); }
+.cfh .dt-shot.is-queued { opacity: 0.45; }
+.cfh .dt-shot.is-queued i { background: rgba(255, 255, 255, 0.5); }
+
+/* Phone — RELEASE: vertical cut, subtitles, voice, launch. */
+.cfh .dv-phone-screen { color: #fff; font-family: var(--font-inter), Inter, sans-serif; }
+.cfh .dv-phone-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.35) 42%, rgba(0, 0, 0, 0) 60%);
+}
+.cfh .dp-ready {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 8.4%;
+  display: flex;
+  align-items: center;
+  gap: 0.35cqw;
+  padding: 0.25cqw 0.6cqw;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  font-size: 0.72cqw;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.cfh .dp-ready i { width: 0.45cqw; height: 0.45cqw; border-radius: 50%; background: var(--accent); }
+.cfh .dp-sub {
+  position: absolute;
+  z-index: 3;
+  left: 6%;
+  right: 6%;
+  top: 47%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25cqw;
+  font-size: 1.05cqw;
+  font-weight: 600;
+  text-align: center;
+  text-shadow: 0 0.1cqw 0.5cqw rgba(0, 0, 0, 0.9);
+}
+.cfh .dp-sub small { font-size: 0.62cqw; font-weight: 600; letter-spacing: 0.12em; color: var(--accent); }
+.cfh .dp-sheet {
+  position: absolute;
+  z-index: 3;
+  left: 4%;
+  right: 4%;
+  bottom: 2.4%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55cqw;
+  padding: 0.7cqw;
+  border-radius: 1.6cqw;
+  background: rgba(16, 17, 16, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: inset 0 0 0 0.05cqw rgba(255, 255, 255, 0.1);
+}
+.cfh .dp-langs { display: flex; gap: 0.25cqw; }
+.cfh .dp-langs span { flex: 1; padding: 0.2cqw 0; border-radius: 0.3cqw; text-align: center; font-size: 0.62cqw; font-weight: 700; color: #c9cbc4; background: rgba(255, 255, 255, 0.07); }
+.cfh .dp-langs span.is-on { background: var(--accent); color: #10100f; }
+.cfh .dp-langs .dp-more { background: none; color: #8d8f88; }
+.cfh .dp-voice { display: flex; align-items: center; gap: 0.45cqw; font-size: 0.66cqw; color: #d9d8d2; white-space: nowrap; }
+.cfh .dp-wave { display: flex; align-items: center; gap: 0.1cqw; height: 1.1cqw; width: 3.4cqw; flex-shrink: 0; }
+.cfh .dp-wave i { flex: 1; border-radius: 1px; background: #a98bff; }
+.cfh .dp-platforms { display: flex; align-items: center; gap: 0.22cqw; }
+.cfh .dp-platforms span { display: grid; width: 1.35cqw; height: 1.35cqw; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, 0.12); font-size: 0.5cqw; font-weight: 700; }
+.cfh .dp-platforms em { margin-left: auto; font-style: normal; font-size: 0.6cqw; color: #96de6e; white-space: nowrap; }
+.cfh .dp-cta { padding: 0.55cqw 0; border-radius: 0.9cqw; background: var(--accent); color: #10100f; text-align: center; font-size: 0.72cqw; font-weight: 700; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes dt-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .cfh .reveal.visible .dt-status i,
+  .cfh .reveal.visible .dt-shot.is-live i { animation: dt-pulse 1.6s ease-in-out infinite; }
+  .cfh .reveal.visible .dp-wave i { animation: vp-pulse 1s ease-in-out infinite alternate; }
+  .cfh .reveal.visible .dp-wave i:nth-child(3n) { animation-delay: 0.2s; }
+  .cfh .reveal.visible .dp-wave i:nth-child(3n + 1) { animation-delay: 0.4s; }
+}
+
+/* ── Hardware: the physical details that make a device believable ── */
+.cfh .dv-key {
+  position: absolute;
+  z-index: 0;
+  border-radius: 0.14cqw;
+  background: linear-gradient(90deg, #6f6c66, #c6c1b8 55%, #8e8a83);
+  box-shadow: inset 0 0 0 0.03cqw rgba(0, 0, 0, 0.25);
+}
+.cfh .dv-break { position: absolute; z-index: 1; background: rgba(40, 38, 35, 0.75); }
+.cfh .dv-edge { position: absolute; display: flex; align-items: center; justify-content: space-between; }
+.cfh .dv-edge .usbc { display: block; border-radius: 999px; background: #0d0d0e; box-shadow: inset 0 0.03cqw 0.05cqw rgba(255, 255, 255, 0.2); }
+.cfh .dv-edge .mic { display: block; width: 0.12cqw; height: 0.12cqw; border-radius: 50%; background: #111; }
+
+/* Cinema display: chassis depth on the visible side, a shadowed wall gap. */
+.cfh .dv-tv-depth {
+  position: absolute;
+  z-index: -1;
+  top: 0.6%;
+  bottom: 0.6%;
+  right: -0.42cqw;
+  width: 0.5cqw;
+  border-radius: 0 0.3cqw 0.3cqw 0;
+  background: linear-gradient(90deg, #2b2c2f, #5d5f64 60%, #3a3b3e);
+  box-shadow: 0.6cqw 0.4cqw 1cqw rgba(40, 30, 20, 0.22);
+}
+
+/* Tablet: left short edge (speaker grilles, mic, USB-C), keys and breaks on top. */
+.cfh .dv-tablet-edge {
+  left: -0.56cqw;
+  top: 3.5%;
+  bottom: 3.5%;
+  width: 0.56cqw;
+  flex-direction: column;
+  padding: 1.2cqw 0;
+  border-radius: 0.6cqw 0 0 0.6cqw;
+  background: linear-gradient(90deg, #4c4e53, #8f9197 45%, #c9cbd0 90%);
+}
+.cfh .dv-tablet-edge .grille {
+  display: block;
+  width: 0.16cqw;
+  height: 12%;
+  background: repeating-linear-gradient(180deg, #1b1c1e 0 0.11cqw, transparent 0.11cqw 0.28cqw);
+}
+.cfh .dv-tablet-edge .usbc { width: 0.2cqw; height: 1.15cqw; }
+.cfh .dv-tablet-power { top: -0.18cqw; right: 12%; width: 2.2cqw; height: 0.2cqw; }
+.cfh .dv-tablet-vol { top: -0.18cqw; right: 17%; width: 3.6cqw; height: 0.2cqw; }
+.cfh .dv-tablet-break-a { top: 0; left: 18%; width: 0.12cqw; height: 0.2cqw; }
+.cfh .dv-tablet-break-b { top: 0; right: 30%; width: 0.12cqw; height: 0.2cqw; }
+
+/* Phone: keys on both sides, antenna breaks, bottom face with port and grilles. */
+.cfh .dv-phone-action { left: -0.24cqw; top: 15%; width: 0.26cqw; height: 2.4%; }
+.cfh .dv-phone-volup { left: -0.24cqw; top: 20.5%; width: 0.26cqw; height: 5.5%; }
+.cfh .dv-phone-voldn { left: -0.24cqw; top: 27.5%; width: 0.26cqw; height: 5.5%; }
+.cfh .dv-phone-power { right: -0.6cqw; top: 23%; width: 0.28cqw; height: 9%; }
+.cfh .dv-phone-camctl {
+  right: -0.52cqw;
+  top: 58%;
+  width: 0.2cqw;
+  height: 5.5%;
+  background: linear-gradient(90deg, #232325, #4a4a4e);
+}
+.cfh .dv-phone-break-a { right: -0.36cqw; top: 9%; width: 0.36cqw; height: 0.1cqw; }
+.cfh .dv-phone-break-b { left: -0.02cqw; bottom: 10%; width: 0.26cqw; height: 0.1cqw; }
+.cfh .dv-phone-bottom {
+  left: 13%;
+  right: 13%;
+  bottom: -0.42cqw;
+  height: 0.42cqw;
+  gap: 0.6cqw;
+  padding: 0 0.8cqw;
+  border-radius: 0 0 1.6cqw 1.6cqw;
+  background: linear-gradient(180deg, #8c8982, #5d5a55);
+}
+.cfh .dv-phone-bottom .holes {
+  display: block;
+  flex: 1;
+  height: 0.16cqw;
+  background: radial-gradient(circle, #141414 42%, transparent 48%) 0 0 / 0.32cqw 100% repeat-x;
+}
+.cfh .dv-phone-bottom .usbc { width: 1.25cqw; height: 0.22cqw; }
+.cfh .dv-earpiece {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 0.1cqw;
+  width: 16%;
+  height: 0.1cqw;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: #1f2022;
+}
+.cfh .dv-island i {
+  position: absolute;
+  right: 18%;
+  top: 50%;
+  width: 0.42cqw;
+  height: 0.42cqw;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #34446a, #050508 70%);
+}
+
+/* OS status bars — per device: the phone has cellular, the tablet does not, the TV none. */
+.cfh .os-status { position: relative; z-index: 4; display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cfh .os-right { display: flex; align-items: center; gap: 0.32cqw; }
+.cfh .os-ico { display: block; height: 0.6cqw; width: auto; }
+.cfh .os-batt { display: flex; align-items: center; gap: 0.18cqw; }
+.cfh .os-batt-ico { height: 0.58cqw; }
+.cfh .dt-os { grid-column: 1 / -1; font-size: 0.72cqw; color: #d9dad4; }
+.cfh .dp-os { position: absolute; left: 9.5%; right: 7%; top: 2.5%; font-size: 0.74cqw; color: #fff; }
+.cfh .dp-os .os-ico { height: 0.5cqw; }
+.cfh .dp-os .os-batt-ico { height: 0.5cqw; }
+
+/* Phone playback row. */
+.cfh .dp-play { display: flex; align-items: center; gap: 0.4cqw; }
+.cfh .dp-play .os-ico { height: 0.55cqw; }
+.cfh .dp-bar { flex: 1; height: 0.14cqw; border-radius: 9px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+.cfh .dp-bar i { display: block; width: 47%; height: 100%; background: #fff; }
+.cfh .dp-time { font-size: 0.56cqw; color: #c9cbc4; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Contact shadows: a tight core where the device meets the floor, a soft penumbra. */
+.cfh .dv-contact {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: -2.5%;
+  height: 4%;
+  border-radius: 50%;
+  background:
+    radial-gradient(closest-side, rgba(30, 22, 14, 0.42), rgba(30, 22, 14, 0) 70%),
+    radial-gradient(closest-side, rgba(30, 22, 14, 0.12), rgba(30, 22, 14, 0));
+  filter: blur(0.35cqw);
+}
+.cfh .dv-contact::after {
+  content: "";
+  position: absolute;
+  inset: -120% -12%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(30, 22, 14, 0.12), rgba(30, 22, 14, 0));
+  filter: blur(1cqw);
+}
+
+/* The format legend — quiet, editorial. */
+.cfh .release-caption {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 26px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8f8a80;
+}
+.cfh .release-caption span + span::before {
+  content: "";
+  display: inline-block;
+  width: 22px;
+  height: 1px;
+  margin: 0 14px 3px;
+  background: #c9c4b9;
+}
+.cfh .release-caption i { margin-left: 6px; font-style: normal; letter-spacing: 0.1em; color: #b3ada2; }
+@media (max-width: 600px) {
+  .cfh .release-showcase { margin-top: 36px; }
+  .cfh .dv-tablet { width: 54%; }
+  .cfh .dv-phone { width: 22%; }
+  .cfh .release-caption { font-size: 9.5px; letter-spacing: 0.14em; }
+  .cfh .release-caption span + span::before { width: 12px; margin: 0 8px 3px; }
+}
+
+/* Voice — the presenter in the booth. */
+.cfh .vp-card {
+  margin: 56px 0 0;
+  width: min(100%, 560px);
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(244,242,237,.14);
+  background: #0c0d10;
+  box-shadow: 0 30px 70px rgba(0,0,0,.45);
+}
+.cfh .vp-stage { position: relative; aspect-ratio: 4 / 3; }
+.cfh .vp-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cfh .vp-rec {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.55);
+  color: #ff7a6e;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.cfh .vp-caption {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(8,8,10,.72);
+  backdrop-filter: blur(6px);
+}
+.cfh .vp-lang { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.cfh .vp-line { font-size: 17px; font-weight: 500; color: #fff; }
+.cfh .vp-bar { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-top: 1px solid rgba(255,255,255,.08); }
+.cfh .vp-wave { flex: 1; display: flex; align-items: center; gap: 2px; height: 30px; }
+.cfh .vp-wave span { flex: 1; background: #a98bff; border-radius: 2px; opacity: .8; animation: vp-pulse 1.1s ease-in-out infinite alternate; }
+@keyframes vp-pulse { from { transform: scaleY(.45); } to { transform: scaleY(1); } }
+.cfh .vp-codes { display: flex; gap: 4px; }
+.cfh .vp-codes span { padding: 3px 6px; border-radius: 4px; font-size: 10.5px; font-weight: 600; color: #8d8f88; }
+.cfh .vp-codes span.is-on { background: var(--accent); color: #10100f; }
+
+/* The Work — finished-film player chrome on example tiles. */
+.cfh .reel-play {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 46%;
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.4);
+  color: #fff;
+  backdrop-filter: blur(6px);
+  transition: transform .3s ease, background .3s ease;
+  pointer-events: none;
+}
+.cfh .reel:hover .reel-play { transform: translate(-50%, -50%) scale(1.08); background: rgba(255,255,255,.24); }
+.cfh .reel-quality {
+  position: absolute;
+  z-index: 1;
+  left: 20px;
+  top: 18px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255,255,255,.5);
+  border-radius: 3px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  pointer-events: none;
+}
+.cfh .reel-progress {
+  position: absolute;
+  z-index: 1;
+  left: 20px;
+  right: 20px;
+  bottom: 46px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255,255,255,.22);
+  pointer-events: none;
+}
+.cfh .reel-progress i { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cfh .vp-wave span { animation: none; }
+}
+
+@media (max-width: 1100px) {
+  .cfh .ws-room { grid-template-columns: minmax(0, 1fr); }
+  .cfh .ws-preview .scene { min-height: 300px; }
+}
+@media (max-width: 600px) {
+  .cfh .ws-presets, .cfh .ws-brief, .cfh .ws-optional { display: none; }
+  .cfh .ws-config .cf-config-value { font-size: 13px; }
+  .cfh .ws-config .cf-config-check { display: none; }
+  .cfh .ws-config .cf-config-sub { display: none; }
+  .cfh .vp-card { margin-top: 36px; }
+}
+
+/* Scenes are SVGs; absolute positioning alone doesn't size them. */
+.cfh svg.art-fill { width: 100%; height: 100%; display: block; }
+/* Marketplace tags stay legible over light asset sheets. */
+.cfh .market .reel-tag { padding: 3px 7px; border-radius: 4px; background: rgba(10,10,10,.62); }
+
+.cfh .studio-main { min-width: 0; }
+@media (max-width: 600px) {
+  .cfh .hero-frame-meta { display: none; }
+}
+
+/* ------------------------------
+   CINEMATIC MOTION — restrained, continuous, off under reduced motion
+------------------------------ */
+
+.cfh .cfh-grain {
+  position: absolute;
+  inset: -40%;
+  z-index: 3;
+  opacity: 0.1;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+.cfh .hero-sweep {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 216, 160, 0.09) 50%, transparent 62%);
+  transform: translateX(-130%);
+}
+.cfh .still-fill { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Story still overlays (when a real frame is present). */
+.cfh .still-slate {
+  position: absolute;
+  left: 28px;
+  top: 26px;
+  z-index: 4;
+  color: rgba(242, 237, 225, 0.82);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  line-height: 1.6;
+}
+.cfh .still-slate small { color: rgba(242, 237, 225, 0.5); font-size: 11px; }
+.cfh .still-subtitle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 30px;
+  z-index: 4;
+  text-align: center;
+  color: #fff;
+  font-size: clamp(16px, 1.6vw, 22px);
+  font-weight: 500;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
+}
+/* World still carries the atlas as an inset map. */
+.cfh .atlas-inset {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 4;
+  width: 38%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid rgba(233, 225, 207, 0.35);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+
+
+/* Workspace takes cross-fade under the moving playhead. */
+.cfh .ws-take { position: absolute; inset: 0; opacity: 0; transition: opacity 0.9s ease; }
+.cfh .ws-take.is-on { opacity: 1; }
+.cfh .clip { transition: outline-color 0.3s ease; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes cfh-kb {
+    from { transform: scale(1.02) translate3d(0, 0, 0); }
+    to { transform: scale(1.09) translate3d(-1.2%, -0.8%, 0); }
+  }
+  @keyframes cfh-grain {
+    0% { transform: translate(0, 0); }
+    20% { transform: translate(-6%, 4%); }
+    40% { transform: translate(5%, -7%); }
+    60% { transform: translate(-3%, -4%); }
+    80% { transform: translate(7%, 6%); }
+    100% { transform: translate(0, 0); }
+  }
+  @keyframes cfh-sweep {
+    0%, 62% { transform: translateX(-130%); }
+    100% { transform: translateX(130%); }
+  }
+  @keyframes cfh-breathe { from { opacity: 0.82; } to { opacity: 1; } }
+  @keyframes cfh-rays { from { opacity: 0.1; } to { opacity: 0.24; } }
+  @keyframes cfh-drift { from { transform: translateX(-30px); } to { transform: translateX(30px); } }
+  @keyframes cfh-fly { from { transform: translateX(-60px); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } to { transform: translateX(220px); opacity: 0; } }
+  @keyframes cfh-rise { from { transform: translateY(0); } to { transform: translateY(-46px); } }
+  @keyframes cfh-flicker { 0%, 100% { opacity: 0.55; } 45% { opacity: 0.85; } 52% { opacity: 0.62; } 70% { opacity: 0.8; } }
+  @keyframes cfh-ring { to { stroke-dashoffset: -108; } }
+  @keyframes cfh-wind { from { transform: skewY(-4deg) scaleX(0.96); } to { transform: skewY(3deg) scaleX(1.02); } }
+  @keyframes cfh-land { from { transform: translateY(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes ws-scrub { from { left: var(--from); } to { left: var(--to); } }
+  @keyframes vp-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .cfh .cfh-grain { animation: cfh-grain 0.9s steps(5) infinite; }
+  .cfh .hero-sweep { animation: cfh-sweep 12s ease-in-out infinite; }
+
+  /* The master shot lives: slow push-in, breathing sun, drifting cloud,
+     craft crossing, dust rising, the spire's light and ring, the banner. */
+  .cfh .hero-frame-image.is-shown > .art-fill { animation: cfh-kb 26s ease-in-out infinite alternate; transform-origin: 62% 46%; }
+  .cfh .ms-sun { animation: cfh-breathe 6s ease-in-out infinite alternate; }
+  .cfh .ms-rays { animation: cfh-rays 7s ease-in-out infinite alternate; }
+  .cfh .ms-clouds { animation: cfh-drift 40s ease-in-out infinite alternate; }
+  .cfh .ms-craft { animation: cfh-fly 22s linear infinite; }
+  .cfh .ms-dust { animation: cfh-rise 16s ease-in-out infinite alternate; }
+  .cfh .ms-slit { animation: cfh-flicker 3.4s ease-in-out infinite; }
+  .cfh .ms-ring { animation: cfh-ring 9s linear infinite; }
+  .cfh .ms-banner { transform-box: fill-box; transform-origin: left center; animation: cfh-wind 2.4s ease-in-out infinite alternate; }
+
+  /* Storyboard boards hold a slow move once drawn. */
+  .cfh .hero-board i.is-on .art-fill { animation: cfh-kb 14s ease-in-out infinite alternate; }
+
+  /* Chapter frames push in while on screen. */
+  .cfh .reveal.visible .chapter-image > .art-fill { animation: cfh-kb 34s ease-in-out infinite alternate; }
+
+  /* Headlines reveal like a title card. */
+  .cfh .reveal h2 {
+    clip-path: inset(0 0 100% 0);
+    transform: translateY(28px);
+    transition:
+      clip-path 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) 0.12s,
+      transform 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) 0.12s;
+  }
+  .cfh .reveal.visible h2 { clip-path: inset(-12% -6% -24% -6%); transform: none; }
+
+  /* Workspace: the active take pushes in; the playhead scrubs across its clip. */
+  .cfh .ws-take.is-on .art-fill { animation: cfh-kb 9s ease-out both; }
+  .cfh .ws-playhead { animation: ws-scrub 3.2s linear both; }
+
+  /* Release: the 16:9 master reframes to 9:16; the cut-downs land. */
+  @keyframes rs-appear { from { opacity: 0; } to { opacity: 1; } }
+  .cfh .reveal.visible .dv-tablet { animation: rs-appear 0.9s ease 0.3s both; }
+  .cfh .reveal.visible .dv-phone { animation: rs-appear 0.9s ease 0.55s both; }
+
+  /* Voice: each language arrives. */
+  .cfh .vp-line { animation: vp-in 0.5s ease both; }
+
+  /* The Work and the marketplace answer the pointer. */
+  .cfh .reel .art-fill { transition: transform 1.4s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .cfh .reel:hover .art-fill { transform: scale(1.06); }
+  .cfh .market .reel { transition: transform 0.35s ease, box-shadow 0.35s ease; }
+  .cfh .market .reel:hover { z-index: 2; transform: translateY(-4px); box-shadow: 0 26px 50px -22px rgba(0, 0, 0, 0.85); }
+  .cfh .market .reel:hover .reel-tag { box-shadow: 0 0 0 1px var(--accent); }
+}
+
+
+/* ── Live showcase ─────────────────────────────────────── */
+.cfh .rs-shot { position: absolute; inset: 0; overflow: hidden; }
+.cfh .rs-still-box { overflow: hidden; }
+.cfh .rs-still-box img { position: absolute; max-width: none; object-fit: cover; }
+.cfh .dt-preview .rs-shot { border-radius: 0.6cqw; }
+
+/* TV playback OSD: appears after a cut, then leaves the film alone. */
+.cfh .tv-osd {
+  position: absolute;
+  z-index: 3;
+  right: 2.4%;
+  top: 4%;
+  width: 30%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.4cqw 1.2cqw;
+  color: #fff;
+  font-size: 0.95cqw;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0.1cqw 0.4cqw rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.cfh .tv-osd.is-on { opacity: 0.9; }
+.cfh .tv-osd-fmt { padding: 0.22cqw 0.5cqw; border: 0.06cqw solid rgba(255, 255, 255, 0.45); border-radius: 0.25cqw; font-size: 0.8cqw; }
+.cfh .tv-osd-time { display: flex; align-items: center; gap: 0.4cqw; justify-self: end; }
+.cfh .tv-osd-time .os-ico { height: 0.7cqw; }
+.cfh .tv-osd-bar { grid-column: 1 / -1; height: 0.16cqw; border-radius: 9px; background: rgba(255, 255, 255, 0.22); overflow: hidden; }
+.cfh .tv-osd-bar i { display: block; height: 100%; background: #fff; transition: width 1s linear; }
+
+/* Reframe guides: where 16:10 and 9:16 sit inside this shot. */
+.cfh .tv-guides { position: absolute; inset: 0; z-index: 2; opacity: 0; transition: opacity 0.6s ease; pointer-events: none; }
+.cfh .tv-guides.is-on { opacity: 1; }
+.cfh .tv-guides i { position: absolute; border: 0.08cqw solid rgba(216, 255, 98, 0.75); border-radius: 0.2cqw; }
+.cfh .tv-guides .g-tab { border-color: rgba(255, 255, 255, 0.45); border-style: dashed; }
+.cfh .tv-guides b { position: absolute; left: 0.4cqw; top: 0.3cqw; font-size: 0.7cqw; letter-spacing: 0.08em; color: rgba(216, 255, 98, 0.9); }
+.cfh .tv-guides .g-tab b { color: rgba(255, 255, 255, 0.7); }
+
+/* Storyboard: the previewed scene and the one being generated. */
+.cfh .dt-shot.is-sel { box-shadow: 0 0 0 0.14cqw rgba(255, 255, 255, 0.85); }
+.cfh .dt-shot.is-sel i { background: #96de6e; }
+.cfh .dt-gen { position: absolute; z-index: 2; left: 0.4cqw; right: 0.4cqw; bottom: 0.35cqw; height: 0.18cqw; border-radius: 9px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+.cfh .dt-gen u { display: block; height: 100%; background: var(--accent); transition: width 1s linear; }
+.cfh .dt-shot.is-live b { bottom: 0.7cqw; }
+.cfh .dp-bar i { transition: width 1s linear; }
+
+/* Parallax: the frames drift a few pixels; content does the moving. */
+.cfh .dv-tv { transform: translate3d(0, calc(var(--px, 0) * -4px), 0); }
+.cfh .dv-tablet { transform: translate3d(0, calc(var(--px, 0) * 8px), 0); }
+.cfh .dv-phone { transform: translate3d(0, calc(var(--px, 0) * 14px), 0); }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes rs-cut { from { opacity: 0.55; } to { opacity: 1; } }
+  .cfh .rs-shot { animation: rs-cut 0.45s ease-out both; }
+  .cfh .rs-shot > .rs-art { animation: cfh-kb 7s ease-out both; }
+  .cfh .dp-sub-line { animation: vp-in 0.5s ease both; }
+  .cfh .dt-side dd { animation: vp-in 0.5s ease both; }
+}
+@media (max-width: 600px) {
+  .cfh .release-caption { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 0 22px; }
+  .cfh .release-caption span + span::before { display: none; }
+  .cfh .release-caption span { display: flex; flex-direction: column; gap: 3px; }
+  .cfh .release-caption i { margin-left: 0; }
 }

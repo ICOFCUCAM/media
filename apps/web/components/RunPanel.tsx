@@ -24,6 +24,7 @@ export function RunPanel({
   readyTitle = "Your cut is ready",
   fileLink = true,
   artSeed,
+  fill = false,
 }: {
   state: DemoState | null;
   stageLabels: Record<ProjectStatus, string>;
@@ -33,10 +34,12 @@ export function RunPanel({
   fileLink?: boolean;
   /** The brief — the waiting preview draws a still that follows it. */
   artSeed?: string;
+  /** In a studio room on desktop, the waiting preview fills the column height. */
+  fill?: boolean;
 }) {
   if (!state) {
     return (
-      <CinemaArt seed={artSeed || "cineforge"} className="cf-dark min-h-[22rem] rounded-lg sm:aspect-[21/9]" letterbox motion hud={{ tag: "Preview frame" }}>
+      <CinemaArt seed={artSeed || "cineforge"} className={`cf-dark w-full min-h-[18rem] rounded-lg sm:aspect-video ${fill ? "lg:aspect-auto lg:h-full lg:min-h-[24rem]" : "sm:min-h-0"}`} letterbox motion hud={{ tag: "Preview frame" }}>
         <div className="flex h-full items-center justify-center bg-gradient-to-t from-black/75 via-black/35 to-black/20 px-6 text-center text-white">
           <div>{emptyHint ?? <p className="cf-display text-[44px]">Set it up and press Create.</p>}</div>
         </div>
@@ -334,7 +337,7 @@ function Result({ state, title }: { state: DemoState; title: string }) {
       </div>
       {state.filmUrl ? (
         <div>
-          <HlsPlayer src={state.filmUrl} />
+          <HlsPlayer src={state.filmUrl} poster={state.posterUrl} />
           {(state.filmLocales?.length ?? 0) > 0 && (
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className="cf-label mr-2">Also in</span>

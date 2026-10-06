@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { DM_Mono, Inter, Manrope } from "next/font/google";
 import "./globals.css";
+import { PreviewBuildBadge } from "../components/PreviewBuildBadge";
 
 // Self-hosted at build time by next/font: no runtime request to Google, no
 // render-blocking third-party stylesheet, and no failure when it is blocked.
@@ -23,6 +24,8 @@ export const metadata: Metadata = {
     description: "From the first idea to the finished release: one continuous production system for films, series, trailers and shorts.",
     type: "website",
   },
+  // Preview deployments must never compete with the live site in search.
+  ...(process.env.VERCEL_ENV === "preview" ? { robots: { index: false, follow: false } } : {}),
 };
 
 export const viewport = { themeColor: "#080808" };
@@ -30,7 +33,10 @@ export const viewport = { themeColor: "#080808" };
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${manrope.variable} ${dmMono.variable}`}>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <PreviewBuildBadge />
+      </body>
     </html>
   );
 }

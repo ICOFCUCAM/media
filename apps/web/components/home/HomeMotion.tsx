@@ -8,10 +8,17 @@ import { useEffect } from "react";
  */
 export function HomeMotion() {
   useEffect(() => {
+    // Close the phone/tablet menu once a section link is chosen.
+    const menu = document.querySelector<HTMLDetailsElement>(".cfh .nav-menu");
+    const closeMenu = (e: Event) => {
+      if (menu && (e.target as HTMLElement).closest(".nav-menu-panel a")) menu.open = false;
+    };
+    menu?.addEventListener("click", closeMenu);
+
     const reveals = document.querySelectorAll<HTMLElement>(".cfh .reveal");
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       reveals.forEach((el) => el.classList.add("visible"));
-      return;
+      return () => menu?.removeEventListener("click", closeMenu);
     }
 
     const observer = new IntersectionObserver(
@@ -39,6 +46,7 @@ export function HomeMotion() {
     return () => {
       observer.disconnect();
       window.removeEventListener("mousemove", onMove);
+      menu?.removeEventListener("click", closeMenu);
     };
   }, []);
 

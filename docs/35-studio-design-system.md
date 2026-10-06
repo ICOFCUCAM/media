@@ -47,7 +47,7 @@ it to `NAV`; the rail, navigator, breadcrumb and mobile index follow.
 `components/cf/primitives.tsx` (hook-free): `PageHeader`, `Section`,
 `Split` / `Cell`, `SpecList`, `Control`, `Status`, `ActionBand`,
 `EmptyState`. Client helpers: `StudioGate` (Supabase / loading /
-sign-in gate), `Pipeline` (department list driven by the run status).
+sign-in gate). Studio rooms use `StudioLayout` (see "Studios are tools" below).
 Component classes: `cf-btn-accent`, `cf-btn-ink`, `cf-btn-line`,
 `cf-option` (`aria-pressed` = selected), `cf-input`, `cf-label`,
 `cf-eyebrow`, `cf-display`, `cf-link`.
@@ -123,3 +123,22 @@ Still open (need product decisions or new infrastructure):
   anonymous read policies and public playback copies.
 - **Sound effects** — no SFX generator is wired; films render with
   narration and score.
+
+
+## Studios are tools (docs/36 §0)
+
+The create studios (Film, Series, Trailer, Shorts, Advert, New production)
+do not use the editorial page treatment. They use `components/cf/StudioLayout.tsx`:
+
+- `StudioPage`: a compact title row (title, Live/Preview badge, one-line
+  subtitle) and optional `StudioTabs`. On desktop the room is exactly one
+  viewport tall.
+- `StudioGrid`: options on the left (they scroll inside the panel), a pinned
+  footer with the summary and the Create button, and the preview filling the
+  right. On phones the footer is a sticky bottom bar.
+- `Field`, `Chips`, `UnlockRow`, `StudioFooter`, `ExampleShelf`: compact
+  option groups, one plan-upsell line, and one-tap example briefs.
+
+Rules: no `PageHeader`, no reel strip, and no process explainers in a
+studio. Offer only options the plan can run. Create must be visible without
+scrolling from 1366×768 up.
