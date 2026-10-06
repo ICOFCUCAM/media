@@ -29,8 +29,15 @@ MODEL_IDS = {
     "wan-2.1": os.environ.get("WAN_MODEL_ID", "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"),
     "hunyuan": os.environ.get("HUNYUAN_MODEL_ID", "hunyuanvideo-community/HunyuanVideo"),
 }
+# Pinned Hugging Face commit per model (docs/39 F6). The gateway refuses to
+# enforce with an unpinned model: an unpinned repo can change weights silently.
+MODEL_REVISIONS = {
+    "wan-2.1": os.environ.get("WAN_MODEL_REVISION") or None,
+    "hunyuan": os.environ.get("HUNYUAN_MODEL_REVISION") or None,
+}
 # Optional image-to-video model (enables seed-frame conditioning / identity lock).
 WAN_I2V_MODEL_ID = os.environ.get("WAN_I2V_MODEL_ID")  # e.g. Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
+WAN_I2V_MODEL_REVISION = os.environ.get("WAN_I2V_MODEL_REVISION") or None
 
 
 def _cuda_available() -> bool:
@@ -54,6 +61,22 @@ class VideoPipeline:
     def is_loaded(self) -> bool:
         return self._loaded
 
+    @property
+    def is_real(self) -> bool:
+        """True once real weights are loaded (False in placeholder mode)."""
+        return self._real
+
+    def has_i2v(self) -> bool:
+        """Whether a reference frame switches this worker to image-to-video."""
+        return self.model_name == "wan-2.1" and bool(WAN_I2V_MODEL_ID)
+
+    def model_specs(self) -> dict[str, tuple[str, str | None]]:
+        """role → (repository id, pinned revision) for every model this worker may run."""
+        specs = {"t2v": (MODEL_IDS[self.model_name], MODEL_REVISIONS.get(self.model_name))}
+        if self.has_i2v():
+            specs["i2v"] = (WAN_I2V_MODEL_ID, WAN_I2V_MODEL_REVISION)
+        return specs
+
     def load(self) -> None:
         if self._loaded:
             return
@@ -70,7 +93,9 @@ class VideoPipeline:
         dtype = torch.bfloat16 if self.model_name == "hunyuan" else torch.float16
         # DiffusionPipeline.from_pretrained resolves the right class (Wan / Hunyuan)
         # from the repo's model_index.json — robust across diffusers versions.
-        pipe = DiffusionPipeline.from_pretrained(MODEL_IDS[self.model_name], torch_dtype=dtype)
+        pipe = DiffusionPipeline.from_pretrained(
+            MODEL_IDS[self.model_name], revision=MODEL_REVISIONS.get(self.model_name), torch_dtype=dtype
+        )
         # Placement by GPU size:
         #  - Big card (>=40GB VRAM, e.g. A40/L40/A6000): hold the whole model in
         #    VRAM (fast, no system-RAM pressure).
@@ -103,7 +128,9 @@ class VideoPipeline:
         import torch  # noqa: PLC0415
         from diffusers import DiffusionPipeline  # noqa: PLC0415
 
-        pipe = DiffusionPipeline.from_pretrained(WAN_I2V_MODEL_ID, torch_dtype=torch.float16)
+        pipe = DiffusionPipeline.from_pretrained(
+            WAN_I2V_MODEL_ID, revision=WAN_I2V_MODEL_REVISION, torch_dtype=torch.float16
+        )
         try:
             pipe.enable_model_cpu_offload()
         except Exception:
