@@ -4,6 +4,10 @@
 > fold engine, Scene Bridges, continuity score, auto-fill, and the visual
 > identity stack (asset id → reference frames → LoRA) — is documented in
 > [28 — Continuity Engine (implemented)](28-continuity-engine.md).
+>
+> **DirectorOS W3 (2026-10-08):** Film IR projects now use the typed, id-keyed
+> World State Engine and the Character Continuity Engine — see
+> [46 — Canon, world state and continuity](46-directoros-world-state.md).
 
 The single most important system for believable long films. It guarantees that
 characters, clothing, locations, objects, weather, time, and story state stay
