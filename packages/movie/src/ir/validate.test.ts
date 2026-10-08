@@ -31,7 +31,7 @@ describe("Film IR validator chain (DOS-24, DOS-94)", () => {
     p.scenes[0]!.locationId = "loc_moon";
     p.scenes[0]!.characters[0]!.wardrobeId = "wardrobe_oilskin"; // Ewan's, not Maya's
     p.scenes[1]!.characters[0]!.holding = ["prop_ghost"];
-    p.scenes[1]!.dialogue.push({ characterId: "char_nobody", line: "Hi", emotion: null });
+    p.scenes[1]!.dialogue.push({ characterId: "char_nobody", line: "Hi", emotion: null, references: [] });
     p.acts[1]!.sceneIds.push("scene_99");
     expect(codes(p)).toEqual(expect.arrayContaining(["references/UNKNOWN_REFERENCE"]));
     const r = validateFilmPackage(p, C);

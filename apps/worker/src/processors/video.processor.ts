@@ -28,6 +28,8 @@ import {
 } from "@cineforge/shared";
 import { buildClusterRegistry, buildOpenAIProviders, MODEL_VERSIONS, type JobContext, type ShotRequest } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
+import { FilmPackage } from "@cineforge/movie";
+import { shotReferences } from "../canon/references";
 import { realtime } from "../realtime";
 import { S3Storage } from "../storage/storage";
 import { enqueueLora } from "../orchestration/lora-queue";
@@ -96,6 +98,13 @@ const registry = buildClusterRegistry(
 
 type ShotWithScene = Awaited<ReturnType<typeof loadShot>>;
 
+/** The project's Film IR, or null for projects planned before it. */
+async function filmPackageOf(projectId: string): Promise<FilmPackage | null> {
+  const sp = await prisma.screenplay.findUnique({ where: { projectId }, select: { raw: true } });
+  const parsed = FilmPackage.safeParse((sp?.raw as { package?: unknown } | null)?.package);
+  return parsed.success ? parsed.data : null;
+}
+
 function loadShot(shotId: string) {
   return prisma.shot.findUniqueOrThrow({
     where: { id: shotId },
@@ -132,13 +141,23 @@ async function resolveContinuity(
   const self = inputs.find((c) => c.index === shot.scene.index);
   const preamble = here ? renderStatePreamble(here) : "";
 
-  // Collect the character asset ids in play (inherited + this scene's own).
-  const assetIds = new Set<string>();
-  const collect = (chars?: Record<string, Record<string, string>>) => {
-    for (const attrs of Object.values(chars ?? {})) if (attrs.id) assetIds.add(attrs.id);
-  };
-  if (here) collect(here.inherited.characters);
-  collect(self?.statePatch?.characters ?? undefined);
+  // Which characters' assets this shot needs. Film IR projects: the
+  // Continuity Engine checks the shot against the world state and names the
+  // characters in frame (DirectorOS W3, §62.6) — a shot that contradicts canon
+  // is not generated. Legacy projects: every character inherited so far.
+  const refs = shotReferences(await filmPackageOf(shot.scene.projectId), shot.scene.index, shot.index, self?.statePatch?.characters);
+  if (refs.result && !refs.result.passed) {
+    const v = refs.result.violations.filter((x) => x.severity === "blocking").map((x) => `${x.code} ${x.message}`).join("; ");
+    throw new UnrecoverableError(`CONTINUITY_VIOLATION: ${v}`);
+  }
+  const assetIds = new Set<string>(refs.characterIds ?? []);
+  if (!refs.characterIds) {
+    const collect = (chars?: Record<string, Record<string, string>>) => {
+      for (const attrs of Object.values(chars ?? {})) if (attrs.id) assetIds.add(attrs.id);
+    };
+    if (here) collect(here.inherited.characters);
+    collect(self?.statePatch?.characters ?? undefined);
+  }
 
   // Resolve each asset id to its stored reference frames + trained LoRA — the
   // reference frames are an IP-adapter signal; the LoRA is the tightest lock.

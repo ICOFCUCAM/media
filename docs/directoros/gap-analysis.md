@@ -448,6 +448,16 @@ come with W5 review and W8 editing), batched translation (W11), prompt scores
 
 ### W3 — Canon and world state
 
+**Done 2026-10-08** (docs/46; contracts world-state.md, continuity-engine.md).
+Built in the Film IR rather than as parallel tables: canon is the versioned
+package in `screenplays.raw` (content-hash `canonVersion`, append-only
+`canon_revisions`), and world state is derived from it, never stored twice.
+Not done in W3 and carried forward: relationships, goals and dead/alive state
+(W5 story review), wardrobe reference images (W4/W6), the creator-facing canon
+editor with charged regeneration and locks (W8), merging the web storyboard's
+text continuity copy (W8), cinematography continuity — axis, eyeline, screen
+direction (W4), audio continuity (W7).
+
 - UPGRADE existing tables rather than adding parallel ones: `Character`
   (structured identity, `voiceId`, cast of N), `Location` + `LocationState`,
   `WorldObject` → Prop with owner/state, `Wardrobe` (validFrom/To),
@@ -620,4 +630,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 72 built, 128 shallow, 35 poorly built, 154 not built, 65 n/a. Of the 389 IDs that are requirements, 72 (19%) are built; 163 exist but need upgrading or changing; 154 must be built. (Updated after W2, 2026-10-08.)
+454 IDs: 91 built, 126 shallow, 22 poorly built, 146 not built, 69 n/a. Of the 385 IDs that are requirements, 91 (24%) are built; 148 exist but need upgrading or changing; 146 must be built. (Updated after W3, 2026-10-08.)

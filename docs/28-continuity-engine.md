@@ -1,5 +1,10 @@
 # 28 — The Continuity Engine
 
+> **DirectorOS W3:** for Film IR projects the typed World State Engine and the
+> Character Continuity Engine ([46](46-directoros-world-state.md)) decide state
+> and per-shot references; this text engine still renders the inherited-state
+> preamble and serves hand-made storyboard projects.
+
 The goal is not to generate clips. The goal is to generate a coherent **movie**.
 Scenes are not isolated video generations — each one **inherits the final state
 of every scene before it** and **writes its own changes**, so facts carry

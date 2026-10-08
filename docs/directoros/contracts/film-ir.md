@@ -41,8 +41,10 @@ zod and zod-to-json-schema. Nothing else: no I/O, no model calls.
 ## 6. Runtime behavior
 
 Stages in order: schema → references (every id resolves; speakers are present;
-wardrobe belongs to its character) → story (scene order, acts never regress,
-setups before payoffs, a protagonist exists) → production (scene count, shots
+wardrobe belongs to its character; reveals go to people present) → story
+(scene order, acts never regress, setups before payoffs, a protagonist exists)
+→ canon (W3: time, continuous action, prop holders, knowledge, foreshadowing,
+mysteries, shots against the world state — see world-state.md) → production (scene count, shots
 per scene, shot length, scene length) → budget (film length). The compiler is a
 pure function; the same package always yields the same rows.
 

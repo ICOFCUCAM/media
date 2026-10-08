@@ -37,11 +37,13 @@ export function stubPackage(brief: string, c: ProductionConstraints): FilmPackag
     }],
     locations: [{ id: "loc_set", name: "The Set", kind: "INTERIOR", description: "a plain room", architecture: "simple", era: "present day", lighting: "soft", rationale: "Local stand-in." }],
     props: [],
+    facts: [],
     acts: [{ index: 1, purpose: "stand-in", sceneIds: ids }],
     threads: [],
     setups: [],
     scenes: ids.map((id, i) => ({
       id, index: i, act: 1, heading: "INT. THE SET - DAY", locationId: "loc_set", timeOfDay: "day" as const,
+      storyTime: { day: 1, continuous: false, flashback: false }, reveals: [],
       purpose: `beat ${i + 1}`, summary: `Beat ${i + 1} of: ${title}`,
       emotionalArc: { start: "calm", middle: "calm", end: "calm" }, beats: [`beat ${i + 1}`],
       characters: [{ characterId: "char_lead", wardrobeId: "wardrobe_default", emotion: "calm", physical: null, holding: [] }],

@@ -207,11 +207,16 @@ function findLocationStatus(state: ProjectState, locLower: string): string | und
  * Render the inherited state + incoming bridge as a prompt preamble. The worker
  * prepends this to the scene prompt so the generated clip continues naturally.
  */
+/** Identifiers that resolve assets (a database uuid, the canon key) — never prompt text. A creator's own asset label stays. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const internalAttr = (k: string, v: string) => k === "key" || (k === "id" && UUID.test(v));
+
 export function renderStatePreamble(c: SceneContinuity, _scene?: SceneInput): string {
   const s = c.inherited;
   const lines: string[] = [];
   for (const [name, attrs] of Object.entries(s.characters)) {
     const desc = Object.entries(attrs)
+      .filter(([k, v]) => !internalAttr(k, v))
       .map(([k, v]) => `${k}: ${v}`)
       .join(", ");
     if (desc) lines.push(`- ${name} — ${desc}`);

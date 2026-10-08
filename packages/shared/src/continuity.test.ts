@@ -140,4 +140,15 @@ describe("continuity engine", () => {
     expect(c2.emotion).toBe("betrayed");
     expect(renderStatePreamble(perScene[2]!)).toContain("adisa_001");
   });
+
+  it("never writes database ids or canon keys into the prompt preamble", () => {
+    const { perScene } = computeContinuity([
+      { index: 0, heading: "Quay", characterRef: "Maya", bridge: null,
+        statePatch: { characters: { Maya: { id: "3f2b8c1e-9d4a-4b7e-8f00-123456789abc", key: "char_maya", wardrobe: "red coat" } } } },
+      { index: 1, heading: "Bridge", characterRef: "Maya", bridge: null },
+    ]);
+    const text = renderStatePreamble(perScene[1]!);
+    expect(text).toContain("Maya — wardrobe: red coat");
+    expect(text).not.toMatch(/3f2b8c1e|char_maya/);
+  });
 });
