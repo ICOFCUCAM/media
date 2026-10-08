@@ -12,7 +12,8 @@
     "test": "vitest run",
     "gateway:admin": "tsx src/gateway/admin-cli.ts",
     "timeline:build": "tsx src/timeline/cli.ts",
-    "avsync:check": "tsx src/avsync/cli.ts"
+    "avsync:check": "tsx src/avsync/cli.ts",
+    "canon:revise": "tsx src/canon/cli.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.580.0",

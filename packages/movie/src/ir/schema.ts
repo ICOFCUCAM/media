@@ -27,6 +27,11 @@ export const SceneId = id("scene");
 export const ThreadId = id("thread");
 export const SetupId = id("setup");
 export const WardrobeId = id("wardrobe");
+export const FactId = id("fact");
+
+/** Who can know a fact: a character, or the audience (DirectorOS Part 1 §56–57). */
+export const AUDIENCE = "audience" as const;
+export const Knower = z.union([CharacterId, z.literal(AUDIENCE)]);
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 const why = text(400).describe("one or two sentences: why this choice serves the film");
@@ -103,24 +108,41 @@ export const Act = z.object({
   sceneIds: z.array(SceneId).min(1),
 });
 
+/**
+ * A story fact — something true in the story that characters and the audience
+ * may or may not know yet (Part 1 §56–57). Knowledge only grows through
+ * `knownAtStart` and scene `reveals`; dialogue that relies on a fact must come
+ * from a speaker who knows it.
+ */
+export const Fact = z.object({
+  id: FactId,
+  statement: text(300),
+  knownAtStart: z.array(Knower).max(13).describe(`who knows this before scene one ("${AUDIENCE}" = the audience)`),
+});
+
 export const Thread = z.object({
   id: ThreadId,
   kind: z.enum(["plot", "subplot", "character_arc", "mystery", "relationship"]),
   description: text(300),
   sceneIds: z.array(SceneId).min(1),
+  answerFactId: FactId.nullable().default(null).describe("mystery threads: the fact that answers it (revealed to the audience inside the thread)"),
 });
 
+/** Foreshadowing: Plant → Development → Payoff (Part 1 §58). */
 export const Setup = z.object({
   id: SetupId,
   description: text(300).describe("what is planted"),
   plantedIn: SceneId,
+  developedIn: z.array(SceneId).max(4).default([]).describe("scenes between plant and payoff that keep it alive"),
   paidOffIn: SceneId,
+  factId: FactId.nullable().default(null).describe("the fact the plant establishes for the audience, so the payoff is earned"),
 });
 
 export const DialogueLine = z.object({
   characterId: CharacterId,
   line: text(400),
   emotion: z.string().trim().max(60).nullable(),
+  references: z.array(FactId).max(4).default([]).describe("facts this line relies on — the speaker must know them"),
 });
 
 export const ShotSize = z.enum(["EWS", "WS", "MS", "MCU", "CU", "ECU", "INSERT"]);
@@ -156,13 +178,29 @@ export const SceneState = z.object({
   holding: z.array(PropId).max(4),
 });
 
+/** Story time (Part 1 §33): which story day, and whether the scene picks up the previous one with no time cut. */
+export const StoryTime = z.object({
+  day: z.number().int().min(1).max(3650).describe("story day, 1 = the first day of the story"),
+  continuous: z.boolean().describe("true when this scene continues the previous scene's action with no time cut (same clothes, same injuries)"),
+  flashback: z.boolean(),
+});
+
+export const Reveal = z.object({
+  factId: FactId,
+  to: z.array(Knower).min(1).max(13).describe(`who learns the fact in this scene ("${AUDIENCE}" = the audience)`),
+});
+
+export const TimeOfDay = z.enum(["dawn", "day", "dusk", "night"]);
+
 export const Scene = z.object({
   id: SceneId,
   index: z.number().int().min(0),
   act: z.number().int().min(1).max(5),
   heading: text(120).describe("INT./EXT. LOCATION - TIME"),
   locationId: LocationId,
-  timeOfDay: z.enum(["dawn", "day", "dusk", "night"]),
+  timeOfDay: TimeOfDay,
+  storyTime: StoryTime.nullable().default(null),
+  reveals: z.array(Reveal).max(8).default([]),
   purpose: text(300).describe("what this scene does for the story"),
   summary: text(600).describe("what the audience sees"),
   emotionalArc: z.object({ start: text(80), middle: text(80), end: text(80) }),
@@ -186,6 +224,7 @@ export const FilmPackage = z.object({
   cast: z.array(Character).min(1).max(12),
   locations: z.array(Location).min(1).max(12),
   props: z.array(Prop).max(20),
+  facts: z.array(Fact).max(24).default([]),
   acts: z.array(Act).min(1).max(5),
   threads: z.array(Thread).max(10),
   setups: z.array(Setup).max(12),
@@ -197,3 +236,12 @@ export type FilmScene = z.infer<typeof Scene>;
 export type FilmShot = z.infer<typeof Shot>;
 export type FilmCharacter = z.infer<typeof Character>;
 export type FilmLocation = z.infer<typeof Location>;
+export type FilmProp = z.infer<typeof Prop>;
+export type FilmFact = z.infer<typeof Fact>;
+export type FilmSetup = z.infer<typeof Setup>;
+export type FilmThread = z.infer<typeof Thread>;
+export type SceneCharacterState = z.infer<typeof SceneState>;
+export type FilmStoryTime = z.infer<typeof StoryTime>;
+export type FilmTimeOfDay = z.infer<typeof TimeOfDay>;
+/** A package as stored before W3 (canon fields absent) — parse it with FilmPackage to fill defaults. */
+export type FilmPackageInput = z.input<typeof FilmPackage>;

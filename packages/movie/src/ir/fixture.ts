@@ -1,4 +1,4 @@
-/** A small, valid Film Production Package — shared by tests (not used at runtime). */
+/** Small, valid Film Production Packages — shared by tests here and in the worker (not used at runtime). */
 import type { FilmPackage } from "./schema";
 
 const shot = (index: number, durationSec: number, subject: string) => ({
@@ -65,12 +65,19 @@ export function fixturePackage(): FilmPackage {
       { id: "loc_harbour", name: "The Harbour", kind: "EXTERIOR", description: "stone quays, cranes, a swing bridge", architecture: "Victorian stone and iron", era: "present day", lighting: "sodium lamps, storm light", rationale: "The bridge is the clock." },
     ],
     props: [{ id: "prop_key", name: "Sealed key", description: "brass key in a wax-sealed pouch", ownerId: "char_maya" }],
+    facts: [
+      { id: "fact_bridge_swings", statement: "the swing bridge opens at high tide", knownAtStart: ["char_harbourmaster"] },
+      { id: "fact_key_opens_vault", statement: "the key opens the harbour vault", knownAtStart: ["char_maya", "audience"] },
+    ],
     acts: [
       { index: 1, purpose: "set the stakes", sceneIds: ["scene_01"] },
       { index: 2, purpose: "the crossing", sceneIds: ["scene_02"] },
     ],
-    threads: [{ id: "thread_delivery", kind: "plot", description: "the key must arrive", sceneIds: ["scene_01", "scene_02"] }],
-    setups: [{ id: "setup_bridge", description: "the bridge swings at high tide", plantedIn: "scene_01", paidOffIn: "scene_02" }],
+    threads: [{ id: "thread_delivery", kind: "plot", description: "the key must arrive", sceneIds: ["scene_01", "scene_02"], answerFactId: null }],
+    setups: [{
+      id: "setup_bridge", description: "the bridge swings at high tide", plantedIn: "scene_01", developedIn: [], paidOffIn: "scene_02",
+      factId: "fact_bridge_swings",
+    }],
     scenes: [0, 1].map((i) => ({
       id: `scene_0${i + 1}`,
       index: i,
@@ -78,6 +85,9 @@ export function fixturePackage(): FilmPackage {
       heading: "EXT. THE HARBOUR - NIGHT",
       locationId: "loc_harbour",
       timeOfDay: "night" as const,
+      storyTime: { day: 1, continuous: false, flashback: false },
+      // Ewan tells Maya (and the audience) about the bridge in scene one.
+      reveals: i ? [] : [{ factId: "fact_bridge_swings", to: ["char_maya", "audience"] }],
       purpose: i ? "Maya crosses as the bridge swings" : "Maya receives the key and the deadline",
       summary: "Rain sheets across the quay as Maya runs.",
       emotionalArc: { start: "wary", middle: "afraid", end: "resolved" },
@@ -86,7 +96,7 @@ export function fixturePackage(): FilmPackage {
         { characterId: "char_maya", wardrobeId: i ? "wardrobe_soaked" : "wardrobe_raincoat", emotion: "tense", physical: i ? "soaked" : null, holding: ["prop_key"] },
         { characterId: "char_harbourmaster", wardrobeId: "wardrobe_oilskin", emotion: "worried", physical: null, holding: [] },
       ],
-      dialogue: [{ characterId: "char_harbourmaster", line: "Tide turns in ten minutes.", emotion: "urgent" }],
+      dialogue: [{ characterId: "char_harbourmaster", line: "Tide turns in ten minutes.", emotion: "urgent", references: ["fact_bridge_swings"] }],
       narration: null,
       bridge: { whatJustHappened: "Maya took the key", whatChanged: "the storm rose", whatCarriesForward: "the key, the deadline" },
       audio: { music: "low strings", ambience: "rain on stone", sfx: ["foghorn"] },
@@ -105,3 +115,36 @@ export const FIXTURE_CONSTRAINTS = {
   targetSeconds: 36,
   filmTolerance: 0.15,
 };
+
+/**
+ * Part 2 §62.8: Maya wears a red coat in scenes 10 and 11; scene 12 picks up
+ * scene 11's action with no time cut; scene 10 is the day before.
+ */
+export function mayaCoatFixture(): FilmPackage {
+  const base = fixturePackage();
+  const maya = base.cast[0]!;
+  maya.wardrobe.push({ id: "wardrobe_red_coat", description: "long red wool coat" });
+  const template = base.scenes[0]!;
+  const ids = ["scene_10", "scene_11", "scene_12"];
+  base.scenes = ids.map((id, i) => ({
+    ...structuredClone(template),
+    id,
+    index: i,
+    act: i === 0 ? 1 : 2,
+    timeOfDay: "night" as const,
+    storyTime: { day: i === 0 ? 1 : 2, continuous: i === 2, flashback: false },
+    reveals: i === 0 ? [{ factId: "fact_bridge_swings", to: ["char_maya", "audience"] }] : [],
+    characters: [
+      { characterId: "char_maya", wardrobeId: "wardrobe_red_coat", emotion: "tense", physical: null, holding: ["prop_key"] },
+      { characterId: "char_harbourmaster", wardrobeId: "wardrobe_oilskin", emotion: "worried", physical: null, holding: [] },
+    ],
+    shots: template.shots.map((s, j) => ({ ...s, subjectIds: [["loc_harbour"], ["char_maya"], ["char_harbourmaster"], ["prop_key"]][j]! })),
+  }));
+  base.acts = [
+    { index: 1, purpose: "set the stakes", sceneIds: ["scene_10"] },
+    { index: 2, purpose: "the crossing", sceneIds: ["scene_11", "scene_12"] },
+  ];
+  base.threads = [{ id: "thread_delivery", kind: "plot", description: "the key must arrive", sceneIds: ids, answerFactId: null }];
+  base.setups = [{ id: "setup_bridge", description: "the bridge", plantedIn: "scene_10", developedIn: ["scene_11"], paidOffIn: "scene_12", factId: "fact_bridge_swings" }];
+  return base;
+}

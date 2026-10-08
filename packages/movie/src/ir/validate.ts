@@ -8,6 +8,11 @@
  *   schema      — shape, types, ids, lengths (zod)
  *   references  — every id points at something defined in the package
  *   story       — scene order, acts, threads, setups planted before payoff
+ *   canon       — the world holds together (W3): story time only runs backwards
+ *                 in flashbacks, continuous action keeps clothes and injuries,
+ *                 one holder per prop, nobody says what they cannot know,
+ *                 setups are established before they pay off, mysteries are
+ *                 answered for the audience
  *   production  — scene count, shots per scene, shot length vs the runtime's
  *                 per-clip maximum, scene length on the plan
  *   budget      — the film's total runtime matches what was paid for
@@ -16,9 +21,11 @@
  * single SURGICAL revision call can fix exactly them (Part 2 §93) — invalid
  * output is never padded with invented defaults (DOS-74).
  */
-import { FilmPackage } from "./schema";
+import { AUDIENCE, FilmPackage } from "./schema";
+import { applyReveals, initialKnowledge, timeOfDayRank } from "../world/state";
+import { checkFilmContinuity } from "../world/continuity";
 
-export type IssueStage = "schema" | "references" | "story" | "production" | "budget";
+export type IssueStage = "schema" | "references" | "story" | "canon" | "production" | "budget";
 
 export interface Issue {
   stage: IssueStage;
@@ -60,8 +67,18 @@ export function validateFilmPackage(raw: unknown, c: ProductionConstraints): Val
     };
   }
   const pkg = parsed.data;
-  const issues: Issue[] = [...references(pkg), ...story(pkg), ...production(pkg, c), ...budget(pkg, c)];
+  const issues: Issue[] = [...validateCanon(pkg), ...production(pkg, c), ...budget(pkg, c)];
   return issues.length ? { ok: false, issues, pkg } : { ok: true, pkg, issues: [] };
+}
+
+/**
+ * The stages that do not depend on what was paid for (references, story,
+ * canon) — what a canon revision must still satisfy.
+ */
+export function validateCanon(pkg: FilmPackage): Issue[] {
+  const refs = references(pkg);
+  // Canon checks walk the world state, which assumes every id resolves.
+  return [...refs, ...story(pkg), ...(refs.length ? [] : canon(pkg))];
 }
 
 function dupes<T>(items: T[], key: (t: T) => string, stage: IssueStage, path: string): Issue[] {
@@ -84,11 +101,22 @@ function references(pkg: FilmPackage): Issue[] {
   out.push(...dupes(pkg.scenes, (x) => x.id, "references", "scenes"));
   out.push(...dupes(pkg.threads, (x) => x.id, "references", "threads"));
   out.push(...dupes(pkg.setups, (x) => x.id, "references", "setups"));
+  out.push(...dupes(pkg.facts, (x) => x.id, "references", "facts"));
 
   const chars = new Map(pkg.cast.map((c) => [c.id, c]));
   const locs = new Set(pkg.locations.map((l) => l.id));
   const props = new Set(pkg.props.map((p) => p.id));
   const scenes = new Set(pkg.scenes.map((s) => s.id));
+  const facts = new Set(pkg.facts.map((f) => f.id));
+  const knower = (w: string) => w === AUDIENCE || chars.has(w);
+  const fact = (f: string, path: string) => !facts.has(f) && R(path, `fact ${f} does not exist`);
+
+  pkg.facts.forEach((f, i) => f.knownAtStart.forEach((w, j) => !knower(w) && R(`facts[${i}].knownAtStart[${j}]`, `${w} is not in the cast`)));
+  pkg.threads.forEach((t, i) => t.answerFactId && fact(t.answerFactId, `threads[${i}].answerFactId`));
+  pkg.setups.forEach((s, i) => {
+    if (s.factId) fact(s.factId, `setups[${i}].factId`);
+    s.developedIn.forEach((d, j) => !scenes.has(d) && R(`setups[${i}].developedIn[${j}]`, `scene ${d} does not exist`));
+  });
 
   pkg.props.forEach((p, i) => {
     if (p.ownerId && !chars.has(p.ownerId)) R(`props[${i}].ownerId`, `owner ${p.ownerId} is not in the cast`);
@@ -112,7 +140,18 @@ function references(pkg: FilmPackage): Issue[] {
       }
       st.holding.forEach((h, k) => !props.has(h) && R(`${p}.characters[${j}].holding[${k}]`, `prop ${h} does not exist`));
     });
+    sc.reveals.forEach((r, j) => {
+      fact(r.factId, `${p}.reveals[${j}].factId`);
+      r.to.forEach((w, k) => {
+        if (!knower(w)) R(`${p}.reveals[${j}].to[${k}]`, `${w} is not in the cast`);
+        else if (w !== AUDIENCE && !present.has(w)) {
+          out.push({ stage: "references", code: "REVEAL_TO_ABSENT", path: `${p}.reveals[${j}].to[${k}]`,
+            message: `${w} learns ${r.factId} here but is not in the scene` });
+        }
+      });
+    });
     sc.dialogue.forEach((d, j) => {
+      d.references.forEach((f, k) => fact(f, `${p}.dialogue[${j}].references[${k}]`));
       if (!chars.has(d.characterId)) R(`${p}.dialogue[${j}].characterId`, `character ${d.characterId} is not in the cast`);
       else if (!present.has(d.characterId)) {
         out.push({ stage: "references", code: "SPEAKER_NOT_PRESENT", path: `${p}.dialogue[${j}].characterId`,
@@ -160,6 +199,113 @@ function story(pkg: FilmPackage): Issue[] {
       S("PAYOFF_BEFORE_SETUP", `setups[${i}]`, `${s.id} is paid off in ${s.paidOffIn}, not after it is planted in ${s.plantedIn}`);
     }
   });
+  return out;
+}
+
+function canon(pkg: FilmPackage): Issue[] {
+  const out: Issue[] = [];
+  const C = (code: string, path: string, message: string) => out.push({ stage: "canon", code, path, message });
+  const order = new Map(pkg.scenes.map((s) => [s.id, s.index]));
+
+  // Story time (Part 1 §33): forward, except in flashbacks; continuous action
+  // stays on the same day and never goes back in the day.
+  let last: { day: number; tod: number; id: string } | null = null;
+  pkg.scenes.forEach((sc, i) => {
+    const t = sc.storyTime;
+    if (!t) return;
+    const p = `scenes[${i}].storyTime`;
+    if (t.continuous) {
+      const prev = pkg.scenes[i - 1];
+      if (!prev) C("CONTINUOUS_FIRST_SCENE", p, `${sc.id} is the first scene; it cannot continue a previous one`);
+      else if (prev.storyTime && (prev.storyTime.day !== t.day || timeOfDayRank(sc.timeOfDay) < timeOfDayRank(prev.timeOfDay))) {
+        C("CONTINUOUS_TIME_JUMP", p, `${sc.id} continues ${prev.id} but is set at a different time`);
+      }
+    }
+    if (t.flashback) return;
+    const tod = timeOfDayRank(sc.timeOfDay);
+    if (last && (t.day < last.day || (t.day === last.day && tod < last.tod))) {
+      C("TIME_REGRESSION", p, `${sc.id} is set before ${last.id} (day ${t.day} ${sc.timeOfDay}) but is not marked as a flashback`);
+    }
+    last = { day: t.day, tod, id: sc.id };
+  });
+
+  pkg.scenes.forEach((sc, i) => {
+    const p = `scenes[${i}]`;
+    // One holder per prop.
+    const holder = new Map<string, string>();
+    sc.characters.forEach((st, j) => st.holding.forEach((h, k) => {
+      const other = holder.get(h);
+      if (other) C("PROP_TWO_HOLDERS", `${p}.characters[${j}].holding[${k}]`, `${h} is held by both ${other} and ${st.characterId}`);
+      holder.set(h, st.characterId);
+    }));
+    // Continuous action: same clothes, injuries do not vanish.
+    const prev = pkg.scenes[i - 1];
+    if (!sc.storyTime?.continuous || !prev) return;
+    sc.characters.forEach((st, j) => {
+      const before = prev.characters.find((x) => x.characterId === st.characterId);
+      if (!before) return;
+      if (before.wardrobeId !== st.wardrobeId) {
+        C("WARDROBE_CHANGE_IN_CONTINUOUS_ACTION", `${p}.characters[${j}].wardrobeId`,
+          `${st.characterId} wears ${st.wardrobeId} but wore ${before.wardrobeId} in ${prev.id}, which this scene continues`);
+      }
+      if (before.physical && !st.physical) {
+        C("PHYSICAL_STATE_DROPPED", `${p}.characters[${j}].physical`,
+          `${st.characterId} was "${before.physical}" in ${prev.id}, which this scene continues; it cannot vanish`);
+      }
+    });
+  });
+
+  // Knowledge (Part 1 §56): a line may only rely on what its speaker knows by then.
+  const k = initialKnowledge(pkg);
+  const audienceBy = new Map<string, Set<string>>();
+  pkg.scenes.forEach((sc, i) => {
+    applyReveals(k, sc);
+    audienceBy.set(sc.id, new Set(k.get(AUDIENCE)));
+    sc.dialogue.forEach((d, j) => d.references.forEach((f, r) => {
+      if (!k.get(d.characterId)?.has(f)) {
+        C("KNOWLEDGE_VIOLATION", `scenes[${i}].dialogue[${j}].references[${r}]`,
+          `${d.characterId} relies on ${f} but has not learned it by ${sc.id}`);
+      }
+    }));
+  });
+
+  // Foreshadowing (Part 1 §58): plant → development → payoff, established for the audience.
+  pkg.setups.forEach((s, i) => {
+    const a = order.get(s.plantedIn)!;
+    const b = order.get(s.paidOffIn)!;
+    s.developedIn.forEach((d, j) => {
+      const x = order.get(d)!;
+      if (x <= a || x >= b) C("DEVELOPMENT_OUT_OF_ORDER", `setups[${i}].developedIn[${j}]`, `${d} is not between the plant (${s.plantedIn}) and the payoff (${s.paidOffIn})`);
+    });
+    if (s.factId && !audienceBy.get(s.plantedIn)?.has(s.factId)) {
+      C("SETUP_NOT_ESTABLISHED", `setups[${i}].factId`, `${s.id} pays off ${s.factId}, but the audience has not been shown it by ${s.plantedIn}`);
+    }
+  });
+  // Mystery (Part 1 §57): the answer is withheld at first and reaches the audience inside the thread.
+  const audienceAtStart = initialKnowledge(pkg).get(AUDIENCE)!;
+  pkg.threads.forEach((t, i) => {
+    if (t.kind !== "mystery" || !t.answerFactId) return;
+    if (audienceAtStart.has(t.answerFactId)) {
+      C("MYSTERY_SPOILED", `threads[${i}].answerFactId`, `the audience knows ${t.answerFactId} before the film starts`);
+      return;
+    }
+    const lastScene = t.sceneIds.reduce((m, s) => ((order.get(s) ?? -1) > (order.get(m) ?? -1) ? s : m), t.sceneIds[0]!);
+    if (!audienceBy.get(lastScene)?.has(t.answerFactId)) {
+      C("MYSTERY_UNRESOLVED", `threads[${i}]`, `${t.id} never reveals ${t.answerFactId} to the audience by ${lastScene}`);
+    }
+  });
+  if (out.length) return out;
+
+  // Every planned shot against the world state (Part 2 §62): who and what is in frame must be there.
+  const at = new Map(pkg.scenes.map((s, i) => [s.id, i]));
+  for (const { sceneId, shotIndex, result } of checkFilmContinuity(pkg)) {
+    const i = at.get(sceneId)!;
+    const j = pkg.scenes[i]!.shots.findIndex((s) => s.index === shotIndex);
+    for (const v of result.violations) {
+      if (v.code === "CHARACTER_NOT_IN_SCENE") C("FRAMED_NOT_PRESENT", `scenes[${i}].shots[${j}].subjectIds`, `${v.subjectId} is framed but not listed in ${sceneId}'s characters`);
+      if (v.code === "PROP_ELSEWHERE") C("PROP_ELSEWHERE", `scenes[${i}].shots[${j}].subjectIds`, v.message);
+    }
+  }
   return out;
 }
 

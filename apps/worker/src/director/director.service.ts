@@ -3,15 +3,13 @@ import {
   AVG_SHOT_SEC,
   planSceneCount,
   planShotsPerScene,
-  computePromptHash,
-  computeCacheKey,
-  deterministicSeed,
   outputDimensions,
   ProductionFailure,
   type Degradation,
 } from "@cineforge/shared";
 import { MODEL_VERSIONS } from "@cineforge/model-adapters";
 import {
+  canonVersion,
   compileFilm,
   IntelligenceError,
   PlanInvalidError,
@@ -21,6 +19,7 @@ import {
 } from "@cineforge/movie";
 import { intelligence } from "../intelligence";
 import { stubPackage } from "./stub";
+import { shotGenerationFields, statePatchRow } from "./rows";
 
 /**
  * Director — planning service (DirectorOS W2: One-Pass Intelligence /
@@ -163,6 +162,7 @@ async function persistPlan(
 
   const raw = {
     irVersion: pkg.irVersion,
+    canonVersion: canonVersion(pkg),
     package: pkg,
     plan: { provider: plan.provider, model: plan.model, revised: plan.revised, fixedIssues: plan.fixedIssues.length },
   };
@@ -174,15 +174,9 @@ async function persistPlan(
     select: { id: true },
   });
 
+  const keying = { projectId, modelId: project.modelId, modelVersion, width, height };
   const out: PlannedScene[] = [];
   for (const sc of compiled.scenes) {
-    // The continuity engine resolves reference frames / LoRA from `id`.
-    const characters = Object.fromEntries(
-      Object.entries(sc.statePatch.characters).map(([name, attrs]) => {
-        const { key, ...rest } = attrs;
-        return [name, { id: charId.get(key!)!, ...rest }];
-      }),
-    );
     await prisma.scene.deleteMany({ where: { projectId, index: sc.index } });
     const scene = await prisma.scene.create({
       data: {
@@ -200,38 +194,24 @@ async function persistPlan(
         characterRef: sc.characterRef,
         locationNote: compiled.locations.find((l) => l.key === sc.locationKey)!.name,
         bridge: sc.bridge,
-        statePatch: { ...sc.statePatch, characters },
+        statePatch: statePatchRow(sc, charId),
         dependsOn: sc.index > 0 ? [sc.index - 1] : [],
         characters: { create: sc.characterKeys.map((k) => ({ characterId: charId.get(k)! })) },
         dialogueLines: {
           create: sc.dialogue.map((d) => ({ index: d.index, characterId: charId.get(d.characterKey)!, text: d.text, emotion: d.emotion })),
         },
         shots: {
-          create: sc.shots.map((sh) => {
-            const seed = deterministicSeed(projectId, sc.index, sh.index);
-            const promptHash = computePromptHash({ prompt: sh.prompt, negativePrompt: sh.negativePrompt });
-            const refs = sh.cameraPlan.subjectKeys.filter((k) => charId.has(k)).map((k) => charId.get(k)!);
-            return {
-              index: sh.index,
-              prompt: sh.prompt,
-              negativePrompt: sh.negativePrompt,
-              source: seedFrames ? "image" : "text",
-              durationSec: sh.durationSec,
-              cameraPlan: sh.cameraPlan,
-              cameraType: sh.cameraType,
-              cameraMovement: sh.cameraMovement,
-              modelId: project.modelId,
-              modelVersion,
-              promptHash,
-              // Content-addressed reuse (docs/24 §C7): keyed on the compiled
-              // prompt, size, length and the characters in frame.
-              cacheKey: computeCacheKey({
-                modelId: project.modelId, modelVersion, promptHash, seed, width, height,
-                durationSec: sh.durationSec, referenceKeys: refs,
-              }),
-              seed: BigInt(seed),
-            };
-          }),
+          create: sc.shots.map((sh) => ({
+            index: sh.index,
+            ...shotGenerationFields(keying, sc.index, sh, charId),
+            source: seedFrames ? "image" : "text",
+            durationSec: sh.durationSec,
+            cameraPlan: sh.cameraPlan,
+            cameraType: sh.cameraType,
+            cameraMovement: sh.cameraMovement,
+            modelId: project.modelId,
+            modelVersion,
+          })),
         },
       },
       select: { id: true, index: true, shots: { orderBy: { index: "asc" }, select: { id: true, index: true } } },

@@ -151,6 +151,14 @@ export function shotPrompt(pkg: FilmPackage, scene: FilmScene, shot: FilmShot): 
   return clip(parts.join(" "), PROMPT_MAX);
 }
 
+/** Story time for the continuity preamble (rendered as "World story time: …"). */
+function storyTimeLine(sc: FilmScene): Record<string, string> {
+  const t = sc.storyTime;
+  if (!t) return {};
+  const tags = [t.flashback ? "flashback" : null, t.continuous ? "continuous with the previous scene" : null].filter(Boolean);
+  return { "story time": `day ${t.day}, ${sc.timeOfDay}${tags.length ? ` (${tags.join(", ")})` : ""}` };
+}
+
 export function compileFilm(pkg: FilmPackage): CompiledFilm {
   const castByKey = new Map(pkg.cast.map((c) => [c.id, c]));
   const locByKey = new Map(pkg.locations.map((l) => [l.id, l]));
@@ -197,7 +205,7 @@ export function compileFilm(pkg: FilmPackage): CompiledFilm {
         // The next scene's purpose is this scene's hand-off requirement.
         nextSceneRequirements: next ? next.purpose : "",
       },
-      statePatch: { characters, locations: { [loc.name]: sc.timeOfDay }, world: {} },
+      statePatch: { characters, locations: { [loc.name]: sc.timeOfDay }, world: storyTimeLine(sc) },
       shots: sc.shots.map((sh) => ({
         index: sh.index,
         durationSec: sh.durationSec,

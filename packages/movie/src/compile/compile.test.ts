@@ -39,6 +39,7 @@ describe("Production Compiler (Part 2 §85–86)", () => {
     expect(s.dialogueText).toBe("EWAN: Tide turns in ten minutes.");
     expect(s.statePatch.characters.Maya).toEqual({ key: "char_maya", wardrobe: "yellow raincoat over black jumper", emotion: "tense", holding: "Sealed key" });
     expect(out.scenes[1]!.statePatch.characters.Maya!.health).toBe("soaked");
+    expect(s.statePatch.world).toEqual({ "story time": "day 1, night" });
     expect(s.bridge.nextSceneRequirements).toBe("Maya crosses as the bridge swings");
     expect(s.characterRef).toBe("Maya");
   });

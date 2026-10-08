@@ -19,6 +19,7 @@ export type FailureCode =
   | "SHOTS_MISSING" // a film would be assembled with gaps
   | "AUDIO_MIX_FAILED" // a film would ship without its sound
   | "STORAGE_UNCONFIGURED"
+  | "CONTINUITY_VIOLATION" // a shot contradicts canon (Continuity Engine, blocking) — not generated
   | "MODERATION_UNAVAILABLE"; // only when MODERATION_REQUIRED=1
 
 /** Gaps that are recorded and shown, never hidden. */

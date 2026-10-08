@@ -970,3 +970,24 @@ model AiDecision {
   @@index([task, createdAt], map: "ai_decisions_task_idx")
   @@map("ai_decisions")
 }
+
+/// Canon revisions (DirectorOS W3, migration 0033): append-only log of canon
+/// changes after planning and exactly which scenes/shots each one touched.
+model CanonRevision {
+  id             String   @id @default(uuid()) @db.Uuid
+  projectId      String   @map("project_id") @db.Uuid
+  kind           String
+  change         Json
+  fromVersion    String   @map("from_version")
+  toVersion      String   @map("to_version")
+  outcome        String
+  issues         Json     @default("[]")
+  affectedScenes String[] @default([]) @map("affected_scenes")
+  affectedShots  Json     @default("[]") @map("affected_shots")
+  invalidated    Int      @default(0)
+  actor          String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([projectId, createdAt], map: "canon_revisions_project_idx")
+  @@map("canon_revisions")
+}
