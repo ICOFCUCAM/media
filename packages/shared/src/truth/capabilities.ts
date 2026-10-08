@@ -53,7 +53,7 @@ export interface CapabilityProbe {
   /** GPU worker `/capabilities` per model id, when reachable. */
   gpu?: Record<string, GpuCapabilitiesWire | null>;
   /** Intelligence router availability per reasoning task (first configured route's provider). */
-  intelligence?: Partial<Record<"film_plan" | "translation", { available: boolean; provider: string | null }>>;
+  intelligence?: Partial<Record<"film_plan" | "translation" | "visual_review", { available: boolean; provider: string | null }>>;
 }
 
 /** The subset of apps/gpu-worker `/capabilities` the registry reads. */
@@ -95,7 +95,7 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
   const gpuReal = wan?.realExecution === true;
   const gpuMode = wan?.execution ?? (probe.gpu ? "unreachable" : "unprobed");
   const cap = (c: Capability) => c;
-  const brain = (task: "film_plan" | "translation") =>
+  const brain = (task: "film_plan" | "translation" | "visual_review") =>
     probe.intelligence?.[task] ?? { available: has(env, "ANTHROPIC_API_KEY"), provider: has(env, "ANTHROPIC_API_KEY") ? "anthropic" : null };
   const plan = brain("film_plan");
   const tr = brain("translation");
@@ -194,7 +194,21 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
       status: has(env, "S3_ACCESS_KEY", "S3_SECRET_KEY") || has(env, "AWS_ACCESS_KEY_ID") ? "production_ready" : "unavailable",
       realExecution: has(env, "S3_ACCESS_KEY", "S3_SECRET_KEY") || has(env, "AWS_ACCESS_KEY_ID"),
     }),
-    cap({ capability: "visual_qc", provider: null, status: "not_implemented", realExecution: false, note: "W5" }),
+    (() => {
+      const vr = brain("visual_review");
+      const mode = env.VISUAL_REVIEW === "off" || env.VISUAL_REVIEW === "enforce" ? env.VISUAL_REVIEW : "record";
+      if (mode === "off") return cap({ capability: "visual_qc", provider: null, status: "disabled", realExecution: false, note: "VISUAL_REVIEW=off" });
+      return cap({
+        capability: "visual_qc",
+        provider: vr.available ? vr.provider : null,
+        status: vr.available ? "experimental" : "unavailable",
+        realExecution: vr.available,
+        supports: vr.available ? [mode] : [],
+        note: vr.available
+          ? mode === "record" ? "frames reviewed against canon; contradictions recorded, shots not blocked (not calibrated)" : "contradictions fail the shot"
+          : "no vision model configured (visual_review route) — shots are not reviewed",
+      });
+    })(),
     cap({
       capability: "technical_qc",
       provider: "cineforge",

@@ -78,6 +78,7 @@ export interface CompiledScene {
   /** Continuity patch keyed by character NAME (the engine's current format), with the canon key as `key`. */
   statePatch: {
     characters: Record<string, Record<string, string>>;
+    relationships: Record<string, string>;
     locations: Record<string, string>;
     world: Record<string, string>;
   };
@@ -151,6 +152,24 @@ export function shotPrompt(pkg: FilmPackage, scene: FilmScene, shot: FilmShot): 
   return clip(parts.join(" "), PROMPT_MAX);
 }
 
+/** How the scene's characters stand with each other, after the scene's changes ("Maya → Ewan": "trust"). */
+function relationshipsIn(pkg: FilmPackage, sceneAt: number): Record<string, string> {
+  const sc = pkg.scenes[sceneAt]!;
+  const here = new Set(sc.characters.map((c) => c.characterId));
+  const name = (id: string) => pkg.cast.find((c) => c.id === id)?.name ?? id;
+  const out: Record<string, string> = {};
+  for (const r of pkg.relationships) {
+    if (!here.has(r.a) || !here.has(r.b)) continue;
+    let state = r.initial;
+    for (let i = 0; i <= sceneAt; i++) {
+      const ch = pkg.scenes[i]!.relationshipChanges.find((x) => x.relationshipId === r.id);
+      if (ch) state = ch.becomes;
+    }
+    out[`${name(r.a)} → ${name(r.b)}`] = state;
+  }
+  return out;
+}
+
 /** Story time for the continuity preamble (rendered as "World story time: …"). */
 function storyTimeLine(sc: FilmScene): Record<string, string> {
   const t = sc.storyTime;
@@ -205,7 +224,7 @@ export function compileFilm(pkg: FilmPackage): CompiledFilm {
         // The next scene's purpose is this scene's hand-off requirement.
         nextSceneRequirements: next ? next.purpose : "",
       },
-      statePatch: { characters, locations: { [loc.name]: sc.timeOfDay }, world: storyTimeLine(sc) },
+      statePatch: { characters, relationships: relationshipsIn(pkg, i), locations: { [loc.name]: sc.timeOfDay }, world: storyTimeLine(sc) },
       shots: sc.shots.map((sh) => ({
         index: sh.index,
         durationSec: sh.durationSec,

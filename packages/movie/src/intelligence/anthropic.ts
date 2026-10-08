@@ -36,7 +36,15 @@ export class AnthropicProvider implements IntelligenceProvider {
             // Removes constraints the API does not enforce (CineForge validates them after).
             format: jsonSchemaOutputFormat(req.schema as never),
           },
-          messages: [{ role: "user", content: req.user }],
+          messages: [{
+            role: "user",
+            content: req.images?.length
+              ? [
+                  ...req.images.map((i) => ({ type: "image" as const, source: { type: "base64" as const, media_type: i.mediaType, data: i.data } })),
+                  { type: "text" as const, text: req.user },
+                ]
+              : req.user,
+          }],
         })
         .finalMessage();
     } catch (e) {

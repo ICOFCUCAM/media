@@ -23,7 +23,7 @@ describe("per-shot references from the Continuity Engine (§62.6)", () => {
   });
 
   it("legacy projects without Film IR keep the inherited set", () => {
-    expect(shotReferences(null, 0, 0, chars)).toEqual({ characterIds: null, result: null });
+    expect(shotReferences(null, 0, 0, chars)).toEqual({ characterIds: null, result: null, charIdByKey: new Map() });
   });
 
   it("a shot that contradicts canon is reported blocking", () => {

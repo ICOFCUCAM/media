@@ -7,7 +7,14 @@
  */
 
 /** What a call is for — the unit of routing and of the decision log. */
-export type IntelligenceTask = "film_plan" | "film_plan_revision" | "translation" | "social_kit";
+export type IntelligenceTask = "film_plan" | "film_plan_revision" | "translation" | "social_kit" | "visual_review";
+
+/** An image shown to the model with the request (e.g. a generated frame to review). */
+export interface RequestImage {
+  mediaType: "image/jpeg" | "image/png";
+  /** base64, no data: prefix */
+  data: string;
+}
 
 export interface StructuredRequest {
   task: IntelligenceTask;
@@ -16,6 +23,8 @@ export interface StructuredRequest {
   promptVersion: number;
   system: string;
   user: string;
+  /** Images placed before the user text (vision tasks). */
+  images?: RequestImage[];
   /** JSON Schema the output must satisfy (validated again by CineForge). */
   schema: Record<string, unknown>;
   schemaName: string;

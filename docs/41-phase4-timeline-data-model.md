@@ -2,7 +2,7 @@
 
 Governing order: docs/38 §AX.2, Phase 4, built on the Phase 2 clock (docs/40).
 
-**Status: the migrations are written and validated in CI, but they are NOT applied to the live Supabase project.** Applying them is an operator step (below). Until then the worker code that uses them degrades: it logs one line and production carries on.
+**Status: the migrations are applied to the live Supabase project (2026-10-08, with 0027 and 0031–0034).** The operator steps below are kept for other environments. Until then the worker code that uses them degrades: it logs one line and production carries on.
 
 ## Schema
 

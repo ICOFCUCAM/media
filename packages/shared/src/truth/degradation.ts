@@ -20,6 +20,7 @@ export type FailureCode =
   | "AUDIO_MIX_FAILED" // a film would ship without its sound
   | "STORAGE_UNCONFIGURED"
   | "CONTINUITY_VIOLATION" // a shot contradicts canon (Continuity Engine, blocking) — not generated
+  | "VISUAL_REVIEW_FAILED" // the generated frame contradicts canon twice (VISUAL_REVIEW=enforce)
   | "MODERATION_UNAVAILABLE"; // only when MODERATION_REQUIRED=1
 
 /** Gaps that are recorded and shown, never hidden. */
@@ -37,7 +38,10 @@ export type DegradationCode =
   | "UPSCALE_FAILED"
   | "TRANSLATION_FAILED"
   | "RESOLUTION_UNSUPPORTED" // requested output format not available on the runtime
-  | "BRAND_OUTRO_SKIPPED";
+  | "BRAND_OUTRO_SKIPPED"
+  | "WARDROBE_REFERENCE_UNAVAILABLE" // no wardrobe reference still for a framed character; identity frames only
+  | "VISUAL_REVIEW_UNAVAILABLE" // the generated frame was not reviewed (no vision provider / frame)
+  | "VISUAL_REVIEW_FLAGGED"; // the Visual Reviewer found the frame contradicts canon (record mode)
 
 export type DegradationSeverity = "info" | "warning" | "major";
 export type DegradationScope = "project" | "scene" | "shot" | "film" | "locale";
@@ -69,6 +73,9 @@ const SEVERITY: Record<DegradationCode, DegradationSeverity> = {
   TRANSLATION_FAILED: "major",
   RESOLUTION_UNSUPPORTED: "major",
   BRAND_OUTRO_SKIPPED: "warning",
+  WARDROBE_REFERENCE_UNAVAILABLE: "info",
+  VISUAL_REVIEW_UNAVAILABLE: "info",
+  VISUAL_REVIEW_FLAGGED: "major",
 };
 
 export function degradation(

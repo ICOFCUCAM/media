@@ -1,8 +1,8 @@
 # 44 — Truth layer (DirectorOS W1)
 
-**Status:** implemented in code (2026-10-08). Migration 0031 is **not applied**
-to the live database; until it is, degradations go to the worker log only and
-the capability list stays "unverified" in the web app. Contract:
+**Status:** implemented in code (2026-10-08). Migration 0031 is **applied to
+the live database** (2026-10-08); degradations and capabilities are written
+once the worker running this code is deployed. Contract:
 [directoros/contracts/truth-layer.md](directoros/contracts/truth-layer.md).
 
 The rule: a production either delivers what it says, fails with a reason, or

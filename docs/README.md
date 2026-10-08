@@ -42,15 +42,15 @@ and [01-architecture](01-architecture.md); this page is the map.
 - [38 — Media engine architecture](38-media-engine-architecture.md) · runtime gateway, Master Production Clock, A/V sync, ComfyUI plan
 - [39 — Phase 1: GPU security](39-phase1-gpu-security-plan.md) · gateway, execution tokens, verified image chain, **rollout runbook §10**
 - [40 — Phases 2–3: clock and runtime contract](40-phase2-3-clock-and-runtime-contract.md) · µs timebase, timing reports, outcome classification
-- [41 — Phase 4: timeline data model](41-phase4-timeline-data-model.md) · migrations 0028–0030 (**not applied yet** — runbook inside)
+- [41 — Phase 4: timeline data model](41-phase4-timeline-data-model.md) · migrations 0028–0030 (applied live 2026-10-08)
 - [42 — Phase 5: A/V Sync Engine](42-phase5-av-sync-engine.md) · analyzers, validators, repair planner, `avsync:check`
 - [43 — Worker on DeployPro](43-deploypro-worker.md) · root Dockerfile, health check, runbook
 
 **DirectorOS — the intelligence layers above the media engine**
 - [DirectorOS specification and gap analysis](directoros/README.md) · Parts 1–4, 454 requirement IDs, [gap analysis](directoros/gap-analysis.md), [execution protocol](directoros/execution-protocol.md), [contracts](directoros/contracts/README.md)
-- [44 — Truth layer (W1)](44-truth-layer.md) · failures vs recorded degradations, capability registry, truth gate; migration 0031 (**not applied yet** — runbook inside)
-- [45 — Intelligence layer and Film IR (W2)](45-directoros-intelligence.md) · one master call, validator chain, Production Compiler, provider router, decision log; migration 0032 (**not applied yet**)
-- [46 — Canon, world state and continuity (W3)](46-directoros-world-state.md) · World State Engine, story time, knowledge, foreshadowing, Character Continuity Engine, canon revisions that regenerate only affected shots; migration 0033 (**not applied yet**)
+- [44 — Truth layer (W1)](44-truth-layer.md) · failures vs recorded degradations, capability registry, truth gate; migration 0031 (applied live 2026-10-08)
+- [45 — Intelligence layer and Film IR (W2)](45-directoros-intelligence.md) · one master call, validator chain, Production Compiler, provider router, decision log; migration 0032 (applied live 2026-10-08)
+- [46 — Canon, world state and continuity (W3)](46-directoros-world-state.md) · World State Engine, story time, knowledge, foreshadowing, Character Continuity Engine, canon revisions that regenerate only affected shots, story state, wardrobe reference pack, Visual Reviewer; migrations 0027–0034 **applied live**
 
 ## Continuity & identity — the coherent-movie spine
 

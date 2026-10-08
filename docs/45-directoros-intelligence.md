@@ -1,8 +1,8 @@
 # 45 — Intelligence layer and Film IR (DirectorOS W2)
 
 **Status:** implemented in code (2026-10-08). Migration 0032 (`ai_decisions`)
-is **not applied** to the live database; until it is, AI decisions go to the
-worker log only. Contracts: [film-ir.md](directoros/contracts/film-ir.md),
+is **applied to the live database** (2026-10-08); decisions are written once
+the worker running this code is deployed. Contracts: [film-ir.md](directoros/contracts/film-ir.md),
 [intelligence-layer.md](directoros/contracts/intelligence-layer.md).
 
 ## 1. What changed

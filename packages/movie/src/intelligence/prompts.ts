@@ -20,7 +20,7 @@ const DIRECTOR_RULES = [
   "",
   "Rules:",
   "- Ids are stable and lowercase: char_<name>, loc_<name>, prop_<name>, scene_01, scene_02 …, wardrobe_<name>,",
-  "  thread_<name>, setup_<name>, fact_<name>. Every reference must point at an id defined in the package.",
+  "  thread_<name>, setup_<name>, fact_<name>, rel_<name>. Every reference must point at an id defined in the package.",
   "- Characters: canonical identity (face, hair, body, marks) that never drifts; wardrobe entries with ids;",
   "  each scene lists who is present, which wardrobe they wear, their emotion, visible physical state and",
   "  props they hold. Anyone who speaks in a scene must be listed in that scene.",
@@ -34,6 +34,9 @@ const DIRECTOR_RULES = [
   "  lists in references the facts it relies on, and its speaker must already know them. A setup names the",
   "  fact its plant shows the audience; a mystery thread names the fact that answers it and reveals it to",
   "  the audience within the thread. Use facts for what the drama turns on — secrets, deadlines, reveals.",
+  "- Story state: relationships between characters (how they stand at the start); a scene's relationshipChanges",
+  "  say how a pair stands after it (one of them must be in the scene). deaths lists who dies in a scene (they",
+  "  must be in it); after that they appear only in flashbacks.",
   "- Shots: whole seconds, coverage chosen for the scene's purpose (establish, then move in for emotion,",
   "  reactions, inserts), never more shots or seconds than the constraints allow.",
   "- Narration is spoken voice-over: write it as spoken language, or null when the scene plays without it.",
@@ -44,13 +47,13 @@ const DIRECTOR_RULES = [
 export const PROMPTS = {
   directorMaster: {
     id: "director.master",
-    version: 2,
+    version: 3,
     purpose: "One master call: brief → complete Film Production Package (Part 2 §85, §93).",
     system: DIRECTOR_RULES,
   },
   directorRevision: {
     id: "director.revision",
-    version: 2,
+    version: 3,
     purpose: "Surgical revision: fix exactly the validator's issues in a package (Part 2 §93).",
     system: [
       DIRECTOR_RULES,
@@ -68,6 +71,19 @@ export const PROMPTS = {
       "preserving tone, register and meaning for spoken dialogue and voice-over. Return exactly one",
       "translated line per input line, in the same order.",
     ].join(" "),
+  },
+  visualReview: {
+    id: "review.visual",
+    version: 1,
+    purpose: "Visual Reviewer: does a generated frame show what canon says the shot must show (Part 2 §62; W5)?",
+    system: [
+      "You are the continuity supervisor of a film. You are shown a frame from a generated shot and the canon it",
+      "must match: who is in frame with their canonical face, hair, age, marks, wardrobe and visible physical state,",
+      "the location, the time of day and the props in play. For each item, say whether the frame matches, does not",
+      "match, or you cannot tell (too small, turned away, out of frame, occluded). Judge only what is visible; never",
+      "guess. A mismatch is a clear contradiction: wrong clothes or colours, missing or extra people, a canonical mark",
+      "absent on a clearly visible face, a different place, day instead of night. Style and framing are not your job.",
+    ].join("\n"),
   },
   socialKit: {
     id: "social.kit",

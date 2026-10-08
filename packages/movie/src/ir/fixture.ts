@@ -65,6 +65,7 @@ export function fixturePackage(): FilmPackage {
       { id: "loc_harbour", name: "The Harbour", kind: "EXTERIOR", description: "stone quays, cranes, a swing bridge", architecture: "Victorian stone and iron", era: "present day", lighting: "sodium lamps, storm light", rationale: "The bridge is the clock." },
     ],
     props: [{ id: "prop_key", name: "Sealed key", description: "brass key in a wax-sealed pouch", ownerId: "char_maya" }],
+    relationships: [{ id: "rel_maya_ewan", a: "char_maya", b: "char_harbourmaster", initial: "wary strangers" }],
     facts: [
       { id: "fact_bridge_swings", statement: "the swing bridge opens at high tide", knownAtStart: ["char_harbourmaster"] },
       { id: "fact_key_opens_vault", statement: "the key opens the harbour vault", knownAtStart: ["char_maya", "audience"] },
@@ -88,6 +89,8 @@ export function fixturePackage(): FilmPackage {
       storyTime: { day: 1, continuous: false, flashback: false },
       // Ewan tells Maya (and the audience) about the bridge in scene one.
       reveals: i ? [] : [{ factId: "fact_bridge_swings", to: ["char_maya", "audience"] }],
+      relationshipChanges: i ? [{ relationshipId: "rel_maya_ewan", becomes: "trust" }] : [],
+      deaths: [],
       purpose: i ? "Maya crosses as the bridge swings" : "Maya receives the key and the deadline",
       summary: "Rain sheets across the quay as Maya runs.",
       emotionalArc: { start: "wary", middle: "afraid", end: "resolved" },
