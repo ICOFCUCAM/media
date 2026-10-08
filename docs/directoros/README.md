@@ -21,7 +21,9 @@ Rules for this folder:
 | Part | File | Received | Sections |
 |---|---|---|---|
 | 1 | [part-01-movie-intelligence-architecture.md](part-01-movie-intelligence-architecture.md) | 2026-10-08 | 0 (preamble) and 1–59 |
+| 2 | [part-02-engineering-verification-contract.md](part-02-engineering-verification-contract.md) | 2026-10-08 | 60–107 |
+| 3 | [part-03-voice-clone-talker.md](part-03-voice-clone-talker.md) | 2026-10-08 | 108–129 |
 
-Requirements index: [requirements-index.md](requirements-index.md), 140 IDs for Part 1, with
+Requirements index: [requirements-index.md](requirements-index.md), 330 IDs (Part 1: 140, Part 2: 138, Part 3: 52), with
 status columns the gap analysis fills in. The gap analysis is not started; it runs
 after "complete".

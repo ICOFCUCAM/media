@@ -148,3 +148,203 @@ One row per requirement ID in the source record. The last two columns are filled
 | DOS-58.2 | 58. Foreshadowing graph | The system can automatically check: did the film actually establish | | |
 | DOS-59.1 | 59. The Movie Compiler | Ultimately — USER IDEA; ↓; DIRECTOROS; ↓; FILM BIBLE; ↓; WORLD MODEL; ↓; STORY GRAPH; ↓; SCENE GRAPH; ↓ … | | |
 | DOS-59.2 | 59. The Movie Compiler | The existing elastic GPU architecture sits underneath — DIRECTOROS; │; ▼; PRODUCTION JOBS; │; ▼; CINEFORGE QUEUE; │; ▼; GPU SCHEDULER; │; ┌──────────────┼──────────────┐ … | | |
+
+## Part 2 — Engineering & Verification Contract, Intelligence Layer, own image layer
+
+| ID | Section | Requirement (pointer; the full text is in the part file) | Cineforge status | Where / notes |
+|---|---|---|---|---|
+| DOS-60.1 | 60. The critical issue to correct before giving Claude the architecture | The Part 1 architecture is conceptually strong but not yet strict enough to guarantee a high-quality | | |
+| DOS-60.2 | 60. The critical issue to correct before giving Claude the architecture | The real problem: three different levels to distinguish — | | |
+| DOS-60.3 | 60. The critical issue to correct before giving Claude the architecture | The previous architecture was mostly Level 1, with some Level 2. It must be taken to Level 3. | | |
+| DOS-61.1 | 61. The CineForge DirectorOS Implementation Contract | Create a CineForge DirectorOS Implementation Contract, not merely an architecture document. | | |
+| DOS-61.2 | 61. The CineForge DirectorOS Implementation Contract | Every job description must have: | | |
+| DOS-62.1 | 62. Example — Character Continuity Engine | The weak specification would be: — | | |
+| DOS-62.2 | 62. Example — Character Continuity Engine | The specification should instead say: — | | |
+| DOS-62.3 | 62. Example — Character Continuity Engine | Responsibility — The engine must maintain canonical character state across the entire Film IR and prevent downstream | | |
+| DOS-62.4 | 62. Example — Character Continuity Engine | Required inputs — | | |
+| DOS-62.5 | 62. Example — Character Continuity Engine | Required checks — The engine MUST compare: | | |
+| DOS-62.6 | 62. Example — Character Continuity Engine | Required output — | | |
+| DOS-62.7 | 62. Example — Character Continuity Engine | Forbidden — The engine must never return: | | |
+| DOS-62.8 | 62. Example — Character Continuity Engine | Acceptance test — Given: | | |
+| DOS-62.9 | 62. Example — Character Continuity Engine | Integration test — Change Maya's canonical wardrobe. Then verify: | | |
+| DOS-62.10 | 62. Example — Character Continuity Engine | If that doesn't happen, the feature is NOT IMPLEMENTED. That is the level of specification Claude ne | | |
+| DOS-63.1 | 63. This applies to EVERY major subsystem | DirectorOS should not merely contain: | | |
+| DOS-64.1 | 64. The Director — contract | Not "The Director creates the movie." Instead: | | |
+| DOS-65.1 | 65. Story Engine — proof | It needs to prove: | | |
+| DOS-66.1 | 66. Scene Architect — proof | Must prove: | | |
+| DOS-66.2 | 66. Scene Architect — proof | And: | | |
+| DOS-67.1 | 67. Shot Architect — proof | Must prove: | | |
+| DOS-67.2 | 67. Shot Architect — proof | Then: | | |
+| DOS-67.3 | 67. Shot Architect — proof | This connects directly to the Master Production Clock work already identified in the existing media- | | |
+| DOS-68.1 | 68. Prompt Compiler — strict protection | This one especially needs strict protection. Claude could easily implement: | | |
+| DOS-68.2 | 68. Prompt Compiler — strict protection | Instead: | | |
+| DOS-68.3 | 68. Prompt Compiler — strict protection | And it needs tests. For example: if Maya is wearing a red coat in the canonical state, the compiled | | |
+| DOS-68.4 | 68. Prompt Compiler — strict protection | Not necessarily literally the words "red coat", because the actual model adapter may use reference i | | |
+| DOS-69.1 | 69. The Image Engine — contract | This is where "wired but not functional" becomes particularly dangerous. The job description cannot | | |
+| DOS-69.2 | 69. The Image Engine — contract | Then test: | | |
+| DOS-69.3 | 69. The Image Engine — contract | If Claude mocks the generation response: | | |
+| DOS-70.1 | 70. The critical principle — never self-certify | Never allow a component to prove itself by returning its own claimed status. | | |
+| DOS-70.2 | 70. The critical principle — never self-certify | Bad: | | |
+| DOS-70.3 | 70. The critical principle — never self-certify | Better: | | |
+| DOS-71.1 | 71. The same applies to Audio | The existing audio requirements become machine-enforced acceptance criteria, not documentation. For | | |
+| DOS-71.2 | 71. The same applies to Audio | The previous bug demonstrated why this matters: the film mux and dubbing pipeline must measure pictu | | |
+| DOS-71.3 | 71. The same applies to Audio | That should be an automated regression test forever. | | |
+| DOS-72.1 | 72. DirectorOS needs the same philosophy — zero hidden TODO functionality | The Movie Layer should have zero "TODO" functionality hidden behind interfaces. Claude should not be | | |
+| DOS-72.2 | 72. DirectorOS needs the same philosophy — zero hidden TODO functionality | Those should cause the build/verification process to fail. | | |
+| DOS-73.1 | 73. The REALITY GATE | Every CineForge subsystem has a status: | | |
+| DOS-73.2 | 73. The REALITY GATE | Claude must never call something "complete" merely because it is wired. For example: | | |
+| DOS-74.1 | 74. The "No Fake Completion" rule | At the top of Claude's implementation instructions: | | |
+| DOS-75.1 | 75. The "No Silent Degradation" rule | If a required capability is unavailable, the system must report NOT_IMPLEMENTED, UNAVAILABLE, or FAI | | |
+| DOS-75.2 | 75. The "No Silent Degradation" rule | Especially important for: | | |
+| DOS-76.1 | 76. REAL provider tests | If CineForge says: | | |
+| DOS-76.2 | 76. REAL provider tests | ComfyUI should remain the generation engine rather than Claude recreating it. That should remain a h | | |
+| DOS-76.3 | 76. REAL provider tests | Likewise Wan must actually generate. Not: | | |
+| DOS-77.1 | 77. The Capability Registry | Every subsystem must declare what is actually operational. For example: | | |
+| DOS-77.2 | 77. The Capability Registry | That is much safer than pretending everything exposed in the UI is functional. The existing architec | | |
+| DOS-78.1 | 78. The UI obeys the Capability Registry | If: | | |
+| DOS-79.1 | 79. How to make Claude work differently | Don't tell Claude "Build DirectorOS." Tell it: | | |
+| DOS-80.1 | 80. Claude works in phases | Not "Build everything." That is where quality collapses. Instead: | | |
+| DOS-80.2 | 80. Claude works in phases | PHASE 0 — AUDIT — Claude examines the existing repository. No implementation. Produces: | | |
+| DOS-80.3 | 80. Claude works in phases | PHASE 1 — CONTRACT — Define: | | |
+| DOS-80.4 | 80. Claude works in phases | PHASE 2 — CANON — Implement: | | |
+| DOS-80.5 | 80. Claude works in phases | PHASE 3 — STORY — Implement: | | |
+| DOS-80.6 | 80. Claude works in phases | PHASE 4 — MEDIA — Wire: | | |
+| DOS-80.7 | 80. Claude works in phases | PHASE 5 — QC — Implement: | | |
+| DOS-80.8 | 80. Claude works in phases | PHASE 6 — COMPILER — | | |
+| DOS-80.9 | 80. Claude works in phases | PHASE 7 — ELASTIC GPU — Then connect the architecture designed earlier: | | |
+| DOS-80.10 | 80. Claude works in phases | PHASE 8 — END-TO-END — One complete movie. Not 100 mocked scenes. One actual short film from prompt → final MP4. That becom | | |
+| DOS-81.1 | 81. The ultimate acceptance test | Claude receives: | | |
+| DOS-81.2 | 81. The ultimate acceptance test | Then automatically verify: | | |
+| DOS-81.3 | 81. The ultimate acceptance test | Only then can Claude report: | | |
+| DOS-82.1 | 82. The missing layer — Engineering & Verification Contract + Claude Execution Protocol | The previous architecture + job descriptions are not yet the final implementation specification. The | | |
+| DOS-82.2 | 82. The missing layer — Engineering & Verification Contract + Claude Execution Protocol | A second document sits underneath the architecture: CineForge DirectorOS — Engineering & Verificatio | | |
+| DOS-82.3 | 82. The missing layer — Engineering & Verification Contract + Claude Execution Protocol | Add a Claude Execution Protocol that explicitly prevents: | | |
+| DOS-82.4 | 82. The missing layer — Engineering & Verification Contract + Claude Execution Protocol | We shouldn't merely tell Claude what CineForge should be. Write the specification so that Claude has | | |
+| DOS-82.5 | 82. The missing layer — Engineering & Verification Contract + Claude Execution Protocol | Apply exactly the same discipline to the existing docs/38-media-engine-architecture.md and its v2.4/ | | |
+| DOS-83.1 | 83. The author's question | Verbatim: | | |
+| DOS-83.2 | 83. The author's question | Answer: yes, and this is a better architecture than DirectorOS making many separate ChatGPT/Claude c | | |
+| DOS-83.3 | 83. The author's question | Important distinction — We can minimise reasoning-model calls dramatically, but one ChatGPT call cannot literally generate 4 | | |
+| DOS-83.4 | 83. The author's question | (author's note) — OpenAI's current Responses API is well suited to this because a single response can produce structur | | |
+| DOS-84.1 | 84. Conventional vs recommended call pattern | Instead of — this (expensive, slow, potentially inconsistent): | | |
+| DOS-84.2 | 84. Conventional vs recommended call pattern | Recommended: — | | |
+| DOS-85.1 | 85. The key innovation — CineForge AI Production Compiler | A component called CineForge AI Production Compiler, distinct from the Director: | | |
+| DOS-85.2 | 85. The key innovation — CineForge AI Production Compiler | Example — The user says: | | |
+| DOS-85.3 | 85. The key innovation — CineForge AI Production Compiler | The model returns a structured Film Production Package: | | |
+| DOS-85.4 | 85. The key innovation — CineForge AI Production Compiler | This is extremely important: the LLM isn't producing "a screenplay". It is producing an executable p | | |
+| DOS-86.1 | 86. Then CineForge takes over | Suppose GPT produces: | | |
+| DOS-86.2 | 86. Then CineForge takes over | This dramatically reduces API calls — The conventional approach: | | |
+| DOS-87.1 | 87. Film IR as the contract between AI and CineForge | The master call should not simply return huge raw JSON. It produces Film IR (Film Intermediate Repre | | |
+| DOS-87.2 | 87. Film IR as the contract between AI and CineForge | Compiler analogy (to help Claude understand) — A programmer writes: | | |
+| DOS-87.3 | 87. Film IR as the contract between AI and CineForge |  | | |
+| DOS-87.4 | 87. Film IR as the contract between AI and CineForge | This also solves the "Claude is average" problem — Claude doesn't get to decide "I'll implement whatever seems reasonable." Claude has to implement the | | |
+| DOS-88.1 | 88. Provider-neutral Intelligence Layer and model router | Do not call it ChatGPT Layer. Call it CineForge Intelligence Layer: | | |
+| DOS-88.2 | 88. Provider-neutral Intelligence Layer and model router | Model Router — (AI Router): | | |
+| DOS-88.3 | 88. Provider-neutral Intelligence Layer and model router | Do not pay GPT to do work CineForge's own infrastructure can already do. | | |
+| DOS-89.1 | 89. Don't ask GPT to create actual images if the own engine is better | The LLM decides: | | |
+| DOS-90.1 | 90. The LLM is the "brain"; the infrastructure is the "hands" |  | | |
+| DOS-91.1 | 91. Changes don't regenerate everything (and don't re-call the AI) | The user says "Make the station much darker." CineForge checks the dependency graph: | | |
+| DOS-91.2 | 91. Changes don't regenerate everything (and don't re-call the AI) | The user says "Make Maya's hair shorter." CineForge: | | |
+| DOS-92.1 | 92. Film State — the database is the source of truth | The AI layer maintains FILM STATE, containing: | | |
+| DOS-92.2 | 92. Film State — the database is the source of truth | The next AI request receives only the relevant state, not the entire history. That saves tokens and | | |
+| DOS-92.3 | 92. Film State — the database is the source of truth | No permanent giant ChatGPT conversation. Instead: | | |
+| DOS-93.1 | 93. One Master Call + Surgical Calls | Initial creation: — 1 MASTER LLM CALL generates: | | |
+| DOS-93.2 | 93. One Master Call + Surgical Calls | Later, only if necessary: — a TARGETED LLM CALL. Examples: | | |
+| DOS-93.3 | 93. One Master Call + Surgical Calls | So instead of LLM call, LLM call, LLM call, … you get: | | |
+| DOS-94.1 | 94. Tool definitions — proposed, validated, then executed | The master AI request can include tool definitions. For example the Director has access to: | | |
+| DOS-94.2 | 94. Tool definitions — proposed, validated, then executed | (author's note) — OpenAI's current Responses API supports function calling for connecting the model to application fun | | |
+| DOS-94.3 | 94. Tool definitions — proposed, validated, then executed | But do not let the model freely execute arbitrary functions. Instead: | | |
+| DOS-95.1 | 95. Images are a special case | (author's note) — With OpenAI's current Responses API, a model can use an image-generation tool as part of a response, | | |
+| DOS-95.2 | 95. Images are a special case | But the image engine stays provider-neutral, because these must all be interchangeable: | | |
+| DOS-95.3 | 95. Images are a special case | DirectorOS says: | | |
+| DOS-96.1 | 96. The revised architecture | The previous architecture is modified to: | | |
+| DOS-97.1 | 97. The most important rule — call AI only when reasoning is required | The AI should not be called because a piece of the pipeline exists. It should be called because reas | | |
+| DOS-97.2 | 97. The most important rule — call AI only when reasoning is required | No AI call needed — (deterministic): | | |
+| DOS-97.3 | 97. The most important rule — call AI only when reasoning is required | AI call needed: — | | |
+| DOS-98.1 | 98. Batch reasoning | Suppose there are 30 shots. Don't do 30 GPT calls. Give the model the entire scene/sequence and requ | | |
+| DOS-98.2 | 98. Batch reasoning | (author's note) — Structured Outputs are designed specifically to make this kind of machine-consumable response reliab | | |
+| DOS-99.1 | 99. Name — CineForge One-Pass Intelligence / Multi-Pass Execution | Not literally one API call for the entire movie in every situation, because very large films eventua | | |
+| DOS-100.1 | 100. Specification text to add for Claude (verbatim) |  | | |
+| DOS-100.2 | 100. Specification text to add for Claude (verbatim) |  | | |
+| DOS-100.3 | 100. Specification text to add for Claude (verbatim) |  | | |
+| DOS-100.4 | 100. Specification text to add for Claude (verbatim) |  | | |
+| DOS-100.5 | 100. Specification text to add for Claude (verbatim) |  | | |
+| DOS-100.6 | 100. Specification text to add for Claude (verbatim) |  | | |
+| DOS-100.7 | 100. Specification text to add for Claude (verbatim) |  | | |
+| DOS-100.8 | 100. Specification text to add for Claude (verbatim) | In one sentence: — | | |
+| DOS-101.1 | 101. The author's question and the answer | Verbatim: | | |
+| DOS-101.2 | 101. The author's question and the answer | No. OpenAI Image Generation is not needed when CineForge builds its own image-generation layer. Open | | |
+| DOS-101.3 | 101. The author's question and the answer | Recommended architecture: — | | |
+| DOS-101.4 | 101. The author's question and the answer | OpenAI does not have to generate the image. It can determine "This is what the image needs to be." T | | |
+| DOS-102.1 | 102. Owning the image pipeline gives more control | DirectorOS could produce: | | |
+| DOS-102.2 | 102. Owning the image pipeline gives more control | CineForge's Prompt Compiler converts that into the exact format the image engine needs: | | |
+| DOS-103.1 | 103. ComfyUI is the execution/generation graph underneath CineForge | This is exactly where ComfyUI belongs. Don't have Claude rebuild ComfyUI. Use ComfyUI as the executi | | |
+| DOS-103.2 | 103. ComfyUI is the execution/generation graph underneath CineForge | CineForge decides: | | |
+| DOS-103.3 | 103. ComfyUI is the execution/generation graph underneath CineForge |  | | |
+| DOS-103.4 | 103. ComfyUI is the execution/generation graph underneath CineForge | New models can be added later without changing DirectorOS. | | |
+| DOS-104.1 | 104. What OpenAI/Claude should actually do (and not do) | Spend the API money on: | | |
+| DOS-104.2 | 104. What OpenAI/Claude should actually do (and not do) | But not: | | |
+| DOS-105.1 | 105. Provider interface — no lock-in |  | | |
+| DOS-105.2 | 105. Provider interface — no lock-in | DirectorOS doesn't care. It produces ImageGenerationRequest; the provider adapter handles the actual | | |
+| DOS-106.1 | 106. OpenAI image generation is optional, not foundational | Capability registry example: | | |
+| DOS-106.2 | 106. OpenAI image generation is optional, not foundational | The system can then choose: | | |
+| DOS-106.3 | 106. OpenAI image generation is optional, not foundational | OpenAI can be activated later as one additional provider. | | |
+| DOS-107.1 | 107. The important distinction — intelligence vs media generation | Don't confuse AI intelligence with AI media generation. They are two different things. | | |
+| DOS-107.2 | 107. The important distinction — intelligence vs media generation | The goal: | | |
+| DOS-107.3 | 107. The important distinction — intelligence vs media generation | That gives a much stronger product architecture than making CineForge dependent on OpenAI's image ge | | |
+
+## Part 3 — Voice Clone Talker, Voice Engine and Voice Studio
+
+| ID | Section | Requirement (pointer; the full text is in the part file) | Cineforge status | Where / notes |
+|---|---|---|---|---|
+| DOS-108.1 | 108. Two different things to distinguish | If "Voice Clone Talker" means the newer voice-clone "talker" architecture, that is very relevant to | | |
+| DOS-108.2 | 108. Two different things to distinguish | Voice cloning — This is: | | |
+| DOS-108.3 | 108. Two different things to distinguish | A Voice Clone Talker — A talker model is the actual neural generation component that takes the text plus a voice reference/ | | |
+| DOS-108.4 | 108. Two different things to distinguish | For example, the newer Qwen3-TTS ecosystem has a specific voice_clone talker model set, including co | | |
+| DOS-109.1 | 109. Building it into CineForge — the Voice Engine beside Image and Video | Yes, this can be built into the author's own system. Structure the CineForge architecture like this: | | |
+| DOS-109.2 | 109. Building it into CineForge — the Voice Engine beside Image and Video | The Clone Talker becomes one of CineForge's own GPU workers. | | |
+| DOS-110.1 | 110. Reusable voice profiles — enroll once | This is where it becomes powerful. A user uploads 30–60 seconds of their voice. The system creates: | | |
+| DOS-110.2 | 110. Reusable voice profiles — enroll once | The reusable voice profile is stored. | | |
+| DOS-110.3 | 110. Reusable voice profiles — enroll once | Every subsequent CineForge project can then say: | | |
+| DOS-110.4 | 110. Reusable voice profiles — enroll once | The GPU worker generates the speech. The user doesn't need to upload their voice again. | | |
+| DOS-111.1 | 111. Combining with the TALKER / video system | This is where it gets particularly interesting for BalanceVid: | | |
+| DOS-111.2 | 111. Combining with the TALKER / video system | So the pipeline becomes: | | |
+| DOS-111.3 | 111. Combining with the TALKER / video system | Projects such as Linly-Talker demonstrate this general architecture by combining LLM, ASR, TTS, voic | | |
+| DOS-112.1 | 112. What to use — not one model responsible for everything | Do not make one model responsible for everything. Instead, the Voice Engine: | | |
+| DOS-112.2 | 112. What to use — not one model responsible for everything | Underneath that, experiment with models such as: | | |
+| DOS-112.3 | 112. What to use — not one model responsible for everything | Qwen3-TTS implementations, for example, already expose a dedicated voice-cloning generation path usi | | |
+| DOS-113.1 | 113. Recommendation — a Voice Engine that swaps models underneath | Don't build a "Qwen3-TTS clone." Build a CineForge Voice Engine that can swap models underneath: | | |
+| DOS-113.2 | 113. Recommendation — a Voice Engine that swaps models underneath | Then the API, database, voice profiles, job system, billing, permissions, audio processing and UI re | | |
+| DOS-113.3 | 113. Recommendation — a Voice Engine that swaps models underneath | That gives something much more valuable than simply having a voice-cloning model: your own voice-gen | | |
+| DOS-114.1 | 114. Commercial licensing check before choosing the production model | Check commercial licensing carefully before selecting the production model: an open-source model bei | | |
+| DOS-114.2 | 114. Commercial licensing check before choosing the production model | Linly-Talker itself explicitly warns that its referenced models have their own licensing requirement | | |
+| DOS-115.1 | 115. Clone your own voice and read any script | That is absolutely possible. Provide a recording of your own voice once, create your voice profile, | | |
+| DOS-116.1 | 116. More than reading text — the script controls | Give the system a script, for example: | | |
+| DOS-116.2 | 116. More than reading text — the script controls | And select: | | |
+| DOS-116.3 | 116. More than reading text — the script controls | The Clone Talker generates the corresponding audio, which is fed directly into the existing CineForg | | |
+| DOS-117.1 | 117. Modes | Narrator — | | |
+| DOS-117.2 | 117. Modes | Presenter — | | |
+| DOS-117.3 | 117. Modes | Dubbing — | | |
+| DOS-117.4 | 117. Modes | Conversation — | | |
+| DOS-117.5 | 117. Modes | So you could effectively create a digital version of yourself that can read scripts, narrate films, | | |
+| DOS-118.1 | 118. Private voice identity, no external voice provider per request | Because the author is building their own infrastructure, the goal could be: | | |
+| DOS-119.1 | 119. CineForge Voice Studio | Call this CineForge Voice Studio rather than just "voice cloning." It could become a complete produc | | |
+| DOS-120.1 | 120. Why people say it is hard | It is called hard because people often mean training a voice-cloning model from scratch. That is gen | | |
+| DOS-120.2 | 120. Why people say it is hard | Building a production system that uses an existing voice-cloning/talker architecture is much more ac | | |
+| DOS-121.1 | 121. The architecture — clone from a short reference, read arbitrary scripts | The architecture that clones a voice from a short reference recording and then reads arbitrary scrip | | |
+| DOS-122.1 | 122. The Talker is the difficult neural component | The Talker has to learn things such as: | | |
+| DOS-122.2 | 122. The Talker is the difficult neural component | That is why building the model itself from scratch is hard. But you don't necessarily need to train | | |
+| DOS-123.1 | 123. The newer, more sophisticated architecture | A modern system can look more like: | | |
+| DOS-123.2 | 123. The newer, more sophisticated architecture | This is fundamentally different from old systems where a separate TTS model had to be trained for ev | | |
+| DOS-123.3 | 123. The newer, more sophisticated architecture | The speaker embedding allows the system to preserve the identity of the reference speaker. | | |
+| DOS-124.1 | 124. Why it fits the project — the infrastructure already exists | CineForge already has the infrastructure needed for the difficult engineering part: | | |
+| DOS-125.1 | 125. The voice-worker | The Voice Worker could therefore be: | | |
+| DOS-126.1 | 126. The API | CineForge simply calls: | | |
+| DOS-127.1 | 127. Where it becomes genuinely hard — three levels | Level 1 — Use an existing model. Difficulty: manageable — Install an existing voice-cloning model and build the API, GPU worker, storage, UI and job | | |
+| DOS-127.2 | 127. Where it becomes genuinely hard — three levels | Level 2 — Fine-tune/adapt the model. Difficulty: advanced — Collect your own voice dataset and adapt the model to improve: | | |
+| DOS-127.3 | 127. Where it becomes genuinely hard — three levels | Level 3 — Create your own Talker model. Difficulty: very high — Now this is actual ML research: | | |
+| DOS-127.4 | 127. Where it becomes genuinely hard — three levels | You don't need Level 3 to build your own commercial Voice Engine. | | |
+| DOS-128.1 | 128. The strategy for CineForge | Don't make the mistake of thinking: "I need to build a voice-cloning AI from zero." Instead: build t | | |
+| DOS-128.2 | 128. The strategy for CineForge | The architecture becomes: | | |
+| DOS-128.3 | 128. The strategy for CineForge | That means the architecture is yours even if the underlying Talker model changes. | | |
+| DOS-129.1 | 129. Selecting the Talker | This matters particularly because the author has already been dealing with model licensing issues in | | |
+| DOS-129.2 | 129. Selecting the Talker | Offered next step (not yet taken): map out the exact Voice Engine architecture for CineForge, includ | | |
