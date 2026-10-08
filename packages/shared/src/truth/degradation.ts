@@ -11,7 +11,8 @@
 /** Gaps that stop the job: delivering past them would be a fake completion (DOS-74). */
 export type FailureCode =
   | "DIRECTOR_UNAVAILABLE" // no LLM key / provider error — never a stub film
-  | "DIRECTOR_OUTPUT_INVALID" // plan failed validation
+  | "DIRECTOR_OUTPUT_INVALID" // plan failed validation (after one revision)
+  | "DIRECTOR_REFUSED" // the planning model declined the brief
   | "PLACEHOLDER_OUTPUT" // a runtime returned placeholder media
   | "GPU_UNAVAILABLE"
   | "ARTIFACT_MISSING" // a provider claimed an object that is not in storage

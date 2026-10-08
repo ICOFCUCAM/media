@@ -21,6 +21,7 @@ const SOURCE_DIRS = [
   "apps/worker/src", "apps/api/src", "apps/gpu-worker/app",
   "apps/web/app", "apps/web/components", "apps/web/lib",
   "packages/shared/src", "packages/model-adapters/src", "packages/gpu/src", "packages/realtime/src", "packages/db/src",
+  "packages/movie/src",
 ];
 const EXT = /\.(ts|tsx|mjs|js|py)$/;
 const TEST = /(\.test\.|\.spec\.|\/tests?\/|\/e2e\/|__pycache__)/;

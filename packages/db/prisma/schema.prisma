@@ -944,3 +944,29 @@ model SystemCapability {
 
   @@map("system_capabilities")
 }
+
+/// One call to a reasoning model (migration 0032; DOS-48/49). Append-only.
+model AiDecision {
+  id            String   @id @default(uuid()) @db.Uuid
+  projectId     String?  @map("project_id") @db.Uuid
+  task          String
+  promptId      String   @map("prompt_id")
+  promptVersion Int      @map("prompt_version")
+  schemaName    String   @map("schema_name")
+  provider      String?
+  model         String?
+  attempt       Int      @default(0)
+  inputSha256   String   @map("input_sha256")
+  outputSha256  String?  @map("output_sha256")
+  outcome       String
+  errorCode     String?  @map("error_code")
+  issues        Int      @default(0)
+  inputTokens   Int?     @map("input_tokens")
+  outputTokens  Int?     @map("output_tokens")
+  latencyMs     Int?     @map("latency_ms")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([projectId, createdAt], map: "ai_decisions_project_idx")
+  @@index([task, createdAt], map: "ai_decisions_task_idx")
+  @@map("ai_decisions")
+}

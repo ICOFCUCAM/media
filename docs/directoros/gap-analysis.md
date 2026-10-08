@@ -1,8 +1,9 @@
 # DirectorOS gap analysis and implementation map
 
 Status: analysis of Parts 1–4 (454 requirement IDs) against the CineForge code
-at merge `9c957bf` (2026-10-08). **Progress:** W1 (truth layer) is implemented —
-see [docs/44](../44-truth-layer.md); the scoreboard and index reflect it. Read-only study; no code was changed to
+at merge `9c957bf` (2026-10-08). **Progress:** W1 (truth layer) and W2 (intelligence layer,
+Film IR, master call, compiler) are implemented — see [docs/44](../44-truth-layer.md)
+and [docs/45](../45-directoros-intelligence.md); the scoreboard and index reflect them. Read-only study; no code was changed to
 produce it. Every status in [requirements-index.md](requirements-index.md) is
 filled from this document.
 
@@ -49,11 +50,11 @@ spec's Reality Gate / No Fake Completion / No Silent Degradation rules forbid.
 
 | Part | built | shallow | poorly built | not built | n/a | IDs |
 |---|---|---|---|---|---|---|
-| 1 Movie Intelligence (§0–59) | 6 | 57 | 11 | 65 | 1 | 140 |
-| 2 Engineering contract & intelligence layer (§60–107) | 20 | 48 | 20 | 28 | 22 | 138 |
+| 1 Movie Intelligence (§0–59) | 17 | 66 | 4 | 52 | 1 | 140 |
+| 2 Engineering contract & intelligence layer (§60–107) | 55 | 32 | 13 | 16 | 22 | 138 |
 | 3 Voice Clone Talker (§108–129) | 0 | 15 | 0 | 21 | 16 | 52 |
 | 4 Voice Engine (§130–176) | 0 | 15 | 18 | 65 | 26 | 124 |
-| **Total** | **26** | **135** | **49** | **179** | **65** | **454** |
+| **Total** | **72** | **128** | **35** | **154** | **65** | **454** |
 
 Counts are generated from the index (section-level status with per-ID overrides). The low `built` count is not a verdict on CineForge as a whole: DirectorOS specifies the layers **above** the media engine, and the media engine's strengths (gateway, clock, runtime contract, timeline, A/V sync) are what the new layers will stand on. Those strengths show up below as KEEP and as reuse, not as `built` IDs.
 
@@ -419,6 +420,12 @@ change until merged.
 
 ### W2 — Intelligence layer (Film IR, master call, router, validator)
 
+**Done 2026-10-08** (docs/45; contracts film-ir.md, intelligence-layer.md). Not
+done in W2 and carried forward: the six separate agent roles (Part 1 §26–27 —
+the master call + surgical revision of Part 2 §93 covers planning; role calls
+come with W5 review and W8 editing), batched translation (W11), prompt scores
+(W10).
+
 - BUILD `packages/movie/ir`: Film / Act / Sequence / Scene / Shot / Character
   / Location / Prop / Dialogue / AudioPlan / Camera / Continuity schemas in zod,
   exported to JSON Schema for tool definitions.
@@ -613,4 +620,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 26 built, 135 shallow, 49 poorly built, 179 not built, 65 n/a. Of the 389 IDs that are requirements, 26 (7%) are built; 184 exist but need upgrading or changing; 179 must be built. (Updated after W1, 2026-10-08.)
+454 IDs: 72 built, 128 shallow, 35 poorly built, 154 not built, 65 n/a. Of the 389 IDs that are requirements, 72 (19%) are built; 163 exist but need upgrading or changing; 154 must be built. (Updated after W2, 2026-10-08.)

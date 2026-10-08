@@ -1,8 +1,11 @@
 /**
  * Social Launchpad processor (docs/31) — consumes `social-queue`.
  *
- * kit:    Claude turns the user's video brief into a per-platform launch kit
- *         (title, description, hashtags tuned per platform's culture/limits).
+ * kit:    the planning model (via the intelligence router, prompt social.kit@1)
+ *         turns the user's video brief into a per-platform launch kit (title,
+ *         description, hashtags tuned per platform's culture/limits). When it
+ *         cannot, the launch is FAILED with the reason — a template is never
+ *         passed off as a written kit (DirectorOS DOS-75).
  * launch: posts the video to every CONFIGURED platform via the publish
  *         adapters (YouTube/TikTok/Instagram/Facebook/X), using a presigned
  *         URL so the private bucket never has to go public. Per-platform
@@ -10,7 +13,8 @@
  *         faked.
  */
 import { Worker } from "bullmq";
-import Anthropic from "@anthropic-ai/sdk";
+import { PROMPTS } from "@cineforge/movie";
+import { intelligence } from "../intelligence";
 import { QUEUES, type SocialJob } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
 import { buildPublishers, type PublishResult } from "@cineforge/model-adapters";
@@ -26,7 +30,6 @@ export interface PlatformKit {
   hashtags: string[];
 }
 
-const KIT_TOOL = "submit_launch_kit";
 const KIT_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -49,35 +52,16 @@ const KIT_SCHEMA = {
 } as const;
 
 async function generateKit(brief: string): Promise<Record<string, PlatformKit>> {
-  const fallback = Object.fromEntries(
-    PLATFORMS.map((p) => [p, { title: brief.slice(0, 80) || "New video", description: brief, hashtags: [] }]),
-  ) as Record<string, PlatformKit>;
-  if (!process.env.ANTHROPIC_API_KEY) return fallback;
-  try {
-    const client = new Anthropic();
-    const res = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8",
-      max_tokens: 3000,
-      system: [
-        "You are a social media launch strategist. Given a video brief, produce a launch kit",
-        "PER PLATFORM, tuned to each platform's culture and limits:",
-        "- youtube: searchable title (<=90 chars), rich description with paragraphs + keywords, 10-15 tags (no # prefix)",
-        "- tiktok: hooky casual title, short punchy description, 4-6 trending-style hashtags",
-        "- instagram: aesthetic caption-style description with line breaks + emoji, 8-12 hashtags",
-        "- facebook: conversational title + shareable description, 2-4 hashtags",
-        "- x: max-280-char description that IS the post, 2-3 hashtags",
-        "Same video, same language as the brief. Call submit_launch_kit.",
-      ].join("\n"),
-      tools: [{ name: KIT_TOOL, description: "Return the per-platform launch kit.", input_schema: KIT_SCHEMA as unknown as Anthropic.Tool.InputSchema }],
-      tool_choice: { type: "tool", name: KIT_TOOL },
-      messages: [{ role: "user", content: brief || "A short AI-generated film." }],
-    });
-    const toolUse = res.content.find((b): b is Anthropic.ToolUseBlock => b.type === "tool_use" && b.name === KIT_TOOL);
-    if (toolUse?.input && typeof toolUse.input === "object") return { ...fallback, ...(toolUse.input as Record<string, PlatformKit>) };
-  } catch (e) {
-    console.warn("[social] kit generation failed, using fallback:", e instanceof Error ? e.message : e);
-  }
-  return fallback;
+  const p = PROMPTS.socialKit;
+  const res = await intelligence().call({
+    task: "social_kit", promptId: p.id, promptVersion: p.version, system: p.system,
+    user: brief || "A short AI-generated film.",
+    schema: KIT_SCHEMA as unknown as Record<string, unknown>, schemaName: "LaunchKit", maxTokens: 8000, effort: "medium",
+  });
+  const kit = res.output as Record<string, PlatformKit>;
+  const missing = PLATFORMS.filter((pl) => !kit?.[pl]?.title || !kit[pl]!.description);
+  if (missing.length) throw new Error(`the launch kit is missing ${missing.join(", ")}`);
+  return kit;
 }
 
 export const socialWorker = new Worker<SocialJob>(

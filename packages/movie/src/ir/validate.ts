@@ -1,0 +1,202 @@
+/**
+ * Film IR validator chain (DirectorOS DOS-24, DOS-94; Part 2 §94 "proposed →
+ * validated → executed").
+ *
+ * The planning model PROPOSES a Film Production Package; nothing is executed
+ * until it passes every stage:
+ *
+ *   schema      — shape, types, ids, lengths (zod)
+ *   references  — every id points at something defined in the package
+ *   story       — scene order, acts, threads, setups planted before payoff
+ *   production  — scene count, shots per scene, shot length vs the runtime's
+ *                 per-clip maximum, scene length on the plan
+ *   budget      — the film's total runtime matches what was paid for
+ *
+ * Failures are returned as structured issues (stage, code, path, message) so a
+ * single SURGICAL revision call can fix exactly them (Part 2 §93) — invalid
+ * output is never padded with invented defaults (DOS-74).
+ */
+import { FilmPackage } from "./schema";
+
+export type IssueStage = "schema" | "references" | "story" | "production" | "budget";
+
+export interface Issue {
+  stage: IssueStage;
+  code: string;
+  path: string;
+  message: string;
+}
+
+export interface ProductionConstraints {
+  /** Scenes the plan must have (the cost estimate was made for this many). */
+  sceneCount: number;
+  /** Target length of one scene, seconds. */
+  sceneSec: number;
+  /** Allowed deviation of a scene's shot total from sceneSec (fraction). */
+  sceneTolerance: number;
+  /** Most shots one scene may have (keeps GPU spend inside the estimate). */
+  maxShotsPerScene: number;
+  /** The video runtime's per-clip maximum, seconds. */
+  maxShotSec: number;
+  /** The film length that was requested and estimated, seconds. */
+  targetSeconds: number;
+  /** Allowed deviation of the film total from targetSeconds (fraction). */
+  filmTolerance: number;
+}
+
+export type ValidationResult = { ok: true; pkg: FilmPackage; issues: [] } | { ok: false; issues: Issue[]; pkg?: FilmPackage };
+
+export function validateFilmPackage(raw: unknown, c: ProductionConstraints): ValidationResult {
+  const parsed = FilmPackage.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      issues: parsed.error.issues.slice(0, 40).map((i) => ({
+        stage: "schema" as const,
+        code: i.code.toUpperCase(),
+        path: i.path.join("."),
+        message: i.message,
+      })),
+    };
+  }
+  const pkg = parsed.data;
+  const issues: Issue[] = [...references(pkg), ...story(pkg), ...production(pkg, c), ...budget(pkg, c)];
+  return issues.length ? { ok: false, issues, pkg } : { ok: true, pkg, issues: [] };
+}
+
+function dupes<T>(items: T[], key: (t: T) => string, stage: IssueStage, path: string): Issue[] {
+  const seen = new Set<string>();
+  const out: Issue[] = [];
+  items.forEach((t, i) => {
+    const k = key(t);
+    if (seen.has(k)) out.push({ stage, code: "DUPLICATE_ID", path: `${path}[${i}]`, message: `id ${k} is defined twice` });
+    seen.add(k);
+  });
+  return out;
+}
+
+function references(pkg: FilmPackage): Issue[] {
+  const out: Issue[] = [];
+  const R = (path: string, message: string) => out.push({ stage: "references", code: "UNKNOWN_REFERENCE", path, message });
+  out.push(...dupes(pkg.cast, (x) => x.id, "references", "cast"));
+  out.push(...dupes(pkg.locations, (x) => x.id, "references", "locations"));
+  out.push(...dupes(pkg.props, (x) => x.id, "references", "props"));
+  out.push(...dupes(pkg.scenes, (x) => x.id, "references", "scenes"));
+  out.push(...dupes(pkg.threads, (x) => x.id, "references", "threads"));
+  out.push(...dupes(pkg.setups, (x) => x.id, "references", "setups"));
+
+  const chars = new Map(pkg.cast.map((c) => [c.id, c]));
+  const locs = new Set(pkg.locations.map((l) => l.id));
+  const props = new Set(pkg.props.map((p) => p.id));
+  const scenes = new Set(pkg.scenes.map((s) => s.id));
+
+  pkg.props.forEach((p, i) => {
+    if (p.ownerId && !chars.has(p.ownerId)) R(`props[${i}].ownerId`, `owner ${p.ownerId} is not in the cast`);
+  });
+  pkg.acts.forEach((a, i) => a.sceneIds.forEach((s, j) => !scenes.has(s) && R(`acts[${i}].sceneIds[${j}]`, `scene ${s} does not exist`)));
+  pkg.threads.forEach((t, i) => t.sceneIds.forEach((s, j) => !scenes.has(s) && R(`threads[${i}].sceneIds[${j}]`, `scene ${s} does not exist`)));
+  pkg.setups.forEach((s, i) => {
+    if (!scenes.has(s.plantedIn)) R(`setups[${i}].plantedIn`, `scene ${s.plantedIn} does not exist`);
+    if (!scenes.has(s.paidOffIn)) R(`setups[${i}].paidOffIn`, `scene ${s.paidOffIn} does not exist`);
+  });
+  pkg.scenes.forEach((sc, i) => {
+    const p = `scenes[${i}]`;
+    if (!locs.has(sc.locationId)) R(`${p}.locationId`, `location ${sc.locationId} does not exist`);
+    const present = new Set<string>();
+    sc.characters.forEach((st, j) => {
+      const ch = chars.get(st.characterId);
+      present.add(st.characterId);
+      if (!ch) return R(`${p}.characters[${j}].characterId`, `character ${st.characterId} is not in the cast`);
+      if (!ch.wardrobe.some((w) => w.id === st.wardrobeId)) {
+        R(`${p}.characters[${j}].wardrobeId`, `${st.wardrobeId} is not one of ${ch.name}'s wardrobe entries`);
+      }
+      st.holding.forEach((h, k) => !props.has(h) && R(`${p}.characters[${j}].holding[${k}]`, `prop ${h} does not exist`));
+    });
+    sc.dialogue.forEach((d, j) => {
+      if (!chars.has(d.characterId)) R(`${p}.dialogue[${j}].characterId`, `character ${d.characterId} is not in the cast`);
+      else if (!present.has(d.characterId)) {
+        out.push({ stage: "references", code: "SPEAKER_NOT_PRESENT", path: `${p}.dialogue[${j}].characterId`,
+          message: `${d.characterId} speaks but is not listed in the scene's characters` });
+      }
+    });
+    sc.shots.forEach((sh, j) =>
+      sh.subjectIds.forEach((s, k) => {
+        if (!chars.has(s) && !props.has(s) && !locs.has(s)) R(`${p}.shots[${j}].subjectIds[${k}]`, `subject ${s} does not exist`);
+      }),
+    );
+  });
+  return out;
+}
+
+function story(pkg: FilmPackage): Issue[] {
+  const out: Issue[] = [];
+  const S = (code: string, path: string, message: string) => out.push({ stage: "story", code, path, message });
+  pkg.scenes.forEach((sc, i) => sc.index !== i && S("SCENE_ORDER", `scenes[${i}].index`, `scene at position ${i} has index ${sc.index}`));
+  if (!pkg.cast.some((c) => c.role === "protagonist")) S("NO_PROTAGONIST", "cast", "the cast has no protagonist");
+
+  const order = new Map(pkg.scenes.map((s) => [s.id, s.index]));
+  const actOf = new Map<string, number>();
+  pkg.acts.forEach((a, i) => {
+    if (a.index !== i + 1) S("ACT_ORDER", `acts[${i}].index`, `act at position ${i} has index ${a.index}`);
+    a.sceneIds.forEach((s) => {
+      if (actOf.has(s)) S("SCENE_IN_TWO_ACTS", `acts[${i}]`, `${s} is in more than one act`);
+      actOf.set(s, a.index);
+    });
+  });
+  pkg.scenes.forEach((sc, i) => {
+    const a = actOf.get(sc.id);
+    if (a === undefined) S("SCENE_WITHOUT_ACT", `scenes[${i}]`, `${sc.id} is in no act`);
+    else if (a !== sc.act) S("ACT_MISMATCH", `scenes[${i}].act`, `${sc.id} says act ${sc.act} but act ${a} lists it`);
+  });
+  let lastAct = 0;
+  pkg.scenes.forEach((sc, i) => {
+    if (sc.act < lastAct) S("ACT_REGRESSION", `scenes[${i}].act`, `${sc.id} returns to act ${sc.act} after act ${lastAct}`);
+    lastAct = Math.max(lastAct, sc.act);
+  });
+  pkg.setups.forEach((s, i) => {
+    const a = order.get(s.plantedIn);
+    const b = order.get(s.paidOffIn);
+    if (a !== undefined && b !== undefined && b <= a) {
+      S("PAYOFF_BEFORE_SETUP", `setups[${i}]`, `${s.id} is paid off in ${s.paidOffIn}, not after it is planted in ${s.plantedIn}`);
+    }
+  });
+  return out;
+}
+
+function production(pkg: FilmPackage, c: ProductionConstraints): Issue[] {
+  const out: Issue[] = [];
+  const P = (code: string, path: string, message: string) => out.push({ stage: "production", code, path, message });
+  if (pkg.scenes.length !== c.sceneCount) P("SCENE_COUNT", "scenes", `the plan has ${pkg.scenes.length} scenes; ${c.sceneCount} are required`);
+  pkg.scenes.forEach((sc, i) => {
+    const p = `scenes[${i}]`;
+    if (sc.shots.length > c.maxShotsPerScene) P("TOO_MANY_SHOTS", `${p}.shots`, `${sc.shots.length} shots; at most ${c.maxShotsPerScene}`);
+    sc.shots.forEach((sh, j) => {
+      if (sh.index !== j) P("SHOT_ORDER", `${p}.shots[${j}].index`, `shot at position ${j} has index ${sh.index}`);
+      if (sh.durationSec > c.maxShotSec) P("SHOT_TOO_LONG", `${p}.shots[${j}].durationSec`, `${sh.durationSec}s exceeds the ${c.maxShotSec}s per-clip maximum`);
+    });
+    const total = sc.shots.reduce((a, s) => a + s.durationSec, 0);
+    if (Math.abs(total - c.sceneSec) > c.sceneSec * c.sceneTolerance) {
+      P("SCENE_LENGTH", `${p}.shots`, `shots total ${total}s; the scene should run ${c.sceneSec}s (±${Math.round(c.sceneTolerance * 100)}%)`);
+    }
+  });
+  return out;
+}
+
+function budget(pkg: FilmPackage, c: ProductionConstraints): Issue[] {
+  const total = pkg.scenes.reduce((a, sc) => a + sc.shots.reduce((b, s) => b + s.durationSec, 0), 0);
+  if (Math.abs(total - c.targetSeconds) > c.targetSeconds * c.filmTolerance) {
+    return [{ stage: "budget", code: "FILM_LENGTH", path: "scenes",
+      message: `the film totals ${total}s; ${c.targetSeconds}s was requested (±${Math.round(c.filmTolerance * 100)}%)` }];
+  }
+  return [];
+}
+
+/** Total planned runtime of a package, seconds. */
+export function packageSeconds(pkg: FilmPackage): number {
+  return pkg.scenes.reduce((a, sc) => a + sc.shots.reduce((b, s) => b + s.durationSec, 0), 0);
+}
+
+/** Issues rendered for a revision prompt: one per line, stage-tagged. */
+export function formatIssues(issues: Issue[]): string {
+  return issues.map((i) => `- [${i.stage}/${i.code}] ${i.path}: ${i.message}`).join("\n");
+}

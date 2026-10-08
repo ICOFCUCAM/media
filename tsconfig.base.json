@@ -19,7 +19,8 @@
       "@cineforge/model-adapters": ["packages/model-adapters/src/index.ts"],
       "@cineforge/gpu": ["packages/gpu/src/index.ts"],
       "@cineforge/realtime": ["packages/realtime/src/index.ts"],
-      "@cineforge/db": ["packages/db/src/index.ts"]
+      "@cineforge/db": ["packages/db/src/index.ts"],
+      "@cineforge/movie": ["packages/movie/src/index.ts"]
     }
   }
 }
