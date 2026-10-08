@@ -13,6 +13,9 @@ export interface RunConfig {
   targetSeconds: number;
   /** Output format ("480p"…"4k") — plan-classified in the UI. */
   resolution?: string;
+  /** Placement aspect ("16:9", "9:16", "1:1", "4:5"). Persisted: the worker
+   *  generates at this shape (it used to be shown only, then made at 16:9). */
+  aspectRatio?: string;
 }
 
 /** Shared generation runner — drives the live API when configured, else the

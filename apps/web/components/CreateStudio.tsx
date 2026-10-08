@@ -11,6 +11,7 @@ import type { ShortPlatform } from "../lib/products";
 import { Chips, ExampleShelf, Field, StudioFooter, StudioGrid, StudioPage, UnlockRow, type Example } from "./cf/StudioLayout";
 import { NotifyToggle } from "./cf/NotifyToggle";
 import { ClockIcon, ConfigCard, EngineIcon, FormatIcon } from "./cf/ConfigCard";
+import { offeredFormats, useCapabilities, videoAvailable } from "../lib/truth";
 
 const STAGE_LABEL: Record<ProjectStatus, string> = {
   PLANNING: "Writing",
@@ -69,8 +70,16 @@ export function CreateStudio(props: CreateStudioProps) {
   // Format: defaults to the tier's default once the profile loads. 4K is
   // never a default anywhere — always an explicit choice (it's the priciest
   // unit). Higher tiers may still pick anything down to 480p drafts.
-  const effectiveRes: Resolution = resolution ?? (isAdmin ? "1080p" : DEFAULT_RES[tier]);
-  const resAllowed = (r: Resolution) => isAdmin || resolutionAllowed(r, tier);
+  // DOS-78: offer only what the GPU actually produces now (live registry);
+  // until the registry is published the options are marked unverified.
+  const caps = useCapabilities();
+  const realFormats = offeredFormats(caps);
+  const gpuReal = videoAvailable(caps);
+  const resReal = (r: Resolution) => realFormats === null || realFormats.length === 0 || realFormats.includes(r);
+  const resAllowed = (r: Resolution) => (isAdmin || resolutionAllowed(r, tier)) && resReal(r);
+  const planRes: Resolution = resolution ?? (isAdmin ? "1080p" : DEFAULT_RES[tier]);
+  const realPlanFormats = RESOLUTIONS.filter((r) => resAllowed(r.id));
+  const effectiveRes: Resolution = resAllowed(planRes) ? planRes : (realPlanFormats[realPlanFormats.length - 1]?.id ?? planRes);
 
   // Never offer or run more than the plan allows (the worker clamps anyway).
   // When the ceiling sits below every preset (Free on Create Film), the
@@ -91,7 +100,7 @@ export function CreateStudio(props: CreateStudioProps) {
   const noun = production.toLowerCase();
 
   function onCreate() {
-    void run({ prompt, modelId, targetSeconds: effSeconds, resolution: effectiveRes });
+    void run({ prompt, modelId, targetSeconds: effSeconds, resolution: effectiveRes, aspectRatio: aspect });
     // Phones: the preview sits under the options — bring it into view.
     if (window.innerWidth < 1024) document.getElementById("studio-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -103,7 +112,10 @@ export function CreateStudio(props: CreateStudioProps) {
   const models = MODELS.filter((m) => isAdmin || modelAllowed(m.id, tier));
   const unlocks = [
     ...(runnable.length < durations.length ? [`up to ${durations[durations.length - 1]!.label} runtimes`] : []),
-    ...(formats.length < RESOLUTIONS.length ? [RESOLUTIONS.filter((r) => !resAllowed(r.id)).map((r) => r.label).join(" / ")] : []),
+    // Only what a higher PLAN adds — formats the GPU can't produce are not an upsell.
+    ...(RESOLUTIONS.some((r) => !(isAdmin || resolutionAllowed(r.id, tier)))
+      ? [RESOLUTIONS.filter((r) => !(isAdmin || resolutionAllowed(r.id, tier))).map((r) => r.label).join(" / ")]
+      : []),
     ...(models.length < MODELS.length ? ["the cinematic engine"] : []),
   ];
   const examples = props.examples ?? EXAMPLES[props.kind] ?? [];
@@ -179,7 +191,15 @@ export function CreateStudio(props: CreateStudioProps) {
               options={formats.map((r) => ({ value: r.id, label: `${r.label} — ${r.note}` }))}
               value={effectiveRes}
               onChange={(v) => setResolution(v as Resolution)}
-              hint={formats.length === 1 ? "Higher formats open on higher plans" : undefined}
+              hint={
+                realFormats === null
+                  ? "Formats not yet verified on the GPU"
+                  : RESOLUTIONS.some((r) => !resReal(r.id) && (isAdmin || resolutionAllowed(r.id, tier)))
+                    ? "Higher formats aren't available on the current GPU"
+                    : formats.length === 1
+                      ? "Higher formats open on higher plans"
+                      : undefined
+              }
             />
           </div>
         </div>
@@ -195,7 +215,15 @@ export function CreateStudio(props: CreateStudioProps) {
         ["Final runtime", fmtDuration(effSeconds)],
         ["Ready in", `~${readyEstimate}`],
       ]}
-      note={<NotifyToggle state={state} />}
+      note={
+        gpuReal === false ? (
+          <span className="text-[12px] leading-relaxed text-cf-warn">
+            Video generation isn&apos;t available right now — a production started now will stop with the reason, not deliver a stand-in.
+          </span>
+        ) : (
+          <NotifyToggle state={state} />
+        )
+      }
     >
       <button type="button" onClick={onCreate} disabled={running || !prompt.trim()} className="cf-btn-accent flex-1">
         {running ? "In production…" : props.cta ?? "Create"}

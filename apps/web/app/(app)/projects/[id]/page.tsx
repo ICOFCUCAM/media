@@ -11,6 +11,7 @@ import { fmtDuration } from "../../../../lib/system";
 import type { DemoState, ProjectStatus } from "../../../../lib/demo";
 import type { ProjectRow } from "../../../../lib/projects";
 import { EmptyState, SpecList } from "../../../../components/cf/primitives";
+import { DegradationList } from "../../../../components/DegradationList";
 
 const STAGE_LABELS: Record<ProjectStatus, string> = {
   PLANNING: "Writing",
@@ -76,7 +77,7 @@ export default function ProjectCommandCenter({ params }: { params: { id: string 
               rows={[
                 ["Runtime", fmtDuration(project.target_seconds)],
                 ["Engine", project.model_id === "cinematic" ? "Cinematic" : project.model_id],
-                ["Format", project.resolution],
+                ["Format", `${project.resolution} · ${project.aspect_ratio}`],
                 ["Mode", project.mode === "storyboard" ? "Scene-by-scene" : "Auto"],
                 ["Created", new Date(project.created_at).toLocaleString()],
               ]}
@@ -108,6 +109,7 @@ export default function ProjectCommandCenter({ params }: { params: { id: string 
           <EmptyState title="Not in your archive." hint="This project does not exist, or it belongs to another account." action={{ label: "Back to the archive", href: "/projects" }} />
         ) : (
           <>
+            {project && <DegradationList projectId={project.id} refreshKey={state?.status} />}
             <div className="mb-6 flex items-center justify-between border-b border-t border-b-cf-line border-t-cf-fg py-4">
               <span className="cf-label text-cf-fg">Production console</span>
               <span className="cf-label">{state ? STAGE_LABELS[state.status] : "Connecting"}</span>

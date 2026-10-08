@@ -484,6 +484,38 @@ export interface Database {
         Update: { [_ in never]: never };
         Relationships: [];
       };
+      system_capabilities: {
+        Row: {
+          capability: string;
+          provider: string | null;
+          status: "production_ready" | "experimental" | "unavailable" | "disabled" | "not_implemented";
+          real_execution: boolean;
+          requires_gpu: boolean;
+          supports: string[];
+          note: string | null;
+          reported_by: string;
+          updated_at: string;
+        };
+        Insert: { [_ in never]: never };
+        Update: { [_ in never]: never };
+        Relationships: [];
+      };
+      production_degradations: {
+        Row: {
+          id: string;
+          project_id: string;
+          code: string;
+          severity: "info" | "warning" | "major";
+          scope: "project" | "scene" | "shot" | "film" | "locale";
+          ref_id: string | null;
+          message: string;
+          detail: Json | null;
+          created_at: string;
+        };
+        Insert: { [_ in never]: never };
+        Update: { [_ in never]: never };
+        Relationships: [];
+      };
       runtime_gateway_events: {
         Row: {
           id: string;

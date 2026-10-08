@@ -49,6 +49,7 @@ export function ShortsStudio() {
       prompt: `Vertical ${platform.name} short (${platform.aspect}, ${effSeconds}s). Hook: ${hook}. ${caption}`,
       modelId: "wan-2.1",
       targetSeconds: effSeconds,
+      aspectRatio: platform.aspect,
     });
     if (window.innerWidth < 1024) document.getElementById("studio-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }

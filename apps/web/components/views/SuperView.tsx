@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "../AuthProvider";
 import { getSupabase } from "../../lib/supabase";
-import { SUBSYSTEMS } from "../../lib/system";
+import { MATURITY_TONE, SUBSYSTEMS } from "../../lib/system";
 import { msToCredits } from "../../lib/plans";
 import { EmptyState, PageHeader, Section, Status } from "../cf/primitives";
 import { StudioGate } from "../cf/StudioGate";
@@ -40,7 +40,7 @@ export function SuperView() {
   const tiers = Object.entries(
     (users ?? []).reduce<Record<string, number>>((acc, u) => ({ ...acc, [u.tier]: (acc[u.tier] ?? 0) + 1 }), {}),
   ).sort((a, b) => b[1] - a[1]);
-  const implemented = SUBSYSTEMS.filter((s) => s.status === "Implemented").length;
+  const integrated = SUBSYSTEMS.filter((s) => ["INTEGRATED", "VALIDATED", "PRODUCTION_READY"].includes(s.maturity)).length;
 
   return (
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
@@ -98,14 +98,14 @@ export function SuperView() {
             <Section
               label="Infrastructure"
               title="The machine behind the work."
-              aside={<span className="cf-label">{implemented} / {SUBSYSTEMS.length} implemented</span>}
+              aside={<span className="cf-label">{integrated} / {SUBSYSTEMS.length} integrated · 0 validated</span>}
             >
               <ol className="border-t border-cf-fg">
                 {SUBSYSTEMS.map((s, i) => (
                   <li key={s.name} className="grid gap-3 border-b border-cf-line py-4 md:grid-cols-[36px_1fr_auto] md:items-center">
                     <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
                     <span className="font-display font-semibold text-[18px]">{s.name}</span>
-                    <Status tone={s.status === "Implemented" ? "ok" : s.status === "Stubbed" ? "warn" : "idle"}>{s.status}</Status>
+                    <Status tone={MATURITY_TONE[s.maturity]}>{s.maturity.replace("_", " ").toLowerCase()}</Status>
                   </li>
                 ))}
               </ol>

@@ -87,6 +87,7 @@ export interface LiveProduction {
 
 export interface DemoConfig {
   resolution?: string;
+  aspectRatio?: string;
   prompt: string;
   modelId: string;
   targetSeconds: number;

@@ -72,28 +72,57 @@ export function fmtDuration(sec: number): string {
   return m > 0 ? (s ? `${m}m ${s}s` : `${m}m`) : `${s}s`;
 }
 
-/** The subsystems actually built in this repo — the "window into the system". */
+/**
+ * Reality Gate (DirectorOS DOS-73): how far each subsystem actually is — never
+ * "complete" because it is wired.
+ *  DESIGNED          documented only
+ *  SCAFFOLDED        code shape exists, no real operation
+ *  WIRED             connected, real operation not proven
+ *  FUNCTIONAL        the real operation runs and is unit-tested
+ *  INTEGRATED        runs in the production path end to end
+ *  VALIDATED         an independent acceptance test verifies real artifacts
+ *  PRODUCTION_READY  validated + operated in production
+ * Nothing here is VALIDATED yet: the real-provider and 3-minute-film
+ * acceptance tests are workstream W10 (docs/directoros/gap-analysis.md).
+ * Whether a capability is reachable RIGHT NOW comes from the live registry
+ * (lib/truth.ts), not from this list.
+ */
+export type Maturity = "DESIGNED" | "SCAFFOLDED" | "WIRED" | "FUNCTIONAL" | "INTEGRATED" | "VALIDATED" | "PRODUCTION_READY";
+
 export interface Subsystem {
   name: string;
-  status: "Implemented" | "Stubbed" | "Design";
+  maturity: Maturity;
   blurb: string;
   doc: string;
+  /** Live capability (system_capabilities) that says whether it runs now. */
+  capability?: string;
 }
 
+export const MATURITY_TONE: Record<Maturity, "ok" | "live" | "warn" | "idle"> = {
+  PRODUCTION_READY: "ok",
+  VALIDATED: "ok",
+  INTEGRATED: "live",
+  FUNCTIONAL: "live",
+  WIRED: "warn",
+  SCAFFOLDED: "warn",
+  DESIGNED: "idle",
+};
+
 export const SUBSYSTEMS: Subsystem[] = [
-  { name: "AI Director (Anthropic Claude)", status: "Implemented", blurb: "Prompt → screenplay (logline, synopsis, scenes with story narration) via Claude tool-use, plus content moderation and 20-language translation. Writes every film in production.", doc: "docs/05-director-ai.md" },
-  { name: "Continuity Engine", status: "Implemented", blurb: "Director-authored scene bridges + state patches fold into a per-shot state preamble and character reference frames — the same face, wardrobe and world, scene after scene. Unit-tested, runs on every shot.", doc: "docs/06-continuity-engine.md" },
-  { name: "Character & World Bible", status: "Implemented", blurb: "Canonical character/location rows per film with reference frames driving visual identity; per-character LoRA training auto-enqueues (trainer pod is the remaining integration).", doc: "docs/07-character-bible.md" },
-  { name: "Video Models (Wan / Hunyuan / External)", status: "Implemented", blurb: "Pluggable VideoModelAdapter + registry; self-hosted Wan/Hunyuan plus a drop-in external provider. New models = one adapter.", doc: "docs/22-video-models.md" },
-  { name: "OpenAI Images (GPT-image-1)", status: "Implemented", blurb: "Seed frames for image-to-video + standalone stills, in three orientations. Adapter unit-tested.", doc: "docs/22-video-models.md" },
-  { name: "OpenAI Voice (TTS · onyx)", status: "Implemented", blurb: "Narration & dialogue via tts-1 (voice 'onyx'); bytes uploaded to storage. Adapter unit-tested.", doc: "docs/22-video-models.md" },
-  { name: "Auto GPU Lifecycle", status: "Implemented", blurb: "Reference-counted start-on-demand + auto-shutdown after the last job. Unit-tested.", doc: "docs/23-gpu-lifecycle-manager.md" },
-  { name: "Cluster Scheduler (C5)", status: "Implemented", blurb: "Heterogeneous A40/A100/H100 routing + weighted-fair per-tenant scheduling. Tested.", doc: "docs/24-phase-3-film-studio.md" },
-  { name: "Cost Governor (C8)", status: "Implemented", blurb: "Pre-flight estimate, credit gate, metered debit, live budget pause/resume. Tested.", doc: "docs/24-phase-3-film-studio.md" },
-  { name: "Asset Cache + Provenance (C7)", status: "Implemented", blurb: "Content-addressed cacheKey + seed/model-version provenance; cheap editor re-renders. Tested.", doc: "docs/24-phase-3-film-studio.md" },
-  { name: "BullMQ Queues + Flow", status: "Implemented", blurb: "film → scene → video/audio → render fan-out with dependency-enforcing flows.", doc: "docs/13-queues.md" },
-  { name: "FFmpeg Render Engine", status: "Implemented", blurb: "Normalize → concat → ducked mix → mux → HLS ladder → S3. Builders unit-tested.", doc: "docs/10-ffmpeg-render.md" },
-  { name: "Realtime (Supabase / WebSocket)", status: "Implemented", blurb: "Postgres Changes to the browser; Redis pub/sub → Socket.IO room fan-out with ownership checks.", doc: "docs/04-api-spec.md" },
+  { name: "AI Director (Anthropic Claude)", maturity: "INTEGRATED", capability: "film_planning", blurb: "One structured Claude call per film: logline, synopsis, one protagonist, one location and scene beats. Fails honestly when unavailable (no stand-in films). Film IR, story graph and multi-role direction are W2/W3.", doc: "docs/05-director-ai.md" },
+  { name: "Continuity Engine", maturity: "INTEGRATED", blurb: "Scene bridges + state patches fold into a per-shot text preamble plus the protagonist's reference frames. Text-level only: state is free-text and partly inferred (recorded when it is). Typed world state is W3.", doc: "docs/06-continuity-engine.md" },
+  { name: "Character & World Bible", maturity: "INTEGRATED", capability: "lora_identity", blurb: "Character and location rows with reference frames feeding identity. One protagonist and one location per film today; identity-model training is disabled until a trainer is configured.", doc: "docs/07-character-bible.md" },
+  { name: "Video Models (Wan / Hunyuan / External)", maturity: "INTEGRATED", capability: "video_generation", blurb: "Pluggable adapters behind the Media Runtime Gateway. The GPU reports what it actually ran (size, frames, inputs used); placeholder output is refused.", doc: "docs/22-video-models.md" },
+  { name: "OpenAI Images (GPT-image-1)", maturity: "INTEGRATED", capability: "seed_image_generation", blurb: "Seed stills for image-to-video. When unavailable the shot runs text-to-video and that is recorded on the production.", doc: "docs/22-video-models.md" },
+  { name: "OpenAI Voice (TTS · onyx)", maturity: "INTEGRATED", capability: "narration_tts", blurb: "Narration via tts-1, one voice for every film; long text is spoken in full. Missing narration is recorded. Character voices and the Voice Engine are W7.", doc: "docs/22-video-models.md" },
+  { name: "Auto GPU Lifecycle", maturity: "INTEGRATED", blurb: "Reference-counted start-on-demand + auto-shutdown after the last job. Unit-tested.", doc: "docs/23-gpu-lifecycle-manager.md" },
+  { name: "Cluster Scheduler (C5)", maturity: "FUNCTIONAL", blurb: "Heterogeneous routing + weighted-fair per-tenant scheduling, unit-tested; production runs one GPU pool today.", doc: "docs/24-phase-3-film-studio.md" },
+  { name: "Cost Governor (C8)", maturity: "INTEGRATED", blurb: "Pre-flight estimate, credit gate, metered debit, live budget pause/resume. Meters video GPU time only (LLM, TTS, image and music are not metered yet).", doc: "docs/24-phase-3-film-studio.md" },
+  { name: "Asset Cache + Provenance (C7)", maturity: "INTEGRATED", blurb: "Content-addressed cacheKey + seed/model-version provenance. The key does not yet include continuity state (W4).", doc: "docs/24-phase-3-film-studio.md" },
+  { name: "BullMQ Queues + Flow", maturity: "INTEGRATED", blurb: "film → scene → video/audio → render fan-out; a terminal shot failure fails the film with its reason.", doc: "docs/13-queues.md" },
+  { name: "FFmpeg Render Engine", maturity: "INTEGRATED", capability: "technical_qc", blurb: "Concat → ducked mix → mux, with real-FFmpeg regression tests. Refuses films with missing shots, unmixable sound or no storage. HLS ladder optional (RENDER_HLS=1).", doc: "docs/10-ffmpeg-render.md" },
+  { name: "Realtime (Supabase)", maturity: "INTEGRATED", blurb: "Postgres Changes to the browser. The Socket.IO gateway in apps/api is not deployed.", doc: "docs/04-api-spec.md" },
+  { name: "Visual & sync quality gate", maturity: "DESIGNED", capability: "visual_qc", blurb: "Shot review (identity, motion, continuity) and the Final Quality Gate. The A/V sync analysis exists as an operator tool; gating the render on it is W5.", doc: "docs/directoros/gap-analysis.md" },
 ];
 
 /** Languages for multilingual export + Voice Lab (mirror of shared/i18n). */

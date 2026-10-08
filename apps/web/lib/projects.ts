@@ -15,6 +15,7 @@ export async function createProject(input: {
   modelId: string;
   estimatedMs: number;
   resolution?: string;
+  aspectRatio?: string;
 }): Promise<ProjectRow> {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase not configured");
@@ -29,6 +30,7 @@ export async function createProject(input: {
       title: input.title,
       prompt: input.prompt,
       ...(input.resolution ? { resolution: input.resolution } : {}),
+      ...(input.aspectRatio ? { aspect_ratio: input.aspectRatio } : {}),
       target_seconds: input.targetSeconds,
       model_id: input.modelId,
       estimated_ms: input.estimatedMs,
