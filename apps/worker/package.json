@@ -21,6 +21,7 @@
     "@cineforge/db": "workspace:*",
     "@cineforge/gpu": "workspace:*",
     "@cineforge/model-adapters": "workspace:*",
+    "@cineforge/movie": "workspace:*",
     "@cineforge/realtime": "workspace:*",
     "@cineforge/shared": "workspace:*",
     "bullmq": "^5.7.0",
