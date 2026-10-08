@@ -118,7 +118,8 @@ export class DirectorService {
   }
 }
 
-async function persistPlan(
+/** Compile and persist a plan (exported for the database integration test). */
+export async function persistPlan(
   projectId: string,
   project: { modelId: string; resolution: string; aspectRatio: string },
   plan: PlanResult,

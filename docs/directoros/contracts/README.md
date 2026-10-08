@@ -36,10 +36,11 @@ evidence files that exist (`scripts/check-truth.mjs`).
 | [intelligence-layer.md](intelligence-layer.md) | Provider-neutral intelligence layer, router, prompt registry, decision log | W2 | INTEGRATED |
 | [world-state.md](world-state.md) | Canon, World State Engine, story knowledge and foreshadowing, canon revisions | W3 | INTEGRATED |
 | [continuity-engine.md](continuity-engine.md) | Character Continuity Engine (Part 2 §62) | W3 | INTEGRATED |
+| [visual-review.md](visual-review.md) | Visual Reviewer and visual quality gate (record mode) | W5 (first slice) | INTEGRATED |
 
 Contracts to write before their workstream starts (from the gap analysis):
 Shot Architect and Cinematography
-Engine (W4) · Prompt Compiler and model compilers (W4) · Visual Reviewer and
-quality gates (W5) · Editor Agent (W5) · ImageProvider and ComfyUI runtime (W6,
+Engine (W4) · Prompt Compiler and model compilers (W4) · Final Quality Gate
+and the rest of W5 · Editor Agent (W5) · ImageProvider and ComfyUI runtime (W6,
 with docs/38 §AT) · Voice Engine (W7, with Part 4 §157–175) · Versioning, locks
 and passes (W8).

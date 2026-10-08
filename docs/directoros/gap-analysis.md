@@ -452,8 +452,12 @@ come with W5 review and W8 editing), batched translation (W11), prompt scores
 Built in the Film IR rather than as parallel tables: canon is the versioned
 package in `screenplays.raw` (content-hash `canonVersion`, append-only
 `canon_revisions`), and world state is derived from it, never stored twice.
-Not done in W3 and carried forward: relationships, goals and dead/alive state
-(W5 story review), wardrobe reference images (W4/W6), the creator-facing canon
+Follow-ups done the same day: relationships and dead/alive state, the
+wardrobe reference pack (0034), the Visual Reviewer (first W5 slice, record
+mode), the revision flow on a real database in CI, and migrations 0027–0034
+applied live. Carried forward: the live GPU run of the revision flow
+(`canon:live-check`, after the worker deploy), goals and plot state (W5 story
+review), reviewer calibration before enforce (W5/W10), the creator-facing canon
 editor with charged regeneration and locks (W8), merging the web storyboard's
 text continuity copy (W8), cinematography continuity — axis, eyeline, screen
 direction (W4), audio continuity (W7).
@@ -630,4 +634,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 91 built, 126 shallow, 22 poorly built, 146 not built, 69 n/a. Of the 385 IDs that are requirements, 91 (24%) are built; 148 exist but need upgrading or changing; 146 must be built. (Updated after W3, 2026-10-08.)
+454 IDs: 93 built, 127 shallow, 22 poorly built, 143 not built, 69 n/a. Of the 385 IDs that are requirements, 93 (24%) are built; 149 exist but need upgrading or changing; 143 must be built. (Updated after the W3 follow-ups, 2026-10-08.)

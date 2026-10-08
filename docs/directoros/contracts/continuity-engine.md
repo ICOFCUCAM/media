@@ -43,7 +43,7 @@ The World State Engine and the compiler's `shotPrompt`. Nothing else.
 Returning `passed: true` because the character exists. Every applicable check
 runs and is listed in `checked`; a shot with a character in frame lists all of
 identity, age, hair, accessories, body, wardrobe, injuries, emotion, location,
-time, possessions, knowledge and presence.
+time, possessions, knowledge, presence and alive.
 
 ## 6. Runtime behavior (§62.5)
 
@@ -52,6 +52,7 @@ For the shot's framed subjects against the scene's world state:
 | Check | Blocking | Warning |
 |---|---|---|
 | presence | framed character not in the scene | — |
+| alive | framed character died in an earlier present-time scene | — |
 | identity / age / hair / body / accessories | requested face, hair, body or age ≠ canon; a canonical mark missing | — |
 | wardrobe | requested ≠ scene canon; changed inside continuous action | — |
 | injuries / body state | canonical injury missing from the request; injury vanished inside continuous action | different physical state; injury gone later the same day |
@@ -89,11 +90,13 @@ projects keep the inherited set; blocking result reported.
 ## 11. Integration test
 
 §62.8–62.9 are proven in world-state.md's tests (the affected-shot footprint and
-invalidation). Pending (W10): a GPU run showing the request carries only the
-framed characters' references.
+invalidation). After generation the Visual Reviewer checks a frame of the clip against the
+same corrected context (visual-review.md). Pending (W10, `canon:live-check`):
+a GPU run showing the request carries only the framed characters' references
+and their wardrobe stills.
 
 ## 12. Production readiness
 
-Reference packs per wardrobe entry (today references are per character; a
-wardrobe change re-prompts but has no wardrobe reference image — W4/W6), and
-the Visual Reviewer checking the generated frames against the same result (W5).
+Wardrobe reference stills (built: world-state.md) and the Visual Reviewer
+(built, record mode: visual-review.md) proven on live films; the reviewer
+calibrated before `VISUAL_REVIEW=enforce`.
