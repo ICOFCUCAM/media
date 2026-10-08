@@ -348,3 +348,132 @@ One row per requirement ID in the source record. The last two columns are filled
 | DOS-128.3 | 128. The strategy for CineForge | That means the architecture is yours even if the underlying Talker model changes. | | |
 | DOS-129.1 | 129. Selecting the Talker | This matters particularly because the author has already been dealing with model licensing issues in | | |
 | DOS-129.2 | 129. Selecting the Talker | Offered next step (not yet taken): map out the exact Voice Engine architecture for CineForge, includ | | |
+
+## Part 4 — Voice Engine: models, licensing, architecture, implementation spec
+
+| ID | Section | Requirement (pointer; the full text is in the part file) | Cineforge status | Where / notes |
+|---|---|---|---|---|
+| DOS-130.1 | 130. The shortlist — licensing differs substantially | There are quite a few, and the choice matters a lot for CineForge because licensing differs substant | | |
+| DOS-130.2 | 130. The shortlist — licensing differs substantially | \For a commercial CineForge service, don't treat the table as legal clearance; you need to verify th | | |
+| DOS-131.1 | 131. Qwen3-TTS — the one to investigate first | This is particularly interesting for the architecture. It has a voice-cloning mode rather than requi | | |
+| DOS-131.2 | 131. Qwen3-TTS — the one to investigate first | For the system: | | |
+| DOS-131.3 | 131. Qwen3-TTS — the one to investigate first | There are also different model sizes, so you can potentially have a smaller/cheaper worker and a hig | | |
+| DOS-132.1 | 132. CosyVoice 3 | Another one to take very seriously. The CosyVoice project currently recommends Fun-CosyVoice3-0.5B, | | |
+| DOS-132.2 | 132. CosyVoice 3 | For CineForge: | | |
+| DOS-132.3 | 132. CosyVoice 3 | The relatively small 0.5B model is particularly interesting because you don't necessarily need an en | | |
+| DOS-133.1 | 133. Fish Speech / Fish Audio S2 | Fish Speech is technically very impressive. The current S2 Pro is described as a 4B-parameter multil | | |
+| DOS-133.2 | 133. Fish Speech / Fish Audio S2 | Be cautious for the commercial architecture because of licensing. The current Fish Speech repository | | |
+| DOS-134.1 | 134. GPT-SoVITS | One of the better-known voice-cloning architectures. Its approach separates parts of the speech-gene | | |
+| DOS-134.2 | 134. GPT-SoVITS | It can work with relatively small amounts of reference/training data and has a large ecosystem. Curr | | |
+| DOS-135.1 | 135. F5-TTS | F5-TTS is technically excellent and uses a flow-matching approach. Its code is MIT licensed. GitHub | | |
+| DOS-135.2 | 135. F5-TTS | But the publicly released pretrained weights are currently CC-BY-NC, meaning non-commercial. GitHub | | |
+| DOS-136.1 | 136. What to actually do — pluggable models, benchmark with your own voice | Don't pick one model immediately. Build the architecture so that models are pluggable: | | |
+| DOS-136.2 | 136. What to actually do — pluggable models, benchmark with your own voice | Then benchmark them using your actual voice. Test the same: | | |
+| DOS-136.3 | 136. What to actually do — pluggable models, benchmark with your own voice | And measure: | | |
+| DOS-137.1 | 137. Initial shortlist | If the goal is specifically: | | |
+| DOS-137.2 | 137. Initial shortlist | Do not make F5-TTS the commercial production choice using its standard public weights, because of th | | |
+| DOS-137.3 | 137. Initial shortlist | This is where the idea becomes much less "hard" than the author was originally told: we don't need t | | |
+| DOS-138.1 | 138. Free to run vs free for commercial use | Yes — many of the models are free to download and run, but "free" and "free for commercial use" are | | |
+| DOS-139.1 | 139. The licensing findings | The current licensing was checked rather than relying on older information. | | |
+| DOS-139.2 | 139. The licensing findings | GPT-SoVITS's software repository is MIT licensed, which permits commercial use, modification, distri | | |
+| DOS-139.3 | 139. The licensing findings | Fish Speech is different. Its current Research License explicitly says research/non-commercial use i | | |
+| DOS-139.4 | 139. The licensing findings | Qwen3-TTS is particularly interesting because its Qwen TTS package is Apache-2.0 licensed. Hugging F | | |
+| DOS-140.1 | 140. Start order and the abstraction | Start with: | | |
+| DOS-140.2 | 140. Start order and the abstraction | Then build your own abstraction: | | |
+| DOS-140.3 | 140. Start order and the abstraction | That means you don't pay per generated minute to ElevenLabs or another hosted voice provider. You pa | | |
+| DOS-140.4 | 140. Start order and the abstraction | And you can clone your own voice, save your speaker profile, and then generate unlimited scripts sub | | |
+| DOS-141.1 | 141. The caveat, and where to focus evaluation | Even when the model license permits commercial use, you still need to check the exact model checkpoi | | |
+| DOS-141.2 | 141. The caveat, and where to focus evaluation | If the objective is "I want the best free/open model that I can legally put inside CineForge and use | | |
+| DOS-142.1 | 142. The direction is set | For CineForge, make Qwen3-TTS the first model to benchmark, with CosyVoice 3 and GPT-SoVITS as fallb | | |
+| DOS-142.2 | 142. The direction is set | The next sensible step is to design the CineForge Voice Engine architecture around a model-independe | | |
+| DOS-142.3 | 142. The direction is set | Clear direction: CineForge Voice Engine, with Qwen3-TTS as the first implementation and a pluggable | | |
+| DOS-143.0 | D. Model-independent architecture (preamble) | Design it so CineForge never knows whether the speech was generated by Qwen3-TTS, CosyVoice, GPT-SoV | | |
+| DOS-143.1 | 143. (D1) The recommended architecture |  | | |
+| DOS-143.2 | 143. (D1) The recommended architecture | This is the key architectural decision: the adapters change. The API does not. | | |
+| DOS-144.1 | 144. (D2) Five major subsystems |  | | |
+| DOS-145.1 | 145. (D3) The API is the permanent interface — register a voice |  | | |
+| DOS-145.2 | 145. (D3) The API is the permanent interface — register a voice | The database knows that voice_8f31c belongs to the user's voice. | | |
+| DOS-146.1 | 146. (D4) Generate speech | CineForge doesn't call Qwen directly. It calls: | | |
+| DOS-146.2 | 146. (D4) Generate speech | The Voice Engine decides which model should handle it. | | |
+| DOS-147.1 | 147. (D5) The model adapter — a common interface |  | | |
+| DOS-147.2 | 147. (D5) The model adapter — a common interface | Qwen3 might internally call its generate_voice_clone() functionality, while CineForge remains comple | | |
+| DOS-147.3 | 147. (D5) The model adapter — a common interface | CosyVoice has a considerably different internal architecture — its current implementation combines a | | |
+| DOS-148.1 | 148. (D6) The really important part: Voice Profiles | Don't store only the original WAV. Store a proper voice profile: | | |
+| DOS-148.2 | 148. (D6) The really important part: Voice Profiles | For example: | | |
+| DOS-148.3 | 148. (D6) The really important part: Voice Profiles | Qwen3-TTS supports an x-vector speaker representation and also an ICL-style reference path, which me | | |
+| DOS-149.1 | 149. (D7) Don't generate an entire movie's narration in one request | Instead: | | |
+| DOS-149.2 | 149. (D7) Don't generate an entire movie's narration in one request | Each chunk becomes: | | |
+| DOS-149.3 | 149. (D7) Don't generate an entire movie's narration in one request | That gives: | | |
+| DOS-150.1 | 150. (D8) The existing audio pipeline takes over | This connects directly with the audio work already done: | | |
+| DOS-150.2 | 150. (D8) The existing audio pipeline takes over | The AI model does not own mastering. That remains the audio engine's responsibility. | | |
+| DOS-151.1 | 151. (D9) Model routing | Initially: | | |
+| DOS-151.2 | 151. (D9) Model routing | Later: | | |
+| DOS-151.3 | 151. (D9) Model routing | Eventually the router could choose based on: | | |
+| DOS-151.4 | 151. (D9) Model routing | For example: | | |
+| DOS-152.1 | 152. (D10) GPU infrastructure — separate workers | Do not put the model directly into the main CineForge application container. Use separate workers: | | |
+| DOS-152.2 | 152. (D10) GPU infrastructure — separate workers | A worker can start, load the model, process jobs, and remain warm. | | |
+| DOS-153.1 | 153. (D11) Cloud and self-hosted | Cloud: | | |
+| DOS-153.2 | 153. (D11) Cloud and self-hosted | Self-hosted: | | |
+| DOS-153.3 | 153. (D11) Cloud and self-hosted | Same API. Same CineForge application. Different deployment. | | |
+| DOS-154.1 | 154. (D12) Voice caching | If "Welcome to BalanceVid." is generated and later the exact same sentence is requested, don't gener | | |
+| DOS-154.2 | 154. (D12) Voice caching | This can save enormous GPU time. | | |
+| DOS-155.1 | 155. (D13) Batch generation | For a movie with 100 narration segments, don't send 100 independent HTTP requests from CineForge. Us | | |
+| DOS-155.2 | 155. (D13) Batch generation | The worker can optimize model loading and GPU utilization. | | |
+| DOS-156.1 | 156. (D14) The architecture to freeze for CineForge |  | | |
+| DOS-156.2 | 156. (D14) The architecture to freeze for CineForge | The crucial design decision — Do not let CineForge depend on Qwen3-TTS. Let CineForge depend on: | | |
+| DOS-156.3 | 156. (D14) The architecture to freeze for CineForge | This isn't theoretical: Qwen3-TTS already exposes the underlying voice-cloning primitives needed for | | |
+| DOS-156.4 | 156. (D14) The architecture to freeze for CineForge | Freeze this architecture before Claude starts coding it. The next implementation step is to define t | | |
+| DOS-157.0 | E. Implementation specification (preamble) | This is the next layer to give to Claude. The objective is to build the Voice Engine as an independe | | |
+| DOS-157.1 | 157. (E1) Repository structure |  | | |
+| DOS-157.2 | 157. (E1) Repository structure | The most important boundary is packages/core/voice-engine.ts. That becomes the contract every model | | |
+| DOS-158.1 | 158. (E2) Model-independent interface |  | | |
+| DOS-158.2 | 158. (E2) Model-independent interface | Qwen3 implements it. CosyVoice implements it. GPT-SoVITS implements it. CineForge never calls their | | |
+| DOS-159.1 | 159. (E3) Voice enrollment | The user experience: | | |
+| DOS-159.2 | 159. (E3) Voice enrollment | API: | | |
+| DOS-159.3 | 159. (E3) Voice enrollment | The API should return immediately. The GPU work happens asynchronously. | | |
+| DOS-160.1 | 160. (E4) Voice quality analysis | Before creating the voice profile, analyze the recording. Check: | | |
+| DOS-160.2 | 160. (E4) Voice quality analysis | For example: | | |
+| DOS-160.3 | 160. (E4) Voice quality analysis | If the recording is poor: | | |
+| DOS-160.4 | 160. (E4) Voice quality analysis | This is important because garbage reference audio produces poor voice cloning. | | |
+| DOS-161.1 | 161. (E5) Voice profile — and engine-specific artifacts | Database voice_profiles, recommended fields: | | |
+| DOS-161.2 | 161. (E5) Voice profile — and engine-specific artifacts | But don't assume every model has the same representation. Therefore voice_engine_artifacts holds eng | | |
+| DOS-161.3 | 161. (E5) Voice profile — and engine-specific artifacts | For Qwen: artifact_type = qwen_voice_clone_prompt. For another engine: artifact_type = speaker_embed | | |
+| DOS-162.1 | 162. (E6) Synthesis API | CineForge calls: | | |
+| DOS-162.2 | 162. (E6) Synthesis API | Don't make the HTTP request wait for GPU inference. | | |
+| DOS-163.1 | 163. (E7) Job architecture | Use the existing queue philosophy: | | |
+| DOS-163.2 | 163. (E7) Job architecture | Job: | | |
+| DOS-164.1 | 164. (E8) Job states |  | | |
+| DOS-164.2 | 164. (E8) Job states | This gives CineForge reliable progress tracking. | | |
+| DOS-165.1 | 165. (E9) Long scripts | Don't send a 30-minute script directly into the model. Pipeline: | | |
+| DOS-165.2 | 165. (E9) Long scripts | Each segment gets: | | |
+| DOS-166.1 | 166. (E10) Audio mastering belongs outside the model | This is critical. Do not ask the TTS model to be your mastering system. Architecture: | | |
+| DOS-166.2 | 166. (E10) Audio mastering belongs outside the model | That integrates with the audio requirements already established for CineForge. | | |
+| DOS-167.1 | 167. (E11) Model router | The router receives: | | |
+| DOS-167.2 | 167. (E11) Model router | The decision should not be hardcoded into CineForge. Use configuration: | | |
+| DOS-167.3 | 167. (E11) Model router | Routing can then change later without rebuilding CineForge. | | |
+| DOS-168.1 | 168. (E12) Model capabilities | Every adapter reports what it supports. For example: | | |
+| DOS-168.2 | 168. (E12) Model capabilities | Then the router knows what it can safely request. | | |
+| DOS-169.1 | 169. (E13) Storage | Don't put generated audio inside PostgreSQL. Use object storage: | | |
+| DOS-169.2 | 169. (E13) Storage | PostgreSQL stores metadata. Object storage stores media. | | |
+| DOS-170.1 | 170. (E14) Security | Voice profiles are sensitive. At minimum: | | |
+| DOS-170.2 | 170. (E14) Security | Never allow POST /v1/speech with someone else's voice_id. Database policy user_id → voice_id must al | | |
+| DOS-170.3 | 170. (E14) Security | For voice enrollment, consent_confirmed = true should be required. | | |
+| DOS-171.1 | 171. (E15) Docker architecture — separate CPU and GPU services |  | | |
+| DOS-171.2 | 171. (E15) Docker architecture — separate CPU and GPU services | So you don't have to install every model on every GPU machine. | | |
+| DOS-172.1 | 172. (E16) Deployment |  | | |
+| DOS-172.2 | 172. (E16) Deployment | If Render is later stopped, the Voice Engine doesn't care. | | |
+| DOS-173.1 | 173. (E17) The most important API boundary — freeze now | CineForge should only know this: | | |
+| DOS-173.2 | 173. (E17) The most important API boundary — freeze now | Everything underneath is the implementation. That is the part to freeze now. | | |
+| DOS-174.1 | 174. (E18) What Claude should NOT do | Tell Claude explicitly: | | |
+| DOS-174.2 | 174. (E18) What Claude should NOT do | Do not embed Qwen3-TTS directly into CineForge. - DOS-174.3 Do not make CineForge import Qwen3 libra | | |
+| DOS-174.3 | 174. (E18) What Claude should NOT do | Do not make CineForge import Qwen3 libraries. - DOS-174.4 Do not make the frontend know which TTS mo | | |
+| DOS-174.4 | 174. (E18) What Claude should NOT do | Do not make the frontend know which TTS model is being used. - DOS-174.5 Do not store model-specific | | |
+| DOS-174.5 | 174. (E18) What Claude should NOT do | Do not store model-specific assumptions in CineForge's database schema. - DOS-174.6 Do not make synt | | |
+| DOS-174.6 | 174. (E18) What Claude should NOT do | Do not make synthesis requests synchronous. - DOS-174.7 Do not couple audio mastering to the TTS mod | | |
+| DOS-174.7 | 174. (E18) What Claude should NOT do | Do not couple audio mastering to the TTS model. - DOS-174.8 Do not make voice profiles dependent on | | |
+| DOS-174.8 | 174. (E18) What Claude should NOT do | Do not make voice profiles dependent on one specific model's internal representation. | | |
+| DOS-174.9 | 174. (E18) What Claude should NOT do | Instead: Build a model-independent Voice Engine service with an adapter interface. | | |
+| DOS-175.1 | 175. (E19) The development sequence | Have Claude build it in this order: | | |
+| DOS-176.1 | 176. The end result | A CineForge user will eventually see something as simple as: | | |
+| DOS-176.2 | 176. The end result | Underneath that simple UI is the complete infrastructure: | | |
+| DOS-176.3 | 176. The end result | That is the architecture to use rather than making CineForge itself a voice-cloning application. It | | |
