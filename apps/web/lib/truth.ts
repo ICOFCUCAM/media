@@ -13,11 +13,38 @@
  * workspace packages).
  */
 import { useEffect, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabase } from "./supabase";
-import type { Database } from "./database.types";
 
-export type CapabilityRow = Database["public"]["Tables"]["system_capabilities"]["Row"];
-export type DegradationRow = Database["public"]["Tables"]["production_degradations"]["Row"];
+// These tables come from migration 0031, which is not on the live database
+// yet, so they are deliberately NOT in database.types.ts (the db package's
+// drift guard forbids typing tables the live schema lacks). They are read
+// through an untyped client and every read tolerates their absence.
+export interface CapabilityRow {
+  capability: string;
+  provider: string | null;
+  status: "production_ready" | "experimental" | "unavailable" | "disabled" | "not_implemented";
+  real_execution: boolean;
+  requires_gpu: boolean;
+  supports: string[];
+  note: string | null;
+  reported_by: string;
+  updated_at: string;
+}
+
+export interface DegradationRow {
+  id: string;
+  project_id: string;
+  code: string;
+  severity: "info" | "warning" | "major";
+  scope: "project" | "scene" | "shot" | "film" | "locale";
+  ref_id: string | null;
+  message: string;
+  detail: unknown;
+  created_at: string;
+}
+
+const untyped = (): SupabaseClient | null => getSupabase() as unknown as SupabaseClient | null;
 
 export type Capabilities =
   | { state: "unknown"; reason: string }
@@ -38,11 +65,12 @@ export function videoAvailable(caps: Capabilities): boolean | null {
 }
 
 export async function loadCapabilities(): Promise<Capabilities> {
-  const sb = getSupabase();
+  const sb = untyped();
   if (!sb) return { state: "unknown", reason: "not connected" };
-  const { data, error } = await sb.from("system_capabilities").select("*");
-  if (error) return { state: "unknown", reason: error.message };
-  if (!data || data.length === 0) return { state: "unknown", reason: "the worker has not reported yet" };
+  const { data: raw, error } = await sb.from("system_capabilities").select("*");
+  if (error) return { state: "unknown", reason: /does not exist|schema cache/i.test(error.message) ? "migration 0031 not applied" : error.message };
+  const data = (raw ?? []) as CapabilityRow[];
+  if (data.length === 0) return { state: "unknown", reason: "the worker has not reported yet" };
   const byId: Record<string, CapabilityRow> = {};
   for (const r of data) byId[r.capability] = r;
   return { state: "loaded", rows: data, byId };
@@ -63,14 +91,14 @@ export function useCapabilities(): Capabilities {
 }
 
 export async function loadDegradations(projectId: string): Promise<DegradationRow[]> {
-  const sb = getSupabase();
+  const sb = untyped();
   if (!sb) return [];
   const { data, error } = await sb
     .from("production_degradations")
     .select("*")
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
-  return error || !data ? [] : data;
+  return error || !data ? [] : (data as DegradationRow[]);
 }
 
 export const CAPABILITY_LABEL: Record<string, string> = {
