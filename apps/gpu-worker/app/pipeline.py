@@ -265,8 +265,7 @@ class VideoPipeline:
         # practical time on one GPU. The worker's ~80 frames x 30 steps takes many
         # minutes per clip; these defaults bring it to ~1 min. Raise for quality.
         caps = runtime_limits()
-        width = min(width, caps["maxWidth"])
-        height = min(height, caps["maxHeight"])
+        width, height = clamp_dims(width, height, caps)
         num_frames = min(num_frames, caps["maxFrames"])
         gen = torch.Generator(device="cuda").manual_seed(int(seed))
         steps = min(int((extra or {}).get("steps", 30)), caps["maxSteps"])
@@ -447,6 +446,30 @@ def runtime_limits(env: dict | None = None) -> dict:
         "maxFrames": int(env.get("WAN_MAX_FRAMES", "25")),
         "maxSteps": int(env.get("WAN_MAX_STEPS", "20")),
     }
+
+
+def clamp_dims(width: int, height: int, caps: dict) -> tuple[int, int]:
+    """Apply the size caps by orientation, keeping the picture's shape.
+
+    Capping each axis separately turned a 720×1280 portrait request into
+    480×480 under the default 832×480 caps. Now the long cap bounds the long
+    side; a request close to the caps' own shape (16:9 vs 832×480) snaps to the
+    model's native size, any other shape is scaled down keeping its aspect
+    ratio, to multiples of 16.
+    """
+    long_cap = max(caps["maxWidth"], caps["maxHeight"])
+    short_cap = min(caps["maxWidth"], caps["maxHeight"])
+    portrait = height > width
+    long_side, short_side = (height, width) if portrait else (width, height)
+    if long_side <= long_cap and short_side <= short_cap:
+        return width, height
+    if abs((long_side / short_side) / (long_cap / short_cap) - 1) <= 0.12:
+        long_out, short_out = long_cap, short_cap
+    else:
+        scale = min(long_cap / long_side, short_cap / short_side)
+        long_out = max(16, int(long_side * scale) // 16 * 16)
+        short_out = max(16, int(short_side * scale) // 16 * 16)
+    return (short_out, long_out) if portrait else (long_out, short_out)
 
 
 def _san(text: str) -> str:

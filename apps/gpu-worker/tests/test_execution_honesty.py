@@ -107,3 +107,12 @@ def test_unavailable_gpu_returns_503(signing_key, mint):
     with client:
         r = post(client, body, mint.token(body, authz=cineforge_authz()))
     assert r.status_code == 503 and r.json()["detail"]["error"] == "CUDA_UNAVAILABLE"
+
+
+def test_caps_follow_orientation():
+    caps = {"maxWidth": 832, "maxHeight": 480}
+    assert pl.clamp_dims(1280, 720, caps) == (832, 480)
+    assert pl.clamp_dims(720, 1280, caps) == (480, 832)  # was 480x480
+    assert pl.clamp_dims(720, 720, caps) == (480, 480)  # square stays square
+    assert pl.clamp_dims(720, 900, caps) == (480, 592)  # 4:5 keeps its shape
+    assert pl.clamp_dims(640, 360, caps) == (640, 360)  # within caps: untouched
