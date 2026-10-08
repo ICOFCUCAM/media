@@ -33,3 +33,8 @@ merge `9c957bf` (2026-10-08): the as-built baseline, section-by-section status,
 the silent-degradation register, workstreams W0–W11, the sequenced roadmap inside
 the docs/38 §AX.2 order, and the decisions needed. Parts sent after this are
 added to the index and analysed the same way.
+
+**Execution:** [execution-protocol.md](execution-protocol.md) (the rules every
+implementation follows, and the spec's phases mapped onto this repository) ·
+[contracts/](contracts/README.md) (12-field implementation contracts, one per
+subsystem, written before it is built).

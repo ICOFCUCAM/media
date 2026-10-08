@@ -156,8 +156,8 @@ One row per requirement ID in the source record. Status and workstream (W0–W11
 | DOS-60.1 | 60. The critical issue to correct before giving Claude the architecture | The Part 1 architecture is conceptually strong but not yet strict enough to guarantee a high-quality | n/a | W1 — Process rule → becomes level column + CI check |
 | DOS-60.2 | 60. The critical issue to correct before giving Claude the architecture | The real problem: three different levels to distinguish — | n/a | W1 — Process rule → becomes level column + CI check |
 | DOS-60.3 | 60. The critical issue to correct before giving Claude the architecture | The previous architecture was mostly Level 1, with some Level 2. It must be taken to Level 3. | n/a | W1 — Process rule → becomes level column + CI check |
-| DOS-61.1 | 61. The CineForge DirectorOS Implementation Contract | Create a CineForge DirectorOS Implementation Contract, not merely an architecture document. | not built | W1 — No per-subsystem 12-field contracts |
-| DOS-61.2 | 61. The CineForge DirectorOS Implementation Contract | Every job description must have: | not built | W1 — No per-subsystem 12-field contracts |
+| DOS-61.1 | 61. The CineForge DirectorOS Implementation Contract | Create a CineForge DirectorOS Implementation Contract, not merely an architecture document. | shallow | W1 — contracts/README.md (12-field template) + contracts/truth-layer.md; contracts for W2–W8 pending |
+| DOS-61.2 | 61. The CineForge DirectorOS Implementation Contract | Every job description must have: | shallow | W1 — contracts/README.md (12-field template) + contracts/truth-layer.md; contracts for W2–W8 pending |
 | DOS-62.1 | 62. Example — Character Continuity Engine | The weak specification would be: — | poorly built | W3 — String state; no ContinuityResult/severity/corrected context |
 | DOS-62.2 | 62. Example — Character Continuity Engine | The specification should instead say: — | poorly built | W3 — String state; no ContinuityResult/severity/corrected context |
 | DOS-62.3 | 62. Example — Character Continuity Engine | Responsibility — The engine must maintain canonical character state across the entire Film IR and prevent downstream | poorly built | W3 — String state; no ContinuityResult/severity/corrected context |
@@ -168,7 +168,7 @@ One row per requirement ID in the source record. Status and workstream (W0–W11
 | DOS-62.8 | 62. Example — Character Continuity Engine | Acceptance test — Given: | poorly built | W3 — String state; no ContinuityResult/severity/corrected context |
 | DOS-62.9 | 62. Example — Character Continuity Engine | Integration test — Change Maya's canonical wardrobe. Then verify: | poorly built | W3 — String state; no ContinuityResult/severity/corrected context |
 | DOS-62.10 | 62. Example — Character Continuity Engine | If that doesn't happen, the feature is NOT IMPLEMENTED. That is the level of specification Claude ne | poorly built | W3 — String state; no ContinuityResult/severity/corrected context |
-| DOS-63.1 | 63. This applies to EVERY major subsystem | DirectorOS should not merely contain: | not built | W1 — No per-subsystem 12-field contracts |
+| DOS-63.1 | 63. This applies to EVERY major subsystem | DirectorOS should not merely contain: | shallow | W1 — contract template in place; one contract written (truth layer) |
 | DOS-64.1 | 64. The Director — contract | Not "The Director creates the movie." Instead: | shallow | W2 — One forced-tool call; Director also builds prompts |
 | DOS-65.1 | 65. Story Engine — proof | It needs to prove: | not built | W3 — acts hard-coded; no plot threads/arcs/setup-payoff |
 | DOS-66.1 | 66. Scene Architect — proof | Must prove: | shallow | W3 — Scene has no purpose/beats; duration = requested not measured |
@@ -183,25 +183,25 @@ One row per requirement ID in the source record. Status and workstream (W0–W11
 | DOS-69.1 | 69. The Image Engine — contract | This is where "wired but not functional" becomes particularly dangerous. The job description cannot | shallow | W6 — gpt-image-1, no checksum/seed/revision; data: URL fallback |
 | DOS-69.2 | 69. The Image Engine — contract | Then test: | shallow | W6 — gpt-image-1, no checksum/seed/revision; data: URL fallback |
 | DOS-69.3 | 69. The Image Engine — contract | If Claude mocks the generation response: | shallow | W6 — gpt-image-1, no checksum/seed/revision; data: URL fallback |
-| DOS-70.1 | 70. The critical principle — never self-certify | Never allow a component to prove itself by returning its own claimed status. | poorly built | W5 — READY from adapter claim; no HEAD/ffprobe/sha256; timing gate record-only |
-| DOS-70.2 | 70. The critical principle — never self-certify | Bad: | poorly built | W5 — READY from adapter claim; no HEAD/ffprobe/sha256; timing gate record-only |
-| DOS-70.3 | 70. The critical principle — never self-certify | Better: | poorly built | W5 — READY from adapter claim; no HEAD/ffprobe/sha256; timing gate record-only |
+| DOS-70.1 | 70. The critical principle — never self-certify | Never allow a component to prove itself by returning its own claimed status. | shallow | W1 — storage check + GPU execution report judged before READY (video.processor verifyArtifact/judgeRun); content QC is W5 |
+| DOS-70.2 | 70. The critical principle — never self-certify | Bad: | shallow | W1 — storage check + GPU execution report judged before READY (video.processor verifyArtifact/judgeRun); content QC is W5 |
+| DOS-70.3 | 70. The critical principle — never self-certify | Better: | shallow | W1 — storage check + GPU execution report judged before READY (video.processor verifyArtifact/judgeRun); content QC is W5 |
 | DOS-71.1 | 71. The same applies to Audio | The existing audio requirements become machine-enforced acceptance criteria, not documentation. For | built | planNarrationFit + media-regression CI job |
 | DOS-71.2 | 71. The same applies to Audio | The previous bug demonstrated why this matters: the film mux and dubbing pipeline must measure pictu | built | planNarrationFit + media-regression CI job |
 | DOS-71.3 | 71. The same applies to Audio | That should be an automated regression test forever. | built | planNarrationFit + media-regression CI job |
-| DOS-72.1 | 72. DirectorOS needs the same philosophy — zero hidden TODO functionality | The Movie Layer should have zero "TODO" functionality hidden behind interfaces. Claude should not be | not built | W1 — No CI gate for stub patterns |
-| DOS-72.2 | 72. DirectorOS needs the same philosophy — zero hidden TODO functionality | Those should cause the build/verification process to fail. | not built | W1 — No CI gate for stub patterns |
-| DOS-73.1 | 73. The REALITY GATE | Every CineForge subsystem has a status: | not built | W1 — web/lib/system.ts hard-codes 'Implemented' |
-| DOS-73.2 | 73. The REALITY GATE | Claude must never call something "complete" merely because it is wired. For example: | not built | W1 — web/lib/system.ts hard-codes 'Implemented' |
-| DOS-74.1 | 74. The "No Fake Completion" rule | At the top of Claude's implementation instructions: | n/a | W1 — Rule → CONTRACT header |
-| DOS-75.1 | 75. The "No Silent Degradation" rule | If a required capability is unavailable, the system must report NOT_IMPLEMENTED, UNAVAILABLE, or FAI | poorly built | W1 — 23 silent-degradation paths (see gap-analysis §5) |
-| DOS-75.2 | 75. The "No Silent Degradation" rule | Especially important for: | poorly built | W1 — 23 silent-degradation paths (see gap-analysis §5) |
+| DOS-72.1 | 72. DirectorOS needs the same philosophy — zero hidden TODO functionality | The Movie Layer should have zero "TODO" functionality hidden behind interfaces. Claude should not be | built | W1 — scripts/check-truth.mjs in CI: no TODO/FIXME/XXX/HACK in production source; tested by check-truth.test.mjs |
+| DOS-72.2 | 72. DirectorOS needs the same philosophy — zero hidden TODO functionality | Those should cause the build/verification process to fail. | built | W1 — scripts/check-truth.mjs in CI: no TODO/FIXME/XXX/HACK in production source; tested by check-truth.test.mjs |
+| DOS-73.1 | 73. The REALITY GATE | Every CineForge subsystem has a status: | built | W1 — Reality Gate maturity in apps/web/lib/system.ts; CI refuses VALIDATED/PRODUCTION_READY without evidence files |
+| DOS-73.2 | 73. The REALITY GATE | Claude must never call something "complete" merely because it is wired. For example: | built | W1 — Reality Gate maturity in apps/web/lib/system.ts; CI refuses VALIDATED/PRODUCTION_READY without evidence files |
+| DOS-74.1 | 74. The "No Fake Completion" rule | At the top of Claude's implementation instructions: | built | W1 — rule in execution-protocol.md + contracts; stub film, placeholder media, phantom keys removed (docs/44 §1) |
+| DOS-75.1 | 75. The "No Silent Degradation" rule | If a required capability is unavailable, the system must report NOT_IMPLEMENTED, UNAVAILABLE, or FAI | built | W1 — all 23 silent paths now fail or record a degradation (production_degradations, migration 0031); docs/44 |
+| DOS-75.2 | 75. The "No Silent Degradation" rule | Especially important for: | built | W1 — all 23 silent paths now fail or record a degradation (production_degradations, migration 0031); docs/44 |
 | DOS-76.1 | 76. REAL provider tests | If CineForge says: | not built | W10 — All provider tests mocked; gateway-e2e uses placeholder GPU |
 | DOS-76.2 | 76. REAL provider tests | ComfyUI should remain the generation engine rather than Claude recreating it. That should remain a h | not built | W10 — All provider tests mocked; gateway-e2e uses placeholder GPU |
 | DOS-76.3 | 76. REAL provider tests | Likewise Wan must actually generate. Not: | not built | W10 — All provider tests mocked; gateway-e2e uses placeholder GPU |
-| DOS-77.1 | 77. The Capability Registry | Every subsystem must declare what is actually operational. For example: | shallow | W1 — Pieces (registry, /capabilities, RuntimeCapabilities) without status/realExecution; pod over-claims |
-| DOS-77.2 | 77. The Capability Registry | That is much safer than pretending everything exposed in the UI is functional. The existing architec | shallow | W1 — Pieces (registry, /capabilities, RuntimeCapabilities) without status/realExecution; pod over-claims |
-| DOS-78.1 | 78. The UI obeys the Capability Registry | If: | not built | W1 — Web hard-codes MODELS; offers 4K/1080p the backend can't deliver |
+| DOS-77.1 | 77. The Capability Registry | Every subsystem must declare what is actually operational. For example: | built | W1 — buildCapabilityRegistry (packages/shared/src/truth) published to system_capabilities; GPU /capabilities truthful |
+| DOS-77.2 | 77. The Capability Registry | That is much safer than pretending everything exposed in the UI is functional. The existing architec | built | W1 — buildCapabilityRegistry (packages/shared/src/truth) published to system_capabilities; GPU /capabilities truthful |
+| DOS-78.1 | 78. The UI obeys the Capability Registry | If: | built | W1 — create UI offers only registry-real formats; admin lists live capabilities (apps/web/lib/truth.ts) |
 | DOS-79.1 | 79. How to make Claude work differently | Don't tell Claude "Build DirectorOS." Tell it: | n/a | W1 — Process → execution-protocol.md |
 | DOS-80.1 | 80. Claude works in phases | Not "Build everything." That is where quality collapses. Instead: | n/a | W1 — Process → execution-protocol.md |
 | DOS-80.2 | 80. Claude works in phases | PHASE 0 — AUDIT — Claude examines the existing repository. No implementation. Produces: | n/a | W1 — Process → execution-protocol.md |
