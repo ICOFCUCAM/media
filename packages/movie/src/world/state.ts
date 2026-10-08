@@ -10,6 +10,7 @@
  *                    state, what they hold, what they know
  *   - props        — who holds it, where it was last seen
  *   - audience     — what the audience has been shown
+ *   - story state  — who is alive, how each relationship stands
  *
  * Scenes state their characters' visible state explicitly (the planner is
  * required to); the engine carries everything forward for characters who are
@@ -37,6 +38,19 @@ export interface CharacterWorldState {
   knows: string[];
   /** Last scene the character was on screen. */
   lastSceneId: string | null;
+  /** False once the character has died in an earlier (present-time) scene. Flashbacks show them alive. */
+  alive: boolean;
+  /** The scene they died in, if they have. */
+  diedIn: string | null;
+}
+
+export interface RelationshipWorldState {
+  relationshipId: string;
+  a: string;
+  b: string;
+  state: string;
+  /** Scene that last changed it (null = as at the start). */
+  changedIn: string | null;
 }
 
 export interface PropWorldState {
@@ -53,6 +67,7 @@ export interface SceneWorld {
   clock: StoryClock;
   characters: Record<string, CharacterWorldState>;
   props: Record<string, PropWorldState>;
+  relationships: Record<string, RelationshipWorldState>;
   audienceKnows: string[];
 }
 
@@ -100,9 +115,13 @@ export function materializeWorld(pkg: FilmPackage): WorldTimeline {
   const chars = new Map<string, CharacterWorldState>(
     pkg.cast.map((c) => [c.id, {
       characterId: c.id, present: false, locationId: null, wardrobeId: null, emotion: null, physical: null,
-      holding: [], knows: [], lastSceneId: null,
+      holding: [], knows: [], lastSceneId: null, alive: true, diedIn: null,
     }]),
   );
+  const rels = new Map<string, RelationshipWorldState>(
+    pkg.relationships.map((r) => [r.id, { relationshipId: r.id, a: r.a, b: r.b, state: r.initial, changedIn: null }]),
+  );
+  const died = new Map<string, string>();
   const props = new Map<string, PropWorldState>(pkg.props.map((p) => [p.id, { propId: p.id, holderId: null, locationId: null }]));
 
   const scenes: SceneWorld[] = pkg.scenes.map((sc) => {
@@ -123,7 +142,7 @@ export function materializeWorld(pkg: FilmPackage): WorldTimeline {
       }
       chars.set(id, {
         characterId: id, present: true, locationId: sc.locationId, wardrobeId: s.wardrobeId, emotion: s.emotion,
-        physical: s.physical, holding: [...s.holding], knows: [], lastSceneId: sc.id,
+        physical: s.physical, holding: [...s.holding], knows: [], lastSceneId: sc.id, alive: true, diedIn: null,
       });
       for (const p of s.holding) if (props.has(p)) props.set(p, { propId: p, holderId: id, locationId: sc.locationId });
     }
@@ -131,9 +150,22 @@ export function materializeWorld(pkg: FilmPackage): WorldTimeline {
     for (const [p, st] of props) {
       if (st.holderId) props.set(p, { ...st, locationId: chars.get(st.holderId)?.locationId ?? st.locationId });
     }
+    for (const ch of sc.relationshipChanges) {
+      const r = rels.get(ch.relationshipId);
+      if (r) rels.set(ch.relationshipId, { ...r, state: ch.becomes, changedIn: sc.id });
+    }
+    const flashback = sc.storyTime?.flashback ?? false;
+    // Alive during this scene: not dead from an earlier present-time scene (a flashback shows the past).
     const characters = Object.fromEntries(
-      [...chars].map(([id, st]) => [id, { ...st, holding: [...st.holding], knows: sorted(knowledge.get(id) ?? new Set()) }]),
+      [...chars].map(([id, st]) => {
+        const diedIn = died.get(id) ?? null;
+        return [id, {
+          ...st, holding: [...st.holding], knows: sorted(knowledge.get(id) ?? new Set()),
+          alive: flashback || !diedIn, diedIn,
+        }];
+      }),
     );
+    if (!flashback) for (const d of sc.deaths) if (!died.has(d)) died.set(d, sc.id);
     return {
       sceneId: sc.id,
       index: sc.index,
@@ -141,6 +173,7 @@ export function materializeWorld(pkg: FilmPackage): WorldTimeline {
       clock: clockOf(sc),
       characters,
       props: Object.fromEntries([...props].map(([id, st]) => [id, { ...st }])),
+      relationships: Object.fromEntries([...rels].map(([id, r]) => [id, { ...r }])),
       audienceKnows: sorted(knowledge.get(AUDIENCE) ?? new Set()),
     };
   });

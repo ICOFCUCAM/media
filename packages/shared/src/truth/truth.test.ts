@@ -53,6 +53,16 @@ describe("capability registry (DOS-77/78)", () => {
     expect(offeredFormats(reg)).toEqual([]);
   });
 
+  it("visual QC is reported from the vision route and the review mode", () => {
+    const vq = (env: Record<string, string>, available: boolean) =>
+      buildCapabilityRegistry({ env, intelligence: { visual_review: { available, provider: "anthropic:claude-opus-5-5" } } })
+        .find((c) => c.capability === "visual_qc")!;
+    expect(vq({}, false)).toMatchObject({ status: "unavailable", realExecution: false });
+    expect(vq({}, true)).toMatchObject({ status: "experimental", realExecution: true, supports: ["record"] });
+    expect(vq({ VISUAL_REVIEW: "enforce" }, true).supports).toEqual(["enforce"]);
+    expect(vq({ VISUAL_REVIEW: "off" }, true)).toMatchObject({ status: "disabled", realExecution: false });
+  });
+
   it("a placeholder GPU worker never counts as video generation", () => {
     const reg = buildCapabilityRegistry({ env: {}, gpu: { "wan-2.1": { execution: "placeholder", realExecution: false } } });
     const v = reg.find((c) => c.capability === "video_generation")!;

@@ -28,6 +28,7 @@ export const ThreadId = id("thread");
 export const SetupId = id("setup");
 export const WardrobeId = id("wardrobe");
 export const FactId = id("fact");
+export const RelationshipId = id("rel");
 
 /** Who can know a fact: a character, or the audience (DirectorOS Part 1 §56–57). */
 export const AUDIENCE = "audience" as const;
@@ -120,6 +121,19 @@ export const Fact = z.object({
   knownAtStart: z.array(Knower).max(13).describe(`who knows this before scene one ("${AUDIENCE}" = the audience)`),
 });
 
+/** A relationship between two characters and where it starts (Part 1 §32.4: relationships). */
+export const Relationship = z.object({
+  id: RelationshipId,
+  a: CharacterId,
+  b: CharacterId,
+  initial: text(120).describe("how they stand at the start, e.g. estranged siblings, wary allies"),
+});
+
+export const RelationshipChange = z.object({
+  relationshipId: RelationshipId,
+  becomes: text(120).describe("how they stand after this scene"),
+});
+
 export const Thread = z.object({
   id: ThreadId,
   kind: z.enum(["plot", "subplot", "character_arc", "mystery", "relationship"]),
@@ -201,6 +215,8 @@ export const Scene = z.object({
   timeOfDay: TimeOfDay,
   storyTime: StoryTime.nullable().default(null),
   reveals: z.array(Reveal).max(8).default([]),
+  relationshipChanges: z.array(RelationshipChange).max(6).default([]),
+  deaths: z.array(CharacterId).max(8).default([]).describe("characters who die in this scene; they appear later only in flashbacks"),
   purpose: text(300).describe("what this scene does for the story"),
   summary: text(600).describe("what the audience sees"),
   emotionalArc: z.object({ start: text(80), middle: text(80), end: text(80) }),
@@ -225,6 +241,7 @@ export const FilmPackage = z.object({
   locations: z.array(Location).min(1).max(12),
   props: z.array(Prop).max(20),
   facts: z.array(Fact).max(24).default([]),
+  relationships: z.array(Relationship).max(24).default([]),
   acts: z.array(Act).min(1).max(5),
   threads: z.array(Thread).max(10),
   setups: z.array(Setup).max(12),
@@ -238,6 +255,7 @@ export type FilmCharacter = z.infer<typeof Character>;
 export type FilmLocation = z.infer<typeof Location>;
 export type FilmProp = z.infer<typeof Prop>;
 export type FilmFact = z.infer<typeof Fact>;
+export type FilmRelationship = z.infer<typeof Relationship>;
 export type FilmSetup = z.infer<typeof Setup>;
 export type FilmThread = z.infer<typeof Thread>;
 export type SceneCharacterState = z.infer<typeof SceneState>;

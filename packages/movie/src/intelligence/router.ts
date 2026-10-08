@@ -27,7 +27,7 @@ export interface Route {
   model: string;
 }
 
-const TASKS: IntelligenceTask[] = ["film_plan", "film_plan_revision", "translation", "social_kit"];
+const TASKS: IntelligenceTask[] = ["film_plan", "film_plan_revision", "translation", "social_kit", "visual_review"];
 
 export function parseRoutes(env: Record<string, string | undefined>): Record<IntelligenceTask, Route[]> {
   const fallback: Route[] = [{ provider: "anthropic", model: env.ANTHROPIC_MODEL || DEFAULT_MODEL }];
@@ -74,7 +74,8 @@ export class IntelligenceRouter {
   }
 
   async call(req: StructuredRequest, ctx: { projectId?: string | null } = {}): Promise<StructuredResult> {
-    const inputSha256 = sha(`${req.system}\n\u0000${req.user}\n\u0000${JSON.stringify(req.schema)}`);
+    const images = (req.images ?? []).map((i) => sha(i.data)).join(",");
+    const inputSha256 = sha(`${req.system}\n\u0000${req.user}\n\u0000${JSON.stringify(req.schema)}${images ? `\n\u0000${images}` : ""}`);
     const routes = this.routes[req.task];
     let last: IntelligenceError | null = null;
     for (let attempt = 0; attempt < routes.length; attempt++) {

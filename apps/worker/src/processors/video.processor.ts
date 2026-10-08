@@ -28,8 +28,12 @@ import {
 } from "@cineforge/shared";
 import { buildClusterRegistry, buildOpenAIProviders, MODEL_VERSIONS, type JobContext, type ShotRequest } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
-import { FilmPackage } from "@cineforge/movie";
+import { FilmPackage, reviewFrame, type GenerationContext } from "@cineforge/movie";
+import { gateVisual, visualReviewMode, frameGrabber, type VisualGateDeps } from "../review/visual-gate";
+import { intelligence } from "../intelligence";
+import { ffmpeg, probeDuration } from "../ffmpeg/ffmpeg";
 import { shotReferences } from "../canon/references";
+import { wardrobeReferenceKeys, type ReferenceImageGenerator, type WardrobeRefDb } from "../canon/wardrobe-refs";
 import { realtime } from "../realtime";
 import { S3Storage } from "../storage/storage";
 import { enqueueLora } from "../orchestration/lora-queue";
@@ -120,7 +124,11 @@ function loadShot(shotId: string) {
  */
 async function resolveContinuity(
   shot: ShotWithScene,
-): Promise<{ preamble: string; referenceImageKeys: string[]; loraKeys: string[]; loraSha256: Record<string, string> }> {
+): Promise<{
+  preamble: string; referenceImageKeys: string[]; loraKeys: string[]; loraSha256: Record<string, string>; gaps: Degradation[];
+  /** What canon says this shot shows (Film IR projects) — the Visual Reviewer checks the clip against it. */
+  canonContext: GenerationContext | null;
+}> {
   const scenes = await prisma.scene.findMany({
     where: { projectId: shot.scene.projectId, index: { lte: shot.scene.index } },
     orderBy: { index: "asc" },
@@ -145,7 +153,8 @@ async function resolveContinuity(
   // Continuity Engine checks the shot against the world state and names the
   // characters in frame (DirectorOS W3, §62.6) — a shot that contradicts canon
   // is not generated. Legacy projects: every character inherited so far.
-  const refs = shotReferences(await filmPackageOf(shot.scene.projectId), shot.scene.index, shot.index, self?.statePatch?.characters);
+  const pkg = await filmPackageOf(shot.scene.projectId);
+  const refs = shotReferences(pkg, shot.scene.index, shot.index, self?.statePatch?.characters);
   if (refs.result && !refs.result.passed) {
     const v = refs.result.violations.filter((x) => x.severity === "blocking").map((x) => `${x.code} ${x.message}`).join("; ");
     throw new UnrecoverableError(`CONTINUITY_VIOLATION: ${v}`);
@@ -179,7 +188,43 @@ async function resolveContinuity(
       if (c.referenceUrls.length > 0 && !c.loraKey) await enqueueLora(c.id, shot.scene.projectId);
     }
   }
-  return { preamble, referenceImageKeys, loraKeys, loraSha256 };
+  // Wardrobe reference pack: each framed character in this scene's wardrobe (0034).
+  const gaps: Degradation[] = [];
+  if (pkg && refs.result) {
+    const pack = await wardrobeReferenceKeys(prisma as unknown as WardrobeRefDb, wardrobeImageGenerator(), shot.scene.projectId, shot.id,
+      pkg, refs.result, refs.charIdByKey, wardrobeUnavailableReason());
+    gaps.push(...pack.gaps);
+    referenceImageKeys = [...new Set([...pack.keys, ...referenceImageKeys])].slice(0, 4);
+  }
+  return { preamble, referenceImageKeys, loraKeys, loraSha256, gaps, canonContext: refs.result?.correctedGenerationContext ?? null };
+}
+
+function visualGateDeps(projectId: string): VisualGateDeps {
+  const router = intelligence();
+  return {
+    available: () => router.available("visual_review"),
+    grabFrame: frameGrabber((key, dest) => storage.download(key, dest), (args) => ffmpeg(args), probeDuration),
+    review: (ctx, frames) => reviewFrame(router, ctx, frames, { projectId }),
+  };
+}
+
+function wardrobeUnavailableReason(): string {
+  if (process.env.WARDROBE_REFERENCES === "0") return "disabled (WARDROBE_REFERENCES=0)";
+  return "no image provider or storage configured";
+}
+
+/** Reference stills via the image provider, stored at the given key; null when disabled or unconfigured. */
+function wardrobeImageGenerator(): ReferenceImageGenerator | null {
+  if (process.env.WARDROBE_REFERENCES === "0" || !process.env.OPENAI_API_KEY || !process.env.S3_BUCKET) return null;
+  return {
+    id: "openai-image",
+    async generate(prompt, key) {
+      const { image } = buildOpenAIProviders(process.env, (bytes, ct) => storage.putBytes(key, bytes, ct));
+      if (!image) throw new Error("image provider unavailable");
+      // Portrait: a full-body reference.
+      return (await image.generate({ prompt, width: 1024, height: 1536 })).imageKey;
+    },
+  };
 }
 
 /** Compose the final ShotRequest. `seedKey` is the resolved seed frame for
@@ -365,7 +410,8 @@ export const videoWorker = new Worker<VideoJob>(
     }
     // Continuity: inherit prior scenes into the prompt + reuse the same character
     // reference frames so identity is locked pixel-level (docs/28).
-    const { preamble, referenceImageKeys, loraKeys, loraSha256 } = await resolveContinuity(shot);
+    const { preamble, referenceImageKeys, loraKeys, loraSha256, gaps: refGaps, canonContext } = await resolveContinuity(shot);
+    gaps.push(...refGaps);
     const request = buildShotRequest(shot, seedKey, preamble, referenceImageKeys, loraKeys, loraSha256);
     // Job authorization reads the job's state fresh, immediately before dispatch.
     request.job = await jobContext(shotId, adapter.id);
@@ -400,6 +446,19 @@ export const videoWorker = new Worker<VideoJob>(
     // The clip must exist before the shot is READY (DOS-70). Visual / sync QC
     // of the clip's content is W5; this is the storage + execution check.
     await verifyArtifact(result.videoKey);
+    // Visual quality gate (W5): a frame of the clip against canon. Record mode
+    // by default (VISUAL_REVIEW); enforce fails the shot on a contradiction.
+    let qcScore: number | null = null;
+    if (canonContext) {
+      const visual = await gateVisual(visualGateDeps(projectId), visualReviewMode(), canonContext, result.videoKey, shotId);
+      gaps.push(...visual.gaps);
+      qcScore = visual.qcScore;
+      if (visual.failure) {
+        await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);
+        await prisma.shot.update({ where: { id: shotId }, data: { status: "QC_FAIL", qcScore, videoKey: result.videoKey } });
+        throw new UnrecoverableError(visual.failure);
+      }
+    }
     await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);
     if (adapter.runtimeCapabilities) await refreshGpuCaps(adapter.id, () => adapter.runtimeCapabilities!());
 
@@ -409,6 +468,7 @@ export const videoWorker = new Worker<VideoJob>(
         status: "READY",
         videoKey: result.videoKey,
         thumbnailKey: result.thumbnailKey,
+        ...(qcScore !== null ? { qcScore } : {}),
         seed: BigInt(result.seed),
         gpuMs: result.gpuMs,
         modelVersion: shot.modelVersion ?? MODEL_VERSIONS[modelId],

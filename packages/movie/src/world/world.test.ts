@@ -135,6 +135,60 @@ describe("Canon validation (Part 1 §33, §56–58)", () => {
   });
 });
 
+describe("Story state: relationships and who is alive (Part 1 §32.4)", () => {
+  it("relationships evolve scene by scene and reach the preamble and the generation context", () => {
+    const p = fixturePackage();
+    const w = materializeWorld(p);
+    expect(w.scenes[0]!.relationships.rel_maya_ewan).toMatchObject({ state: "wary strangers", changedIn: null });
+    expect(w.scenes[1]!.relationships.rel_maya_ewan).toMatchObject({ state: "trust", changedIn: "scene_02" });
+    const ctx = checkContinuity(p, { sceneId: "scene_02", shotIndex: 1, subjectIds: ["char_maya", "char_harbourmaster"] }).correctedGenerationContext;
+    expect(ctx.relationships).toEqual([{ relationshipId: "rel_maya_ewan", a: "char_maya", b: "char_harbourmaster", state: "trust" }]);
+    expect(canonGraph(p).dependents({ kind: "relationship", id: "rel_maya_ewan" }).scenes).toEqual(["scene_02"]);
+  });
+
+  it("the dead stay dead outside flashbacks", () => {
+    const p = mayaFilm();
+    p.scenes[1]!.deaths = ["char_harbourmaster"];
+    const w = materializeWorld(p);
+    expect(w.scenes[1]!.characters.char_harbourmaster).toMatchObject({ alive: true, diedIn: null }); // alive while it happens
+    expect(canonCodes(p)).toContain("canon/DEAD_CHARACTER_APPEARS"); // he is still in scene 12
+    p.scenes[2]!.characters = p.scenes[2]!.characters.filter((c) => c.characterId !== "char_harbourmaster");
+    p.scenes[2]!.shots[2]!.subjectIds = ["char_maya"];
+    p.scenes[2]!.dialogue = [];
+    expect(canonCodes(p)).toEqual([]);
+    expect(materializeWorld(p).scenes[2]!.characters.char_harbourmaster).toMatchObject({ alive: false, diedIn: "scene_11" });
+    // A flashback may show him alive.
+    const q = mayaFilm();
+    q.scenes[1]!.deaths = ["char_harbourmaster"];
+    q.scenes[2]!.storyTime = { day: 1, continuous: false, flashback: true };
+    expect(canonCodes(q)).toEqual([]);
+    expect(checkContinuity(q, { sceneId: "scene_12", shotIndex: 2 }).passed).toBe(true);
+  });
+
+  it("deaths and relationship changes must happen on screen, once, in present time", () => {
+    const p = mayaFilm();
+    p.scenes[0]!.deaths = ["char_maya"];
+    p.scenes[0]!.characters = p.scenes[0]!.characters.filter((c) => c.characterId !== "char_maya");
+    expect(canonCodes(p)).toContain("references/DEATH_OF_ABSENT");
+    const q = mayaFilm();
+    q.scenes[2]!.storyTime = { day: 1, continuous: false, flashback: true };
+    q.scenes[2]!.deaths = ["char_harbourmaster"];
+    expect(canonCodes(q)).toEqual(["canon/DEATH_IN_FLASHBACK"]);
+    const r = fixturePackage();
+    r.relationships.push({ id: "rel_self", a: "char_maya", b: "char_maya", initial: "x" });
+    r.scenes[0]!.relationshipChanges.push({ relationshipId: "rel_nope", becomes: "x" });
+    expect(canonCodes(r)).toEqual(expect.arrayContaining(["references/RELATIONSHIP_WITH_SELF", "references/UNKNOWN_REFERENCE"]));
+  });
+
+  it("the engine blocks a dead character in frame", () => {
+    const p = mayaFilm();
+    p.scenes[1]!.deaths = ["char_harbourmaster"]; // planner error left him in scene 12
+    const r = checkContinuity(p, { sceneId: "scene_12", shotIndex: 2 });
+    expect(r).toMatchObject({ passed: false, severity: "blocking" });
+    expect(r.violations.map((v) => v.code)).toEqual(["CHARACTER_DEAD"]);
+  });
+});
+
 describe("Canon dependency graph + revisions (Part 2 §62.8–62.9)", () => {
   it("ACCEPTANCE §62.8: Maya's coat changes to blue in scene 12 → scenes 11 and 12 are affected, scene 10 is not", () => {
     const before = mayaFilm();
@@ -193,7 +247,7 @@ describe("Character Continuity Engine (Part 2 §62.3–62.7)", () => {
   it("evaluates every applicable check — never a bare pass", () => {
     const r = checkContinuity(fixturePackage(), { sceneId: "scene_01", shotIndex: 1 });
     expect(r).toMatchObject({ passed: true, severity: "none", violations: [] });
-    expect(r.checked).toEqual(["accessories", "age", "body", "emotion", "hair", "identity", "injuries", "knowledge", "location", "possessions", "presence", "time", "wardrobe"]);
+    expect(r.checked).toEqual(["accessories", "age", "alive", "body", "emotion", "hair", "identity", "injuries", "knowledge", "location", "possessions", "presence", "time", "wardrobe"]);
     expect(r.requiredReferences).toEqual([
       { kind: "location", id: "loc_harbour", reason: "setting" },
       { kind: "character", id: "char_maya", reason: "identity" },
@@ -244,5 +298,21 @@ describe("Character Continuity Engine (Part 2 §62.3–62.7)", () => {
     const all = checkFilmContinuity(mayaFilm());
     expect(all).toHaveLength(12);
     expect(all.every((x) => x.result.passed)).toBe(true);
+  });
+});
+
+describe("wardrobe reference pack (§62.9 new reference pack)", () => {
+  it("one digest per depicted canon: unchanged canon reuses, a changed coat gets a new reference", async () => {
+    const { wardrobeReferenceSpec } = await import("./wardrobe");
+    const p = mayaFilm();
+    const red = wardrobeReferenceSpec(p, "char_maya", "wardrobe_red_coat");
+    expect(red.prompt).toContain("Wearing long red wool coat");
+    expect(red.prompt).toContain("scar above left eyebrow");
+    expect(wardrobeReferenceSpec(mayaFilm(), "char_maya", "wardrobe_red_coat").digest).toBe(red.digest);
+    const rev = reviseCanon(p, { kind: "wardrobe_description", characterId: "char_maya", wardrobeId: "wardrobe_red_coat", description: "long blue wool coat" });
+    expect(wardrobeReferenceSpec(rev.pkg, "char_maya", "wardrobe_red_coat").digest).not.toBe(red.digest);
+    const hair = reviseCanon(p, { kind: "identity", characterId: "char_maya", identity: { hair: "shaved head" } });
+    expect(wardrobeReferenceSpec(hair.pkg, "char_maya", "wardrobe_red_coat").digest).not.toBe(red.digest);
+    expect(() => wardrobeReferenceSpec(p, "char_maya", "wardrobe_oilskin")).toThrow(/not one of/);
   });
 });

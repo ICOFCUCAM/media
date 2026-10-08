@@ -9,6 +9,7 @@
  *                shots framing it
  *   prop       → scenes where it is held, shots framing it
  *   fact       → scenes revealing it, dialogue lines relying on it
+ *   relationship → scenes that change it
  *   style      → every shot (the film's look is in each prompt)
  *
  * This answers "what does changing X touch?" before anything is regenerated.
@@ -16,7 +17,7 @@
 import type { FilmPackage } from "../ir/schema";
 
 export type CanonRef =
-  | { kind: "character" | "wardrobe" | "location" | "prop" | "fact"; id: string }
+  | { kind: "character" | "wardrobe" | "location" | "prop" | "fact" | "relationship"; id: string }
   | { kind: "style" };
 
 export interface ShotRef {
@@ -57,6 +58,7 @@ export function canonGraph(pkg: FilmPackage): CanonGraph {
       for (const p of st.holding) addScene(`prop:${p}`, sc.id);
     }
     for (const r of sc.reveals) addScene(`fact:${r.factId}`, sc.id);
+    for (const r of sc.relationshipChanges) addScene(`relationship:${r.relationshipId}`, sc.id);
     sc.dialogue.forEach((d, i) => {
       for (const f of d.references) {
         addScene(`fact:${f}`, sc.id);

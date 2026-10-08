@@ -10,7 +10,8 @@
  *   story       — scene order, acts, threads, setups planted before payoff
  *   canon       — the world holds together (W3): story time only runs backwards
  *                 in flashbacks, continuous action keeps clothes and injuries,
- *                 one holder per prop, nobody says what they cannot know,
+ *                 one holder per prop, the dead stay dead (outside flashbacks),
+ *                 nobody says what they cannot know,
  *                 setups are established before they pay off, mysteries are
  *                 answered for the audience
  *   production  — scene count, shots per scene, shot length vs the runtime's
@@ -102,6 +103,7 @@ function references(pkg: FilmPackage): Issue[] {
   out.push(...dupes(pkg.threads, (x) => x.id, "references", "threads"));
   out.push(...dupes(pkg.setups, (x) => x.id, "references", "setups"));
   out.push(...dupes(pkg.facts, (x) => x.id, "references", "facts"));
+  out.push(...dupes(pkg.relationships, (x) => x.id, "references", "relationships"));
 
   const chars = new Map(pkg.cast.map((c) => [c.id, c]));
   const locs = new Set(pkg.locations.map((l) => l.id));
@@ -111,6 +113,12 @@ function references(pkg: FilmPackage): Issue[] {
   const knower = (w: string) => w === AUDIENCE || chars.has(w);
   const fact = (f: string, path: string) => !facts.has(f) && R(path, `fact ${f} does not exist`);
 
+  const relIds = new Set(pkg.relationships.map((r) => r.id));
+  pkg.relationships.forEach((r, i) => {
+    if (!chars.has(r.a)) R(`relationships[${i}].a`, `${r.a} is not in the cast`);
+    if (!chars.has(r.b)) R(`relationships[${i}].b`, `${r.b} is not in the cast`);
+    if (r.a === r.b) out.push({ stage: "references", code: "RELATIONSHIP_WITH_SELF", path: `relationships[${i}]`, message: `${r.id} relates ${r.a} to themself` });
+  });
   pkg.facts.forEach((f, i) => f.knownAtStart.forEach((w, j) => !knower(w) && R(`facts[${i}].knownAtStart[${j}]`, `${w} is not in the cast`)));
   pkg.threads.forEach((t, i) => t.answerFactId && fact(t.answerFactId, `threads[${i}].answerFactId`));
   pkg.setups.forEach((s, i) => {
@@ -149,6 +157,20 @@ function references(pkg: FilmPackage): Issue[] {
             message: `${w} learns ${r.factId} here but is not in the scene` });
         }
       });
+    });
+    sc.deaths.forEach((d, j) => {
+      if (!chars.has(d)) R(`${p}.deaths[${j}]`, `${d} is not in the cast`);
+      else if (!present.has(d)) {
+        out.push({ stage: "references", code: "DEATH_OF_ABSENT", path: `${p}.deaths[${j}]`, message: `${d} dies in ${sc.id} but is not in the scene` });
+      }
+    });
+    sc.relationshipChanges.forEach((c, j) => {
+      if (!relIds.has(c.relationshipId)) return R(`${p}.relationshipChanges[${j}].relationshipId`, `relationship ${c.relationshipId} does not exist`);
+      const r = pkg.relationships.find((x) => x.id === c.relationshipId)!;
+      if (!present.has(r.a) && !present.has(r.b)) {
+        out.push({ stage: "references", code: "RELATIONSHIP_CHANGE_OFFSCREEN", path: `${p}.relationshipChanges[${j}]`,
+          message: `${c.relationshipId} changes in ${sc.id} but neither ${r.a} nor ${r.b} is in the scene` });
+      }
     });
     sc.dialogue.forEach((d, j) => {
       d.references.forEach((f, k) => fact(f, `${p}.dialogue[${j}].references[${k}]`));
@@ -252,6 +274,23 @@ function canon(pkg: FilmPackage): Issue[] {
         C("PHYSICAL_STATE_DROPPED", `${p}.characters[${j}].physical`,
           `${st.characterId} was "${before.physical}" in ${prev.id}, which this scene continues; it cannot vanish`);
       }
+    });
+  });
+
+  // Dead stays dead (Part 1 §32.4): after dying, a character appears only in flashbacks.
+  const deadSince = new Map<string, string>();
+  pkg.scenes.forEach((sc, i) => {
+    const flashback = sc.storyTime?.flashback ?? false;
+    if (!flashback) {
+      sc.characters.forEach((st, j) => {
+        const d = deadSince.get(st.characterId);
+        if (d) C("DEAD_CHARACTER_APPEARS", `scenes[${i}].characters[${j}]`, `${st.characterId} died in ${d} but appears in ${sc.id}, which is not a flashback`);
+      });
+    }
+    sc.deaths.forEach((d, j) => {
+      if (flashback) C("DEATH_IN_FLASHBACK", `scenes[${i}].deaths[${j}]`, `${d} dies in a flashback; record deaths in present-time scenes`);
+      else if (deadSince.has(d)) C("DIES_TWICE", `scenes[${i}].deaths[${j}]`, `${d} already died in ${deadSince.get(d)}`);
+      else deadSince.set(d, sc.id);
     });
   });
 

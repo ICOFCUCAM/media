@@ -32,7 +32,15 @@ export class OpenAIProvider implements IntelligenceProvider {
           max_completion_tokens: req.maxTokens,
           messages: [
             { role: "system", content: req.system },
-            { role: "user", content: req.user },
+            {
+              role: "user",
+              content: req.images?.length
+                ? [
+                    ...req.images.map((i) => ({ type: "image_url", image_url: { url: `data:${i.mediaType};base64,${i.data}` } })),
+                    { type: "text", text: req.user },
+                  ]
+                : req.user,
+            },
           ],
           response_format: { type: "json_schema", json_schema: { name: req.schemaName, schema: req.schema, strict: false } },
         }),

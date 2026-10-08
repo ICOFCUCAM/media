@@ -991,3 +991,20 @@ model CanonRevision {
   @@index([projectId, createdAt], map: "canon_revisions_project_idx")
   @@map("canon_revisions")
 }
+
+/// Wardrobe reference pack (migration 0034): one still per character,
+/// wardrobe entry and canon digest; append-only.
+model WardrobeReference {
+  id          String   @id @default(uuid()) @db.Uuid
+  projectId   String   @map("project_id") @db.Uuid
+  characterId String   @map("character_id") @db.Uuid
+  wardrobeKey String   @map("wardrobe_key")
+  digest      String
+  storageKey  String   @map("storage_key")
+  provider    String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([characterId, wardrobeKey, digest])
+  @@index([projectId], map: "wardrobe_references_project_idx")
+  @@map("wardrobe_references")
+}

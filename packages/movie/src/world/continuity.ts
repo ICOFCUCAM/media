@@ -58,6 +58,8 @@ export interface GenerationContext {
   sceneId: string;
   shotIndex: number;
   clock: StoryClock;
+  /** How the framed characters stand with each other here. */
+  relationships: { relationshipId: string; a: string; b: string; state: string }[];
   location: { id: string; name: string; description: string; lighting: string };
   characters: {
     characterId: string;
@@ -129,6 +131,10 @@ export function checkContinuity(pkg: FilmPackage, req: GenerationRequest, world:
     if (!canon.present) {
       V("blocking", "CHARACTER_NOT_IN_SCENE", id, null, id, `${c.name} is framed but is not in ${scene.id}`);
       continue;
+    }
+    checked.add("alive");
+    if (!canon.alive) {
+      V("blocking", "CHARACTER_DEAD", id, `died in ${canon.diedIn}`, scene.id, `${c.name} died in ${canon.diedIn}; ${scene.id} is not a flashback`);
     }
     // Identity, age, hair, accessories (marks): canon never drifts.
     checked.add("identity").add("age").add("hair").add("accessories").add("body");
@@ -213,6 +219,9 @@ export function checkContinuity(pkg: FilmPackage, req: GenerationRequest, world:
     sceneId: scene.id,
     shotIndex: shot.index,
     clock: w.clock,
+    relationships: Object.values(w.relationships)
+      .filter((r) => framedChars.includes(r.a) && framedChars.includes(r.b))
+      .map(({ relationshipId, a, b, state }) => ({ relationshipId, a, b, state })),
     location: { id: loc.id, name: loc.name, description: loc.description, lighting: loc.lighting },
     characters: framedChars.filter((id) => w.characters[id]!.present).map((id) => {
       const c = cast.get(id)!;

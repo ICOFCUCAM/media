@@ -126,4 +126,21 @@ describe("providers", () => {
     await expect(p.generateStructured(req, "gpt-5")).rejects.toMatchObject({ code: "TRUNCATED" });
     expect(new OpenAIProvider({}).configured()).toBe(false);
   });
+
+  it("OpenAI: images go before the text as data-URL image parts", async () => {
+    let body: { messages: { content: unknown }[] } = { messages: [] };
+    const fetchImpl = (async (_u: string, init: RequestInit) => {
+      body = JSON.parse(String(init.body));
+      return Response.json({ choices: [{ finish_reason: "stop", message: { content: "{}" } }] });
+    }) as unknown as typeof fetch;
+    const req: StructuredRequest = {
+      task: "visual_review", promptId: "v", promptVersion: 1, system: "s", user: "check", schema: { type: "object" },
+      schemaName: "V", maxTokens: 50, images: [{ mediaType: "image/jpeg", data: "QUJD" }],
+    };
+    await new OpenAIProvider({ OPENAI_API_KEY: "k" }, fetchImpl).generateStructured(req, "gpt-5");
+    expect(body.messages[1]!.content).toEqual([
+      { type: "image_url", image_url: { url: "data:image/jpeg;base64,QUJD" } },
+      { type: "text", text: "check" },
+    ]);
+  });
 });
