@@ -10,12 +10,26 @@
  * dependencies are enforced by the queue.
  */
 import { Worker } from "bullmq";
-import { QUEUES, planCapSec, type FilmJob } from "@cineforge/shared";
+import { QUEUES, planCapSec, degradation, isProductionFailure, type FilmJob, type Degradation } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
 import { DirectorService } from "../director/director.service";
 import { moderatePrompt } from "../director/moderation";
 import { enqueueFilmFlow } from "../orchestration/film-flow";
 import { realtime } from "../realtime";
+import { recordDegradations, type DegradationDb } from "../truth/recorder";
+
+/** Stop the project with a reason the user can read; never deliver a stand-in. */
+async function failProject(projectId: string, code: string, message: string) {
+  await prisma.project.update({ where: { id: projectId }, data: { status: "FAILED", errorMessage: message.slice(0, 500) } });
+  await realtime.emit("error", { projectId, scope: "planning", message });
+  console.warn(JSON.stringify({ event: "production.failed", projectId, code, message }));
+}
+
+const FAILURE_MESSAGES: Record<string, string> = {
+  DIRECTOR_UNAVAILABLE: "The film couldn't be planned: the AI Director is unavailable right now. No credits were used — please try again.",
+  DIRECTOR_OUTPUT_INVALID: "The film couldn't be planned: the AI Director returned an incomplete plan. No credits were used — please try again.",
+  MODERATION_UNAVAILABLE: "The film couldn't start: the content check is unavailable right now. No credits were used — please try again.",
+};
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const director = new DirectorService();
@@ -44,7 +58,17 @@ export const filmWorker = new Worker<FilmJob>(
         console.log(`[film] clamped project ${projectId} from ${project.targetSeconds}s to ${cap}s (tier ${project.user.tier})`);
       }
 
+      const gaps: Degradation[] = [];
       const verdict = await moderatePrompt(project.prompt);
+      if (!verdict.checked) {
+        if (process.env.MODERATION_REQUIRED === "1") {
+          await failProject(projectId, "MODERATION_UNAVAILABLE", FAILURE_MESSAGES.MODERATION_UNAVAILABLE!);
+          return { projectId, failed: "MODERATION_UNAVAILABLE" };
+        }
+        gaps.push(degradation("MODERATION_SKIPPED", "project", "The content check did not run for this film.", {
+          detail: { reason: verdict.unchecked },
+        }));
+      }
       if (!verdict.allowed) {
         const message = "Content policy: this prompt can't be produced.";
         await prisma.project.update({
@@ -62,7 +86,16 @@ export const filmWorker = new Worker<FilmJob>(
       // duplicate Director runs, and flows enqueued against half-written
       // scene lists (an empty children list makes the render root run
       // immediately and record a phantom zero-duration film).
-      await director.plan(projectId);
+      try {
+        const plan = await director.plan(projectId);
+        gaps.push(...plan.degradations);
+      } catch (e) {
+        if (!isProductionFailure(e)) throw e;
+        await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);
+        await failProject(projectId, e.code, FAILURE_MESSAGES[e.code] ?? e.message);
+        return { projectId, failed: e.code };
+      }
+      await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);
     }
 
     const sceneCount = await enqueueFilmFlow(projectId);

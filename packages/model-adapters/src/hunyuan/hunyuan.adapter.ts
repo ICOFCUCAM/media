@@ -71,7 +71,13 @@ export class HunyuanAdapter implements VideoModelAdapter {
       height: out.height,
       durationSec: out.durationSec,
       timing: out.timing,
+      execution: out.execution,
+      realExecution: out.realExecution,
     };
+  }
+
+  runtimeCapabilities(): Promise<Record<string, unknown> | null> {
+    return this.gpu.capabilities();
   }
 
   async healthcheck(): Promise<HealthStatus> {

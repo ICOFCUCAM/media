@@ -75,6 +75,33 @@ export interface ShotResult {
    * runtime does not report one, which Cineforge treats as TIMING_REPORT_MISSING.
    */
   timing?: unknown;
+  /**
+   * What the runtime actually ran (DirectorOS DOS-70/75). Self-hosted runtimes
+   * report it; external APIs leave it undefined.
+   */
+  execution?: ExecutionReport;
+  /**
+   * `false` = placeholder output that must never be delivered as a generation;
+   * `true` = real inference; undefined = the provider does not report it.
+   */
+  realExecution?: boolean;
+}
+
+/** The GPU worker's report of one run (apps/gpu-worker `last_execution`). */
+export interface ExecutionReport {
+  mode: "real" | "placeholder";
+  conditioning?: "t2v" | "i2v" | "none";
+  width?: number;
+  height?: number;
+  frames?: number;
+  fps?: number;
+  steps?: number;
+  referenceImagesUsed?: number;
+  referenceImagesIgnored?: number;
+  referenceVideoIgnored?: boolean;
+  cameraIgnored?: boolean;
+  lorasApplied?: string[];
+  lorasSkipped?: { key: string; reason: string }[];
 }
 
 export interface ModelCapabilities {
@@ -115,4 +142,10 @@ export interface VideoModelAdapter {
   /** Estimate cost in GPU-ms (used for quota checks before queuing). */
   estimateCost(req: ShotRequest): number;
   healthcheck(): Promise<HealthStatus>;
+  /**
+   * The runtime's own report of what it can do now (self-hosted workers'
+   * `/capabilities`), for the Capability Registry (DOS-77). Optional: external
+   * APIs do not report one.
+   */
+  runtimeCapabilities?(): Promise<Record<string, unknown> | null>;
 }

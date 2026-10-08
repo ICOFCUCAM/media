@@ -20,9 +20,11 @@ describe("model routing policy (C5)", () => {
     expect(allowedModels("STUDIO")).toContain("hunyuan");
   });
 
-  it("resolveModel falls back to primary when not allowed", () => {
-    expect(resolveModel("hunyuan", "FREE")).toBe("wan-2.1");
-    expect(resolveModel("hunyuan", "STUDIO")).toBe("hunyuan");
-    expect(resolveModel("unknown-model", "ENTERPRISE")).toBe("wan-2.1");
+  it("resolveModel falls back to primary when not allowed, and says so", () => {
+    expect(resolveModel("hunyuan", "FREE")).toEqual({
+      modelId: "wan-2.1", substituted: true, requested: "hunyuan", reason: "MODEL_NOT_ALLOWED_FOR_TIER",
+    });
+    expect(resolveModel("hunyuan", "STUDIO")).toEqual({ modelId: "hunyuan", substituted: false, requested: "hunyuan" });
+    expect(resolveModel("unknown-model", "ENTERPRISE")).toMatchObject({ modelId: "wan-2.1", substituted: true, reason: "MODEL_UNKNOWN" });
   });
 });

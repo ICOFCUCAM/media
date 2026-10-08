@@ -44,6 +44,11 @@ and [01-architecture](01-architecture.md); this page is the map.
 - [40 — Phases 2–3: clock and runtime contract](40-phase2-3-clock-and-runtime-contract.md) · µs timebase, timing reports, outcome classification
 - [41 — Phase 4: timeline data model](41-phase4-timeline-data-model.md) · migrations 0028–0030 (**not applied yet** — runbook inside)
 - [42 — Phase 5: A/V Sync Engine](42-phase5-av-sync-engine.md) · analyzers, validators, repair planner, `avsync:check`
+- [43 — Worker on DeployPro](43-deploypro-worker.md) · root Dockerfile, health check, runbook
+
+**DirectorOS — the intelligence layers above the media engine**
+- [DirectorOS specification and gap analysis](directoros/README.md) · Parts 1–4, 454 requirement IDs, [gap analysis](directoros/gap-analysis.md), [execution protocol](directoros/execution-protocol.md), [contracts](directoros/contracts/README.md)
+- [44 — Truth layer (W1)](44-truth-layer.md) · failures vs recorded degradations, capability registry, truth gate; migration 0031 (**not applied yet** — runbook inside)
 
 ## Continuity & identity — the coherent-movie spine
 

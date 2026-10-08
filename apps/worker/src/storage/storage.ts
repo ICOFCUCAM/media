@@ -6,6 +6,7 @@ import { Readable } from "node:stream";
 import {
   S3Client,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
 
@@ -60,6 +61,18 @@ export class S3Storage implements Storage {
   async signedGetUrl(key: string, expiresSec = 12 * 3600): Promise<string> {
     const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
     return getSignedUrl(this.s3, new GetObjectCommand({ Bucket: this.bucket, Key: key }), { expiresIn: expiresSec });
+  }
+
+  /** Size in bytes of a stored object, or 0 when it does not exist. */
+  async size(key: string): Promise<number> {
+    try {
+      const res = await this.s3.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+      return res.ContentLength ?? 0;
+    } catch (e) {
+      const status = (e as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
+      if (status === 404 || (e as { name?: string }).name === "NotFound") return 0;
+      throw e;
+    }
   }
 
   /** Read an object into memory (small assets: seed stills for data-URI handoff). */

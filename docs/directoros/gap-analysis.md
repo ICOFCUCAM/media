@@ -1,7 +1,8 @@
 # DirectorOS gap analysis and implementation map
 
 Status: analysis of Parts 1–4 (454 requirement IDs) against the CineForge code
-at merge `9c957bf` (2026-10-08). Read-only study; no code was changed to
+at merge `9c957bf` (2026-10-08). **Progress:** W1 (truth layer) is implemented —
+see [docs/44](../44-truth-layer.md); the scoreboard and index reflect it. Read-only study; no code was changed to
 produce it. Every status in [requirements-index.md](requirements-index.md) is
 filled from this document.
 
@@ -49,10 +50,10 @@ spec's Reality Gate / No Fake Completion / No Silent Degradation rules forbid.
 | Part | built | shallow | poorly built | not built | n/a | IDs |
 |---|---|---|---|---|---|---|
 | 1 Movie Intelligence (§0–59) | 6 | 57 | 11 | 65 | 1 | 140 |
-| 2 Engineering contract & intelligence layer (§60–107) | 10 | 44 | 25 | 36 | 23 | 138 |
+| 2 Engineering contract & intelligence layer (§60–107) | 20 | 48 | 20 | 28 | 22 | 138 |
 | 3 Voice Clone Talker (§108–129) | 0 | 15 | 0 | 21 | 16 | 52 |
 | 4 Voice Engine (§130–176) | 0 | 15 | 18 | 65 | 26 | 124 |
-| **Total** | **16** | **131** | **54** | **187** | **66** | **454** |
+| **Total** | **26** | **135** | **49** | **179** | **65** | **454** |
 
 Counts are generated from the index (section-level status with per-ID overrides). The low `built` count is not a verdict on CineForge as a whole: DirectorOS specifies the layers **above** the media engine, and the media engine's strengths (gateway, clock, runtime contract, timeline, A/V sync) are what the new layers will stand on. Those strengths show up below as KEEP and as reuse, not as `built` IDs.
 
@@ -333,6 +334,11 @@ is stored and shown to the user (Part 2 §73–75; docs/38 §AV.1 decisions 14, 
 Also: `runtime/ledger.ts:72` and avsync persistence degrade with one log line
 until 0027–0030 are applied (documented, acceptable until W0 step 2).
 
+**W1 status (2026-10-08): all 23 are fixed.** Items 1–22 now fail the job or
+record a degradation the owner sees; item 23 is replaced by Reality Gate
+maturity and the live capability registry. Before/after per item:
+[docs/44 §1](../44-truth-layer.md).
+
 ## 7. Parts 3–4 — Voice Clone Talker and Voice Engine (§108–176)
 
 **Bottom line: there is no Voice Engine.** Two unconnected hosted-provider
@@ -389,6 +395,10 @@ running. From docs/38 §AY and docs/43:
    default; `RENDER_NORMALIZE` becomes the only path).
 
 ### W1 — Truth layer (Reality Gate, No Fake Completion, No Silent Degradation)
+
+**Done 2026-10-08** (docs/44; contract in contracts/truth-layer.md). Remaining
+to reach `VALIDATED`: the end-to-end integration test (W10) and migration 0031
+on the live database (owner).
 
 Start first: it makes every later claim checkable. Code-only; no production
 change until merged.
@@ -603,4 +613,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 16 built, 131 shallow, 54 poorly built, 187 not built, 66 n/a. Of the 388 IDs that are requirements, 16 (4%) are built; 185 exist but need upgrading or changing; 187 must be built.
+454 IDs: 26 built, 135 shallow, 49 poorly built, 179 not built, 65 n/a. Of the 389 IDs that are requirements, 26 (7%) are built; 184 exist but need upgrading or changing; 179 must be built. (Updated after W1, 2026-10-08.)

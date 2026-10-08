@@ -14,6 +14,8 @@ export {
   OpenAIImageAdapter,
   OpenAITtsAdapter,
   buildOpenAIProviders,
+  splitForTts,
+  TTS_MAX_CHARS,
 } from "./openai/openai";
 export type {
   ImageModelAdapter,

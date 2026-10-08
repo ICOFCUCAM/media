@@ -1,6 +1,7 @@
 "use client";
 
-import { SUBSYSTEMS } from "../../../lib/system";
+import { MATURITY_TONE, SUBSYSTEMS } from "../../../lib/system";
+import { CapabilityPanel } from "../../../components/CapabilityPanel";
 import { useRole } from "../../../components/RoleContext";
 import { EmptyState, PageHeader, Section, Status } from "../../../components/cf/primitives";
 
@@ -44,11 +45,15 @@ export default function AdminPage() {
         copy={
           <>
             <p>The engines that power every creator action — kept out of the studio. Each subsystem links to its design document.</p>
-            <p><strong>Implemented subsystems ship with code and tests.</strong></p>
+            <p><strong>Maturity follows the Reality Gate: wired is not working, and nothing is validated until an acceptance test proves it.</strong></p>
           </>
         }
-        status={{ tone: "live", label: `${SUBSYSTEMS.filter((s) => s.status === "Implemented").length} / ${SUBSYSTEMS.length} implemented` }}
+        status={{ tone: "live", label: `${SUBSYSTEMS.filter((s) => s.maturity === "VALIDATED" || s.maturity === "PRODUCTION_READY").length} / ${SUBSYSTEMS.length} validated` }}
       />
+
+      <Section id="capabilities" label="Live" title="What works right now.">
+        <CapabilityPanel />
+      </Section>
 
       <Section id="compute" label="Subsystems" title="Compute, memory and render.">
         <div className="grid gap-px border border-cf-line bg-cf-line sm:grid-cols-2 lg:grid-cols-3">
@@ -56,7 +61,7 @@ export default function AdminPage() {
             <a key={s.name} href={`${REPO}/${s.doc}`} className="flex min-h-[220px] flex-col bg-cf-bg p-6 transition hover:bg-cf-soft">
               <div className="flex items-center justify-between gap-3">
                 <span className="font-mono text-[11px] text-cf-muted">{String(i + 1).padStart(2, "0")}</span>
-                <Status tone={s.status === "Implemented" ? "ok" : s.status === "Stubbed" ? "warn" : "idle"}>{s.status}</Status>
+                <Status tone={MATURITY_TONE[s.maturity]}>{s.maturity.replace("_", " ").toLowerCase()}</Status>
               </div>
               <h3 className="mt-6 font-display font-semibold text-[21px] leading-tight tracking-[-0.02em]">{s.name}</h3>
               <p className="mt-2 text-[12px] leading-relaxed text-cf-muted">{s.blurb}</p>

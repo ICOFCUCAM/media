@@ -909,3 +909,38 @@ model RepairJob {
   @@index([issueId, attempt], map: "repair_jobs_issue_idx")
   @@map("repair_jobs")
 }
+
+// ─────────────────────────────────────────────────────────────
+// Truth layer (migration 0031; DirectorOS W1 — DOS-73/75/77/78)
+// ─────────────────────────────────────────────────────────────
+
+/// A gap a production ran with (append-only). Failures stop the job instead.
+model ProductionDegradation {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  code      String
+  severity  String
+  scope     String
+  refId     String?  @map("ref_id")
+  message   String
+  detail    Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([projectId, createdAt], map: "production_degradations_project_idx")
+  @@map("production_degradations")
+}
+
+/// What is actually operational now, computed by the worker (never hand-written).
+model SystemCapability {
+  capability    String   @id
+  provider      String?
+  status        String
+  realExecution Boolean  @map("real_execution")
+  requiresGpu   Boolean  @default(false) @map("requires_gpu")
+  supports      String[] @default([])
+  note          String?
+  reportedBy    String   @map("reported_by")
+  updatedAt     DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("system_capabilities")
+}

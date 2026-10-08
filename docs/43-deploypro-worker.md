@@ -88,3 +88,11 @@ Follow docs/39 §10 steps 1–7 with DeployPro in place of Render:
 - **Keys:** `GPU_JWT_SIGNING_KEY` goes in `deploypro env set … --target production` (encrypted, never readable back). The public key goes on the RunPod pod.
 - **Admin commands** run in the worker image. Keygen needs no database, so it can also run on any machine with the repository:
   `docker run --rm --env-file <prod env> <image> pnpm --filter @cineforge/worker gateway:admin …`
+
+## Truth-layer switches
+
+Since DirectorOS W1 the worker fails a production instead of delivering a
+stand-in (docs/44 §1). Do **not** set `DIRECTOR_ALLOW_STUB`,
+`ALLOW_PLACEHOLDER_MEDIA` or `CINEFORGE_PLACEHOLDER` in production; they exist
+for local runs and tests. Optional: `MODERATION_REQUIRED=1`,
+`CAPABILITY_PUBLISH_SEC` (docs/44 §2).

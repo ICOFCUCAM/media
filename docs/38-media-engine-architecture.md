@@ -4822,3 +4822,10 @@ This is a status log, not a design change. The design sections above remain auth
 3. Run `RUNTIME_TIMING_POLICY=record` and `avsync:check` on real productions. Resolve the `WAN_MAX_FRAMES` mismatch and calibrate the tolerances.
 4. Only then start Phase 6.
 
+**DirectorOS W1 — truth layer (2026-10-08).** Cross-cutting, not a §AX.2 phase:
+it enforces §AV.1 decisions 14, 18 and 21 more broadly. Placeholder output is
+refused, the GPU reports what actually ran, shots are verified in storage before
+`READY`, films never ship with gaps or silence, and every weaker-but-honest
+result is recorded in `production_degradations` (migration 0031, **not
+applied**). Details and behaviour changes: docs/44.
+

@@ -31,6 +31,11 @@ jobs:
         env:
           DATABASE_URL: postgresql://user:pass@localhost:5432/cineforge
 
+      # DirectorOS W1 (DOS-72/73/74): no hidden TODOs in production source, no
+      # unreviewed substitute switches, no maturity claim without evidence.
+      - name: Truth gate
+        run: node scripts/check-truth.mjs && node --test scripts/check-truth.test.mjs
+
       - name: Lint
         run: pnpm lint
 

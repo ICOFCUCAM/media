@@ -8,6 +8,9 @@ import {
   deterministicSeed,
   autoContinuity,
   statePatchFrom,
+  outputDimensions,
+  degradation,
+  type Degradation,
   type SceneBridge,
 } from "@cineforge/shared";
 import { MODEL_VERSIONS } from "@cineforge/model-adapters";
@@ -36,6 +39,8 @@ export interface FilmPlan {
   projectId: string;
   modelId: string;
   scenes: PlannedScene[];
+  /** Gaps in the plan (e.g. continuity CineForge inferred) — recorded by the caller. */
+  degradations: Degradation[];
 }
 
 export class DirectorService {
@@ -45,7 +50,8 @@ export class DirectorService {
 
     const sceneCount = planSceneCount(project.targetSeconds);
     const shotsPerScene = planShotsPerScene();
-    const [width, height] = project.aspectRatio === "9:16" ? [720, 1280] : [1280, 720];
+    // The chosen format and placement (was 1280×720 for everything).
+    const [width, height] = outputDimensions(project.resolution, project.aspectRatio);
     const modelVersion = MODEL_VERSIONS[project.modelId] ?? "unknown";
     // Scene stills: when OpenAI is configured, every shot starts as an
     // image — GPT-image-1 paints the still from the screenplay-derived prompt
@@ -94,9 +100,18 @@ export class DirectorService {
     // Scenes + shots. Create per-scene with nested shots so we get ids back for
     // the queue fan-out. Delete-by-index keeps re-runs idempotent.
     const scenes: PlannedScene[] = [];
+    const inferredContinuity: { scene: number; fields: string[] }[] = [];
     for (let i = 0; i < sceneCount; i++) {
       const beat = draft.scenes[i]!;
       const ac = auto[i]!;
+      // Which continuity fields the heuristic filled (shown, not hidden).
+      const filled = [
+        ...(["whatJustHappened", "whatChanged", "whatCarriesForward", "nextSceneRequirements"] as const)
+          .filter((k) => !beat.bridge?.[k]?.trim()).map((k) => `bridge.${k}`),
+        ...(["emotion", "health", "season", "locationStatus", "goal"] as const)
+          .filter((k) => !beat.state?.[k]).map((k) => `state.${k}`),
+      ];
+      if (i > 0 && filled.length) inferredContinuity.push({ scene: i, fields: filled });
       // Prefer the Director's own continuity; fall back to the deterministic
       // derivation field-by-field so blanks are always filled.
       const bridge: SceneBridge = {
@@ -180,7 +195,13 @@ export class DirectorService {
       });
     }
 
-    return { projectId, modelId: project.modelId, scenes };
+    const degradations: Degradation[] = [];
+    if (inferredContinuity.length) {
+      degradations.push(degradation("CONTINUITY_INFERRED", "project",
+        `The Director left continuity blank in ${inferredContinuity.length} of ${sceneCount - 1} scene transitions; CineForge inferred it from the scene text.`,
+        { detail: { scenes: inferredContinuity } }));
+    }
+    return { projectId, modelId: project.modelId, scenes, degradations };
   }
 }
 

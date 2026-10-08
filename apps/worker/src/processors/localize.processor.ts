@@ -11,11 +11,12 @@ import { Worker } from "bullmq";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { QUEUES, buildSrt, cuesFromLines, type LocalizeJob } from "@cineforge/shared";
+import { QUEUES, buildSrt, cuesFromLines, degradation, languageName, type Degradation, type LocalizeJob } from "@cineforge/shared";
+import { recordDegradations, type DegradationDb } from "../truth/recorder";
 import { prisma } from "@cineforge/db";
 import { buildOpenAIProviders } from "@cineforge/model-adapters";
 import { S3Storage } from "../storage/storage";
-import { translateLines } from "../director/translate";
+import { translateLines, TranslationError } from "../director/translate";
 import { extendVideoArgs, NarrationOverrunError, planNarrationFit } from "../ffmpeg/commands";
 import { ffmpeg, probeDuration } from "../ffmpeg/ffmpeg";
 
@@ -41,6 +42,17 @@ export const localizeWorker = new Worker<LocalizeJob>(
     });
 
     let written = 0;
+    // A language that cannot be translated is skipped and recorded — never
+    // stored with the English text under its name (DOS-75).
+    const gaps: Degradation[] = [];
+    const failedLangs = new Set<string>();
+    const translationFailed = (e: TranslationError, stage: "subtitles" | "dub") => {
+      if (failedLangs.has(e.lang)) return;
+      failedLangs.add(e.lang);
+      gaps.push(degradation("TRANSLATION_FAILED", "locale", `${languageName(e.lang)} is not available: the translation failed.`, {
+        refId: e.lang, detail: { stage, reason: e.reason },
+      }));
+    };
     for (const scene of scenes) {
       // Caption source: dialogue_lines (Director) → dialogue/narration text
       // columns (web) → the scene summary.
@@ -57,8 +69,15 @@ export const localizeWorker = new Worker<LocalizeJob>(
       let changed = false;
 
       for (const lang of languages) {
-        if (existing[lang]) continue; // already localized
-        const translated = await translateLines(lines, lang);
+        if (existing[lang] || failedLangs.has(lang)) continue; // already localized / failed
+        let translated: string[];
+        try {
+          translated = await translateLines(lines, lang);
+        } catch (e) {
+          if (!(e instanceof TranslationError)) throw e;
+          translationFailed(e, "subtitles");
+          continue;
+        }
         const srt = buildSrt(cuesFromLines(translated, scene.durationSec || lines.length * 2));
         const key = `projects/${projectId}/subtitles/${scene.id}.${lang}.srt`;
         await storage.putBytes(key, new TextEncoder().encode(srt), "application/x-subrip");
@@ -91,13 +110,19 @@ export const localizeWorker = new Worker<LocalizeJob>(
           const source = join(work, "final.mp4");
           await storage.download(film.mp4Key, source);
           for (const lang of languages) {
-            if (locales[lang]?.mp4) continue; // already dubbed
+            if (locales[lang]?.mp4 || failedLangs.has(lang)) continue; // already dubbed / untranslatable
             try {
               const translated = await translateLines(narration, lang);
-              const text = translated.join(" ... ").slice(0, 4000); // TTS input cap
+              // The TTS adapter speaks long text in full (no 4000-char cut).
+              const text = translated.join(" ... ");
               const voiceKey = `projects/${projectId}/film/voice_${lang}.mp3`;
               const { tts } = buildOpenAIProviders(process.env, (bytes, ct) => storage.putBytes(voiceKey, bytes, ct));
-              if (!tts) break; // no TTS configured -> subtitles only
+              if (!tts) {
+                gaps.push(degradation("TRACK_MISSING", "locale", `No ${languageName(lang)} dub: no voice provider is configured (subtitles only).`, {
+                  refId: lang, severity: "warning", detail: { track: "dub" },
+                }));
+                continue;
+              }
               await tts.synthesize({ text });
               const voicePath = join(work, `voice_${lang}.mp3`);
               await storage.download(voiceKey, voicePath);
@@ -127,6 +152,10 @@ export const localizeWorker = new Worker<LocalizeJob>(
               console.log(`[localize] dubbed ${projectId} -> ${lang}`);
             } catch (e) {
               console.warn(`[localize] dub ${lang} failed (subtitles still written):`, e instanceof Error ? e.message : e);
+              if (e instanceof TranslationError) translationFailed(e, "dub");
+              else gaps.push(degradation("TRACK_MISSING", "locale", `No ${languageName(lang)} dub: the dub could not be produced.`, {
+                refId: lang, severity: "warning", detail: { track: "dub", error: (e instanceof Error ? e.message : String(e)).slice(0, 300) },
+              }));
             }
           }
         } finally {
@@ -135,7 +164,8 @@ export const localizeWorker = new Worker<LocalizeJob>(
       }
     }
 
-    return { projectId, languages, scenes: scenes.length, tracksWritten: written, dubbed };
+    await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);
+    return { projectId, languages, scenes: scenes.length, tracksWritten: written, dubbed, failed: [...failedLangs] };
   },
   { connection, concurrency: 2 },
 );

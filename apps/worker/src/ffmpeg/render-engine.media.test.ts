@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import { ProductionFailure } from "@cineforge/shared";
 import { NarrationOverrunError } from "./commands";
 import { RenderEngine, type SceneAssets } from "./render-engine";
 import type { Storage } from "../storage/storage";
@@ -80,5 +81,19 @@ describe.runIf(HAVE_FFMPEG)("render engine — narration fit with real media", (
   it("short narration keeps the full picture (the old -shortest cut the video)", async () => {
     const film = await render("voice_short.mp3");
     expect(streamDuration(film, "v:0")).toBeGreaterThanOrEqual(2.9);
+  }, 60_000);
+
+  it("sound that exists but cannot be mixed fails the render (it used to ship the film silent)", async () => {
+    out = await mkdtemp(join(tmpdir(), "cf-out-"));
+    const withMusic: SceneAssets[] = [{ ...scenes("voice_short.mp3")[0]!, musicKey: "missing_music.mp3" }];
+    await expect(new RenderEngine(storage).renderFinal("p1", withMusic)).rejects.toSatisfy(
+      (e: unknown) => e instanceof ProductionFailure && e.code === "AUDIO_MIX_FAILED",
+    );
+  }, 60_000);
+
+  it("a film with no sound tracks still renders (nothing was asked for)", async () => {
+    out = await mkdtemp(join(tmpdir(), "cf-out-"));
+    const r = await new RenderEngine(storage).renderFinal("p1", [{ sceneId: "s1", index: 0, shotKeys: ["shot_a.mp4"] }]);
+    expect(r.degradations).toEqual([]);
   }, 60_000);
 });

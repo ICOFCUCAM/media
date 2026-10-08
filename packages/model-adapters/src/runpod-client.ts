@@ -1,3 +1,4 @@
+import type { ExecutionReport } from "./types";
 /**
  * Thin client for a self-hosted GPU worker running on RunPod (A40 48GB).
  *
@@ -60,6 +61,10 @@ export interface GpuGenerateOutput {
    * Raw wire JSON: Cineforge parses and judges it; absent on older images.
    */
   timing?: unknown;
+  /** What actually ran (mode, conditioning, real frames, inputs ignored). Absent on older images. */
+  execution?: ExecutionReport;
+  /** False for placeholder output. Absent on older images. */
+  realExecution?: boolean;
 }
 
 export class RunpodClient {
