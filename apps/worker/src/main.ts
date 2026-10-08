@@ -19,6 +19,7 @@ import "./processors/voice-lab.processor";
 import "./processors/social.processor";
 import "./processors/publish.processor";
 import { startProjectPoller } from "./orchestration/project-poller";
+import { startHealthServer } from "./health";
 
 // Resilience net: a background worker must not die on a transient connection
 // blip (Redis/Postgres reconnecting, a socket reset). BullMQ + ioredis recover
@@ -59,12 +60,16 @@ for (const name of [QUEUES.video, QUEUES.audio]) {
 // Watch the database for web-created Auto films and enqueue them (Gap 2 bridge).
 const stopPoller = startProjectPoller();
 
+// HTTP health for platforms that need one (DeployPro sets PORT; Render does not).
+const health = process.env.PORT ? startHealthServer({ port: Number(process.env.PORT), ping: () => gpu.redis.ping() }) : null;
+
 console.log("cineforge worker up: processors + project watcher + GPU lifecycle loops running");
 
 // Graceful shutdown.
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, async () => {
     stopPoller();
+    health?.close();
     for (const mgr of gpu.byModel.values()) mgr.stopLoop();
     await gpu.tracker.close();
     await gpu.redis.quit();
