@@ -27,7 +27,8 @@ async function failProject(projectId: string, code: string, message: string) {
 
 const FAILURE_MESSAGES: Record<string, string> = {
   DIRECTOR_UNAVAILABLE: "The film couldn't be planned: the AI Director is unavailable right now. No credits were used — please try again.",
-  DIRECTOR_OUTPUT_INVALID: "The film couldn't be planned: the AI Director returned an incomplete plan. No credits were used — please try again.",
+  DIRECTOR_OUTPUT_INVALID: "The film couldn't be planned: the AI Director's plan failed validation twice. No credits were used — please try again.",
+  DIRECTOR_REFUSED: "The film couldn't be planned: the AI Director declined this brief. No credits were used — try rewording it.",
   MODERATION_UNAVAILABLE: "The film couldn't start: the content check is unavailable right now. No credits were used — please try again.",
 };
 

@@ -48,11 +48,11 @@ export const audioWorker = new Worker<AudioJob>(
         include: { dialogueLines: { orderBy: { index: "asc" } } },
       });
       const fromLines = scene?.dialogueLines.map((d) => d.text).join(" ") ?? "";
-      // Speak, in order of preference: character dialogue, then the Director's
-      // story VOICEOVER (narration). scene.summary is a VISUAL description — only
-      // a last resort, since reading it aloud describes the picture instead of
-      // telling the story (the bug a narrated trailer exposed).
-      const text = (fromLines || [scene?.dialogue, scene?.narration].filter(Boolean).join(" ") || scene?.summary || "").trim();
+      // One narrator voice speaks the film's audio bed. Preference: the
+      // Director's VOICE-OVER (narration), then dialogue lines (until per-
+      // character voices exist — Voice Engine, W7), then the summary as a last
+      // resort (it describes the picture rather than telling the story).
+      const text = (scene?.narration || fromLines || scene?.dialogue || scene?.summary || "").trim();
       if (!text) return { sceneId, kind, skipped: "nothing to speak" };
       const key = `scenes/${sceneId}/audio/voice/${job.id}.mp3`;
       const { tts } = process.env.S3_BUCKET

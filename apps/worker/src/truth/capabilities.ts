@@ -7,7 +7,7 @@
  * pod is awake (the publisher never wakes a sleeping GPU), with the time they
  * were verified.
  */
-import { buildCapabilityRegistry, type Capability, type GpuCapabilitiesWire } from "@cineforge/shared";
+import { buildCapabilityRegistry, type Capability, type CapabilityProbe, type GpuCapabilitiesWire } from "@cineforge/shared";
 import { isMissingTable } from "../timeline/store";
 
 export const GPU_CAPS_TTL_SEC = 7 * 24 * 3600;
@@ -46,10 +46,14 @@ export async function readGpuCaps(cache: CapsCache, modelIds: string[]): Promise
   return out;
 }
 
-export function currentRegistry(env: Record<string, string | undefined>, gpu: Record<string, CachedGpuCaps | null>): Capability[] {
+export function currentRegistry(
+  env: Record<string, string | undefined>,
+  gpu: Record<string, CachedGpuCaps | null>,
+  intelligence?: CapabilityProbe["intelligence"],
+): Capability[] {
   const wire: Record<string, GpuCapabilitiesWire | null> = {};
   for (const [m, c] of Object.entries(gpu)) wire[m] = c?.caps ?? { execution: "not yet verified", realExecution: false };
-  const registry = buildCapabilityRegistry({ env, gpu: wire });
+  const registry = buildCapabilityRegistry({ env, gpu: wire, intelligence });
   // Say when the GPU facts were last verified (pods sleep when idle).
   const wan = gpu["wan-2.1"];
   return registry.map((c) =>

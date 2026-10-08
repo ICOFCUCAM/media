@@ -52,6 +52,8 @@ export interface CapabilityProbe {
   env: Record<string, string | undefined>;
   /** GPU worker `/capabilities` per model id, when reachable. */
   gpu?: Record<string, GpuCapabilitiesWire | null>;
+  /** Intelligence router availability per reasoning task (first configured route's provider). */
+  intelligence?: Partial<Record<"film_plan" | "translation", { available: boolean; provider: string | null }>>;
 }
 
 /** The subset of apps/gpu-worker `/capabilities` the registry reads. */
@@ -93,13 +95,17 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
   const gpuReal = wan?.realExecution === true;
   const gpuMode = wan?.execution ?? (probe.gpu ? "unreachable" : "unprobed");
   const cap = (c: Capability) => c;
+  const brain = (task: "film_plan" | "translation") =>
+    probe.intelligence?.[task] ?? { available: has(env, "ANTHROPIC_API_KEY"), provider: has(env, "ANTHROPIC_API_KEY") ? "anthropic" : null };
+  const plan = brain("film_plan");
+  const tr = brain("translation");
   const list: Capability[] = [
     cap({
       capability: "film_planning",
-      provider: has(env, "ANTHROPIC_API_KEY") ? "anthropic" : null,
-      status: has(env, "ANTHROPIC_API_KEY") ? "experimental" : "unavailable",
-      realExecution: has(env, "ANTHROPIC_API_KEY"),
-      note: has(env, "ANTHROPIC_API_KEY") ? "no real-provider test in CI yet" : "ANTHROPIC_API_KEY not set — films cannot be planned",
+      provider: plan.available ? plan.provider : null,
+      status: plan.available ? "experimental" : "unavailable",
+      realExecution: plan.available,
+      note: plan.available ? "no real-provider test in CI yet" : "no planning model configured (INTELLIGENCE_ROUTES / ANTHROPIC_API_KEY) — films cannot be planned",
     }),
     cap({
       capability: "content_moderation",
@@ -171,9 +177,9 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
     cap({ capability: "sfx_generation", provider: null, status: "not_implemented", realExecution: false }),
     cap({
       capability: "translation",
-      provider: has(env, "ANTHROPIC_API_KEY") ? "anthropic" : null,
-      status: has(env, "ANTHROPIC_API_KEY") ? "experimental" : "unavailable",
-      realExecution: has(env, "ANTHROPIC_API_KEY"),
+      provider: tr.available ? tr.provider : null,
+      status: tr.available ? "experimental" : "unavailable",
+      realExecution: tr.available,
     }),
     cap({
       capability: "upscale_4k",

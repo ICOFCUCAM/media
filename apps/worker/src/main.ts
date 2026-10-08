@@ -22,6 +22,7 @@ import { startProjectPoller } from "./orchestration/project-poller";
 import { startHealthServer } from "./health";
 import { prisma } from "@cineforge/db";
 import { currentRegistry, publishCapabilities, readGpuCaps } from "./truth/capabilities";
+import { intelligence } from "./intelligence";
 
 // Resilience net: a background worker must not die on a transient connection
 // blip (Redis/Postgres reconnecting, a socket reset). BullMQ + ioredis recover
@@ -67,7 +68,12 @@ const stopPoller = startProjectPoller();
 const reporter = process.env.DEPLOYMENT_ID || process.env.HOSTNAME || "worker";
 const publishNow = async () => {
   const caps = await readGpuCaps(gpu.redis, ["wan-2.1", "hunyuan"]);
-  await publishCapabilities(prisma, currentRegistry(process.env, caps), reporter);
+  const router = intelligence();
+  const brain = (task: "film_plan" | "translation") => {
+    const first = router.routesFor(task).find(() => true);
+    return { available: router.available(task), provider: first ? `${first.provider}:${first.model}` : null };
+  };
+  await publishCapabilities(prisma, currentRegistry(process.env, caps, { film_plan: brain("film_plan"), translation: brain("translation") }), reporter);
 };
 publishNow().catch((e) => console.error("[truth] capabilities", e));
 const capsTimer = setInterval(

@@ -51,6 +51,31 @@ export const PROMPTS = {
       "COMPLETE corrected package. Fix exactly those issues; keep everything else as it was.",
     ].join("\n"),
   },
+  translateLines: {
+    id: "translate.lines",
+    version: 1,
+    purpose: "Translate a film's spoken lines into one language, line for line (docs/29).",
+    system: [
+      "You are a professional film translator. Translate each input line into the target language,",
+      "preserving tone, register and meaning for spoken dialogue and voice-over. Return exactly one",
+      "translated line per input line, in the same order.",
+    ].join(" "),
+  },
+  socialKit: {
+    id: "social.kit",
+    version: 1,
+    purpose: "Write a per-platform launch kit (titles, captions, hashtags) for a finished film.",
+    system: [
+      "You are a social media launch strategist. Given a video brief, produce a launch kit",
+      "PER PLATFORM, tuned to each platform's culture and limits:",
+      "- youtube: searchable title (<=90 chars), rich description with paragraphs + keywords, 10-15 tags (no # prefix)",
+      "- tiktok: hooky casual title, short punchy description, 4-6 trending-style hashtags",
+      "- instagram: aesthetic caption-style description with line breaks + emoji, 8-12 hashtags",
+      "- facebook: conversational title + shareable description, 2-4 hashtags",
+      "- x: max-280-char description that IS the post, 2-3 hashtags",
+      "Same video, same language as the brief.",
+    ].join("\n"),
+  },
 } as const satisfies Record<string, PromptDef>;
 
 export function renderPlanRequest(brief: string, c: ProductionConstraints): string {
