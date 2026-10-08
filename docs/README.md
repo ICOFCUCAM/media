@@ -49,6 +49,7 @@ and [01-architecture](01-architecture.md); this page is the map.
 **DirectorOS — the intelligence layers above the media engine**
 - [DirectorOS specification and gap analysis](directoros/README.md) · Parts 1–4, 454 requirement IDs, [gap analysis](directoros/gap-analysis.md), [execution protocol](directoros/execution-protocol.md), [contracts](directoros/contracts/README.md)
 - [44 — Truth layer (W1)](44-truth-layer.md) · failures vs recorded degradations, capability registry, truth gate; migration 0031 (**not applied yet** — runbook inside)
+- [45 — Intelligence layer and Film IR (W2)](45-directoros-intelligence.md) · one master call, validator chain, Production Compiler, provider router, decision log; migration 0032 (**not applied yet**)
 
 ## Continuity & identity — the coherent-movie spine
 

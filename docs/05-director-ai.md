@@ -1,3 +1,5 @@
+> **Current implementation:** the Director runs as described in [docs/45](45-directoros-intelligence.md) (DirectorOS W2: one master call → Film IR → validator → Production Compiler). This document is the earlier design.
+
 # 05 — Director AI
 
 The Director AI is the film producer. It turns one prompt into a fully

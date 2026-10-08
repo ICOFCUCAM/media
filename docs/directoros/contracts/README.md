@@ -32,9 +32,10 @@ evidence files that exist (`scripts/check-truth.mjs`).
 | Contract | Subsystem | Workstream | Maturity |
 |---|---|---|---|
 | [truth-layer.md](truth-layer.md) | Truth layer: failures, degradations, capability registry, truth gate | W1 | FUNCTIONAL |
+| [film-ir.md](film-ir.md) | Film IR, validator chain, Production Compiler | W2 | INTEGRATED |
+| [intelligence-layer.md](intelligence-layer.md) | Provider-neutral intelligence layer, router, prompt registry, decision log | W2 | INTEGRATED |
 
 Contracts to write before their workstream starts (from the gap analysis):
-Film IR and validator chain (W2) · Intelligence layer and provider router (W2) ·
 Canon store and World State Engine (W3) · Character Continuity Engine (W3, the
 model is Part 2 §62) · Story graph (W3) · Shot Architect and Cinematography
 Engine (W4) · Prompt Compiler and model compilers (W4) · Visual Reviewer and
