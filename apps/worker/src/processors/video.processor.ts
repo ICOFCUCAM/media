@@ -9,6 +9,9 @@
  *  - Cost metering + credit debit (C8): only billed when GPU is actually used.
  */
 import { Worker, UnrecoverableError } from "bullmq";
+import IORedis from "ioredis";
+import { recordDegradations, type DegradationDb } from "../truth/recorder";
+import { rememberGpuCaps } from "../truth/capabilities";
 import {
   QUEUES,
   shouldPauseForBudget,
@@ -18,6 +21,10 @@ import {
   type SceneInput,
   type StatePatch,
   type SceneBridge,
+  outputDimensions,
+  judgeRun,
+  degradation,
+  type Degradation,
 } from "@cineforge/shared";
 import { buildClusterRegistry, buildOpenAIProviders, MODEL_VERSIONS, type JobContext, type ShotRequest } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
@@ -167,7 +174,7 @@ function buildShotRequest(
   loraKeys: string[] = [],
   loraSha256: Record<string, string> = {},
 ): ShotRequest {
-  const [w, h] = shot.scene.project.aspectRatio === "9:16" ? [720, 1280] : [1280, 720];
+  const [w, h] = outputDimensions(shot.scene.project.resolution, shot.scene.project.aspectRatio);
   // video-to-video: an uploaded reference video drives the motion style.
   const refVideo = shot.referenceVideoKey && !PREVIEW_SEED.test(shot.referenceVideoKey) ? shot.referenceVideoKey : undefined;
   // Seed frame first, then the character's reference frames (deduped).
@@ -211,16 +218,47 @@ const PREVIEW_SEED = /^(generated:|local:|ref:)/;
 async function resolveSeedKey(shot: ShotWithScene): Promise<string | undefined> {
   if (shot.source !== "image") return undefined;
   if (shot.seedImageKey && !PREVIEW_SEED.test(shot.seedImageKey)) return shot.seedImageKey; // uploaded
-  if (!process.env.OPENAI_API_KEY || !process.env.S3_BUCKET) return undefined;
+  if (!process.env.OPENAI_API_KEY || !process.env.S3_BUCKET) throw new SeedUnavailable("no image provider or storage configured");
 
   const key = `projects/${shot.scene.projectId}/seeds/${shot.id}.png`;
   const { image } = buildOpenAIProviders(process.env, (bytes, ct) => storage.putBytes(key, bytes, ct));
-  if (!image) return undefined;
-  const [w, h] = shot.scene.project.aspectRatio === "9:16" ? [720, 1280] : [1280, 720];
+  if (!image) throw new SeedUnavailable("image provider unavailable");
+  const [w, h] = outputDimensions(shot.scene.project.resolution, shot.scene.project.aspectRatio);
   const { imageKey } = await image.generate({ prompt: shot.prompt, width: w, height: h });
   await prisma.shot.update({ where: { id: shot.id }, data: { seedImageKey: imageKey } });
   return imageKey;
 }
+
+class SeedUnavailable extends Error {}
+
+/**
+ * Never self-certify (DOS-70): the clip the provider names must exist in our
+ * storage, non-empty, before the shot is READY. A missing object is retried
+ * (eventual consistency) and then fails the shot — it is never assembled.
+ */
+async function verifyArtifact(key: string): Promise<number> {
+  const size = await storage.size(key);
+  if (!size) throw new Error(`ARTIFACT_MISSING: ${key} is not in storage (provider claimed success)`);
+  return size;
+}
+
+// Capability Registry: refresh the GPU's own report at most every 30 min
+// while it is awake (just served a shot) — never wake a sleeping pod for it.
+const capsRedis = new IORedis(process.env.REDIS_URL ?? "redis://localhost:6379", { maxRetriesPerRequest: null, lazyConnect: true });
+const capsCheckedAt = new Map<string, number>();
+async function refreshGpuCaps(modelId: string, probe: () => Promise<Record<string, unknown> | null>): Promise<void> {
+  const last = capsCheckedAt.get(modelId) ?? 0;
+  if (Date.now() - last < 30 * 60_000) return;
+  capsCheckedAt.set(modelId, Date.now());
+  try {
+    const caps = await probe();
+    if (caps) await rememberGpuCaps(capsRedis, modelId, caps);
+  } catch (e) {
+    console.warn(JSON.stringify({ event: "truth.gpu_caps", modelId, error: e instanceof Error ? e.message : String(e) }));
+  }
+}
+
+const allowPlaceholder = () => process.env.ALLOW_PLACEHOLDER_MEDIA === "1";
 
 /** Look for an already-generated clip with the same cacheKey in this project. */
 async function findCacheHit(shot: ShotWithScene): Promise<{ videoKey: string; thumbnailKey: string | null } | null> {
@@ -294,13 +332,17 @@ export const videoWorker = new Worker<VideoJob>(
     await prisma.shot.update({ where: { id: shotId }, data: { status: "GENERATING" } });
 
     // image-to-video: use the uploaded seed, or generate one (OpenAI) first.
-    // The still is an enhancement — if the image provider fails, fall back to
-    // text-to-video rather than failing the shot (and stalling the film flow).
+    // Without a still the shot runs text-to-video — recorded as a degradation
+    // the user sees (DOS-75), never a silent switch.
+    const gaps: Degradation[] = [];
     let seedKey: string | undefined;
     try {
       seedKey = await resolveSeedKey(shot);
     } catch (e) {
-      console.warn(`[video] seed frame failed for shot ${shotId}, falling back to text-to-video:`, e instanceof Error ? e.message : e);
+      const reason = e instanceof Error ? e.message : String(e);
+      gaps.push(degradation("SEED_IMAGE_UNAVAILABLE", "shot", "No seed still for this shot; it was generated from text only.", {
+        refId: shotId, detail: { reason },
+      }));
     }
     // Continuity: inherit prior scenes into the prompt + reuse the same character
     // reference frames so identity is locked pixel-level (docs/28).
@@ -309,6 +351,22 @@ export const videoWorker = new Worker<VideoJob>(
     // Job authorization reads the job's state fresh, immediately before dispatch.
     request.job = await jobContext(shotId, adapter.id);
     const result = await adapter.generate(request);
+
+    // What actually ran (DOS-70/75): placeholder media never becomes a shot;
+    // clamped size/length, ignored references and skipped LoRAs are recorded.
+    const judged = judgeRun(result.execution, result.realExecution,
+      { width: request.width, height: request.height, durationSec: request.durationSec, fps: request.fps ?? 16, shotId },
+      { allowPlaceholder: allowPlaceholder() });
+    if (judged.failure) {
+      await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);
+      throw new UnrecoverableError(judged.failure.message);
+    }
+    gaps.push(...judged.degradations);
+    if (adapter.id !== modelId) {
+      gaps.push(degradation("MODEL_SUBSTITUTED", "shot", `Generated with ${adapter.id} instead of ${modelId} (video-to-video).`, {
+        refId: shotId, severity: "info", detail: { requested: modelId, used: adapter.id },
+      }));
+    }
 
     // Timing gate (docs/38 §AV.5): Cineforge classifies what was produced.
     // Default mode records only; RUNTIME_TIMING_POLICY=enforce acts on it.
@@ -320,7 +378,11 @@ export const videoWorker = new Worker<VideoJob>(
     if (timing.action === "fail") throw new UnrecoverableError(`TIMING ${timing.decision.code}: ${timing.decision.message}`);
     if (timing.action === "retry") throw new Error(`TIMING ${timing.decision.code}: ${timing.decision.message}`);
 
-    // QC gate (docs/09) omitted here; on failure throw to trigger retry.
+    // The clip must exist before the shot is READY (DOS-70). Visual / sync QC
+    // of the clip's content is W5; this is the storage + execution check.
+    await verifyArtifact(result.videoKey);
+    await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);
+    if (adapter.runtimeCapabilities) await refreshGpuCaps(adapter.id, () => adapter.runtimeCapabilities!());
 
     await prisma.shot.update({
       where: { id: shotId },

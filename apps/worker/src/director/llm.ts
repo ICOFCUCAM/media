@@ -8,11 +8,15 @@
  * character appearance, location and scene beat the Director wrote here.
  *
  * Runs on Anthropic Claude (default `claude-opus-4-8`, override ANTHROPIC_MODEL).
- * Falls back to a deterministic stub when ANTHROPIC_API_KEY is unset or the call
- * fails, so the pipeline never hard-stops on an LLM hiccup.
+ *
+ * No fake completion (DirectorOS DOS-74/75): when ANTHROPIC_API_KEY is unset or
+ * the call fails, planning FAILS with DIRECTOR_UNAVAILABLE — it never produces a
+ * stand-in film. The deterministic stub exists only for local runs and tests,
+ * behind DIRECTOR_ALLOW_STUB=1. A plan missing its essential content fails with
+ * DIRECTOR_OUTPUT_INVALID instead of being padded with invented defaults.
  */
 import Anthropic from "@anthropic-ai/sdk";
-import type { SceneBridge, StateFields } from "@cineforge/shared";
+import { ProductionFailure, type SceneBridge, type StateFields } from "@cineforge/shared";
 
 export const LOCATION_KINDS = ["CITY", "KINGDOM", "BUILDING", "ROOM", "LANDSCAPE", "INTERIOR", "EXTERIOR"] as const;
 export type LocationKind = (typeof LOCATION_KINDS)[number];
@@ -36,6 +40,8 @@ export interface FilmDraft {
   protagonist: { name: string; age: number | null; gender: string | null; appearance: string; personality: string | null };
   scenes: SceneBeat[];
   raw: unknown;
+  /** Presentation fields CineForge derived because the Director left them blank. */
+  inferred: string[];
 }
 
 const SYSTEM = [
@@ -199,45 +205,90 @@ const PLAN_SCHEMA = {
   },
 } as const;
 
-/** Coerce a raw plan object (from the tool call or extracted JSON) into a FilmDraft. */
-function coerceDraft(j: Record<string, unknown>, brief: string, sceneCount: number): FilmDraft {
+/**
+ * Validate a raw plan object (tool call or extracted JSON) into a FilmDraft.
+ *
+ * Essential content must come from the Director: logline, the protagonist's
+ * name and appearance, the location's name and description, and a summary for
+ * every scene. Anything missing fails the plan (DOS-24: validate, don't pad).
+ * Only presentation details with an obvious derivation are filled (genre/tone
+ * labels, a heading built from the location, day/night alternation, empty
+ * narration) and they are listed in `inferred`.
+ */
+export function coerceDraft(j: Record<string, unknown>, brief: string, sceneCount: number): FilmDraft {
   const loc = (j.location ?? {}) as Record<string, unknown>;
   const pro = (j.protagonist ?? {}) as Record<string, unknown>;
   const rawScenes = Array.isArray(j.scenes) ? (j.scenes as Record<string, unknown>[]) : [];
+  const missing: string[] = [];
+  const need = (v: unknown, path: string): string => {
+    const t = typeof v === "string" ? v.trim() : "";
+    if (!t) missing.push(path);
+    return t;
+  };
+  const logline = need(j.logline, "logline");
+  const proName = need(pro.name, "protagonist.name");
+  const proLook = need(pro.appearance, "protagonist.appearance");
+  const locName = need(loc.name, "location.name");
+  const locDesc = need(loc.description, "location.description");
+  if (rawScenes.length < sceneCount) missing.push(`scenes (${rawScenes.length}/${sceneCount})`);
+  const inferred: string[] = [];
   const scenes: SceneBeat[] = Array.from({ length: sceneCount }, (_, i) => {
     const s = rawScenes[i] ?? {};
-    const tod = str(s.timeOfDay, i % 2 ? "night" : "day");
+    const summary = need(s.summary, `scenes[${i}].summary`);
+    let tod = typeof s.timeOfDay === "string" && s.timeOfDay.trim() ? s.timeOfDay.trim() : "";
+    if (!tod) {
+      tod = i % 2 ? "night" : "day";
+      inferred.push(`scenes[${i}].timeOfDay`);
+    }
+    let heading = typeof s.heading === "string" ? s.heading.trim() : "";
+    if (!heading) {
+      heading = `EXT. ${(locName || "LOCATION").toUpperCase()} - ${tod.toUpperCase()}`;
+      inferred.push(`scenes[${i}].heading`);
+    }
     return {
-      heading: str(s.heading, `EXT. ${str(loc.name, "LOCATION").toUpperCase()} - ${tod.toUpperCase()}`),
-      summary: str(s.summary, `Beat ${i + 1}.`),
+      heading,
+      summary,
       narration: str(s.narration, ""),
       timeOfDay: tod,
       bridge: parseBridge(s.bridge),
       state: parseState(s.state),
     };
   });
+  if (missing.length) {
+    throw new ProductionFailure("DIRECTOR_OUTPUT_INVALID", `the plan is missing ${missing.slice(0, 6).join(", ")}${missing.length > 6 ? ", …" : ""}`, {
+      missing,
+    });
+  }
+  for (const k of ["genre", "tone", "synopsis"] as const) if (typeof j[k] !== "string" || !(j[k] as string).trim()) inferred.push(k);
 
   return {
-    logline: str(j.logline, brief.slice(0, 80)),
+    logline,
     synopsis: str(j.synopsis, brief),
     genre: str(j.genre, "drama"),
     tone: str(j.tone, "cinematic"),
-    location: { name: str(loc.name, "The Location"), kind: asKind(loc.kind), description: str(loc.description, "a vivid setting") },
+    location: { name: locName, kind: asKind(loc.kind), description: locDesc },
     protagonist: {
-      name: str(pro.name, "Protagonist"),
+      name: proName,
       age: numOrNull(pro.age),
       gender: strOrNull(pro.gender),
-      appearance: str(pro.appearance, "a distinctive lead with a memorable, consistent look"),
+      appearance: proLook,
       personality: strOrNull(pro.personality),
     },
     scenes,
     raw: j,
+    inferred,
   };
 }
 
-/** Plan a film with Claude; deterministic fallback when unavailable. */
+const stubAllowed = () => process.env.DIRECTOR_ALLOW_STUB === "1";
+
+/** Plan a film with Claude. Fails (DIRECTOR_UNAVAILABLE) rather than inventing a film. */
 export async function draftFilm(brief: string, sceneCount: number): Promise<FilmDraft> {
-  if (!process.env.ANTHROPIC_API_KEY) return stubDraft(brief, sceneCount);
+  if (!process.env.ANTHROPIC_API_KEY) {
+    if (stubAllowed()) return stubDraft(brief, sceneCount);
+    throw new ProductionFailure("DIRECTOR_UNAVAILABLE", "no planning model is configured (ANTHROPIC_API_KEY)");
+  }
+  let j: Record<string, unknown>;
   try {
     const client = new Anthropic(); // reads ANTHROPIC_API_KEY
     // Force the plan through a tool's input_schema (structured output). Reading
@@ -253,7 +304,6 @@ export async function draftFilm(brief: string, sceneCount: number): Promise<Film
     });
 
     const toolUse = res.content.find((b): b is Anthropic.ToolUseBlock => b.type === "tool_use" && b.name === PLAN_TOOL);
-    let j: Record<string, unknown>;
     if (toolUse && toolUse.input && typeof toolUse.input === "object") {
       j = toolUse.input as Record<string, unknown>;
     } else {
@@ -261,14 +311,18 @@ export async function draftFilm(brief: string, sceneCount: number): Promise<Film
       if (!text) throw new Error("Director: no tool_use or text block in response");
       j = extractJson(text.text);
     }
-    return coerceDraft(j, brief, sceneCount);
   } catch (err) {
-    console.error("[director] LLM planning failed, using deterministic fallback:", err);
-    return stubDraft(brief, sceneCount);
+    // The SDK has already retried transient errors. Report, never substitute.
+    console.error(JSON.stringify({ event: "director.unavailable", error: err instanceof Error ? err.message : String(err) }));
+    if (stubAllowed()) return stubDraft(brief, sceneCount);
+    throw new ProductionFailure("DIRECTOR_UNAVAILABLE", "the planning model could not be reached", {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
+  return coerceDraft(j, brief, sceneCount);
 }
 
-/** Deterministic placeholder used when no key is set or the LLM call fails. */
+/** Deterministic stand-in plan — local runs and tests only (DIRECTOR_ALLOW_STUB=1). */
 function stubDraft(brief: string, sceneCount: number): FilmDraft {
   const title = brief.slice(0, 60);
   return {
@@ -290,6 +344,7 @@ function stubDraft(brief: string, sceneCount: number): FilmDraft {
       narration: `And so the kingdom's struggle for freedom deepened.`,
       timeOfDay: i % 2 ? "night" : "day",
     })),
-    raw: { brief },
+    raw: { brief, stub: true },
+    inferred: ["*"],
   };
 }
