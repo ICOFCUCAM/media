@@ -39,8 +39,17 @@ missing, a real model is unpinned, or the primary model's weights digest
 cannot be resolved. Run tests with
 `pip install -r requirements.txt -r requirements-dev.txt && python -m pytest`.
 
-Real inference runs when CUDA is available; otherwise it falls back to a
-placeholder clip (set `CINEFORGE_PLACEHOLDER=1` to force it).
+Real inference runs when CUDA is available. Without CUDA the worker is
+**unavailable**: `/generate` returns 503 `CUDA_UNAVAILABLE` and `/capabilities`
+reports `"execution": "unavailable"`. The FFmpeg placeholder clip runs only when
+`CINEFORGE_PLACEHOLDER=1` is set explicitly (tests, local runs), and every
+response says so: `realExecution` is false and `execution.mode` is
+`"placeholder"`. Cineforge refuses placeholder results in production.
+
+Every `/generate` response carries `execution`: what actually ran (mode,
+`t2v`/`i2v` conditioning, the real width, height, frames and steps after the
+`WAN_MAX_*` caps, references used or ignored, LoRAs applied or skipped with the
+reason). `width`/`height` are the produced dimensions, not the request.
 
 ## Deploy on RunPod
 1. **Build & push** the image (from the repo root):

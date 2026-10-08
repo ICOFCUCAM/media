@@ -46,7 +46,7 @@ from .gateway.authz import TimingRequest
 from .code_digest import code_digest
 from .gateway.manifest import PLACEHOLDER
 from .media_io import LoraIntegrityError, put_file, storage_credentials_present
-from .pipeline import VideoPipeline, upload_clip
+from .pipeline import GpuUnavailableError, StorageUnconfiguredError, VideoPipeline, upload_clip
 from .timing import TimingProbeError, video_timing_report
 
 MODEL_NAME = os.environ.get("MODEL_NAME", "wan-2.1")
@@ -99,6 +99,7 @@ class GenerateOutput(BaseModel):
     thumbnailKey: str | None = None
     seed: int
     gpuMs: int
+    # What was actually produced (after the worker's caps), not the request.
     width: int
     height: int
     # The requested duration (kept for compatibility). What was actually
@@ -106,6 +107,11 @@ class GenerateOutput(BaseModel):
     durationSec: float
     videoBytes: int | None = None
     timing: dict | None = None
+    # What actually ran (DOS-70/75): mode real|placeholder, conditioning,
+    # real frames/steps, which references and LoRAs were used or ignored.
+    # Cineforge refuses a placeholder result in production.
+    execution: dict | None = None
+    realExecution: bool = False
 
 
 class RuntimeIdentity:
@@ -243,6 +249,7 @@ def create_app(
             "status": "ok",
             "model": pipeline.model_name,
             "modelLoaded": pipeline.is_loaded,
+            "execution": getattr(pipeline, "execution_mode", "real" if pipeline.is_real else "placeholder"),
             "vramFreeMb": pipeline.vram_free_mb(),
         }
 
@@ -298,6 +305,11 @@ def create_app(
         )
         try:
             return await run_in_threadpool(_generate, inp)
+        except GpuUnavailableError as e:
+            log.warning('{"event":"gpu.unavailable","code":%r,"sub":%r}', e.code, inp.jobId)
+            raise HTTPException(status_code=503, detail={"error": e.code}) from None
+        except StorageUnconfiguredError:
+            raise HTTPException(status_code=500, detail={"error": "STORAGE_UNCONFIGURED"}) from None
         except LoraIntegrityError as e:
             log.warning('{"event":"gateway.lora_integrity","decision":"reject","code":%r,"sub":%r}', e.code, inp.jobId)
             raise HTTPException(status_code=409, detail={"error": e.code}) from None
@@ -328,8 +340,13 @@ def create_app(
                 lora_sha256=inp.loraSha256,
                 strict_integrity=config.enforcing,
             )
+            # Read under the lock: the next inference overwrites it.
+            execution = getattr(pipeline, "last_execution", None)
 
         gpu_ms = int((time.monotonic() - started) * 1000)
+        real = bool(execution and execution.get("mode") == "real")
+        out_w = int(execution["width"]) if execution and execution.get("width") else inp.width
+        out_h = int(execution["height"]) if execution and execution.get("height") else inp.height
 
         # Measure what was produced. A missing report is Cineforge's to judge
         # (TIMING_REPORT_MISSING), never papered over with the request values.
@@ -363,11 +380,13 @@ def create_app(
                 thumbnailKey=thumb_key,
                 seed=seed,
                 gpuMs=gpu_ms,
-                width=inp.width,
-                height=inp.height,
+                width=out_w,
+                height=out_h,
                 durationSec=inp.durationSec,
                 videoBytes=size,
                 timing=timing,
+                execution=execution,
+                realExecution=real,
             )
 
         key = f"_generated/{pipeline.model_name}/{uuid.uuid4().hex}.mp4"
@@ -378,10 +397,12 @@ def create_app(
             thumbnailKey=thumb_key,
             seed=seed,
             gpuMs=gpu_ms,
-            width=inp.width,
-            height=inp.height,
+            width=out_w,
+            height=out_h,
             durationSec=inp.durationSec,
             timing=timing,
+            execution=execution,
+            realExecution=real,
         )
 
     # ── Per-character LoRA training (docs/28): disabled ───────────────────

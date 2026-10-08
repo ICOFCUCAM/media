@@ -6,9 +6,15 @@ Runs REAL inference for both models (docs/22):
   - MODEL_NAME=hunyuan  → Hunyuan Video (premium; hunyuanvideo-community/HunyuanVideo)
 
 The heavy deps (torch/diffusers) are imported lazily so this module still loads
-on a machine without a GPU. When CUDA isn't available (or CINEFORGE_PLACEHOLDER=1)
-it falls back to the FFmpeg placeholder, so the pipeline is runnable end-to-end
-for testing and the API boots anywhere.
+on a machine without a GPU. The FFmpeg placeholder runs ONLY when
+CINEFORGE_PLACEHOLDER=1 is set explicitly (tests, local runs). Without that flag
+a worker with no CUDA is *unavailable*: it never returns a placeholder clip as
+if it were a generation (DirectorOS DOS-75, No Silent Degradation).
+
+Every generation records what actually ran in `last_execution` (mode,
+conditioning, the real width/height/frames/steps, which references and LoRAs
+were used or ignored), and the server returns it, so Cineforge judges the
+result instead of trusting the request (DOS-70, never self-certify).
 
 Identity mapping (docs/28): the seed/reference frame drives image-to-video when
 an I2V model is configured (WAN_I2V_MODEL_ID); per-character LoRA is loaded +
@@ -56,6 +62,8 @@ class VideoPipeline:
         self._i2v = None  # image-to-video pipeline (lazy)
         self._loaded = False
         self._real = False  # True once real weights are loaded
+        self._unavailable: str | None = None  # why real execution is impossible
+        self.last_execution: dict | None = None
 
     @property
     def is_loaded(self) -> bool:
@@ -65,6 +73,19 @@ class VideoPipeline:
     def is_real(self) -> bool:
         """True once real weights are loaded (False in placeholder mode)."""
         return self._real
+
+    @property
+    def execution_mode(self) -> str:
+        """"real" | "placeholder" | "unavailable" (or "unloaded" before load())."""
+        if not self._loaded:
+            return "unloaded"
+        if self._real:
+            return "real"
+        return "unavailable" if self._unavailable else "placeholder"
+
+    @property
+    def unavailable_reason(self) -> str | None:
+        return self._unavailable
 
     def has_i2v(self) -> bool:
         """Whether a reference frame switches this worker to image-to-video."""
@@ -80,8 +101,13 @@ class VideoPipeline:
     def load(self) -> None:
         if self._loaded:
             return
-        if PLACEHOLDER or not _cuda_available():
-            self._loaded = True  # placeholder mode
+        if PLACEHOLDER:
+            self._loaded = True  # explicit placeholder mode (tests / local)
+            return
+        if not _cuda_available():
+            # No silent fallback: report unavailable; /generate refuses.
+            self._unavailable = "CUDA_UNAVAILABLE"
+            self._loaded = True
             return
         self._load_real()
         self._loaded = True
@@ -147,13 +173,31 @@ class VideoPipeline:
             return 0
 
     def capabilities(self) -> dict:
-        # `limits`: the workload caps this worker applies (docs/38 §AV.5 — a cap
-        # that shortens a clip must be visible, so Cineforge can refuse a request
-        # instead of paying for a re-timed result). None when nothing is capped.
-        limits = runtime_limits() if self.is_real else None
-        if self.model_name == "hunyuan":
-            return {"model": "hunyuan", "maxDuration": 5, "resolutions": [[1280, 720], [1920, 1080]], "supportsRefImage": True, "supportsRefVideo": True, "supportsLora": True, "limits": limits}
-        return {"model": "wan-2.1", "maxDuration": 5, "resolutions": [[832, 480], [1280, 720]], "supportsRefImage": True, "supportsRefVideo": True, "supportsLora": True, "limits": limits}
+        """What this worker can really do now — never more (DOS-77).
+
+        `limits`: the workload caps applied (docs/38 §AV.5 — a cap that shortens
+        a clip must be visible). Reference video, camera control and v2v are not
+        implemented on these backends, so they are reported as unsupported.
+        """
+        caps = runtime_limits()
+        real = self.is_real
+        placeholder = self._loaded and not real and not self._unavailable
+        res = [[1280, 720], [1920, 1080]] if self.model_name == "hunyuan" else [[832, 480], [1280, 720]]
+        return {
+            "model": self.model_name,
+            "execution": self.execution_mode,
+            "realExecution": real,
+            "unavailableReason": self._unavailable,
+            "maxDuration": 5,
+            "resolutions": res,
+            "maxResolution": [caps["maxWidth"], caps["maxHeight"]] if real else None,
+            # Image conditioning needs the I2V model (Wan only).
+            "supportsRefImage": (real or placeholder) and self.has_i2v(),
+            "supportsRefVideo": False,
+            "supportsCamera": False,
+            "supportsLora": real or placeholder,
+            "limits": caps if real else None,
+        }
 
     def generate(
         self,
@@ -184,6 +228,8 @@ class VideoPipeline:
         read remains for report-mode callers that do not send URLs yet.
         """
         self.load()
+        if self._unavailable:
+            raise GpuUnavailableError(self._unavailable)
         self._input_urls = input_urls
         # Report mode only: if a presigned fetch fails, read the bucket directly
         # as before, so observing the gateway never breaks generation.
@@ -203,6 +249,12 @@ class VideoPipeline:
                     path = self._lora_or_skip(key)
                     if path:
                         os.unlink(path)
+            self.last_execution = {
+                "mode": "placeholder", "conditioning": "none", "width": width, "height": height,
+                "frames": max(1, int(duration_sec * fps)), "fps": fps, "steps": 0,
+                **_ignored(reference_image_keys, reference_video_keys, video_op, camera, used_ref=False),
+                "lorasApplied": [], "lorasSkipped": [{"key": k, "reason": "PLACEHOLDER"} for k in lora_keys],
+            }
             return self._placeholder(prompt, width, height, duration_sec, fps, reference_image_keys, video_op, lora_keys)
 
         import torch  # noqa: PLC0415
@@ -234,21 +286,35 @@ class VideoPipeline:
         # Identity lock: a seed/reference frame drives image-to-video when an I2V
         # model is configured; otherwise we run text-to-video.
         pipe = self._t2v
+        used_ref = False
         if reference_image_keys and self._load_i2v() is not None:
             pipe = self._i2v
             call["image"] = load_image(self._download(reference_image_keys[0]))
+            used_ref = True
 
-        # Per-character LoRA — the tightest identity lock (docs/28).
+        # Per-character LoRA — the tightest identity lock (docs/28). A LoRA that
+        # is not applied is reported (lorasSkipped), never dropped silently.
         fused = False
+        applied: list[str] = []
+        skipped: list[dict] = []
         for key in lora_keys:
             path = self._lora_or_skip(key)
             if not path:
+                skipped.append({"key": key, "reason": "LORA_INTEGRITY"})
                 continue
             try:
                 pipe.load_lora_weights(path)
                 fused = True
+                applied.append(key)
             except Exception as e:  # noqa: BLE001
-                print(f"[pipeline] lora load failed ({key}): {e}")
+                print(f'{{"event":"pipeline.lora_load_failed","key":{key!r},"error":{type(e).__name__!r}}}')
+                skipped.append({"key": key, "reason": "LORA_LOAD_FAILED"})
+        self.last_execution = {
+            "mode": "real", "conditioning": "i2v" if used_ref else "t2v",
+            "width": width, "height": height, "frames": num_frames, "fps": fps, "steps": steps,
+            **_ignored(reference_image_keys, reference_video_keys, video_op, camera, used_ref=used_ref),
+            "lorasApplied": applied, "lorasSkipped": skipped,
+        }
         if fused:
             try:
                 pipe.fuse_lora()
@@ -350,6 +416,28 @@ class VideoPipeline:
         return out, None
 
 
+class GpuUnavailableError(RuntimeError):
+    """Real execution is impossible on this worker (e.g. no CUDA, no placeholder flag)."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+
+class StorageUnconfiguredError(RuntimeError):
+    """No upload target and no storage credentials: the clip cannot be stored."""
+
+
+def _ignored(reference_image_keys, reference_video_keys, video_op, camera, *, used_ref: bool) -> dict:
+    """Which requested inputs this run did NOT use (reported, never hidden)."""
+    return {
+        "referenceImagesUsed": 1 if used_ref else 0,
+        "referenceImagesIgnored": len(reference_image_keys or []) - (1 if used_ref else 0),
+        "referenceVideoIgnored": bool(reference_video_keys) or bool(video_op),
+        "cameraIgnored": bool(camera),
+    }
+
+
 def runtime_limits(env: dict | None = None) -> dict:
     """Per-shot workload caps applied by the real pipeline (env-tunable)."""
     env = os.environ if env is None else env
@@ -368,9 +456,12 @@ def _san(text: str) -> str:
 
 def upload_clip(local_mp4: str, key: str, local_thumb: str | None) -> str | None:
     """Upload the generated clip (and thumbnail) to S3; return the thumbnail key.
-    No-ops when S3 isn't configured (keeps the placeholder path runnable locally)."""
+
+    Raises StorageUnconfiguredError when no credentials are set: returning a
+    key for an object that was never written is a phantom artifact (DOS-74).
+    """
     if not os.environ.get("S3_ACCESS_KEY") and not os.environ.get("AWS_ACCESS_KEY_ID"):
-        return key.rsplit(".", 1)[0] + ".jpg" if local_thumb else None
+        raise StorageUnconfiguredError("no output target and no storage credentials")
 
     import boto3  # noqa: PLC0415
 
