@@ -20,6 +20,8 @@ import "./processors/social.processor";
 import "./processors/publish.processor";
 import { startProjectPoller } from "./orchestration/project-poller";
 import { startHealthServer } from "./health";
+import { prisma } from "@cineforge/db";
+import { currentRegistry, publishCapabilities, readGpuCaps } from "./truth/capabilities";
 
 // Resilience net: a background worker must not die on a transient connection
 // blip (Redis/Postgres reconnecting, a socket reset). BullMQ + ioredis recover
@@ -60,6 +62,19 @@ for (const name of [QUEUES.video, QUEUES.audio]) {
 // Watch the database for web-created Auto films and enqueue them (Gap 2 bridge).
 const stopPoller = startProjectPoller();
 
+// Capability Registry (DirectorOS DOS-77/78): publish what is actually
+// operational, from env + the GPU workers' last verified /capabilities.
+const reporter = process.env.DEPLOYMENT_ID || process.env.HOSTNAME || "worker";
+const publishNow = async () => {
+  const caps = await readGpuCaps(gpu.redis, ["wan-2.1", "hunyuan"]);
+  await publishCapabilities(prisma, currentRegistry(process.env, caps), reporter);
+};
+publishNow().catch((e) => console.error("[truth] capabilities", e));
+const capsTimer = setInterval(
+  () => publishNow().catch((e) => console.error("[truth] capabilities", e)),
+  Math.max(60, Number(process.env.CAPABILITY_PUBLISH_SEC ?? 300)) * 1000,
+);
+
 // HTTP health for platforms that need one (DeployPro sets PORT; Render does not).
 const health = process.env.PORT ? startHealthServer({ port: Number(process.env.PORT), ping: () => gpu.redis.ping() }) : null;
 
@@ -69,6 +84,7 @@ console.log("cineforge worker up: processors + project watcher + GPU lifecycle l
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, async () => {
     stopPoller();
+    clearInterval(capsTimer);
     health?.close();
     for (const mgr of gpu.byModel.values()) mgr.stopLoop();
     await gpu.tracker.close();

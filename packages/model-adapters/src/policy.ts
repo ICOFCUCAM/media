@@ -21,7 +21,25 @@ export function allowedModels(tier: Tier): string[] {
   return Object.keys(MODEL_TIERS).filter((m) => isModelAllowed(m, tier));
 }
 
-/** Route to the requested model if allowed, else fall back to the primary model. */
-export function resolveModel(modelId: string, tier: Tier): string {
-  return isModelAllowed(modelId, tier) ? modelId : "wan-2.1";
+export interface ModelResolution {
+  modelId: string;
+  /** True when the requested model was replaced; callers must record or refuse it. */
+  substituted: boolean;
+  requested: string;
+  reason?: "MODEL_NOT_ALLOWED_FOR_TIER" | "MODEL_UNKNOWN";
+}
+
+/**
+ * Route to the requested model if allowed, else to the primary model — and say
+ * so. A substitution is never silent (DirectorOS DOS-75): the caller records a
+ * degradation or refuses the job.
+ */
+export function resolveModel(modelId: string, tier: Tier): ModelResolution {
+  if (isModelAllowed(modelId, tier)) return { modelId, substituted: false, requested: modelId };
+  return {
+    modelId: "wan-2.1",
+    substituted: true,
+    requested: modelId,
+    reason: modelId in MODEL_TIERS ? "MODEL_NOT_ALLOWED_FOR_TIER" : "MODEL_UNKNOWN",
+  };
 }

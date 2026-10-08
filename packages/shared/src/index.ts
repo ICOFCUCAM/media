@@ -11,3 +11,4 @@ export * from "./clock";
 export * from "./runtime";
 export * from "./sync";
 export * from "./timeline";
+export * from "./truth";
