@@ -447,7 +447,9 @@ videoWorker.on("failed", (job, err) => {
   void (async () => {
     if (!job?.data?.shotId) return;
     const attemptsAllowed = (job.opts.attempts ?? 1) as number;
-    if (job.attemptsMade < attemptsAllowed) return; // a retry is coming
+    // UnrecoverableError ends the job on its first attempt — it is terminal too.
+    const unrecoverable = err instanceof UnrecoverableError || (err as Error)?.name === "UnrecoverableError";
+    if (!unrecoverable && job.attemptsMade < attemptsAllowed) return; // a retry is coming
     const reason = (err instanceof Error ? err.message : String(err)).slice(0, 300);
     console.error(`[video] shot ${job.data.shotId} failed terminally: ${reason}`);
     await prisma.shot.update({ where: { id: job.data.shotId }, data: { status: "FAILED" } }).catch(() => {});
@@ -455,8 +457,18 @@ videoWorker.on("failed", (job, err) => {
     await prisma.scene
       .updateMany({ where: { id: job.data.sceneId, project: { mode: "storyboard" } }, data: { status: "FAILED" } })
       .catch(() => {});
+    // A film cannot be delivered with a missing shot (DOS-74): an auto-mode
+    // production fails now with the reason, instead of stalling on GENERATING
+    // and being resumed into the same failure. Storyboard projects keep going:
+    // the creator regenerates the scene.
     await prisma.project
-      .update({ where: { id: job.data.projectId }, data: { errorMessage: `shot: ${reason}`.slice(0, 500) } })
+      .updateMany({
+        where: { id: job.data.projectId, mode: { not: "storyboard" }, status: { in: ["GENERATING", "RENDERING"] } },
+        data: { status: "FAILED", errorMessage: `A shot could not be generated: ${reason}`.slice(0, 500) },
+      })
+      .catch(() => {});
+    await prisma.project
+      .updateMany({ where: { id: job.data.projectId, mode: "storyboard" }, data: { errorMessage: `shot: ${reason}`.slice(0, 500) } })
       .catch(() => {});
     await realtime
       .emit("error", { projectId: job.data.projectId, scope: "video", id: job.data.shotId, message: reason })

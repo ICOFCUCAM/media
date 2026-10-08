@@ -1,12 +1,17 @@
 /**
  * Render processor — consumes `render-queue`. As the flow ROOT it runs only
- * after every scene is finalized. A real implementation invokes the FFmpeg
- * Render Engine (docs/10) to stitch scene clips + audio + subtitles + intro/
- * outro into final.mp4 + an HLS ladder and uploads to S3. This stub computes
- * the duration and writes the Film row so the lifecycle completes.
+ * after every scene is finalized: the FFmpeg Render Engine (docs/10) stitches
+ * the shot clips + audio (+ brand outro) into final.mp4 (+ HLS) in storage and
+ * the Film row is written.
+ *
+ * No fake completion (DirectorOS DOS-74/75): a film with missing shots, with
+ * sound that cannot be mixed, or with nowhere to store it FAILS with the
+ * reason; it is never assembled with gaps, shipped silent or recorded as a
+ * phantom key. What the film ran without (outro, 4K) is recorded and shown.
  */
 import { UnrecoverableError, Worker } from "bullmq";
-import { QUEUES, type RenderJob , parseLanguages } from "@cineforge/shared";
+import { QUEUES, type RenderJob, parseLanguages, degradation, type Degradation } from "@cineforge/shared";
+import { recordDegradations, type DegradationDb } from "../truth/recorder";
 import { prisma } from "@cineforge/db";
 import { NarrationOverrunError } from "../ffmpeg/commands";
 import { RenderEngine, type SceneAssets } from "../ffmpeg/render-engine";
@@ -18,9 +23,15 @@ import { enqueueLocalize } from "../orchestration/localize-queue";
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
 /** 4K upscale (docs/33): final.mp4 -> fal video upscaler -> final_4k.mp4. */
+const record = (projectId: string, ds: Degradation[]) =>
+  recordDegradations(prisma as unknown as DegradationDb, projectId, ds);
+
 async function upscaleFilm(projectId: string) {
   const apiKey = process.env.FAL_KEY;
-  if (!apiKey) return { projectId, skipped: "no FAL_KEY" };
+  if (!apiKey) {
+    await record(projectId, [degradation("UPSCALE_UNAVAILABLE", "film", "4K was chosen but no upscaler is configured; the film is delivered at its rendered size.")]);
+    return { projectId, skipped: "no FAL_KEY" };
+  }
   const film = await prisma.film.findUnique({ where: { projectId }, select: { mp4Key: true, mp44kKey: true } });
   if (!film?.mp4Key) return { projectId, skipped: "no film" };
   if (film.mp44kKey) return { projectId, skipped: "already upscaled" };
@@ -43,8 +54,10 @@ async function upscaleFilm(projectId: string) {
     console.log(`[render] 4K master ready project=${projectId}`);
     return { projectId, mp44kKey: key };
   } catch (e) {
-    // Enhancement only — log and move on; the 1080p film stands.
-    console.warn(`[render] 4K upscale failed project=${projectId}:`, e instanceof Error ? e.message : e);
+    // The rendered film stands; the missing 4K master is recorded and shown.
+    const reason = e instanceof Error ? e.message : String(e);
+    console.warn(`[render] 4K upscale failed project=${projectId}:`, reason);
+    await record(projectId, [degradation("UPSCALE_FAILED", "film", "The 4K upscale failed; the film is available at its rendered size.", { detail: { error: reason.slice(0, 300) } })]);
     return { projectId, failed: true };
   }
 }
@@ -91,6 +104,17 @@ export const renderWorker = new Worker<RenderJob>(
 
       const totalClips = assets.reduce((a, s) => a + s.shotKeys.length, 0);
       const hasClips = totalClips > 0;
+      const totalShots = scenes.reduce((a, s) => a + s.shots.length, 0);
+      // Never assemble a film with gaps (it used to skip missing clips silently).
+      if (hasClips && totalClips < totalShots) {
+        const missing = scenes.flatMap((s) => s.shots.filter((sh) => !sh.videoKey).map((sh) => `${s.index + 1}.${sh.index + 1}`));
+        const message = `${totalShots - totalClips} of ${totalShots} shots were not generated (scene.shot ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? ", …" : ""}) — the film was not assembled.`;
+        console.error(`[render] project=${projectId} SHOTS_MISSING ${missing.length}`);
+        await prisma.project.update({ where: { id: projectId }, data: { status: "FAILED", errorMessage: message } });
+        await realtime.emit("error", { projectId, scope: "render", message });
+        await notifyFinish(projectId, "FAILED", message);
+        return { projectId, failed: "SHOTS_MISSING", missing };
+      }
       console.log(
         `[render] project=${projectId} scenes=${scenes.length} clips=${totalClips} ` +
           `s3Endpoint=${process.env.S3_ENDPOINT ? "set" : "MISSING"} ` +
@@ -124,6 +148,7 @@ export const renderWorker = new Worker<RenderJob>(
         mp4Key = out.mp4Key;
         hlsKey = out.hlsKey;
         posterKey = out.posterKey;
+        await record(projectId, out.degradations);
         console.log(`[render] assembly done project=${projectId} mp4=${mp4Key}`);
       } else if (process.env.S3_ENDPOINT) {
         // PRODUCTION with storage configured but NO clips to assemble: the shots
@@ -137,10 +162,17 @@ export const renderWorker = new Worker<RenderJob>(
         await realtime.emit("error", { projectId, scope: "render", message });
         await notifyFinish(projectId, "FAILED", message);
         return { projectId, failed: "no clips" };
-      } else {
-        // No storage at all (local demo without GPU) — record metadata only so
-        // the lifecycle completes in dev.
+      } else if (process.env.ALLOW_PLACEHOLDER_MEDIA === "1") {
+        // Local demo only (explicit): no storage, record metadata so the
+        // lifecycle completes. Never in production — the key would be a phantom.
         await realtime.emit("render.progress", { projectId, renderJobId: job.id, progress: 1 });
+      } else {
+        const message = "Storage is not configured, so the film cannot be assembled or delivered.";
+        console.error(`[render] project=${projectId} STORAGE_UNCONFIGURED`);
+        await prisma.project.update({ where: { id: projectId }, data: { status: "FAILED", errorMessage: message } });
+        await realtime.emit("error", { projectId, scope: "render", message });
+        await notifyFinish(projectId, "FAILED", message);
+        return { projectId, failed: "STORAGE_UNCONFIGURED" };
       }
 
       const film = await prisma.film.upsert({
@@ -171,6 +203,10 @@ export const renderWorker = new Worker<RenderJob>(
         process.env.UPSCALE_4K !== "0" &&
         owner4k?.resolution === "4k" &&
         (owner4k.user.role === "ADMIN" || ["STUDIO", "AGENCY", "ENTERPRISE"].includes(owner4k.user.tier));
+      if (owner4k?.resolution === "4k" && !eligible4k) {
+        const why = !process.env.FAL_KEY || process.env.UPSCALE_4K === "0" ? "no upscaler is configured" : "your plan does not include 4K";
+        await record(projectId, [degradation("UPSCALE_UNAVAILABLE", "film", `4K was chosen but ${why}; the film is delivered at its rendered size.`)]);
+      }
       if (eligible4k && hasClips) {
         const { Queue } = await import("bullmq");
         const rq = new Queue(QUEUES.render, { connection });

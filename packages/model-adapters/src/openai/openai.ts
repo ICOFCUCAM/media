@@ -92,6 +92,44 @@ export class OpenAIImageAdapter implements ImageModelAdapter {
 }
 
 /* ── Voice — TTS (tts-1, onyx) ───────────────────────────────── */
+/** OpenAI's per-request input limit for /v1/audio/speech. */
+export const TTS_MAX_CHARS = 4000;
+
+/**
+ * Split narration into requests the TTS endpoint accepts, at sentence (then
+ * word) boundaries. The whole text is always spoken: it used to be cut at
+ * 4000 characters without a word (gap-analysis §6 item 20).
+ */
+export function splitForTts(text: string, max = TTS_MAX_CHARS): string[] {
+  const t = text.trim();
+  if (t.length <= max) return t ? [t] : [];
+  const sentences = t.match(/[^.!?…]+[.!?…]+["')\]]*\s*|[^.!?…]+$/g) ?? [t];
+  const out: string[] = [];
+  let cur = "";
+  const push = () => {
+    if (cur.trim()) out.push(cur.trim());
+    cur = "";
+  };
+  for (const s of sentences) {
+    if ((cur + s).length <= max) {
+      cur += s;
+      continue;
+    }
+    push();
+    if (s.length <= max) {
+      cur = s;
+      continue;
+    }
+    // A single sentence longer than the limit: split at word boundaries.
+    for (const w of s.split(/(\s+)/)) {
+      if ((cur + w).length > max) push();
+      cur += w.length > max ? w.slice(0, max) : w;
+    }
+  }
+  push();
+  return out;
+}
+
 export interface OpenAITtsOptions extends CommonOpts {
   model?: string; // default tts-1
   voice?: string; // default onyx
@@ -104,19 +142,31 @@ export class OpenAITtsAdapter implements TtsAdapter {
   }
   async synthesize(req: TtsRequest, signal?: AbortSignal): Promise<TtsResult> {
     if (!this.opts.upload) throw new Error("OpenAITtsAdapter requires an upload hook for the audio bytes");
-    const res = await this.fetch("https://api.openai.com/v1/audio/speech", {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${this.opts.apiKey}` },
-      body: JSON.stringify({
-        model: this.opts.model ?? "tts-1",
-        voice: req.voice ?? this.opts.voice ?? "onyx",
-        input: req.text.slice(0, 4000),
-        response_format: "mp3",
-      }),
-      signal,
-    });
-    if (!res.ok) throw new Error(`OpenAI TTS ${res.status}: ${await res.text()}`);
-    const bytes = new Uint8Array(await res.arrayBuffer());
+    const parts: Uint8Array[] = [];
+    // Long narration is spoken in full, request by request; MP3 frames from the
+    // same model and voice concatenate into one valid stream.
+    for (const input of splitForTts(req.text)) {
+      const res = await this.fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${this.opts.apiKey}` },
+        body: JSON.stringify({
+          model: this.opts.model ?? "tts-1",
+          voice: req.voice ?? this.opts.voice ?? "onyx",
+          input,
+          response_format: "mp3",
+        }),
+        signal,
+      });
+      if (!res.ok) throw new Error(`OpenAI TTS ${res.status}: ${await res.text()}`);
+      parts.push(new Uint8Array(await res.arrayBuffer()));
+    }
+    if (!parts.length) throw new Error("OpenAI TTS: nothing to speak");
+    const bytes = new Uint8Array(parts.reduce((a, p) => a + p.length, 0));
+    let o = 0;
+    for (const p of parts) {
+      bytes.set(p, o);
+      o += p.length;
+    }
     const audioKey = await this.opts.upload(bytes, "audio/mpeg");
     return { audioKey };
   }

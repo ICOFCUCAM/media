@@ -34,7 +34,8 @@ export type DegradationCode =
   | "UPSCALE_UNAVAILABLE"
   | "UPSCALE_FAILED"
   | "TRANSLATION_FAILED"
-  | "RESOLUTION_UNSUPPORTED"; // requested output format not available on the runtime
+  | "RESOLUTION_UNSUPPORTED" // requested output format not available on the runtime
+  | "BRAND_OUTRO_SKIPPED";
 
 export type DegradationSeverity = "info" | "warning" | "major";
 export type DegradationScope = "project" | "scene" | "shot" | "film" | "locale";
@@ -65,6 +66,7 @@ const SEVERITY: Record<DegradationCode, DegradationSeverity> = {
   UPSCALE_FAILED: "major",
   TRANSLATION_FAILED: "major",
   RESOLUTION_UNSUPPORTED: "major",
+  BRAND_OUTRO_SKIPPED: "warning",
 };
 
 export function degradation(

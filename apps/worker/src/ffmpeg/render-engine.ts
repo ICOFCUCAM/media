@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { Storage } from "../storage/storage";
+import { degradation, ProductionFailure, type Degradation } from "@cineforge/shared";
 import { ffmpeg, probeDuration, type DurationProbe, type FfmpegRunner } from "./ffmpeg";
 import {
   normalizeArgs,
@@ -36,6 +37,8 @@ export interface RenderResult {
   mp4Key: string;
   hlsKey: string;
   posterKey: string;
+  /** What this render ran without (recorded and shown, DOS-75). */
+  degradations: Degradation[];
 }
 
 /**
@@ -59,6 +62,7 @@ export class RenderEngine {
     opts: { filmSec?: number } = {},
   ): Promise<RenderResult> {
     const work = await mkdtemp(join(tmpdir(), `cineforge-${projectId}-`));
+    const gaps: Degradation[] = [];
     try {
       const allShotKeys = scenes.flatMap((s) => s.shotKeys);
       if (allShotKeys.length === 0) throw new Error("no shot clips to render");
@@ -130,6 +134,9 @@ export class RenderEngine {
               card = withText;
             } catch (e) {
               console.warn(`[render] outro line skipped:`, e instanceof Error ? e.message : e);
+              gaps.push(degradation("BRAND_OUTRO_SKIPPED", "film", "The brand outro was added without its text line.", {
+                severity: "info", detail: { error: e instanceof Error ? e.message : String(e) },
+              }));
             }
           }
           // Outro resolution may differ from body clips: re-encode pass keeps
@@ -140,6 +147,9 @@ export class RenderEngine {
           console.log(`[render] appended branded outro`);
         } catch (e) {
           console.warn(`[render] brand outro skipped:`, e instanceof Error ? e.message : e);
+          gaps.push(degradation("BRAND_OUTRO_SKIPPED", "film", "The brand outro could not be added to this film.", {
+            detail: { error: e instanceof Error ? e.message : String(e) },
+          }));
         }
       }
 
@@ -154,9 +164,9 @@ export class RenderEngine {
       // 3) Mix audio. Narration: EVERY scene's voice track, concatenated in
       //    scene order, becomes the film's voice bed (roughly tracking scene
       //    boundaries; precise timeline placement is docs/11). Music/SFX come
-      //    from the first scene that has one (single bed for now). Audio is an
-      //    ENHANCEMENT: if any track fails to download or mix, ship the film
-      //    without audio rather than failing the whole assembly.
+      //    from the first scene that has one (single bed for now). A film whose
+      //    tracks exist but cannot be mixed FAILS (AUDIO_MIX_FAILED): shipping
+      //    it silent would be a fake completion (DirectorOS DOS-74/75).
       let finalVideo = body;
       try {
         const dl = async (k: string, name: string) => {
@@ -218,7 +228,7 @@ export class RenderEngine {
         // A timeline mismatch is a production outcome, not an optional-audio
         // hiccup: never "fix" it by shipping the film without its narration.
         if (e instanceof NarrationOverrunError) throw e;
-        console.warn(`[render] audio mix failed, continuing without audio:`, e instanceof Error ? e.message : e);
+        throw new ProductionFailure("AUDIO_MIX_FAILED", `the film's sound could not be mixed (${e instanceof Error ? e.message : String(e)})`);
       }
       onProgress?.(0.8);
 
@@ -248,7 +258,7 @@ export class RenderEngine {
       }
       onProgress?.(1);
 
-      return { mp4Key, posterKey, hlsKey };
+      return { mp4Key, posterKey, hlsKey, degradations: gaps };
     } finally {
       await rm(work, { recursive: true, force: true });
     }
