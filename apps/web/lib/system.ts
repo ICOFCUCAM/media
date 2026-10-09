@@ -40,11 +40,18 @@ export function planShots(targetSeconds: number): number {
   return planScenes(targetSeconds) * planShotsPerScene();
 }
 
-/** GPU-ms estimate (docs/24 §C8). */
-export function estimateMs(modelId: string, targetSeconds: number): number {
+/** FFmpeg camera pass per still-motion shot (mirrors @cineforge/model-adapters STILL_MOTION_SHOT_MS). */
+const STILL_MOTION_SHOT_MS = 500;
+
+/**
+ * GPU-ms estimate (docs/24 §C8). Storybook and motion comic (W12) draw one
+ * still per shot and move the camera in FFmpeg: no video model runs.
+ */
+export function estimateMs(modelId: string, targetSeconds: number, opts: { stillMotion?: boolean } = {}): number {
   const model = MODELS.find((m) => m.id === modelId) ?? MODELS[0];
   const scenes = planScenes(targetSeconds);
   const shots = planShots(targetSeconds);
+  if (opts.stillMotion) return scenes * 2_000 + shots * STILL_MOTION_SHOT_MS;
   const video = shots * model.msPer720Shot;
   const audio = scenes * 2_000;
   const render = Math.round(video * 0.05);

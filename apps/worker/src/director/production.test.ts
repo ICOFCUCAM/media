@@ -20,9 +20,12 @@ describe("production types → planning (W11)", () => {
     expect(trailer.sceneCount).toBe(10);
     expect(trailer.sceneSec).toBe(6);
     expect(constraintsFor(180, productionOf({ kind: "story" })).narrated).toBe(true);
-    const series = constraintsFor(120, productionOf({ kind: "series", episodes: 12 }));
-    expect(series).toMatchObject({ episodes: 12 });
-    expect(series.sceneCount).toBeGreaterThanOrEqual(12);
+    // At least one scene per episode, even when the runtime alone would plan fewer (60s → 3).
+    const series = constraintsFor(60, productionOf({ kind: "series", episodes: 5 }));
+    expect(series).toMatchObject({ episodes: 5 });
+    expect(series.sceneCount).toBe(5);
+    // One pass has at most 5 episodes (the Film IR's act limit); longer shows go episode by episode.
+    expect(() => productionOf({ kind: "series", episodes: 6 })).toThrow(/episode by episode/);
   });
 
   it("animation reaches the plan request and the prompt compilers", () => {

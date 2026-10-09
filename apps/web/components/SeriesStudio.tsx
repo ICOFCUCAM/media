@@ -6,6 +6,7 @@ import { RunPanel } from "./RunPanel";
 import type { ProjectStatus } from "../lib/demo";
 import { usePlan } from "../lib/usePlan";
 import { fmtDuration } from "../lib/system";
+import { SERIES_MAX_EPISODES } from "../lib/production-types";
 import { ExampleShelf, Field, StudioFooter, StudioGrid, StudioPage, UnlockRow } from "./cf/StudioLayout";
 import { NotifyToggle } from "./cf/NotifyToggle";
 
@@ -42,7 +43,9 @@ export function SeriesStudio() {
     setEpisodes((prev) => prev.map((e) => (e.key === key ? { ...e, ...p } : e)));
   }
   function addEp() {
-    setEpisodes((prev) => [...prev, newEp(prev.length + 1)]);
+    // A season planned in one pass holds at most SERIES_MAX_EPISODES (W12): longer shows are made
+    // episode by episode in the Animation Studio, each reading the show bible and earlier episodes.
+    setEpisodes((prev) => (prev.length >= SERIES_MAX_EPISODES ? prev : [...prev, newEp(prev.length + 1)]));
   }
   function removeEp(key: string) {
     setEpisodes((prev) => prev.filter((e) => e.key !== key));
@@ -55,7 +58,7 @@ export function SeriesStudio() {
       prompt: `${premise}\n\nSeason outline:\n${outline}`,
       modelId: "wan-2.1",
       targetSeconds: totalMin * 60,
-      production: { kind: "series", medium: "live_action", animationStyle: null, episodes: Math.min(52, Math.max(1, episodes.length)) },
+      production: { kind: "series", medium: "live_action", animationStyle: null, episodes: Math.min(SERIES_MAX_EPISODES, Math.max(1, episodes.length)) },
     });
     if (window.innerWidth < 1024) document.getElementById("studio-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -129,9 +132,16 @@ export function SeriesStudio() {
                   </li>
                 ))}
               </ol>
-              <button type="button" onClick={addEp} className="cf-btn-line mt-2.5 w-full">
-                + Add episode
-              </button>
+              {episodes.length < SERIES_MAX_EPISODES ? (
+                <button type="button" onClick={addEp} className="cf-btn-line mt-2.5 w-full">
+                  + Add episode
+                </button>
+              ) : (
+                <p className="mt-2.5 text-xs text-white/50">
+                  A season made in one go has up to {SERIES_MAX_EPISODES} episodes. For a longer show,{" "}
+                  <a href="/studio/animation" className="underline">make it episode by episode</a> — each one reads the show bible and what came before.
+                </p>
+              )}
             </Field>
 
             <UnlockRow plan={plan.name} items={clamped ? [`full ${totalMin}-minute seasons (this plan renders ${fmtDuration(plan.maxSec)} of it)`] : []} />

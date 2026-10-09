@@ -34,11 +34,17 @@ export function estimateShotMs(
   return Math.round(c.baseMs * resFactor * (r.durationSec / c.refDur));
 }
 
+/** FFmpeg camera pass per still-motion shot, counted like render overhead. */
+export const STILL_MOTION_SHOT_MS = 500;
+
 /** Whole-film estimate from planned scene/shot counts (see @cineforge/shared planning). */
 export function estimateFilmMs(
   modelId: string,
-  p: { shotCount: number; sceneCount: number; width: number; height: number; shotDurationSec?: number },
+  p: { shotCount: number; sceneCount: number; width: number; height: number; shotDurationSec?: number; stillMotion?: boolean },
 ): number {
+  // Storybook / motion comic (W12): a drawn still per shot (metered as an image) moved by
+  // the camera in FFmpeg — no video model, no GPU; only the camera pass is counted.
+  if (p.stillMotion) return p.sceneCount * 2_000 + p.shotCount * STILL_MOTION_SHOT_MS;
   const perShot = estimateShotMs(modelId, {
     width: p.width,
     height: p.height,

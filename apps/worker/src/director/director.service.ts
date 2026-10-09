@@ -1,6 +1,7 @@
 import { prisma } from "@cineforge/db";
 import {
   DEFAULT_PRODUCTION,
+  isStillMotion,
   outputDimensions,
   ProductionFailure,
   degradation,
@@ -25,7 +26,8 @@ import { shotGenerationFields, statePatchRow } from "./rows";
 import type { GateResult } from "../quality/gates";
 import { chosenVoiceId } from "../voice/film";
 import { snapshotScenes, writeShotDependencies, type PlanHistoryDb } from "../versions/plan";
-import { constraintsFor, planProductionFor, productionOf, renderStyleFor, type ProductionRow } from "./production";
+import { constraintsFor, NO_CANON, planProductionFor, productionOf, renderStyleFor, type ProductionCanon, type ProductionRow } from "./production";
+import { loadProductionCanon, type CardRef, type StudioDb } from "./studio";
 
 /**
  * Director — planning service (DirectorOS W2: One-Pass Intelligence /
@@ -68,8 +70,8 @@ export interface FilmPlan {
  * runtime). A live-action film plans exactly as before W11; other formats are
  * paced by their production profile (./production.ts).
  */
-export function planningConstraints(targetSeconds: number, spec: ProductionSpec = DEFAULT_PRODUCTION): ProductionConstraints {
-  return constraintsFor(targetSeconds, spec);
+export function planningConstraints(targetSeconds: number, spec: ProductionSpec = DEFAULT_PRODUCTION, canon: ProductionCanon = NO_CANON): ProductionConstraints {
+  return constraintsFor(targetSeconds, spec, canon);
 }
 
 /** Planning failures in the vocabulary the film processor reports. */
@@ -94,10 +96,15 @@ export class DirectorService {
   async plan(projectId: string): Promise<FilmPlan> {
     const project = await prisma.project.findUniqueOrThrow({
       where: { id: projectId },
-      select: { prompt: true, targetSeconds: true, modelId: true, resolution: true, aspectRatio: true, kind: true, medium: true, animationStyle: true, episodes: true },
+      select: {
+        prompt: true, targetSeconds: true, modelId: true, resolution: true, aspectRatio: true,
+        kind: true, medium: true, animationStyle: true, episodes: true, seriesId: true, episodeNumber: true, title: true,
+      },
     });
     const spec = productionOf(project);
-    const constraints = planningConstraints(project.targetSeconds, spec);
+    // W12: cast cards, the show bible and what earlier episodes established.
+    const canon = await loadProductionCanon(prisma as unknown as StudioDb, projectId, spec);
+    const constraints = planningConstraints(project.targetSeconds, spec, canon);
 
     // 1–2: plan + validate (+ one revision). Fails instead of inventing.
     let plan: PlanResult;
@@ -106,7 +113,7 @@ export class DirectorService {
       if (!router.available("film_plan") && process.env.DIRECTOR_ALLOW_STUB === "1") {
         plan = { pkg: stubPackage(project.prompt, constraints), revised: false, fixedIssues: [], provider: "stub", model: "stub" };
       } else {
-        plan = await planFilm(router, project.prompt, constraints, { projectId, production: planProductionFor(spec) });
+        plan = await planFilm(router, project.prompt, constraints, { projectId, production: planProductionFor(spec, canon) });
       }
     } catch (e) {
       throw toProductionFailure(e) ?? e;
@@ -117,7 +124,7 @@ export class DirectorService {
     }));
 
     // 3: compile + persist.
-    const scenes = await persistPlan(projectId, project, plan);
+    const scenes = await persistPlan(projectId, project, plan, canon.cards);
     return { projectId, modelId: project.modelId, scenes, degradations: planDegradations(plan.pkg, project.modelId), gates: planGates(plan) };
   }
 }
@@ -211,11 +218,33 @@ async function persistEpisodes(projectId: string, pkg: PlanResult["pkg"]): Promi
   return out;
 }
 
+/**
+ * An episode production (W12; Part 5 §184): its plan is one episode of the
+ * show — kept as that number in season 1, pointing at this production (a
+ * remake of the number takes it over). Every act's scenes link to it.
+ */
+async function persistShowEpisode(projectId: string, seriesId: string, number: number, pkg: PlanResult["pkg"]): Promise<Map<number, string>> {
+  const season = await prisma.season.upsert({
+    where: { seriesId_number: { seriesId, number: 1 } },
+    create: { seriesId, number: 1, title: "Season 1" },
+    update: {},
+    select: { id: true },
+  });
+  const ep = await prisma.episode.upsert({
+    where: { seasonId_number: { seasonId: season.id, number } },
+    create: { seasonId: season.id, number, title: pkg.film.title, synopsis: pkg.film.synopsis, projectId },
+    update: { title: pkg.film.title, synopsis: pkg.film.synopsis, projectId },
+    select: { id: true },
+  });
+  return new Map(pkg.acts.map((a) => [a.index, ep.id]));
+}
+
 /** Compile and persist a plan (exported for the database integration test). */
 export async function persistPlan(
   projectId: string,
-  project: { modelId: string; resolution: string; aspectRatio: string } & ProductionRow,
+  project: { modelId: string; resolution: string; aspectRatio: string; title?: string } & ProductionRow,
   plan: PlanResult,
+  cards: Map<string, CardRef> = new Map(),
 ): Promise<PlannedScene[]> {
   const pkg = plan.pkg;
   const spec = productionOf(project);
@@ -225,19 +254,29 @@ export async function persistPlan(
   const modelVersion = MODEL_VERSIONS[project.modelId] ?? "unknown";
   // Scene stills: when OpenAI is configured, every shot starts as an image
   // (video.processor resolveSeedKey). Disable with DIRECTOR_SEED_FRAMES=0.
-  const seedFrames = process.env.DIRECTOR_SEED_FRAMES !== "0" && !!process.env.OPENAI_API_KEY;
+  // Storybook and motion comic (W12) are drawn stills by definition: every shot starts as an image.
+  const seedFrames = isStillMotion(spec) || (process.env.DIRECTOR_SEED_FRAMES !== "0" && !!process.env.OPENAI_API_KEY);
 
   // Canon. `select: { id }` keeps each INSERT … RETURNING to columns every
   // deployed schema has (a full return also read characters.lora_sha256,
   // which needs migration 0027).
   const charId = new Map<string, string>();
   const voices = await castVoices(projectId);
+  const irCast = new Map(pkg.cast.map((c) => [c.id, c]));
   for (const c of compiled.characters) {
-    const voiceId = voices.get(c.name.trim().toLowerCase());
+    // A character cast from a Character Card (W12) speaks in the card's voice and links back to it.
+    const card = cards.get(c.key);
+    const voiceId = chosenVoiceId(card?.voiceProfile) ?? voices.get(c.name.trim().toLowerCase());
+    const design = irCast.get(c.key)?.design ?? null;
     const row = await prisma.character.create({
       data: {
         projectId, name: c.name, age: c.age, gender: c.gender, appearance: c.appearance,
         personality: c.personality, arc: c.arc, voiceProfile: voiceId ? { ...c.voiceProfile, voiceId } : c.voiceProfile,
+        ...(design ? { design } : {}),
+        ...(card ? {
+          sourceCharacterId: card.cardId, heightCm: card.card.heightCm, hair: card.card.hair, eyes: card.card.eyes, clothing: card.card.clothing,
+        } : {}),
+        ...(spec.animationStyle ? { animationStyle: spec.animationStyle } : {}),
       },
       select: { id: true },
     });
@@ -273,7 +312,11 @@ export async function persistPlan(
   });
 
   const keying = { projectId, modelId: project.modelId, modelVersion, width, height };
-  const episodeOfAct = spec.kind === "series" ? await persistEpisodes(projectId, pkg) : new Map<number, string>();
+  const episodeOfAct = spec.kind === "series"
+    ? await persistEpisodes(projectId, pkg)
+    : spec.kind === "episode"
+      ? await persistShowEpisode(projectId, spec.seriesId!, spec.episodeNumber!, pkg)
+      : new Map<number, string>();
   const out: PlannedScene[] = [];
   // A re-plan replaces scenes: keep each one as it was first (W8b, append-only plan history).
   await snapshotScenes(prisma as unknown as PlanHistoryDb, projectId, { indexes: compiled.scenes.map((s) => s.index) }, "replan", raw.canonVersion);
