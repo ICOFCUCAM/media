@@ -702,21 +702,36 @@ API; provider hosts from env; §2.5 doc drift fixed.
 
 ### W12 — Animation Studio (Part 5, DOS-177–186)
 
-- BUILD reusable Character Cards (user-owned: identity, height, proportions,
-  palette, wardrobe, voice, animation style, reference image) with "Use
-  character" importing them into a production's cast (§183).
-- BUILD the Show Bible (title, genre, audience, visual style, world rules,
-  characters, locations, voice cast, music identity, narrative rules, episode
-  format, continuity rules) and episode productions that plan against it and
-  against the canon of earlier episodes (§184).
-- BUILD the storybook and motion-comic pipelines: page/panel stills generated
-  first, then camera moves and light motion over them (§181.4–6).
-- BUILD the Create menu and animation workspace: Cartoon, Story, Motion
-  Comic, Character, Episode (§185).
-- UPGRADE character continuity for animation: proportions, colour palette and
-  movement style per character in the bible and the reviewer (§179.4).
-- All on the existing engines (§186); self-hosted animation models wait on
-  docs/39 Phase 1.
+**Done (docs/57, 2026-10-09).** Character Cards, the Show Bible with episode
+productions that read every earlier episode, the still-motion engine for
+storybook and motion comic, the Animation Studio workspace and Create menu,
+and animated character design in the Film IR and every prompt — on the
+existing engines, migrations 0046–0047 live.
+
+- BUILT reusable Character Cards (age, height, hair, eyes, clothing,
+  personality, style, animated design, Voice Studio voice) with "Use
+  character": a cast card is planned with its exact identity (CAST section,
+  CAST_MISSING / CAST_RENAMED / CAST_UNUSED, identity restored after
+  planning) and its production copy links back (§179.2, §183).
+- BUILT the Show Bible and episode productions: SHOW BIBLE, EPISODE and
+  PREVIOUSLY sections (audience knowledge, deaths, relationships), returning
+  characters with their identities, the dead only in flashbacks
+  (DECEASED_APPEARS) (§184).
+- BUILT the still-motion engine: each storybook page or comic panel is the
+  shot's drawn still, moved by the camera in FFmpeg — no video model, no GPU;
+  measured timing and execution reports; same quality gates (§181.4–6).
+- BUILT the Animation Studio (/create/animation) and Create menu entries:
+  Cartoon, Short Film, Story, Motion Comic, Episode, Character (§185).
+- BUILT animated design (proportions, palette, movement) per character:
+  required for animation (DESIGN_MISSING), carried into image and video
+  prompts and the reviewer's context (§179.4).
+- FIXED a W11 gap: a one-pass series held up to 52 episodes but the Film IR
+  has at most 5 acts — one-pass seasons are now 1–5 episodes; longer shows
+  are made episode by episode.
+- OPEN: a generated character image on the card (§183.1); character
+  animation within storybook pages and comic panels (§181.4–5); a
+  sound-effect generator (§178.4, §180, §181.5); seasons beyond Season 1
+  (§178.2).
 
 ---
 
@@ -765,4 +780,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-487 IDs: 218 built, 146 shallow, 0 poorly built, 49 not built, 74 n/a. Of the 413 IDs that are requirements, 218 (53%) are built; 146 exist but need upgrading or changing; 49 must be built. (Updated after W11 and Part 5, 2026-10-09.)
+487 IDs: 228 built, 139 shallow, 0 poorly built, 46 not built, 74 n/a. Of the 413 IDs that are requirements, 228 (55%) are built; 139 exist but need upgrading or changing; 46 must be built. (Updated after W12, 2026-10-09.)

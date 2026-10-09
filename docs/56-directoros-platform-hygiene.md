@@ -15,7 +15,7 @@ the database and by `productionIssues()` in `packages/shared/src/production.ts`)
 | `kind` | film · short_film · series · trailer · social_short · advert · story · motion_comic |
 | `medium` | live_action · animation |
 | `animation_style` | 2d_traditional · 2d_tv · anime · comic_book · childrens_illustration · 3d_stylized · 3d_toy · 3d_family · 3d_cinematic · low_poly · storybook · motion_comic (animation only) |
-| `episodes` | 1–52, series only |
+| `episodes` | series only — 1–52 at W11, **1–5 since W12** (the Film IR has at most 5 acts; longer shows are made episode by episode, docs/57) |
 
 What changes because of it:
 - **Pacing.** The plan's scene count follows the format's scene length (a

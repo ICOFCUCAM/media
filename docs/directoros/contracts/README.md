@@ -45,6 +45,7 @@ evidence files that exist (`scripts/check-truth.mjs`).
 | [director-workspace.md](director-workspace.md) | Director workspace: bible · scenes & shots · chat, timeline strip, decision log with why, plain-language edits | W9 | INTEGRATED |
 | [evaluation-and-acceptance.md](evaluation-and-acceptance.md) | Real-provider probes, benchmark (corpus, cases, prompt lock, live planning score), sync instrument calibration, the sixteen-check film acceptance | W10 | FUNCTIONAL |
 | [platform.md](platform.md) | Production types (incl. animation), public API auth and routes, metering, atomic grants, probes and metrics | W11 | FUNCTIONAL |
+| [animation.md](animation.md) | Animation Studio: Character Cards and cast, Show Bible and episodes, animated design, still-motion engine | W12 | FUNCTIONAL |
 | [visual-review.md](visual-review.md) | Visual Reviewer and visual quality gate (record mode) | W5 (first slice) | INTEGRATED |
 
 Contracts to write before their workstream starts (from the gap analysis):
