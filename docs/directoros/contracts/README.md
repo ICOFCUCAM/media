@@ -48,6 +48,7 @@ evidence files that exist (`scripts/check-truth.mjs`).
 | [animation.md](animation.md) | Animation Studio: Character Cards and cast, Show Bible and episodes, animated design, still-motion engine | W12 | FUNCTIONAL |
 | [editor.md](editor.md) | Editor Agent: structured edit operations, editorial review, timing requests, owner-approved apply, directorial roles | W13 | FUNCTIONAL |
 | [voice-ops.md](voice-ops.md) | Voice licence registry (router-enforced), speech cache, voice benchmark, audio continuity | W14 | FUNCTIONAL |
+| [voice-studio.md](voice-studio.md) | Voice Studio readings on the Voice Engine (modes, delivery, conversations), per-use licences to community voices, character voice traits, speech ledger | W15 | FUNCTIONAL |
 | [visual-review.md](visual-review.md) | Visual Reviewer and visual quality gate (record mode) | W5 (first slice) | INTEGRATED |
 
 Contracts to write before their workstream starts (from the gap analysis):

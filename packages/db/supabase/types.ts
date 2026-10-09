@@ -3068,14 +3068,61 @@ export type Database = {
           },
         ]
       }
+      voice_licences: {
+        Row: {
+          accepted_at: string
+          id: string
+          licensee_id: string
+          revoked_at: string | null
+          terms: string
+          voice_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          id?: string
+          licensee_id: string
+          revoked_at?: string | null
+          terms?: string
+          voice_id: string
+        }
+        Update: {
+          accepted_at?: string
+          id?: string
+          licensee_id?: string
+          revoked_at?: string | null
+          terms?: string
+          voice_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_licences_licensee_id_fkey"
+            columns: ["licensee_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_licences_voice_id_fkey"
+            columns: ["voice_id"]
+            isOneToOne: false
+            referencedRelation: "voices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voiceovers: {
         Row: {
           audio_key: string | null
           created_at: string
+          duration_ms: number | null
+          engine: string | null
           error_message: string | null
           id: string
           language: string
+          mode: string
+          speakers: Json
           status: string
+          style: Json
           text: string
           title: string
           updated_at: string
@@ -3085,10 +3132,15 @@ export type Database = {
         Insert: {
           audio_key?: string | null
           created_at?: string
+          duration_ms?: number | null
+          engine?: string | null
           error_message?: string | null
           id?: string
           language?: string
+          mode?: string
+          speakers?: Json
           status?: string
+          style?: Json
           text: string
           title: string
           updated_at?: string
@@ -3098,10 +3150,15 @@ export type Database = {
         Update: {
           audio_key?: string | null
           created_at?: string
+          duration_ms?: number | null
+          engine?: string | null
           error_message?: string | null
           id?: string
           language?: string
+          mode?: string
+          speakers?: Json
           status?: string
+          style?: Json
           text?: string
           title?: string
           updated_at?: string
@@ -3313,6 +3370,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_voice_terms: { Args: { p_voice: string }; Returns: string }
       admin_list_users: {
         Args: never
         Returns: {
@@ -3371,7 +3429,12 @@ export type Database = {
       owns_season: { Args: { se: string }; Returns: boolean }
       owns_series: { Args: { sr: string }; Returns: boolean }
       request_editorial_apply: { Args: { p_review: string }; Returns: string }
+      revoke_voice_licence: { Args: { p_voice: string }; Returns: undefined }
       scene_is_locked: { Args: { s: string }; Returns: boolean }
+      voice_usable_by: {
+        Args: { p_user: string; p_voice: string }
+        Returns: boolean
+      }
     }
     Enums: {
       audio_kind: "VOICE" | "MUSIC" | "SFX" | "AMBIENCE"

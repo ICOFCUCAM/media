@@ -2,7 +2,7 @@
 # Fail if the Prisma models for the Phase 4 tables disagree with the SQL
 # migrations (column names, types, nullability, indexes) — docs/38 §AU.16.
 #
-# Usage: DATABASE_URL=<postgres migrated with stubs + 0026..0050> scripts/check-prisma-vs-migrations.sh
+# Usage: DATABASE_URL=<postgres migrated with stubs + 0026..0051> scripts/check-prisma-vs-migrations.sh
 #
 # The only accepted differences are the intended ones: the Prisma models carry
 # scalar foreign keys (no @relation) and generate uuids client-side.
@@ -36,4 +36,4 @@ if [ -n "$drift" ]; then
   printf '%s\n' "$drift"
   exit 1
 fi
-echo "Prisma models match migrations 0028–0050."
+echo "Prisma models match migrations 0028–0051."
