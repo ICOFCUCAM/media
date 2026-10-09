@@ -73,7 +73,9 @@ export function CreateStudio(props: CreateStudioProps) {
   const [modelId, setModelId] = useState("wan-2.1");
   const [resolution, setResolution] = useState<Resolution | null>(null);
   // W8b: review the story and every storyboard before any video is made.
-  const [review, setReview] = useState(false);
+  // The default since W19 (§43.4): no GPU video is spent before the owner has
+  // seen the story and each scene's animatic.
+  const [review, setReview] = useState(true);
   // What is being made (W11; Part 5): live action, or an animation style.
   const [look, setLook] = useState<AnimationStyle | "live_action">("live_action");
   const { state, running, run, reset } = useCreateRun();
@@ -206,16 +208,17 @@ export function CreateStudio(props: CreateStudioProps) {
 
       <Field label="Production passes">
         <Chips>
-          <button type="button" className="cf-option" aria-pressed={!review} onClick={() => setReview(false)}>
-            Straight through
-          </button>
           <button type="button" className="cf-option" aria-pressed={review} onClick={() => setReview(true)}>
             Review story &amp; storyboard first
+          </button>
+          <button type="button" className="cf-option" aria-pressed={!review} onClick={() => setReview(false)}>
+            Straight through
           </button>
         </Chips>
         {review && (
           <p className="mt-2 text-[12px] leading-relaxed text-cf-muted">
-            You approve the story, then each scene&apos;s storyboard stills; no video is made for a scene until you approve it.
+            You approve the story, then each scene from its storyboard and animatic (the stills played at the planned timing under the
+            rough voice); no video is made for a scene until you approve it.
           </p>
         )}
       </Field>

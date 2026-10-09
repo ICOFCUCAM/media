@@ -98,6 +98,16 @@ export interface PassScene {
   ready: number;
   /** Per shot: its still and, when several were drawn, the other takes (W17). */
   takes: ShotStills[];
+  /** The scene's latest previs animatic and its rough timing (W19). */
+  animatic: Animatic | null;
+}
+
+export interface Animatic {
+  key: string;
+  pictureSec: number;
+  voiceSec: number | null;
+  /** How much longer the voice runs than the planned pictures (0 = it fits). */
+  overrunSec: number;
 }
 
 export interface ShotStills {
@@ -118,12 +128,19 @@ export interface PassState {
 export async function loadPasses(projectId: string): Promise<PassState | null> {
   const sb = untyped();
   if (!sb) return null;
-  const [project, scenes, cands] = await Promise.all([
+  const [project, scenes, cands, anims] = await Promise.all([
     sb.from("projects").select("pass_mode,story_approved_at,status").eq("id", projectId).maybeSingle(),
     sb.from("scenes").select("id,index,heading,summary,narration,storyboard_approved_at,shots(id,index,seed_image_key,status,video_key)").eq("project_id", projectId).order("index"),
     // Seed candidates (W17, 0052); absent before the migration.
     sb.from("image_generations").select("id,subject,storage_key,candidate,chosen").eq("project_id", projectId).eq("purpose", "seed_candidate").order("candidate"),
+    // Previs animatics (W19): the scene's video versions made by previs, newest first.
+    sb.from("media_versions").select("asset_id,storage_key,derivation,version").eq("project_id", projectId).eq("asset_type", "video").eq("derivation->>role", "animatic").order("version", { ascending: false }),
   ]);
+  const animaticBy = new Map<string, Animatic>();
+  for (const a of ((anims.error ? [] : anims.data) ?? []) as { asset_id: string; storage_key: string; derivation: { pictureSec?: number; voiceSec?: number | null; overrunSec?: number } | null }[]) {
+    if (animaticBy.has(a.asset_id)) continue;
+    animaticBy.set(a.asset_id, { key: a.storage_key, pictureSec: a.derivation?.pictureSec ?? 0, voiceSec: a.derivation?.voiceSec ?? null, overrunSec: a.derivation?.overrunSec ?? 0 });
+  }
   const takesBy = new Map<string, { id: string; key: string; chosen: boolean }[]>();
   for (const c of ((cands.error ? [] : cands.data) ?? []) as { id: string; subject: string; storage_key: string; chosen: boolean | null }[]) {
     takesBy.set(c.subject, [...(takesBy.get(c.subject) ?? []), { id: c.id, key: c.storage_key, chosen: Boolean(c.chosen) }]);
@@ -143,6 +160,7 @@ export async function loadPasses(projectId: string): Promise<PassState | null> {
       takes: [...r.shots].sort((a, b) => a.index - b.index).map((s) => ({
         shotId: s.id, index: s.index, still: s.seed_image_key, hasVideo: !!s.video_key, candidates: takesBy.get(s.id) ?? [],
       })),
+      animatic: animaticBy.get(r.id) ?? null,
     })),
   };
 }

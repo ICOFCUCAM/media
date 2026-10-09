@@ -64,6 +64,11 @@ export function ProductionLocks({ projectId, refreshKey }: { projectId: string; 
           {filmLocked ? "Unlock film" : "Lock film"}
         </button>
       </div>
+      <p className="border-b border-cf-line py-3 text-[12px] leading-relaxed text-cf-muted">
+        {filmLocked
+          ? "Locked: the film is rendered once more from an approved timeline of the locked scenes. That timeline is frozen when the master is delivered."
+          : "Locking a finished film freezes every scene, approves its timeline and renders the final master from it."}
+      </p>
       {error && (
         <p role="alert" className="border-b border-cf-line py-3 text-[12px] text-cf-danger">
           {error}

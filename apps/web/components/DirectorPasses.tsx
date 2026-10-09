@@ -7,7 +7,9 @@ import { Status } from "./cf/primitives";
 
 /**
  * Production passes (DirectorOS W8b): for a three-pass production, approve
- * the story, then each scene's storyboard stills. A scene makes no video until
+ * the story, then each scene from its storyboard: its stills and, since W19,
+ * its animatic (the stills moved by the planned camera under the rough voice)
+ * with its rough timing. A scene makes no video until
  * its storyboard is approved — the database enforces it. Hidden for
  * single-pass productions and before migration 0040.
  */
@@ -20,7 +22,7 @@ export function DirectorPasses({ projectId, refreshKey }: { projectId: string; r
   const refresh = useCallback(async () => {
     const d = await loadPasses(projectId);
     setData(d);
-    const keys = d?.scenes.flatMap((s) => [...s.stills.slice(0, 4), ...s.takes.flatMap((t) => t.candidates.map((c) => c.key))]) ?? [];
+    const keys = d?.scenes.flatMap((s) => [...s.stills.slice(0, 4), ...s.takes.flatMap((t) => t.candidates.map((c) => c.key)), ...(s.animatic ? [s.animatic.key] : [])]) ?? [];
     const entries = await Promise.all(keys.map(async (k) => [k, await signedUrl(k)] as const));
     setUrls(Object.fromEntries(entries.filter((e): e is readonly [string, string] => !!e[1])));
   }, [projectId]);
@@ -72,7 +74,7 @@ export function DirectorPasses({ projectId, refreshKey }: { projectId: string; r
         {pass === "STORY"
           ? "Read the plan. Nothing is drawn or filmed until you approve the story."
           : pass === "PREVIS"
-            ? "Storyboard stills are drawn for every shot. Approve a scene to film it; scenes you have not approved make no video."
+            ? "Each scene gets its storyboard stills, its rough voice and an animatic that plays them at the planned timing. Approve a scene to film it; scenes you have not approved make no video."
             : "Every scene is approved. The film renders when the last scene is ready."}
       </p>
       <ol>
@@ -97,6 +99,20 @@ export function DirectorPasses({ projectId, refreshKey }: { projectId: string; r
                   )}
                   {!s.stills.length && <span className="text-[12px] text-cf-dim">Drawing the storyboard…</span>}
                 </div>
+              )}
+              {pass !== "STORY" && s.animatic && urls[s.animatic.key] && (
+                <div className="mt-3 grid gap-1">
+                  <span className="cf-label">Animatic · {s.animatic.pictureSec.toFixed(1)}s{s.animatic.voiceSec !== null ? ` · voice ${s.animatic.voiceSec.toFixed(1)}s` : " · no voice"}</span>
+                  <video src={urls[s.animatic.key]} controls preload="metadata" className="w-full max-w-sm rounded bg-black" />
+                  {s.animatic.overrunSec > 0 && (
+                    <p role="status" className="text-[12px] text-cf-danger">
+                      The voice runs {s.animatic.overrunSec.toFixed(1)}s past the pictures. Lengthen the shots or shorten the lines before you approve.
+                    </p>
+                  )}
+                </div>
+              )}
+              {pass === "PREVIS" && !s.approvedAt && s.stills.length > 0 && !s.animatic && (
+                <p className="mt-2 text-[12px] text-cf-dim">Making the animatic…</p>
               )}
               {pass === "PREVIS" && !s.approvedAt && s.takes.some((t) => t.candidates.length > 1 && !t.hasVideo) && (
                 <div className="mt-3 grid gap-2">

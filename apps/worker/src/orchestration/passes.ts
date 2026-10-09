@@ -3,28 +3,32 @@
  *
  * A three-pass production runs STORY → PREVIS → FINAL:
  *   STORY   the plan waits for the owner (status REVIEW) — no stills, no video;
- *   PREVIS  once the story is approved, a storyboard still is drawn for every
- *           image-led shot (video queue job "previs"), still no video;
+ *   PREVIS  once the story is approved, each scene gets its storyboard stills
+ *           (video queue job "previs"), its rough voice (the scene's real
+ *           voice track, reused by FINAL) and then its animatic (scene queue
+ *           job "animatic", W19) — still no video;
  *   FINAL   each scene whose storyboard the owner approves generates video;
  *           when every scene is approved and every shot is ready, the film
  *           renders.
  * The database refuses video for an unapproved scene (0040), so this module
  * only decides what to start; it can never let a scene skip its approval.
  */
-import { Queue } from "bullmq";
+import { FlowProducer, Queue } from "bullmq";
 import { prisma } from "@cineforge/db";
-import { QUEUES, type RenderJob, type VideoJob } from "@cineforge/shared";
+import { QUEUES, type RenderJob } from "@cineforge/shared";
 import { enqueueSceneFlow } from "./film-flow";
+import { previsFlow } from "./previs-flow";
 export { currentPass, scenesCleared, type Pass } from "./pass-rules";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
-let videoQueue: Queue<VideoJob> | null = null;
 let renderQueue: Queue<RenderJob> | null = null;
+let flows: FlowProducer | null = null;
+
 
 /** One poller tick: start previs, start approved scenes, render finished three-pass films. */
 export async function advancePasses(): Promise<void> {
-  videoQueue ??= new Queue<VideoJob>(QUEUES.video, { connection });
   renderQueue ??= new Queue<RenderJob>(QUEUES.render, { connection });
+  flows ??= new FlowProducer({ connection });
 
   // PREVIS: the story was approved — draw the storyboard stills (once per approval).
   const toPrevis = await prisma.project.findMany({
@@ -35,11 +39,13 @@ export async function advancePasses(): Promise<void> {
   for (const p of toPrevis) {
     const claimed = await prisma.project.updateMany({ where: { id: p.id, previsStartedAt: null, storyApprovedAt: { not: null } }, data: { previsStartedAt: new Date() } });
     if (claimed.count !== 1) continue;
-    const shots = await prisma.shot.findMany({ where: { scene: { projectId: p.id }, source: "image" }, select: { id: true, sceneId: true } });
-    for (const s of shots) {
-      await videoQueue.add("previs", { projectId: p.id, sceneId: s.sceneId, shotId: s.id, modelId: p.modelId }, { jobId: `previs-${s.id}-${Date.now()}`, attempts: 2, removeOnComplete: 100 });
-    }
-    console.log(`[passes] previs started for ${p.id} (${shots.length} stills)`);
+    const scenes = await prisma.scene.findMany({
+      where: { projectId: p.id }, orderBy: { index: "asc" },
+      select: { id: true, index: true, shots: { orderBy: { index: "asc" }, select: { id: true, source: true } } },
+    });
+    const stamp = Date.now();
+    for (const sc of scenes) await flows.add(previsFlow(p, sc, stamp));
+    console.log(`[passes] previs started for ${p.id} (${scenes.length} scenes, ${scenes.reduce((a, s) => a + s.shots.filter((x) => x.source === "image").length, 0)} stills, voices and animatics)`);
   }
 
   // FINAL, per scene: an approved storyboard whose scene has not started yet.
