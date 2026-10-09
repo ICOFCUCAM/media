@@ -281,6 +281,22 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@20.19.42)(terser@5.48.0)
 
+  packages/voice-contracts:
+    dependencies:
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^20.12.0
+        version: 20.19.42
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@20.19.42)(terser@5.48.0)
+
 packages:
 
   '@alloc/quick-lru@5.2.0':

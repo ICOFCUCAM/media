@@ -39,3 +39,14 @@ returns boolean language sql stable security definer set search_path = public as
   select exists (select 1 from projects where id = p and user_id = auth.uid());
 $$;
 grant execute on function public.owns_project(uuid) to authenticated;
+-- Minimal users + voices for 0036 (real: 0001, 0015/0016).
+create table if not exists public.users (
+  id uuid primary key default gen_random_uuid()
+);
+create table if not exists public.voices (
+  id      uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users (id) on delete cascade,
+  name    text not null,
+  status  text not null default 'PENDING'
+);
+grant select, insert, update, delete on public.users, public.voices to anon, authenticated;
