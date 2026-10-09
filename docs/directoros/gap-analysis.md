@@ -353,8 +353,8 @@ user's cloned voice.
 | 108, 120–123, 127, 130–135, 137–138, 140, 142 | n/a | concepts, model comparison, decision | inform W7; licence and benchmark items become artifacts |
 | 109, 112–113, 128, 143, 156 Voice Engine, model-independent | not built | processors call OpenAI/fal directly | BUILD the Voice Engine; CHANGE both processors to call it |
 | 110, 115, 118 Enroll once, private identity | shallow | "enrollment" stores MiniMax `provider_voice_id`; every call goes to fal | CHANGE: profile and artifacts owned by CineForge |
-| 111, 117 Avatar, presenter, dubbing, conversation | shallow | fal avatars; dubbing = OpenAI TTS with 4000-char cap, no clone, no lip sync; conversation not built | UPGRADE: consume Voice Engine output; dubbing via `/v1/speech/batch`; lip-sync validator as QC |
-| 116, 176 Script controls | not built | language only; `speed: 1` hard-coded | BUILD style object in API and UI |
+| 111, 117 Avatar, presenter, dubbing, conversation | built / shallow (W15) | `worker/src/voice/reading.ts`, Voice Studio | Done: narrator and presenter readings on the Voice Engine, avatar from a finished reading, scripted multi-voice conversations (docs/60); open: lip-synced dubbing, LLM-driven live conversation |
+| 116, 176 Script controls | built (W15) | `voice-contracts/src/reading.ts`, `VoiceLab.tsx` | Done: modes and delivery controls (emotion, energy, speed, pitch) in API, worker and UI (docs/60); 176's single end-state screen still to unify |
 | 119 Voice Studio | shallow | `VoiceLab.tsx` | UPGRADE: enrollment wizard, quality report, consent, modes, controls |
 | 114, 129, 136, 139, 141 Licensing + benchmark | built (W14) | `voice-contracts/src/licences.ts`, `worker/src/bench/voice.ts` | Done: licence registry enforced by the router, `voice:bench` (WER, RTF, consistency, licensing); similarity, naturalness, VRAM not measured (docs/59) |
 | 124–125 Voice worker | not built | GPU worker has video endpoints only | BUILD voice GPU image reusing gateway, token, `/capabilities` |
@@ -362,15 +362,15 @@ user's cloned voice.
 | 147, 158 `VoiceEngine` interface | not built | one-method `TtsAdapter` (`openai.ts:27`) | BUILD the interface |
 | 148, 161 Profiles + engine artifacts | poorly built | `voices.provider`, `provider_voice_id` model-specific columns | CHANGE to `voice_profiles` + `voice_engine_artifacts` |
 | 160 Quality analysis | not built | primitives in `ffmpeg/analysis.ts` | BUILD analyzer (duration, rate, clipping, SNR, speech ratio) that rejects poor recordings |
-| 149, 165 Segmentation | shallow | 1800-char serial chunks; film path one call per scene; `audio_generations` never written | UPGRADE: one job per segment on the clock, ledgered |
+| 149, 165 Segmentation | built (W15) | `worker/src/voice/ledger.ts` | Done: every narration and line segmented, mastered and ledgered in `audio_generations` on the Master Clock (docs/60) |
 | 150, 166 Mastering outside the model | shallow | mix-level only; AAC; no 48 kHz WAV, de-click, denoise | UPGRADE: per-clip mastering stage in the media engine |
 | 151, 167–168 Router, config, capabilities | not built | env vars pick models | BUILD config router + capability matching |
 | 152–153, 171–172 Workers, cloud/self-hosted | not built | lifecycle and gateway reusable | BUILD `voice-gpu-qwen` on the same lifecycle/gateway; compose services |
 | 154–155 Cache, batch | built / shallow (W14) | `voice-contracts/src/cache.ts`, `worker/src/voice/cache.ts`, migration 0049 | Done: content-hash speech cache, hits never billed (docs/59); batch endpoint exists, GPU-side batching waits on Phase 1 |
 | 163–164 Jobs, states | shallow | PENDING/CLONING/SPEAKING/READY/FAILED | CHANGE to the spec's 8 states |
 | 169 Storage layout | shallow | `voiceovers/{user}/{id}.mp3` | CHANGE to `voices/<id>/…`, `audio/<job>/raw|processed|final.wav` |
-| 170 Security | poorly built | no owner or consent check at synthesis; any voice UUID usable; marketplace shares without per-use licence | BUILD server-side owner-or-licensed check + required consent |
-| 174 "What not to do" | poorly built | violated today: direct provider calls, model columns, UI names models ("SadTalker vs Kling") | CHANGE |
+| 170 Security | built (W7, W15) | migrations 0036, 0050, 0051 | Done: owner or active per-use licence, consent required; enforced by a database trigger and in the worker (docs/60) |
+| 174 "What not to do" | built (W15) | every speech path through the Voice Engine | Done: no direct provider calls, no model columns, no model names in the UI (docs/60) |
 | 175 Development sequence | n/a | — | becomes W7's order |
 
 ---
@@ -786,6 +786,25 @@ existing engines, migrations 0046–0047 live.
 
 ---
 
+### W15 — Voice Studio on the Voice Engine (Part 1 §19.2; Part 3 §116–117; Part 4 §149, §170, §174)
+
+**Done (docs/60, 2026-10-09; migrations 0050–0051 applied live).**
+
+- BUILT readings on the Voice Engine: the Voice Studio reader no longer calls a
+  speech provider; narrator, presenter and scripted conversation (up to four
+  voices) modes with delivery controls (§116–117, §128, §143, §156, §174).
+- BUILT per-use licences to community voices: accept the owner's terms
+  (snapshotted), revocable; a database trigger and the worker refuse any voice
+  the user neither owns nor licenses, or one withdrawn (§170).
+- BUILT character voice traits: pitch, pace and loudness kept in every scene
+  and dub (§19.2).
+- BUILT the speech ledger: each spoken part an `audio_generations` row on the
+  Master Clock (§149).
+- OPEN: LLM-driven live conversation through an avatar (§117.4), lip-synced
+  dubbing (§117.3), the self-hosted voice worker (Phase 1).
+
+---
+
 ## 9. Sequenced roadmap
 
 DirectorOS work is placed **inside** the docs/38 §AX.2 order, not beside it.
@@ -809,6 +828,7 @@ approved models wait for docs/38 gates.
 | **S12 Animation** | W12 Animation Studio (Part 5) | W11 production types | S10, S11 |
 | **S13 Editor** | W13 Editor Agent and directorial roles | W8 versions, W9 workspace | S12 |
 | **S14 Voice operations** | W14 licence registry, speech cache, voice benchmark, audio continuity | W7 Voice Engine, W10 benchmark | S13 |
+| **S15 Voice Studio** | W15 readings on the Voice Engine, per-use licences, voice traits, speech ledger | W7, W14 | S14 |
 
 W11 hygiene items ride along with whichever stage touches the same files.
 
@@ -833,4 +853,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-487 IDs: 249 built, 143 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 249 (60%) are built; 143 exist but need upgrading or changing; 21 must be built. (Updated after W14, 2026-10-09.)
+487 IDs: 278 built, 114 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 278 (67%) are built; 114 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W15, 2026-10-09.)

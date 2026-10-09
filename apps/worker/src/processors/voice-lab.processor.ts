@@ -1,107 +1,81 @@
 /**
- * Voice Lab processor (docs/29 phase 2) — consumes `voice-lab-queue`.
+ * Voice Lab processor (docs/29 phase 2; W15) — consumes `voice-lab-queue`.
  *
- * clone: takes the user's uploaded voice sample, ships it to fal's MiniMax
- *        voice-clone model, and stores the resulting provider voice id.
- * speak: reads a long text (speech, news, narration) with the user's cloned
- *        voice (or a stock narrator), in any registry language. Long texts are
- *        chunked at sentence boundaries and the audio parts concatenated, so
- *        an hour-long speech is as valid as a one-liner.
+ * speak:  a Voice Studio reading — narrator, presenter or a conversation of
+ *         up to four voices — on the Voice Engine (voice/reading.ts): routed
+ *         through the gates and the licence registry, spoken through the
+ *         cached, metered engine, mastered and joined. The processor never
+ *         calls a speech provider itself (Part 4 §174). A community voice
+ *         speaks only for a user holding a licence to it (§170).
+ * avatar: a portrait animated to a finished reading by the talking-avatar
+ *         provider (lip-synced video).
  *
+ * Voices are enrolled by the Voice Engine (voice.enroll jobs), not here.
  * Both ops are claimed by the project poller (PENDING → working states), so
  * the web only ever writes rows — the same producer/consumer split as films.
  */
 import { Worker } from "bullmq";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { QUEUES, languageName, type VoiceLabJob } from "@cineforge/shared";
+import { QUEUES, type VoiceLabJob } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
+import type { VoiceEngineArtifact } from "@cineforge/voice-contracts";
 import { falUploadBytes, falRunQueue, falFindUrl } from "@cineforge/model-adapters";
 import { S3Storage } from "../storage/storage";
 import { ffmpeg } from "../ffmpeg/ffmpeg";
-import { concatListContent } from "../ffmpeg/commands";
-
-import { meter } from "../billing";
+import { meter, meteredEngine } from "../billing";
+import { voiceEngine } from "../voice/engines";
+import { cachedEngine, prismaSpeechCache, speechCacheEnabled } from "../voice/cache";
+import { joinSegments, masterSegment, measureSpeech } from "../voice/mastering";
+import { ReadingError, renderReading, type ReadingDeps } from "../voice/reading";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const storage = new S3Storage();
 
-const CLONE_MODEL = process.env.FAL_VOICE_CLONE_MODEL ?? "fal-ai/minimax/voice-clone";
-const SPEECH_MODEL = process.env.FAL_SPEECH_MODEL ?? "fal-ai/minimax/speech-02-hd";
 /** Talking-avatar models: portrait image + speech audio -> lip-synced video.
- *  standard = cheap (~20-40x less than Kling), premium = Kling AI Avatar. */
+ *  standard = cheap (~20-40x less than premium), premium = higher fidelity. */
 const AVATAR_MODEL_STD = process.env.FAL_AVATAR_MODEL_STD ?? "fal-ai/sadtalker";
 const AVATAR_MODEL_PREMIUM = process.env.FAL_AVATAR_MODEL ?? "fal-ai/kling-video/v1/standard/ai-avatar";
-/** Stock narrator when the user hasn't cloned a voice. */
-const STOCK_VOICE = process.env.FAL_STOCK_VOICE ?? "Deep_Voice_Man";
-const CHUNK_CHARS = 1800; // MiniMax per-call comfort zone
 
-/** Split text at sentence boundaries into chunks the TTS model accepts. */
-export function chunkText(text: string, max = CHUNK_CHARS): string[] {
-  const clean = text.replace(/\s+/g, " ").trim();
-  if (clean.length <= max) return clean ? [clean] : [];
-  const sentences = clean.split(/(?<=[.!?。！？])\s+/);
-  const chunks: string[] = [];
-  let cur = "";
-  for (const s of sentences) {
-    if ((cur + " " + s).trim().length > max && cur) {
-      chunks.push(cur.trim());
-      cur = s;
-    } else {
-      cur = (cur + " " + s).trim();
-    }
-    // A single sentence longer than max: hard-split it.
-    while (cur.length > max) {
-      chunks.push(cur.slice(0, max));
-      cur = cur.slice(max);
-    }
-  }
-  if (cur.trim()) chunks.push(cur.trim());
-  return chunks;
+/** Production wiring of a reading: the owner pays for what is generated; cache hits are free. */
+export function readingDeps(userId: string): ReadingDeps {
+  return {
+    env: process.env,
+    engine: (id) => {
+      const e = voiceEngine(id, process.env);
+      if (!e) return null;
+      const metered = meteredEngine(e, { userId }, meter);
+      return speechCacheEnabled() ? cachedEngine(metered, prismaSpeechCache(prisma as never, storage)) : metered;
+    },
+    voice: (id) => prisma.voice.findUnique({
+      where: { id },
+      select: { id: true, userId: true, status: true, shareStatus: true, consentType: true, consentConfirmedAt: true, provider: true, providerVoiceId: true },
+    }),
+    licensed: async (voiceId, licenseeId) =>
+      !!(await prisma.voiceLicence.findFirst({ where: { voiceId, licenseeId, revokedAt: null }, select: { id: true } })),
+    artifact: async (voiceId, engineId, engineVersion) => {
+      const a = await prisma.voiceEngineArtifact.findUnique({ where: { voiceId_engineId_engineVersion: { voiceId, engineId, engineVersion } } });
+      return a && ({ artifactType: a.artifactType, uri: a.artifactUri } as VoiceEngineArtifact);
+    },
+    master: masterSegment,
+    join: joinSegments,
+    measure: measureSpeech,
+    encodeMp3: async (wav, mp3) => { await ffmpeg(["-y", "-i", wav, "-c:a", "libmp3lame", "-q:a", "2", mp3]); },
+    upload: (path, key, type) => storage.upload(path, key, type),
+  };
 }
 
 export const voiceLabWorker = new Worker<VoiceLabJob>(
   QUEUES.voiceLab,
   async (job) => {
-    const apiKey = process.env.FAL_KEY;
-    if (!apiKey) throw new Error("FAL_KEY not configured — Voice Lab needs fal.ai");
     const { kind, id } = job.data;
-
-    if (kind === "clone") {
-      const voice = await prisma.voice.findUniqueOrThrow({ where: { id } });
-      try {
-        if (!voice.sampleKey) throw new Error("no voice sample uploaded");
-        // W7: no voice is cloned without recorded consent (new voices enroll via the Voice Engine).
-        if (!voice.consentType || !voice.consentConfirmedAt)
-          throw new Error("consent is required: confirm the voice is yours or that you are authorised to use it");
-        const bytes = await storage.getBytes(voice.sampleKey);
-        const ext = voice.sampleKey.split(".").pop()?.toLowerCase() ?? "mp3";
-        const mime = ext === "wav" ? "audio/wav" : ext === "m4a" ? "audio/mp4" : "audio/mpeg";
-        const sampleUrl = await falUploadBytes(apiKey, bytes, mime, `sample.${ext}`);
-        const result = await falRunQueue(apiKey, CLONE_MODEL, { audio_url: sampleUrl });
-        await meter({ kind: "tts", provider: "fal", model: CLONE_MODEL, unit: "requests", units: 1, userId: voice.userId, meta: { purpose: "voice_clone", voiceId: id } });
-        const voiceId =
-          (result.custom_voice_id as string | undefined) ??
-          (result.voice_id as string | undefined) ??
-          ((result.data as Record<string, unknown> | undefined)?.voice_id as string | undefined);
-        if (!voiceId) throw new Error(`clone returned no voice id (${JSON.stringify(result).slice(0, 200)})`);
-        await prisma.voice.update({
-          where: { id },
-          data: { provider: "fal-minimax", providerVoiceId: voiceId, status: "READY", errorMessage: null },
-        });
-        console.log(`[voice-lab] cloned voice ${id} -> ${voiceId}`);
-        return { id, voiceId };
-      } catch (e) {
-        const msg = (e instanceof Error ? e.message : String(e)).slice(0, 400);
-        await prisma.voice.update({ where: { id }, data: { status: "FAILED", errorMessage: msg } });
-        throw e;
-      }
-    }
 
     if (kind === "avatar") {
       const av = await prisma.avatarVideo.findUniqueOrThrow({ where: { id } });
       try {
+        const apiKey = process.env.FAL_KEY;
+        if (!apiKey) throw new Error("FAL_KEY not configured — talking avatars need the avatar provider");
         const vo = av.voiceoverId ? await prisma.voiceover.findUnique({ where: { id: av.voiceoverId } }) : null;
         if (!vo?.audioKey) throw new Error("pick a READY voiceover first (the avatar reads its audio)");
         // Cost guardrail: avatar video is the priciest unit on the platform
@@ -148,66 +122,30 @@ export const voiceLabWorker = new Worker<VoiceLabJob>(
       }
     }
 
-    // kind === "speak"
-    const vo = await prisma.voiceover.findUniqueOrThrow({ where: { id }, include: { voice: true } });
+    // kind === "speak": a reading on the Voice Engine (W15).
+    const vo = await prisma.voiceover.findUniqueOrThrow({ where: { id } });
+    const dir = await mkdtemp(join(tmpdir(), "vo-"));
     try {
-      const voiceId = vo.voice?.providerVoiceId ?? STOCK_VOICE;
-      // Cost ceiling: ~20 pages per reading (env-tunable). Long books split
-      // into multiple readings rather than one unbounded fal bill.
-      const maxChars = Number(process.env.VOICEOVER_MAX_CHARS ?? 20_000);
-      if (vo.text.length > maxChars)
-        throw new Error(`text too long for one reading (${vo.text.length} > ${maxChars} chars) — split it into parts`);
-      const chunks = chunkText(vo.text);
-      if (chunks.length === 0) throw new Error("voiceover text is empty");
-      const langBoost = vo.language && vo.language !== "en" ? languageName(vo.language) : undefined;
-
-      const parts: Uint8Array[] = [];
-      for (const [i, chunk] of chunks.entries()) {
-        const input: Record<string, unknown> = {
-          text: chunk,
-          voice_setting: { voice_id: voiceId, speed: 1 },
-          ...(langBoost ? { language_boost: langBoost } : {}),
-        };
-        const result = await falRunQueue(apiKey, SPEECH_MODEL, input, { timeoutMs: 5 * 60_000 });
-        await meter({ kind: "tts", provider: "fal", model: SPEECH_MODEL, unit: "characters", units: chunk.length, userId: vo.userId, meta: { purpose: "voiceover" } });
-        const url = falFindUrl(result);
-        if (!url) throw new Error(`speech returned no audio url (chunk ${i + 1}/${chunks.length})`);
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`audio download ${res.status} (chunk ${i + 1})`);
-        parts.push(new Uint8Array(await res.arrayBuffer()));
-        await job.updateProgress((i + 1) / chunks.length);
-      }
-
-      const audioKey = `voiceovers/${vo.userId}/${vo.id}.mp3`;
-      if (parts.length === 1) {
-        await storage.putBytes(audioKey, parts[0]!, "audio/mpeg");
-      } else {
-        // Concat chunks losslessly-enough via ffmpeg (re-encode to one mp3).
-        const work = await mkdtemp(join(tmpdir(), "vo-"));
-        try {
-          const files: string[] = [];
-          for (const [i, p] of parts.entries()) {
-            const f = join(work, `part_${i}.mp3`);
-            await writeFile(f, Buffer.from(p));
-            files.push(f);
-          }
-          const list = join(work, "list.txt");
-          await writeFile(list, concatListContent(files));
-          const out = join(work, "voiceover.mp3");
-          await ffmpeg(["-f", "concat", "-safe", "0", "-i", list, "-c:a", "libmp3lame", "-q:a", "2", out]);
-          await storage.upload(out, audioKey, "audio/mpeg");
-        } finally {
-          await rm(work, { recursive: true, force: true });
-        }
-      }
-
-      await prisma.voiceover.update({ where: { id }, data: { audioKey, status: "READY", errorMessage: null } });
-      console.log(`[voice-lab] voiceover ${id} ready (${chunks.length} chunks, ${vo.language})`);
-      return { id, audioKey, chunks: chunks.length };
+      const out = await renderReading(
+        { id: vo.id, userId: vo.userId, voiceId: vo.voiceId, text: vo.text, language: vo.language, mode: vo.mode, style: vo.style, speakers: vo.speakers },
+        dir,
+        readingDeps(vo.userId),
+      );
+      await prisma.voiceover.update({
+        where: { id },
+        data: { audioKey: out.audioKey, durationMs: out.durationMs, engine: out.engines.join(","), status: "READY", errorMessage: null },
+      });
+      console.log(`[voice-lab] voiceover ${id} ready (${out.parts} parts, ${out.segments} segments, ${vo.mode}, ${vo.language})`);
+      return { id, audioKey: out.audioKey, parts: out.parts, segments: out.segments };
     } catch (e) {
       const msg = (e instanceof Error ? e.message : String(e)).slice(0, 400);
-      await prisma.voiceover.update({ where: { id }, data: { status: "FAILED", errorMessage: msg } });
+      // A refusal is final; a provider failure retries first.
+      const last = e instanceof ReadingError || job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
+      if (last) await prisma.voiceover.update({ where: { id }, data: { status: "FAILED", errorMessage: msg } });
+      if (e instanceof ReadingError) return { id, refused: msg };
       throw e;
+    } finally {
+      await rm(dir, { recursive: true, force: true });
     }
   },
   { connection, concurrency: 2 },

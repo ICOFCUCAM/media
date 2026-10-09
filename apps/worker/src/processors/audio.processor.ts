@@ -26,6 +26,8 @@ import { prisma } from "@cineforge/db";
 import { S3Storage } from "../storage/storage";
 import { buildScorePrompt, scoreSeconds, SCORE_MODEL } from "../audio/score";
 import { chosenVoiceId, NoVoiceEngineError, renderSceneVoice } from "../voice/film";
+import { voiceTraits } from "@cineforge/voice-contracts";
+import { speechLedgerRows } from "../voice/ledger";
 import { sceneVoiceDeps } from "../voice/deps";
 import { meter } from "../billing";
 
@@ -67,6 +69,7 @@ export const audioWorker = new Worker<AudioJob>(
         prisma.character.findMany({ where: { projectId }, orderBy: { name: "asc" }, select: { id: true, voiceProfile: true } }),
       ]);
       const chosenVoices = Object.fromEntries(cast.map((c) => [c.id, chosenVoiceId(c.voiceProfile)]));
+      const traits = Object.fromEntries(cast.map((c) => [c.id, voiceTraits(c.voiceProfile)]));
       const dir = await mkdtemp(join(tmpdir(), "cf-scene-voice-"));
       try {
         const out = await renderSceneVoice(
@@ -79,6 +82,7 @@ export const audioWorker = new Worker<AudioJob>(
             ownerId: project?.userId ?? "",
             castOrder: cast.map((c) => c.id),
             chosenVoices,
+            traits,
             trackKey: `scenes/${sceneId}/audio/voice/${job.id}.wav`,
             dir,
           },
@@ -94,6 +98,17 @@ export const audioWorker = new Worker<AudioJob>(
             meta: { provider: "voice-engine", engine: out.engine, loudnessLufs: out.loudnessLufs, cues: out.cues.map((c) => ({ lineId: c.lineId, characterId: c.characterId, voice: c.voice, startMs: c.startMs, durationMs: c.durationMs })) },
           },
         });
+        // The speech ledger (§149): each spoken part on the Master Clock. Never blocks the track.
+        try {
+          const before = await prisma.scene.aggregate({ where: { projectId, index: { lt: scene.index } }, _sum: { durationSec: true } });
+          const rows = speechLedgerRows(
+            { projectId, sceneId, sceneStartSec: Number(before._sum.durationSec ?? 0), language: "en", trackKey: out.trackKey },
+            out.cues,
+          );
+          if (rows.length) await prisma.audioGeneration.createMany({ data: rows.map((r) => ({ ...r, meta: r.meta as object })) });
+        } catch (e) {
+          console.warn(`[audio] speech ledger skipped for scene ${sceneId}: ${e instanceof Error ? e.message : String(e)}`);
+        }
         await recordVersion(prisma as unknown as VersionDb, {
           projectId, assetType: "audio", assetId: sceneId, storageKey: out.trackKey, durationSec: out.durationSec,
           derivation: { role: "scene_voice", engine: out.engine, loudnessLufs: out.loudnessLufs, cues: out.cues.length, substituted: out.substitutions.length },

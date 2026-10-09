@@ -5,7 +5,7 @@ import type { S3Storage } from "../storage/storage";
 import { voiceEngine } from "./engines";
 import { meter, meteredEngine, type MeterContext } from "../billing";
 import type { SceneVoiceDeps } from "./film";
-import { joinSegments, masterSegment, measureSpeech } from "./mastering";
+import { applyGain, joinSegments, masterSegment, measureSpeech } from "./mastering";
 import { cachedEngine, prismaSpeechCache, speechCacheEnabled } from "./cache";
 
 /** `ctx` names who pays for the speech (W11 metering). */
@@ -31,5 +31,6 @@ export function sceneVoiceDeps(storage: S3Storage, ctx: MeterContext): SceneVoic
     join: joinSegments,
     measure: measureSpeech,
     upload: (path, key, type) => storage.upload(path, key, type),
+    gain: applyGain,
   };
 }

@@ -16,6 +16,7 @@ import { prisma } from "@cineforge/db";
 import { S3Storage } from "../storage/storage";
 import { translateLines, TranslationError } from "../director/translate";
 import { concatAudioArgs, extendVideoArgs, NarrationOverrunError, planNarrationFit } from "../ffmpeg/commands";
+import { voiceTraits } from "@cineforge/voice-contracts";
 import { chosenVoiceId, NoVoiceEngineError, renderSceneVoice, sceneCues, translateSpeech, type SceneSpeech } from "../voice/film";
 import { sceneVoiceDeps } from "../voice/deps";
 import { ffmpeg, probeDuration } from "../ffmpeg/ffmpeg";
@@ -129,6 +130,7 @@ export const localizeWorker = new Worker<LocalizeJob>(
                   scene: sp, language: lang, ownerId: project?.userId ?? "",
                   castOrder: cast.map((c) => c.id),
                   chosenVoices: Object.fromEntries(cast.map((c) => [c.id, chosenVoiceId(c.voiceProfile)])),
+                  traits: Object.fromEntries(cast.map((c) => [c.id, voiceTraits(c.voiceProfile)])),
                   trackKey: `projects/${projectId}/film/dub/${lang}/${sp.id}.wav`,
                   lineKeyPrefix: null,
                   dir,

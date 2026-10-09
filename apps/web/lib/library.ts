@@ -108,6 +108,30 @@ export async function setCharacterVoice(character: CharacterRow, voiceId: string
   if (error) throw new Error(error.message);
 }
 
+/** A character's fixed voice traits (W15; §19.2): kept in every scene and every dub. */
+export interface VoiceTraits { pitch?: number; rate?: number; loudnessDb?: number }
+
+export function characterTraits(character: CharacterRow): VoiceTraits {
+  const t = (character.voice_profile as { traits?: VoiceTraits } | null)?.traits;
+  return t && typeof t === "object" ? t : {};
+}
+
+/** Set a character's voice traits; neutral values are dropped. Keeps the rest of the profile. */
+export async function setCharacterTraits(character: CharacterRow, traits: VoiceTraits): Promise<Json> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("Supabase not configured");
+  const clean: VoiceTraits = {};
+  if (traits.pitch) clean.pitch = Math.max(-6, Math.min(6, Math.round(traits.pitch)));
+  if (traits.rate && traits.rate !== 1) clean.rate = Math.max(0.8, Math.min(1.25, Math.round(traits.rate * 100) / 100));
+  if (traits.loudnessDb) clean.loudnessDb = Math.max(-6, Math.min(3, Math.round(traits.loudnessDb)));
+  const profile = { ...((character.voice_profile as Record<string, unknown> | null) ?? {}) };
+  if (Object.keys(clean).length) profile.traits = clean;
+  else delete profile.traits;
+  const { error } = await sb.from("characters").update({ voice_profile: profile as Json }).eq("id", character.id);
+  if (error) throw new Error(error.message);
+  return profile as Json;
+}
+
 /* ── Worlds / locations ─────────────────────────────────────── */
 export async function createLocation(input: {
   name: string;

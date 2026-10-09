@@ -177,7 +177,7 @@ jobs:
           psql "$PGURL" -v ON_ERROR_STOP=1 -f packages/db/supabase/tests/0027_character_lora_sha256.test.sql
       - name: Apply 0028+ (Phase 4 data model) and run their validation
         run: |
-          for m in packages/db/supabase/migrations/002[89]_*.sql packages/db/supabase/migrations/003*_*.sql packages/db/supabase/migrations/004*_*.sql; do
+          for m in packages/db/supabase/migrations/002[89]_*.sql packages/db/supabase/migrations/003*_*.sql packages/db/supabase/migrations/004*_*.sql packages/db/supabase/migrations/005*_*.sql; do
             [ -f "$m" ] || continue
             psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$m"
             t="packages/db/supabase/tests/$(basename "$m" .sql).test.sql"

@@ -329,11 +329,22 @@ export interface Database {
           audio_key: string | null;
           status: string;
           error_message: string | null;
+          mode: string;
+          style: Json;
+          speakers: Json;
+          engine: string | null;
+          duration_ms: number | null;
           created_at: string;
           updated_at: string;
         };
-        Insert: { user_id: string; voice_id?: string | null; title: string; text: string; language?: string };
+        Insert: { user_id: string; voice_id?: string | null; title: string; text: string; language?: string; mode?: string; style?: Json; speakers?: Json };
         Update: { status?: string };
+        Relationships: [];
+      };
+      voice_licences: {
+        Row: { id: string; voice_id: string; licensee_id: string; terms: string; accepted_at: string; revoked_at: string | null };
+        Insert: Record<never, never>;
+        Update: Record<never, never>;
         Relationships: [];
       };
       shots: {
@@ -640,6 +651,14 @@ export interface Database {
     };
     Views: { [_ in never]: never };
     Functions: {
+      accept_voice_terms: {
+        Args: { p_voice: string };
+        Returns: string;
+      };
+      revoke_voice_licence: {
+        Args: { p_voice: string };
+        Returns: undefined;
+      };
       decide_edit_proposal: {
         Args: { p_id: string; p_approve: boolean };
         Returns: string;
