@@ -51,6 +51,7 @@ and [01-architecture](01-architecture.md); this page is the map.
 - [44 — Truth layer (W1)](44-truth-layer.md) · failures vs recorded degradations, capability registry, truth gate; migration 0031 (applied live 2026-10-08)
 - [45 — Intelligence layer and Film IR (W2)](45-directoros-intelligence.md) · one master call, validator chain, Production Compiler, provider router, decision log; migration 0032 (applied live 2026-10-08)
 - [46 — Canon, world state and continuity (W3)](46-directoros-world-state.md) · World State Engine, story time, knowledge, foreshadowing, Character Continuity Engine, canon revisions that regenerate only affected shots, story state, wardrobe reference pack, Visual Reviewer; migrations 0027–0034 **applied live**
+- [47 — CineForge Ads Studio](47-ads-studio.md) · `/ads`: website-to-advertisement studio page (owner design), hand-off to the real advert pipeline, own-domain routing (`ADS_STUDIO_HOSTS`), planned pay-as-you-go/monthly model
 
 ## Continuity & identity — the coherent-movie spine
 

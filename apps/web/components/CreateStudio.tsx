@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { estimateMs, fmtDuration, MODELS, modelAllowed, planScenes, planShots } from "../lib/system";
 import type { ProjectStatus } from "../lib/demo";
 import { useCreateRun } from "../lib/useCreateRun";
@@ -60,6 +60,22 @@ export function CreateStudio(props: CreateStudioProps) {
   const [modelId, setModelId] = useState("wan-2.1");
   const [resolution, setResolution] = useState<Resolution | null>(null);
   const { state, running, run, reset } = useCreateRun();
+
+  // Hand-off from another studio (Ads Studio → /create/advert?brief=&seconds=&aspect=):
+  // start from that brief, length and format instead of the defaults.
+  const handoffRead = useRef(false);
+  useEffect(() => {
+    if (handoffRead.current) return; // once, on arrival — never over the user's edits
+    handoffRead.current = true;
+    const q = new URLSearchParams(window.location.search);
+    const b = q.get("brief");
+    if (b) setPrompt(b.slice(0, 4000));
+    const sec = Number(q.get("seconds"));
+    if (sec && props.durations.some((d) => d.value === sec)) setSeconds(sec);
+    const a = q.get("aspect");
+    const p = a ? props.platforms?.find((x) => x.aspect === a) : undefined;
+    if (p) setPlatform(p.id);
+  }, [props.durations, props.platforms]);
   const { profile } = useAuth();
 
   // Admins may pick any model; otherwise the user's tier decides. Profile loads
