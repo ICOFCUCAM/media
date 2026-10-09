@@ -62,9 +62,10 @@ takes cannot be switched. Re-assemble the film to see the restored take.
 
 ## 6. Limits (carried forward)
 
-- Three passes are a choice, not yet the default.
+- Three passes are a choice, not yet the default. (Since W19, docs/64: the
+  default in the create flow.)
 - Previs draws stills only. Rough voices, camera previews and timing in previs
-  are not built.
+  are not built. (Since W19, docs/64: built, as an animatic per scene.)
 - The Editor Agent (typed edit operations on timeline versions) is still to come.
 - Edits from the page cover outfits and visible state. Identity, location and
   prop edits are accepted by the worker and the API table, but the page does

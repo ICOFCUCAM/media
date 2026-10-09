@@ -208,16 +208,16 @@ Conflicts to settle (decisions in §10):
 
 | § | Status | Evidence | Action |
 |---|---|---|---|
-| 0 Stance | shallow | plan → flow with no Intelligence/Canon/QC stages (`film.processor.ts:244`, `video.processor.ts:323`) | BUILD the missing stages around the existing flow |
+| 0 Stance | built (W2–W19) | `packages/movie`, worker pipeline | Done: the AI decides (IR), CineForge converts it through canon, compilation, generation, gates and the timeline (W19 audit, docs/64) |
 | 1 Director, not engine | **built** | LLM only plans; FFmpeg/GPU/scheduling are code | KEEP; widen what the Director decides |
-| 2 Four layers | poorly built | Layer A = `draftFilm`; Layer C mixed into `director.service.ts` with persistence and prompt strings; Layer D real | CHANGE: separate intelligence / canon / production modules with typed boundaries |
+| 2 Four layers | built except media gaps (W2–W19) | `packages/movie` (intelligence, world, compile), worker (orchestration, ffmpeg, adapters) | Done: separate intelligence / canon / production / media modules; lip sync and interpolation not built (DOS-2.4) |
 | 3 Film Bible | shallow | `Screenplay` = logline, synopsis, genre, tone, `acts` (hard-coded 1 act, `director.service.ts:80`) | BUILD a typed, versioned FilmBible (25 fields of DOS-3.3), single source for every stage |
-| 4 Character Bible | shallow | free-text `appearance`; exactly one protagonist (`llm.ts:243`); ID→refs+LoRA retrieval real (`video.processor.ts:142-155`) | UPGRADE to structured identity (face, body, hair, wardrobe, voice) for a full cast; every scene/shot references `characterId` |
+| 4 Character Bible | built (W2, W3, W12) | `ir/schema.ts` Character, Character Cards | Done: structured identity, wardrobe, voice, personality and design for the whole cast; every scene and shot references `char_` ids |
 | 5 Character state | poorly built | name-keyed `Record<string,string>`, regex-inferred (`shared/continuity.ts:29-350`); `ContinuityState` table unused | CHANGE to typed, ID-keyed, versioned state at story time T with event transitions, persisted |
 | 6 World Bible | shallow | `Location` name/kind/description; one per film; weather/time free text | UPGRADE Location + per-time LocationState |
-| 7 Prop Bible | shallow | `WorldObject` written by web only, never read by the worker | BUILD Prop entity with owner/state/possession events into shots' `requiredProps` |
-| 8 Story graph | not built | linear index; `dependsOn = [i-1]`; `StoryEvent`, `Relationship` unused | BUILD typed nodes/edges with reference and cycle validation |
-| 9 Scene graph | poorly built | free-text dialogue/camera/mood; `DialogueLine` never written | CHANGE to purpose, emotional arc, beats, structured dialogue tied to `characterId` |
+| 7 Prop Bible | built (W2, W3, W17) | `world/state.ts`, `canon/world-refs.ts` | Done: props with owners, possession through story time, dependency edges and reference stills |
+| 8 Story graph | built (W2, W3) | `ir/schema.ts` acts, threads, facts; validators | Done: typed acts, threads, facts, setups and payoffs, validated |
+| 9 Scene graph | built (W2) | `ir/schema.ts` Scene, `dialogue_lines` | Done: purpose, emotional arc, beats, structured dialogue tied to `characterId` |
 | 10 Shot Architect | not built | shot count by formula (`planning.ts:13`); `cameraPlan` never written | BUILD the full DOS-10.2 shot record, persisted structurally |
 | 11 Cinematography | not built | size cycled `i % 4`; GPU ignores `camera` | BUILD rule-based coverage grammar with LLM override |
 | 12 Prompt Compiler | shallow | string concatenation (`director.service.ts:188`, `video.processor.ts:176`) | BUILD a pure, deterministic compiler for 6 prompt kinds |
@@ -230,12 +230,12 @@ Conflicts to settle (decisions in §10):
 | 19 Voice identity | built (W7b, W15) | `voice/film.ts` | Done: each character speaks in the chosen or a fixed built-in voice with fixed traits (docs/51, docs/60) |
 | 20 Audio continuity | built (W16) | `ffmpeg/commands.ts`, `sync/mix.ts` | Done: dialogue-anchored mix, score and ambience ducked, stem levels and loudness/true peak from the production profile, ambience beds as room tone (docs/61) |
 | 21 Editor Agent | built (W13) | `packages/movie/src/edit`, `apps/worker/src/editor`, Editor panel | Done: typed `EditOperation`s, whole-cut review, owner-approved apply (docs/58) |
-| 22 Compilable movie | shallow | pipeline real; timeline IR CLI-only | BUILD persisted stage compilers Source→Film→Scene→Shot→Media→Timeline→Master |
+| 22 Compilable movie | built (W2–W19) | compile, orchestration, `timeline/lock.ts` | Done: Source → Film IR → rows → jobs → timeline → master; a locked film renders from its approved timeline (docs/64) |
 | 23 Film IR | not built | no IR; `FilmDraft` thin | BUILD `packages/movie` IR schemas (zod + JSON Schema) |
 | 24 Validator | shallow | tool schema + lenient `coerceDraft` defaults (`llm.ts:203-235`) | BUILD schema→canon→continuity→production→budget validators; CHANGE coerce to fail-and-revise |
 | 25 Never "just text" | shallow | forced tool for the plan; JSON-scrape and stub fallback; translate/social free text | UPGRADE every production LLM op to typed IR; remove stub in production |
 | 26–27 Agents | not built | one monolithic prompt | BUILD 6 typed roles (Director, Story, Visual, Audio, Continuity, Editor/QC) behind the router; no vendor multi-agent framework |
-| 28 Director controls flow | shallow | brief→plan→shots→media→render only | UPGRADE `DirectorService` into the staged orchestrator |
+| 28 Director controls flow | built (W2–W13) | director service, canon, gates, editor | Done: one Director plans, validates, revises and compiles; canon, gates and the Editor behind it |
 | 29 Interrupt anywhere | not built | re-plan deletes scenes; no edit API | BUILD edit command API → affected set → targeted regeneration |
 | 30 Dependency graph | shallow | `dependsOn [i-1]`; cacheKey only reuse primitive | BUILD entity→scene→shot→media edges + invalidation |
 | 31 Version everything | shallow | immutable timelines/media_versions exist, but processors overwrite shots/films in place | UPGRADE: append-only versions for canon, scenes, shots, films |
@@ -245,11 +245,11 @@ Conflicts to settle (decisions in §10):
 | 35 Reference pack | built (W6, W17) | `canon/reference-pack.ts` | Done: per-shot pack in priority order (seed, previous end, wardrobe, identity, location, props), overflow listed (docs/50, docs/62) |
 | 36 Shot-to-shot memory | not built | shots run in parallel, no last-frame conditioning | BUILD end-state records + optional sequential edges |
 | 37 Scene lock | not built | no APPROVED/LOCKED status | BUILD DB-enforced lock (0028 trigger pattern) |
-| 38 Film lock | shallow | timeline `frozen` status, no workflow | BUILD film-lock transaction; master renders from locked versions |
+| 38 Film lock | built (W8a, W19) | 0037 locks, `timeline/lock.ts`, `orchestration/locks.ts` | Done: locking approves the film's timeline and renders the master from it; frozen on delivery (docs/64) |
 | 39 Quality gates | built (W5, W18) | `quality/gates.ts`, `quality/recorder.ts` | Done: story, continuity, visual, audio, technical and editorial passes recorded per project; blocking results revise or fail (docs/63) |
 | 40 Technical QC | built (W5, W18) | `quality/gates.ts`, `ffmpeg/analysis.ts`, `avsync/run.ts` | Done: format, frame-rate, missing-frame and audio-format checks on clips and the master; `analyzeSync` runs after every final render (recorded, not blocking) (docs/63) |
-| 41 Cost optimization | shallow | estimate, budget pause, cache; auto mode skips storyboard approval | BUILD approval gate: no video without an approved storyboard |
-| 42–43 Two/three-pass | not built | single pass | BUILD STORY→PREVIS→FINAL pass state; three-pass default |
+| 41 Cost optimization | built (W8b, W19) | `orchestration/passes.ts`, CreateStudio default | Done: review-first is the default; no video without an approved scene (0040) (docs/64) |
+| 42–43 Two/three-pass | built (W8b, W19) | `orchestration/passes.ts`, `previs/animatic.ts` | Done: STORY → PREVIS (stills, rough voice, camera moves, timing in an animatic) → FINAL, the default in the create flow (docs/53, docs/64) |
 | 44 UI | shallow | StoryboardStudio + RunPanel | BUILD 3-column workspace + timeline strip |
 | 45–47 Chat, NL edit, "why" | not built | — | BUILD on W8 edit API |
 | 48 Decision log | shallow | media generation ledgers only | BUILD `ai_decisions` written by the router |
@@ -257,10 +257,10 @@ Conflicts to settle (decisions in §10):
 | 50 Evaluation | not built | unit tests; sync tolerances uncalibrated | BUILD benchmark harness in CI |
 | 51 Model router | shallow | media registry real; LLM hard-wired | BUILD `IntelligenceProvider` router; KEEP media registry |
 | 52 Not one vendor | poorly built | Anthropic SDK called directly in 3 files | CHANGE all call sites to the router |
-| 53–54 DirectorOS / persistent world | not built | director inside the worker | BUILD `packages/movie` + DirectorOS service boundary |
+| 53–54 DirectorOS / persistent world | built (W2–W18) | `packages/movie` | Done: DirectorOS package with IR, intelligence, world state, compile, review, edit, sound |
 | 55 World State Engine | shallow | folded string maps | BUILD event-sourced typed world state per shot |
 | 56–58 Knowledge, audience, foreshadowing | not built | — | BUILD knowledge sets, audience track, plant→payoff graph + validators |
-| 59 Movie Compiler | shallow | lower half real (queue, GPU, media engine) | BUILD upper graph stages; capability-based GPU tiers |
+| 59 Movie Compiler | built (W2–W19) | compile, orchestration, timeline | Done: idea → bible → world → story/scene graphs → shots → jobs → timeline → master |
 
 ## 5. Part 2 — Engineering contract and intelligence layer (§60–107)
 
@@ -273,7 +273,7 @@ Conflicts to settle (decisions in §10):
 | 65 Story Engine proof | not built | 1 act, no threads/arcs | BUILD StoryGraph + setup→payoff validator |
 | 66 Scene Architect proof | shallow | no purpose/beats; duration = requested | UPGRADE; duration from measured media |
 | 67 Shot Architect proof | poorly built | `AVG_SHOT_SEC=5` formula; clock not tied to planning | BUILD ShotIR; assert Σshots = scene on the clock |
-| 68 Prompt Compiler protection | poorly built | the named anti-pattern (concatenation) | BUILD `compileGeneration(state, shot, refs, modelCaps)` + wardrobe test |
+| 68 Prompt Compiler protection | built (W2, W4) | `compile/`, `prompt/` | Done: `compileGeneration` from canon, per-model compilers, wardrobe test, references for what words cannot carry |
 | 69 Image Engine contract | built (W17) | `images/providers.ts`, migration 0052 | Done: every still recorded with provider, model, seed, checksums and canon digest; real-provider probes (docs/62) |
 | 70 Never self-certify | poorly built | READY from adapter claim (`video.processor.ts:325-336`); GPU reports requested, not actual, size | CHANGE: HEAD + ffprobe + sha256 + QC before READY |
 | 71 Audio regression | **built** | `planNarrationFit`; `media-regression` CI | KEEP; make it a required check |
@@ -294,8 +294,8 @@ Conflicts to settle (decisions in §10):
 | 92 Film State in DB | shallow | canon tables exist, unversioned, mostly unused | UPGRADE + context compiler for targeted calls |
 | 94 Proposed → validated → executed | not built | — | BUILD validator between IR and execution |
 | 95, 105 ImageProvider | shallow | one implementation (OpenAI) hard-wired | UPGRADE to registry-routed providers |
-| 96 Revised architecture | not built | composite | BUILD (W2+W4+W5) |
-| 98 Batch reasoning | shallow | translation per scene × language, again for dubbing | CHANGE to one batched call per language, reused |
+| 96 Revised architecture | built (W2, W4, W5) | composite | Done: plan → validate → compile → generate → gate → regenerate |
+| 98 Batch reasoning | built (W2) | one master planning call, structured outputs | Done: the whole film planned in one structured call |
 | 101–103 ComfyUI execution graph | not built | `ComfyUIRuntime` "arrives in Phase 6" | BUILD per docs/38 §AT (gated, see §3) |
 | 106 OpenAI image optional | poorly built (inverted) | only image path, auto-on by key | CHANGE to registry entry, off by default |
 | 107 Intelligence vs generation | n/a | — | KEEP as principle |
@@ -859,6 +859,24 @@ existing engines, migrations 0046–0047 live.
 - OPEN: rendering from an approved timeline (§40.3); the repair engine that
   executes planned sync repairs; calibrating the reviewer before enforce mode.
 
+### W19 — Previs and lock (Part 1 §38, §41–43)
+
+**Done (docs/64, 2026-10-09; no migration).**
+
+- BUILT previs that a scene can be judged from: storyboard stills, the
+  scene's rough voice (its real voice track, reused by the final pass) and an
+  animatic that moves each still by its planned camera for its planned
+  length; a voice longer than the pictures is flagged PREVIS_TIMING
+  (§42–43).
+- BUILT review-first as the default in the create flow (§41.1, §43.4).
+- BUILT film lock → approved timeline → master rendered from it (shot order
+  and picture duration), frozen on delivery; the sync check runs on it
+  (§38.2, §40.3 picture side).
+- AUDITED the W2-era statuses: 30 requirements that later workstreams
+  completed are now marked built.
+- OPEN: audio stems placed by the timeline (§40.3); lip sync and frame
+  interpolation (§2.4); weather and sun state (§33.2).
+
 ---
 
 ## 9. Sequenced roadmap
@@ -888,6 +906,7 @@ approved models wait for docs/38 gates.
 | **S16 Sound design** | W16 ambience, effects, profile-driven mix | W7, W10 | S15 |
 | **S17 Image Engine** | W17 image record, fal provider, place and prop references, takes | W6 | S16 |
 | **S18 Quality depth** | W18 reviewer v2, technical QC depth, sync after render, editorial pass | W5, Phase 5 | S17 |
+| **S19 Previs and lock** | W19 rough voice + animatic previs, review-first default, lock → approved timeline → master | W8, W18 | S18 |
 
 W11 hygiene items ride along with whichever stage touches the same files.
 
@@ -912,4 +931,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-487 IDs: 300 built, 92 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 300 (73%) are built; 92 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W18, 2026-10-09.)
+487 IDs: 335 built, 57 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 335 (81%) are built; 57 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W19, 2026-10-09; W19 included an audit of W2-era statuses.)

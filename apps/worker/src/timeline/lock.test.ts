@@ -24,7 +24,7 @@ describe("film lock → approved timeline → render (W19)", () => {
   });
 
   it("the render's assets follow the cut; a shot without a clip refuses to render", () => {
-    const assets = [
+    const assets: { sceneId: string; index: number; shotKeys: string[]; shotCutSec?: (number | null)[]; musicKey?: string }[] = [
       { sceneId: "A", index: 0, shotKeys: ["x"], musicKey: "m.wav" },
       { sceneId: "B", index: 1, shotKeys: ["y"] },
     ];
