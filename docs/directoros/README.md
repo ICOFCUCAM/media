@@ -31,7 +31,7 @@ status and workstream columns filled by the gap analysis.
 
 **Gap analysis:** [gap-analysis.md](gap-analysis.md) — Parts 1–4 against the code at
 merge `9c957bf` (2026-10-08): the as-built baseline, section-by-section status,
-the silent-degradation register, workstreams W0–W12, the sequenced roadmap inside
+the silent-degradation register, workstreams W0–W13, the sequenced roadmap inside
 the docs/38 §AX.2 order, and the decisions needed. Parts sent after this are
 added to the index and analysed the same way.
 

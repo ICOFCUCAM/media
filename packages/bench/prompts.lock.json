@@ -31,7 +31,7 @@
       "id": "editor.review",
       "version": 1,
       "purpose": "Editorial Intelligence (Part 1 §21, §46): review the whole cut, or answer one editing request, with structured edit operations.",
-      "sha256": "decd3418702978b90f160a715f21eefb055bd784e4691effdf2dcdcb3360e7fc",
+      "sha256": "c471003d1ee0a059a980a0671e31b7befca1844eeccf77770064887bc397a8ea",
       "score": null,
       "scoredAt": null,
       "model": null

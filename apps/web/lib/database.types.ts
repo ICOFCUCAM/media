@@ -473,7 +473,8 @@ export interface Database {
           created_at: string;
           decided_at: string | null;
         };
-        Insert: never;
+        /** Written by the worker only (RLS revokes insert from owners). */
+        Insert: Record<never, never>;
         Update: never;
         Relationships: [];
       };

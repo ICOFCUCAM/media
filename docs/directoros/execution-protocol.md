@@ -32,7 +32,7 @@ session, human or Claude.
 
 Part 2 §80 gives eight phases. This repository already has a governing order
 for the media engine (docs/38 §AX.2). They are combined like this; the
-workstreams (W0–W12) and stages (S0–S12) are defined in
+workstreams (W0–W13) and stages (S0–S13) are defined in
 [gap-analysis.md](gap-analysis.md) §8–9.
 
 | Spec phase (§80) | Here | Status |
