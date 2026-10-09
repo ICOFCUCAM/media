@@ -1,0 +1,127 @@
+name: Evaluation
+
+# DirectorOS W10 — the runs that spend real money, each verified on the
+# artifacts it produced (never on a provider's word):
+#
+#   providers           Part 2 §76: one small call per configured provider,
+#                       artifact decoded and measured
+#   planning-benchmark  Part 1 §50: the master prompt on the benchmark briefs;
+#                       its score is the prompt version's evaluation score
+#   film-acceptance     Part 2 §81: the 3-minute railway-station film made by
+#                       the deployed studio, then the sixteen checks
+#
+# Manual by default. The nightly run (providers only) happens only when the
+# repository variable LIVE_PROVIDER_TESTS_NIGHTLY is "true". Missing secrets
+# make a run INCOMPLETE (exit 3) — never a pass. Results are recorded in
+# benchmark_runs / acceptance_runs (migration 0043) when DATABASE_URL is set.
+#
+# GPU_JWT_SIGNING_KEY is deliberately NOT passed here: it lives only in the
+# worker's environment. Self-hosted video calls from this workflow are
+# unsigned and recorded in report mode; run `providers:live` on the worker
+# host for signed calls.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run:
+        description: "What to run"
+        type: choice
+        options: [providers, planning-benchmark, film-acceptance]
+        default: providers
+      only:
+        description: "providers: capabilities to probe (planning,image,video,voice,music); empty = all"
+        required: false
+        default: ""
+      briefs:
+        description: "planning-benchmark: brief ids (railway,lighthouse,kitchen,orbit,market); empty = all"
+        required: false
+        default: ""
+      user:
+        description: "film-acceptance: the owner account (uuid) the test film is made under"
+        required: false
+        default: ""
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  evaluation:
+    if: github.event_name == 'workflow_dispatch' || vars.LIVE_PROVIDER_TESTS_NIGHTLY == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      RUN: ${{ github.event_name == 'schedule' && 'providers' || inputs.run }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+      INTELLIGENCE_ROUTES: ${{ vars.INTELLIGENCE_ROUTES }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_PLAN_MODEL: ${{ vars.OPENAI_PLAN_MODEL }}
+      BENCH_PRICES: ${{ vars.BENCH_PRICES }}
+      FAL_KEY: ${{ secrets.FAL_KEY }}
+      WAN_GPU_URL: ${{ secrets.WAN_GPU_URL }}
+      HUNYUAN_GPU_URL: ${{ secrets.HUNYUAN_GPU_URL }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+      S3_REGION: ${{ secrets.S3_REGION }}
+      S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+      S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+      S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+      S3_FORCE_PATH_STYLE: ${{ vars.S3_FORCE_PATH_STYLE }}
+      RENDER_NORMALIZE: ${{ vars.RENDER_NORMALIZE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - name: Install ffmpeg (artifact verification)
+        # A hung package mirror once stalled CI for good: bound each attempt and retry.
+        timeout-minutes: 8
+        run: |
+          for i in 1 2 3; do
+            timeout 150 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
+              && timeout 150 sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg && exit 0
+            echo "ffmpeg install attempt $i failed; retrying"; sleep 10
+          done
+          exit 1
+
+      - name: Real-provider tests
+        if: env.RUN == 'providers'
+        run: |
+          args=(--out "$GITHUB_WORKSPACE/evaluation-report.json")
+          [ -n "$ONLY" ] && args+=(--only "$ONLY")
+          [ -n "$DATABASE_URL" ] && args+=(--record)
+          pnpm --filter @cineforge/worker providers:live "${args[@]}"
+        env:
+          ONLY: ${{ inputs.only }}
+
+      - name: Planning benchmark
+        if: env.RUN == 'planning-benchmark'
+        run: |
+          args=(--out "$GITHUB_WORKSPACE/evaluation-report.json")
+          [ -n "$BRIEFS" ] && args+=(--briefs "$BRIEFS")
+          [ -z "$DATABASE_URL" ] && args+=(--no-record)
+          pnpm --filter @cineforge/worker bench:live "${args[@]}"
+        env:
+          BRIEFS: ${{ inputs.briefs }}
+
+      - name: Film acceptance (Part 2 §81)
+        if: env.RUN == 'film-acceptance'
+        run: |
+          [ -n "$OWNER" ] || { echo "film-acceptance needs the owner account uuid (input 'user')"; exit 2; }
+          pnpm --filter @cineforge/worker film:accept --user "$OWNER" --timeout-min 270
+        env:
+          OWNER: ${{ inputs.user }}
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-report
+          path: evaluation-report.json
+          if-no-files-found: ignore

@@ -43,6 +43,7 @@ evidence files that exist (`scripts/check-truth.mjs`).
 | [versions-and-locks.md](versions-and-locks.md) | Append-only clip / voice / master versions; DB-enforced scene and film locks | W8 | INTEGRATED |
 | [passes-and-edits.md](passes-and-edits.md) | STORY → PREVIS → FINAL passes (DB-enforced), edit command, dependency edges, plan history | W8 | INTEGRATED |
 | [director-workspace.md](director-workspace.md) | Director workspace: bible · scenes & shots · chat, timeline strip, decision log with why, plain-language edits | W9 | INTEGRATED |
+| [evaluation-and-acceptance.md](evaluation-and-acceptance.md) | Real-provider probes, benchmark (corpus, cases, prompt lock, live planning score), sync instrument calibration, the sixteen-check film acceptance | W10 | FUNCTIONAL |
 | [visual-review.md](visual-review.md) | Visual Reviewer and visual quality gate (record mode) | W5 (first slice) | INTEGRATED |
 
 Contracts to write before their workstream starts (from the gap analysis):

@@ -82,7 +82,15 @@ jobs:
       - name: Install gpu-worker runtime deps (no ML stack needed in placeholder mode)
         run: pip install fastapi==0.111.0 "uvicorn[standard]==0.30.0" pydantic==2.7.0 "PyJWT[crypto]==2.9.0"
       - name: Install ffmpeg (placeholder clips)
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+        # A hung package mirror once stalled CI for good: bound each attempt and retry.
+        timeout-minutes: 8
+        run: |
+          for i in 1 2 3; do
+            timeout 150 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
+              && timeout 150 sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg && exit 0
+            echo "ffmpeg install attempt $i failed; retrying"; sleep 10
+          done
+          exit 1
       - name: Gateway end-to-end acceptance
         run: pnpm --filter @cineforge/model-adapters exec vitest run e2e
         env:
@@ -188,6 +196,8 @@ jobs:
 
   # docs/38 §AW.11 regression test 1 with real FFmpeg and real media: narration
   # is never cut to the picture, and a short narration never cuts the picture.
+  # W10: artifact verification, sync instrument calibration and the sixteen
+  # film-acceptance checks on real masters run here too.
   media-regression:
     runs-on: ubuntu-latest
     steps:
@@ -201,8 +211,16 @@ jobs:
       - name: Generate Prisma client
         run: pnpm db:generate
       - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+        # A hung package mirror once stalled CI for good: bound each attempt and retry.
+        timeout-minutes: 8
+        run: |
+          for i in 1 2 3; do
+            timeout 150 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
+              && timeout 150 sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg && exit 0
+            echo "ffmpeg install attempt $i failed; retrying"; sleep 10
+          done
+          exit 1
       - name: Media regression tests
-        run: pnpm --filter @cineforge/worker exec vitest run src/ffmpeg src/avsync src/voice
+        run: pnpm --filter @cineforge/worker exec vitest run src/ffmpeg src/avsync src/voice src/acceptance src/bench
         env:
           REQUIRE_FFMPEG: "1"

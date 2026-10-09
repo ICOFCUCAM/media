@@ -1149,3 +1149,42 @@ model DirectorMessage {
   @@index([projectId, createdAt])
   @@map("director_messages")
 }
+
+/// Benchmark runs (DirectorOS W10, migration 0043): offline engine benchmark,
+/// live planning benchmark (a prompt version's evaluation score), real-provider
+/// probes, sync instrument calibration. Append-only.
+model BenchmarkRun {
+  id            String   @id @default(uuid()) @db.Uuid
+  suite         String
+  status        String
+  score         Decimal? @db.Decimal(6, 4)
+  promptId      String?  @map("prompt_id")
+  promptVersion Int?     @map("prompt_version")
+  provider      String?
+  model         String?
+  gitSha        String?  @map("git_sha")
+  metrics       Json     @default("{}")
+  cases         Json     @default("[]")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([suite, createdAt(sort: Desc)])
+  @@map("benchmark_runs")
+}
+
+/// End-to-end film acceptance runs (Part 2 §81, migration 0043): the 16 checks
+/// and the verdict. Append-only; project_id has no foreign key (evidence outlives the film).
+model AcceptanceRun {
+  id         String   @id @default(uuid()) @db.Uuid
+  projectId  String?  @map("project_id") @db.Uuid
+  brief      String
+  targetSec  Int      @map("target_sec")
+  verdict    String
+  checks     Json
+  masterKey  String?  @map("master_key")
+  gitSha     String?  @map("git_sha")
+  startedAt  DateTime @map("started_at") @db.Timestamptz(6)
+  finishedAt DateTime @default(now()) @map("finished_at") @db.Timestamptz(6)
+
+  @@index([finishedAt(sort: Desc)])
+  @@map("acceptance_runs")
+}

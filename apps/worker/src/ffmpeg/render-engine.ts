@@ -25,6 +25,14 @@ import {
   type VideoFormat,
 } from "./commands";
 
+/** Frame rate of the default (light) assembly pass; RENDER_NORMALIZE=1 conforms to DEFAULT_FORMAT instead. */
+export const LIGHT_FPS = 16;
+
+/** What a master is delivered as: the light pass keeps the clips' size at LIGHT_FPS; normalize conforms to DEFAULT_FORMAT. */
+export function masterFormat(env: Record<string, string | undefined>, clipSize: { width: number; height: number }): { width: number; height: number; fps: number } {
+  return env.RENDER_NORMALIZE === "1" ? { width: DEFAULT_FORMAT.width, height: DEFAULT_FORMAT.height, fps: Number(DEFAULT_FORMAT.fps) } : { ...clipSize, fps: LIGHT_FPS };
+}
+
 export interface SceneAssets {
   sceneId: string;
   index: number;
@@ -96,7 +104,7 @@ export class RenderEngine {
             ? normalizeArgs(raw, norm, this.fmt)
             : [
                 "-i", raw,
-                "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=16,format=yuv420p",
+                "-vf", `scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=${LIGHT_FPS},format=yuv420p`,
                 "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an",
                 norm,
               ],
@@ -152,7 +160,7 @@ export class RenderEngine {
           // Outro resolution may differ from body clips: re-encode pass keeps
           // concat valid (same vf chain as the light normalize above).
           const outroNorm = join(work, "outro_norm.mp4");
-          await this.run(["-i", card, "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=16,format=yuv420p", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an", outroNorm]);
+          await this.run(["-i", card, "-vf", `scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=${LIGHT_FPS},format=yuv420p`, "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an", outroNorm]);
           clips.push(outroNorm);
           console.log(`[render] appended branded outro`);
         } catch (e) {

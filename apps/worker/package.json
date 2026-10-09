@@ -14,11 +14,17 @@
     "timeline:build": "tsx src/timeline/cli.ts",
     "avsync:check": "tsx src/avsync/cli.ts",
     "canon:revise": "tsx src/canon/cli.ts",
-    "canon:live-check": "tsx src/canon/live-check.ts"
+    "canon:live-check": "tsx src/canon/live-check.ts",
+    "providers:live": "tsx src/acceptance/providers-cli.ts",
+    "bench:live": "tsx src/bench/cli.ts live",
+    "bench:record": "tsx src/bench/cli.ts offline",
+    "sync:calibrate": "tsx src/bench/cli.ts calibrate",
+    "film:accept": "tsx src/acceptance/film-cli.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.580.0",
     "@aws-sdk/s3-request-presigner": "^3.580.0",
+    "@cineforge/bench": "workspace:*",
     "@cineforge/db": "workspace:*",
     "@cineforge/gpu": "workspace:*",
     "@cineforge/model-adapters": "workspace:*",

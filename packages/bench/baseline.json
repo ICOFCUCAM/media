@@ -1,0 +1,10 @@
+{
+  "storyConsistency": 1,
+  "characterConsistency": 1,
+  "promptAdherence": 1,
+  "continuity": 1,
+  "dialogue": 1,
+  "cinematography": 1,
+  "voice": 1,
+  "score": 1
+}

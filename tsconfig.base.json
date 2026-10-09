@@ -21,7 +21,8 @@
       "@cineforge/realtime": ["packages/realtime/src/index.ts"],
       "@cineforge/db": ["packages/db/src/index.ts"],
       "@cineforge/movie": ["packages/movie/src/index.ts"],
-      "@cineforge/voice-contracts": ["packages/voice-contracts/src/index.ts"]
+      "@cineforge/voice-contracts": ["packages/voice-contracts/src/index.ts"],
+      "@cineforge/bench": ["packages/bench/src/index.ts"]
     }
   }
 }
