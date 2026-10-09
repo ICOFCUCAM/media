@@ -203,6 +203,6 @@ jobs:
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Media regression tests
-        run: pnpm --filter @cineforge/worker exec vitest run src/ffmpeg src/avsync
+        run: pnpm --filter @cineforge/worker exec vitest run src/ffmpeg src/avsync src/voice
         env:
           REQUIRE_FFMPEG: "1"

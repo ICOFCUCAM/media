@@ -13,7 +13,7 @@
  * no public URL, and this needs no extra infrastructure. Low frequency is fine.
  */
 import { Queue } from "bullmq";
-import { QUEUES, planCapSec, type FilmJob, type VoiceLabJob, type SocialJob, type RenderJob } from "@cineforge/shared";
+import { QUEUES, planCapSec, type FilmJob, type VoiceLabJob, type VoiceEngineJob, type SocialJob, type RenderJob } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
 import { enqueueSceneFlow } from "./film-flow";
 import { notifyFinish } from "../notify";
@@ -21,6 +21,7 @@ import { notifyFinish } from "../notify";
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const filmQueue = new Queue<FilmJob>(QUEUES.film, { connection });
 const voiceLabQueue = new Queue<VoiceLabJob>(QUEUES.voiceLab, { connection });
+const voiceEngineQueue = new Queue<VoiceEngineJob>(QUEUES.voiceEngine, { connection });
 const socialQueue = new Queue<SocialJob>(QUEUES.social, { connection });
 const renderQueue = new Queue<RenderJob>(QUEUES.render, { connection });
 
@@ -209,14 +210,24 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
       // ── Voice Lab (docs/29): claim pending clones + voiceovers ─────────
       // Same producer/consumer split as films: the web writes PENDING rows,
       // we claim them atomically and enqueue. Stable jobIds dedupe re-claims.
-      const pendingVoices = await prisma.voice.findMany({ where: { status: "PENDING" }, select: { id: true }, take: 5 });
+      // A new voice is enrolled by the Voice Engine (W7): consent checked,
+      // recording judged, engine artifact stored — one voice_jobs row each.
+      const pendingVoices = await prisma.voice.findMany({ where: { status: "PENDING" }, select: { id: true, userId: true }, take: 5 });
       for (const v of pendingVoices) {
         const claimed = await prisma.voice.updateMany({ where: { id: v.id, status: "PENDING" }, data: { status: "CLONING" } });
         if (claimed.count === 1) {
-          await voiceLabQueue.add("clone", { kind: "clone", id: v.id }, { jobId: `voice-clone-${v.id}`, attempts: 2, removeOnComplete: 100 });
-          console.log(`[poller] enqueued voice clone ${v.id}`);
+          const vj = await prisma.voiceJob.create({ data: { userId: v.userId, voiceId: v.id, type: "voice.enroll" }, select: { id: true } });
+          await voiceEngineQueue.add("voice.enroll", { jobId: vj.id }, { jobId: `voice-job-${vj.id}`, removeOnComplete: 100 });
+          console.log(`[poller] enqueued voice enrollment ${v.id} (job ${vj.id})`);
         }
       }
+      // Voice jobs the API created but whose enqueue was lost: re-enqueue after a minute (jobIds dedupe).
+      const stranded = await prisma.voiceJob.findMany({
+        where: { status: "queued", createdAt: { lt: new Date(Date.now() - 60_000) } },
+        select: { id: true, type: true },
+        take: 10,
+      });
+      for (const j of stranded) await voiceEngineQueue.add(j.type, { jobId: j.id }, { jobId: `voice-job-${j.id}`, removeOnComplete: 100 });
       const pendingVoiceovers = await prisma.voiceover.findMany({ where: { status: "PENDING" }, select: { id: true }, take: 5 });
       for (const vo of pendingVoiceovers) {
         const claimed = await prisma.voiceover.updateMany({ where: { id: vo.id, status: "PENDING" }, data: { status: "SPEAKING" } });

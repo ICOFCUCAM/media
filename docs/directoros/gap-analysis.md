@@ -561,6 +561,22 @@ real-provider ComfyUI test (W10).
 
 ### W7 — Voice Engine (Parts 3–4)
 
+**W7a done 2026-10-09** (docs/51; contract voice-engine.md; migration 0036
+applied live). Built: `packages/voice-contracts` (VoiceEngine interface,
+eight job states, frozen `/v1` schemas, segmentation, recording judge,
+config router), recording analysis and mastering in the worker, fal MiniMax
+and OpenAI engines behind the interface, `voice_jobs` with the eight states,
+`voice_engine_artifacts`, consent on every voice, and the six `/v1` routes
+in `apps/api` (owner-only, 404 to others). Placement differs from the plan:
+the API lives in `apps/api` and the worker side in `apps/worker` until the
+self-hosted engines need their own apps. **Blocked by the owner's rule:**
+Qwen3-TTS / CosyVoice / GPT-SoVITS adapters, the voice GPU worker, licence
+registry and benchmark harness wait on Phase 1 (the router lists them as
+gated). **Next (W7b):** film narration and per-character dialogue on the
+Voice Engine, dubbing via batch. Carried forward: content-hash cache,
+deleting recordings and provider clones with the voice, per-use licence for
+community voices.
+
 Placement: `packages/voice-contracts` (types, `VoiceEngine`, capabilities,
 job states; the only thing CineForge imports), `apps/voice-api`
 (`/v1/voices`, `/v1/speech`, `/v1/speech/batch`, `/v1/voices/:id`,
@@ -674,4 +690,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 113 built, 118 shallow, 19 poorly built, 132 not built, 72 n/a. Of the 382 IDs that are requirements, 113 (30%) are built; 137 exist but need upgrading or changing; 132 must be built. (Updated after W6, 2026-10-09.)
+454 IDs: 162 built, 144 shallow, 1 poorly built, 75 not built, 72 n/a. Of the 382 IDs that are requirements, 162 (42%) are built; 145 exist but need upgrading or changing; 75 must be built. (Updated after W7a, 2026-10-09.)

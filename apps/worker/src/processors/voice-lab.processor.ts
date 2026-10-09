@@ -70,6 +70,9 @@ export const voiceLabWorker = new Worker<VoiceLabJob>(
       const voice = await prisma.voice.findUniqueOrThrow({ where: { id } });
       try {
         if (!voice.sampleKey) throw new Error("no voice sample uploaded");
+        // W7: no voice is cloned without recorded consent (new voices enroll via the Voice Engine).
+        if (!voice.consentType || !voice.consentConfirmedAt)
+          throw new Error("consent is required: confirm the voice is yours or that you are authorised to use it");
         const bytes = await storage.getBytes(voice.sampleKey);
         const ext = voice.sampleKey.split(".").pop()?.toLowerCase() ?? "mp3";
         const mime = ext === "wav" ? "audio/wav" : ext === "m4a" ? "audio/mp4" : "audio/mpeg";

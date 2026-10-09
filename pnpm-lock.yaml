@@ -44,6 +44,9 @@ importers:
       '@cineforge/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@cineforge/voice-contracts':
+        specifier: workspace:*
+        version: link:../../packages/voice-contracts
       '@nestjs/common':
         specifier: ^10.3.0
         version: 10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -74,6 +77,9 @@ importers:
       socket.io:
         specifier: ^4.7.0
         version: 4.8.3
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
     devDependencies:
       '@nestjs/cli':
         specifier: ^10.3.0
@@ -160,6 +166,9 @@ importers:
       '@cineforge/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@cineforge/voice-contracts':
+        specifier: workspace:*
+        version: link:../../packages/voice-contracts
       bullmq:
         specifier: ^5.7.0
         version: 5.78.0
@@ -270,6 +279,22 @@ importers:
         version: 1.6.1(@types/node@20.19.42)(terser@5.48.0)
 
   packages/shared:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.12.0
+        version: 20.19.42
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@20.19.42)(terser@5.48.0)
+
+  packages/voice-contracts:
+    dependencies:
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^20.12.0

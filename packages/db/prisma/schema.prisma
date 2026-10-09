@@ -561,11 +561,51 @@ model Voice {
   shareStatus     String      @default("PRIVATE") @map("share_status")
   shareTerms      String?     @map("share_terms")
   errorMessage    String?     @map("error_message")
+  // W7 (0036): consent is recorded with every voice; enrollment refuses none.
+  consentType        String?   @map("consent_type")
+  consentConfirmedAt DateTime? @map("consent_confirmed_at") @db.Timestamptz(6)
+  language           String?
+  quality            Json?
   createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   voiceovers      Voiceover[]
 
   @@map("voices")
+}
+
+// ── Voice Engine (W7, 0036): engine artifacts + jobs with eight states ─────
+model VoiceEngineArtifact {
+  id            String   @id @default(uuid()) @db.Uuid
+  voiceId       String   @map("voice_id") @db.Uuid
+  engineId      String   @map("engine_id")
+  engineVersion String   @map("engine_version")
+  artifactType  String   @map("artifact_type")
+  artifactUri   String   @map("artifact_uri")
+  metadata      Json     @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([voiceId, engineId, engineVersion])
+  @@map("voice_engine_artifacts")
+}
+
+model VoiceJob {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  voiceId     String?   @map("voice_id") @db.Uuid
+  type        String
+  engine      String?
+  status      String    @default("queued")
+  payload     Json      @default("{}")
+  result      Json?
+  error       String?
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  startedAt   DateTime? @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("voice_jobs")
 }
 
 model Voiceover {

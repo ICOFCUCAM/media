@@ -169,12 +169,23 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
       status: has(env, "OPENAI_API_KEY") ? "experimental" : "unavailable",
       realExecution: has(env, "OPENAI_API_KEY"),
     }),
-    cap({
-      capability: "voice_cloning",
-      provider: has(env, "FAL_KEY") ? "fal" : null,
-      status: has(env, "FAL_KEY") ? "experimental" : "unavailable",
-      realExecution: has(env, "FAL_KEY"),
-    }),
+    (() => {
+      // Voice Engine router (W7): VOICE_ENGINES, default "fal-minimax:90,openai-tts:80".
+      // Self-hosted voice models are listed but gated on Phase 1 (docs/39).
+      const listed = (env.VOICE_ENGINES ?? "fal-minimax:90,openai-tts:80").split(",").map((x) => x.split(":")[0]!.trim());
+      const fal = listed.includes("fal-minimax") && has(env, "FAL_KEY");
+      const gated = listed.filter((id) => ["qwen3-tts", "cosyvoice-3", "gpt-sovits"].includes(id));
+      return cap({
+        capability: "voice_cloning",
+        provider: fal ? "fal-minimax" : null,
+        status: fal ? "experimental" : "unavailable",
+        realExecution: fal,
+        note: [
+          gated.length ? `${gated.join(", ")} wait on Phase 1 (docs/39)` : null,
+          fal ? "consent required; recordings judged before cloning" : "no cloning engine configured (VOICE_ENGINES / FAL_KEY)",
+        ].filter(Boolean).join("; "),
+      });
+    })(),
     cap({
       capability: "music_generation",
       provider: has(env, "FAL_KEY") ? "fal" : null,
