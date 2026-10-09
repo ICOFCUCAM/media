@@ -19,6 +19,10 @@ export interface RunConfig {
   passMode?: "single" | "three";
   /** What is being made (W11; Part 5): format, medium, animation style, episodes — data, not prompt words. */
   production?: ProductionSpec;
+  /** Character Cards cast into the production (W12; Part 5 §183 "Use character"). */
+  castIds?: string[];
+  /** The production's title (defaults to the brief's opening). */
+  title?: string;
 }
 
 /** Shared generation runner — the real pipeline through Supabase when signed

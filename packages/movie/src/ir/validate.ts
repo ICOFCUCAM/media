@@ -57,6 +57,12 @@ export interface ProductionConstraints {
   episodes?: number;
   /** Narrated formats (story): every scene carries narration. */
   narrated?: boolean;
+  /** Animation (W12): every character has a design (proportions, palette, movement). */
+  animation?: boolean;
+  /** Characters cast before planning (Character Cards, earlier episodes): each must be in the film, unrenamed. */
+  cast?: { id: string; name: string }[];
+  /** Characters who died in earlier episodes: they appear only in flashbacks. */
+  deceased?: { id: string; name: string }[];
 }
 
 export type ValidationResult = { ok: true; pkg: FilmPackage; issues: [] } | { ok: false; issues: Issue[]; pkg?: FilmPackage };
@@ -376,6 +382,24 @@ function production(pkg: FilmPackage, c: ProductionConstraints): Issue[] {
   }
   if (c.narrated) {
     pkg.scenes.forEach((sc, i) => !sc.narration?.trim() && P("NARRATION_MISSING", `scenes[${i}].narration`, `${sc.id} has no narration; this format is told by a narrator`));
+  }
+  if (c.animation) {
+    pkg.cast.forEach((ch, i) => !ch.design && P("DESIGN_MISSING", `cast[${i}].design`, `${ch.id} has no design; animated characters need proportions, colours and movement`));
+  }
+  for (const want of c.cast ?? []) {
+    const ch = pkg.cast.find((x) => x.id === want.id);
+    if (!ch) P("CAST_MISSING", "cast", `${want.id} ("${want.name}") was cast for this production but is not in the package`);
+    else if (ch.name.trim().toLowerCase() !== want.name.trim().toLowerCase()) P("CAST_RENAMED", `cast[${pkg.cast.indexOf(ch)}].name`, `${want.id} is "${want.name}", not "${ch.name}"`);
+    else if (!pkg.scenes.some((sc) => sc.characters.some((st) => st.characterId === want.id))) {
+      P("CAST_UNUSED", "scenes", `${want.id} ("${want.name}") was cast for this production but appears in no scene`);
+    }
+  }
+  for (const dead of c.deceased ?? []) {
+    pkg.scenes.forEach((sc, i) => {
+      if (sc.characters.some((st) => st.characterId === dead.id) && !sc.storyTime?.flashback) {
+        P("DECEASED_APPEARS", `scenes[${i}].characters`, `${dead.name} died in an earlier episode; ${sc.id} may show them only as a flashback`);
+      }
+    });
   }
   pkg.scenes.forEach((sc, i) => {
     const p = `scenes[${i}]`;

@@ -44,6 +44,10 @@ const DIRECTOR_RULES = [
   "  to side B — cross on a neutral shot. In a reverse (consecutive singles of two people) their screen",
   "  directions oppose so their eyelines meet. Open a scene in a new place on a wide unless it continues the",
   "  previous action; avoid three identical sizes in a row and jumps from a wide straight to an extreme close-up.",
+  "- Animation: when the medium is ANIMATION every character has a design (proportions, exact colours, how they",
+  "  move) drawn in the production's style; in live action design is null.",
+  "- Cast and canon you are given (CAST, SHOW BIBLE, PREVIOUSLY) are fixed: use those characters with their ids,",
+  "  names and identities exactly, follow the show's rules, and never contradict what earlier episodes established.",
   "- Narration is spoken voice-over: write it as spoken language, or null when the scene plays without it.",
   "- rationale fields: one or two sentences on why the choice serves the film.",
   "- Keep the film within its runtime and scene count exactly; the budget was set for them.",
@@ -53,13 +57,15 @@ export const PROMPTS = {
   directorMaster: {
     id: "director.master",
     // v5 (W11): the plan request carries the production type, medium and animation style.
-    version: 5,
+    // v6 (W12): character design for animation; CAST, SHOW BIBLE and PREVIOUSLY sections.
+    version: 6,
     purpose: "One master call: brief → complete Film Production Package (Part 2 §85, §93).",
     system: DIRECTOR_RULES,
   },
   directorRevision: {
     id: "director.revision",
-    version: 4,
+    // v5 (W12): the rules and package schema gained character design and fixed cast/canon.
+    version: 5,
     purpose: "Surgical revision: fix exactly the validator's issues in a package (Part 2 §93).",
     system: [
       DIRECTOR_RULES,
@@ -140,6 +146,53 @@ export interface PlanProduction {
   narrated: boolean;
   episodes?: number | null;
   direction: string[];
+  /** Characters the owner cast from their Character Cards (W12; Part 5 §183) — used as given. */
+  cast?: PlanCastMember[];
+  /** The show this production belongs to (W12; Part 5 §184). */
+  bible?: PlanShowBible | null;
+  /** One episode of a show: its number and what earlier episodes established. */
+  episode?: { number: number; previously: PlanEpisodeRecap[] } | null;
+}
+
+/** A character fixed before planning: id, name and identity are used exactly. */
+export interface PlanCastMember {
+  id: string;
+  name: string;
+  age: number | null;
+  gender: string | null;
+  identity: { face: string; hair: string; body: string; marks: string[] };
+  wardrobe: string | null;
+  personality: string | null;
+  voice: string | null;
+  design: { proportions: string; palette: string; movement: string } | null;
+  /** Where the character comes from: a Character Card (must appear), or an earlier episode (may return). */
+  source: "card" | "earlier_episode";
+  /** Died in an earlier episode: may appear only in flashbacks. */
+  deceased?: boolean;
+}
+
+export interface PlanShowBible {
+  title: string;
+  genre: string | null;
+  audience: string | null;
+  worldRules: string | null;
+  locations: string | null;
+  musicIdentity: string | null;
+  narrativeRules: string | null;
+  episodeFormat: string | null;
+  continuityRules: string | null;
+}
+
+export interface PlanEpisodeRecap {
+  number: number;
+  title: string;
+  synopsis: string;
+  /** What the audience knows by the end of it. */
+  facts: string[];
+  /** Who died in it (they return only in flashbacks). */
+  deaths: string[];
+  /** How characters stand with each other at its end. */
+  relationships: string[];
 }
 
 function productionSection(p: PlanProduction): string[] {
@@ -156,12 +209,63 @@ function productionSection(p: PlanProduction): string[] {
   ];
 }
 
+function castLines(c: PlanCastMember): string {
+  return [
+    `- ${c.id} "${c.name}"${c.age !== null ? `, age ${c.age}` : ""}${c.gender ? `, ${c.gender}` : ""}${c.deceased ? " (died in an earlier episode: flashbacks only)" : ""}`,
+    `  identity: face ${c.identity.face}; hair ${c.identity.hair}; body ${c.identity.body}${c.identity.marks.length ? `; marks ${c.identity.marks.join(", ")}` : ""}`,
+    ...(c.design ? [`  design: ${c.design.proportions}; colours ${c.design.palette}; moves ${c.design.movement}`] : []),
+    ...(c.wardrobe ? [`  usual clothing: ${c.wardrobe}`] : []),
+    ...(c.personality ? [`  personality: ${c.personality}`] : []),
+    ...(c.voice ? [`  voice: ${c.voice}`] : []),
+  ].join("\n");
+}
+
+function castSection(cast: PlanCastMember[]): string[] {
+  const cards = cast.filter((c) => c.source === "card");
+  const returning = cast.filter((c) => c.source === "earlier_episode");
+  return [
+    ...(cards.length
+      ? ["CAST (hard: include every one of these characters with exactly this id, name and identity; you may add others)", ...cards.map(castLines), ""]
+      : []),
+    ...(returning.length
+      ? ["RETURNING CHARACTERS (from earlier episodes: whoever appears keeps exactly this id, name and identity)", ...returning.map(castLines), ""]
+      : []),
+  ];
+}
+
+function bibleSection(b: PlanShowBible): string[] {
+  const rows: [string, string | null][] = [
+    ["genre", b.genre], ["audience", b.audience], ["world rules", b.worldRules], ["locations", b.locations],
+    ["music identity", b.musicIdentity], ["narrative rules", b.narrativeRules], ["episode format", b.episodeFormat],
+    ["continuity rules", b.continuityRules],
+  ];
+  return [`SHOW BIBLE: ${b.title} (hard)`, ...rows.filter(([, v]) => v?.trim()).map(([k, v]) => `- ${k}: ${v!.trim()}`), ""];
+}
+
+function episodeSection(e: { number: number; previously: PlanEpisodeRecap[] }): string[] {
+  return [
+    `EPISODE ${e.number} (this production is one episode; it continues the show)`,
+    ...(e.previously.length
+      ? ["PREVIOUSLY (canon: never contradict it)", ...e.previously.flatMap((r) => [
+          `- Episode ${r.number} "${r.title}": ${r.synopsis}`,
+          ...r.facts.map((f) => `  known: ${f}`),
+          ...r.deaths.map((d) => `  died: ${d}`),
+          ...r.relationships.map((x) => `  stands: ${x}`),
+        ])]
+      : ["- this is the first episode"]),
+    "",
+  ];
+}
+
 export function renderPlanRequest(brief: string, c: ProductionConstraints, production?: PlanProduction): string {
   return [
     "CREATIVE BRIEF",
     brief.trim(),
     "",
     ...(production ? productionSection(production) : []),
+    ...(production?.bible ? bibleSection(production.bible) : []),
+    ...(production?.episode ? episodeSection(production.episode) : []),
+    ...(production?.cast ? castSection(production.cast) : []),
     "CONSTRAINTS (hard)",
     `- exactly ${c.sceneCount} scenes, indexed 0 to ${c.sceneCount - 1}, ids scene_01 … scene_${String(c.sceneCount).padStart(2, "0")}`,
     `- each scene's shots total ${c.sceneSec} seconds (±${Math.round(c.sceneTolerance * 100)}%)`,

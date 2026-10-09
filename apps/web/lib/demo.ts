@@ -5,7 +5,7 @@
  * a live API. The Director content matches apps/worker/src/director/director.service.ts.
  */
 import { planScenes, planShotsPerScene, estimateMs, msToUsd } from "./system";
-import type { ProductionSpec } from "./production-types";
+import { isStillMotion, type ProductionSpec } from "./production-types";
 
 export type ProjectStatus = "PLANNING" | "GENERATING" | "RENDERING" | "READY";
 
@@ -93,6 +93,9 @@ export interface DemoConfig {
   passMode?: "single" | "three";
   /** What is being made (W11): format, medium, animation style, episodes. */
   production?: ProductionSpec;
+  /** Character Cards cast into the production (W12). */
+  castIds?: string[];
+  title?: string;
   prompt: string;
   modelId: string;
   targetSeconds: number;
@@ -114,7 +117,7 @@ export class DemoRun {
   async start() {
     const scenes = planScenes(this.cfg.targetSeconds);
     const per = planShotsPerScene();
-    const estMs = estimateMs(this.cfg.modelId, this.cfg.targetSeconds);
+    const estMs = estimateMs(this.cfg.modelId, this.cfg.targetSeconds, { stillMotion: this.cfg.production ? isStillMotion(this.cfg.production) : false });
 
     const shots: DemoShot[] = [];
     for (let s = 0; s < scenes; s++)

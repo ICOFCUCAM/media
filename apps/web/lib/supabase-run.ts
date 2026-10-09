@@ -22,6 +22,7 @@ import { createProject, subscribeProject, type ProjectRow } from "./projects";
 import { getSupabase } from "./supabase";
 import { signedUrl } from "./storyboard";
 import type { DemoConfig, DemoShot, DemoState, LiveProduction, LiveScene, LiveShot, ProjectStatus } from "./demo";
+import { isStillMotion } from "./production-types";
 
 const STATUS_MAP: Record<string, ProjectStatus> = {
   DRAFT: "PLANNING",
@@ -67,7 +68,7 @@ export class SupabaseRun {
     const sceneCount = planScenes(this.cfg.targetSeconds);
     const per = planShotsPerScene();
     const totalShots = sceneCount * per;
-    const estMs = estimateMs(this.cfg.modelId, this.cfg.targetSeconds);
+    const estMs = estimateMs(this.cfg.modelId, this.cfg.targetSeconds, { stillMotion: this.cfg.production ? isStillMotion(this.cfg.production) : false });
     const perShotMs = MODELS.find((m) => m.id === this.cfg.modelId)?.msPer720Shot ?? 80_000;
 
     // The legacy storyboard grid (used by the preview engine) stays in sync so
@@ -161,7 +162,7 @@ export class SupabaseRun {
     } else {
       mark("Project submitted to the production queue");
       const project = await createProject({
-        title: this.cfg.prompt.slice(0, 60),
+        title: this.cfg.title?.trim() || this.cfg.prompt.slice(0, 60),
         prompt: this.cfg.prompt,
         targetSeconds: this.cfg.targetSeconds,
         modelId: this.cfg.modelId,
@@ -170,6 +171,7 @@ export class SupabaseRun {
         aspectRatio: this.cfg.aspectRatio,
         passMode: this.cfg.passMode,
         production: this.cfg.production,
+        castIds: this.cfg.castIds,
       });
       if (this.cancelled) return;
       projectId = project.id;

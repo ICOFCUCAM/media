@@ -92,6 +92,7 @@ export function benchmarkFilm(f: number): FilmPackage {
     ],
     personality: ["stubborn, dry humour", "controlled, patient", "warm, impulsive", "watchful, quiet", "anxious, kind"][i]!,
     voice: { description: ["low, quick", "deep, slow", "bright, fast", "soft, measured", "light, hesitant"][i]! },
+    design: null,
     arc: i === 0 ? "from working alone to trusting others" : "is changed by the protagonist's choice",
     rationale: "Each character pushes the protagonist toward the final choice.",
   }));

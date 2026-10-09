@@ -5,14 +5,14 @@
  * never words folded into the brief.
  *
  *   format   film · short film · series · trailer · social short · advert ·
- *            story · motion comic
+ *            story · motion comic · episode (one episode of a show, W12)
  *   medium   live action · animation
  *   style    (animation) 2D: traditional, TV cartoon, anime-inspired, comic
  *            book, children's illustration · 3D: stylized, toy-like, family,
  *            cinematic, low-poly · storybook · motion comic
  */
 
-export const PRODUCTION_KINDS = ["film", "short_film", "series", "trailer", "social_short", "advert", "story", "motion_comic"] as const;
+export const PRODUCTION_KINDS = ["film", "short_film", "series", "trailer", "social_short", "advert", "story", "motion_comic", "episode"] as const;
 export type ProductionKind = (typeof PRODUCTION_KINDS)[number];
 
 export const MEDIUMS = ["live_action", "animation"] as const;
@@ -24,6 +24,14 @@ export const ANIMATION_STYLES = [
   "storybook", "motion_comic",
 ] as const;
 export type AnimationStyle = (typeof ANIMATION_STYLES)[number];
+
+/**
+ * A series planned in one pass has one act per episode, and the Film IR has
+ * at most 5 acts. Longer shows are made episode by episode (kind "episode"),
+ * each reading the Show Bible and what earlier episodes established (W12).
+ */
+export const SERIES_MAX_EPISODES = 5;
+export const EPISODE_MAX_NUMBER = 500;
 
 export interface KindProfile {
   id: ProductionKind;
@@ -92,6 +100,14 @@ export const KIND_PROFILES: Record<ProductionKind, KindProfile> = {
       "Develop the idea into story, characters, world and scenes — the brief may be a single sentence.",
     ],
   },
+  episode: {
+    id: "episode", label: "Episode", minSec: 60, maxSec: 3600, defaultSec: 600, sceneSec: 18, aspects: [], narrated: false,
+    direction: [
+      "One episode of an ongoing show: follow the SHOW BIBLE and its episode format.",
+      "Continue from PREVIOUSLY: characters, facts, deaths and relationships carry over and are never contradicted.",
+      "A complete episode story that ends on a hook into the next.",
+    ],
+  },
   motion_comic: {
     id: "motion_comic", label: "Motion comic", minSec: 30, maxSec: 1800, defaultSec: 120, sceneSec: 12, aspects: [], narrated: false,
     medium: "animation", style: "motion_comic",
@@ -112,23 +128,29 @@ export interface StyleProfile {
   motion: string;
   /** What the model must avoid for this look (added to the negative prompt). */
   avoid: string;
+  /**
+   * How shots are made (W12; Part 5 §181.4–6): "video" runs the video model;
+   * "still_motion" draws each shot as one illustrated page or comic panel and
+   * moves the camera across it — no video model, a fraction of the cost.
+   */
+  pipeline: "video" | "still_motion";
 }
 
 const NOT_PHOTO = "photorealistic, live action, real photograph";
 
 export const STYLE_PROFILES: Record<AnimationStyle, StyleProfile> = {
-  "2d_traditional": { id: "2d_traditional", label: "2D traditional", family: "2d", look: "hand-drawn 2D animation, clean ink lines, painted backgrounds, classic feature-animation look", motion: "smooth, expressive character animation with squash and stretch", avoid: NOT_PHOTO },
-  "2d_tv": { id: "2d_tv", label: "Modern TV cartoon", family: "2d", look: "modern 2D TV cartoon, bold flat colours, simple shapes, crisp outlines", motion: "snappy, poses held between quick moves", avoid: NOT_PHOTO },
-  anime: { id: "anime", label: "Anime-inspired", family: "2d", look: "anime-inspired 2D animation, cel shading, detailed painted backgrounds, expressive eyes", motion: "dynamic camera, held poses with sudden action, speed lines in action", avoid: NOT_PHOTO },
-  comic_book: { id: "comic_book", label: "Comic-book", family: "2d", look: "comic-book style, heavy ink outlines, halftone shading, saturated colours", motion: "punchy poses, dramatic angles", avoid: NOT_PHOTO },
-  childrens_illustration: { id: "childrens_illustration", label: "Children's illustration", family: "2d", look: "children's picture-book illustration, soft watercolour and gouache textures, gentle rounded shapes", motion: "gentle, slow, friendly movement", avoid: `${NOT_PHOTO}, scary imagery` },
-  "3d_stylized": { id: "3d_stylized", label: "Stylized 3D", family: "3d", look: "stylized 3D animation, exaggerated proportions, soft global illumination, rich materials", motion: "appealing, bouncy character animation", avoid: NOT_PHOTO },
-  "3d_toy": { id: "3d_toy", label: "Toy-like 3D", family: "3d", look: "toy-like 3D, plastic and felt materials, miniature sets, shallow depth of field", motion: "stop-motion-like, slightly stepped movement", avoid: NOT_PHOTO },
-  "3d_family": { id: "3d_family", label: "Family animation", family: "3d", look: "family feature 3D animation, warm lighting, big expressive faces, polished render", motion: "lively, readable acting", avoid: NOT_PHOTO },
-  "3d_cinematic": { id: "3d_cinematic", label: "Cinematic 3D", family: "3d", look: "cinematic 3D animation, dramatic lighting, detailed environments, filmic camera", motion: "grounded, weighty movement", avoid: "live action, real photograph" },
-  low_poly: { id: "low_poly", label: "Low-poly", family: "3d", look: "low-poly 3D, faceted geometry, flat-shaded pastel colours", motion: "simple, clean movement", avoid: NOT_PHOTO },
-  storybook: { id: "storybook", label: "Storybook", family: "storybook", look: "illustrated storybook page, painterly illustration, textured paper", motion: "slow camera drifts across the page, subtle character animation", avoid: NOT_PHOTO },
-  motion_comic: { id: "motion_comic", label: "Motion comic", family: "motion_comic", look: "comic panel, inked line art, flat colours, halftone texture, panel composition", motion: "camera pans, tilts and slow pushes across the panel; limited character motion", avoid: NOT_PHOTO },
+  "2d_traditional": { id: "2d_traditional", label: "2D traditional", family: "2d", look: "hand-drawn 2D animation, clean ink lines, painted backgrounds, classic feature-animation look", motion: "smooth, expressive character animation with squash and stretch", avoid: NOT_PHOTO, pipeline: "video" },
+  "2d_tv": { id: "2d_tv", label: "Modern TV cartoon", family: "2d", look: "modern 2D TV cartoon, bold flat colours, simple shapes, crisp outlines", motion: "snappy, poses held between quick moves", avoid: NOT_PHOTO, pipeline: "video" },
+  anime: { id: "anime", label: "Anime-inspired", family: "2d", look: "anime-inspired 2D animation, cel shading, detailed painted backgrounds, expressive eyes", motion: "dynamic camera, held poses with sudden action, speed lines in action", avoid: NOT_PHOTO, pipeline: "video" },
+  comic_book: { id: "comic_book", label: "Comic-book", family: "2d", look: "comic-book style, heavy ink outlines, halftone shading, saturated colours", motion: "punchy poses, dramatic angles", avoid: NOT_PHOTO, pipeline: "video" },
+  childrens_illustration: { id: "childrens_illustration", label: "Children's illustration", family: "2d", look: "children's picture-book illustration, soft watercolour and gouache textures, gentle rounded shapes", motion: "gentle, slow, friendly movement", avoid: `${NOT_PHOTO}, scary imagery`, pipeline: "video" },
+  "3d_stylized": { id: "3d_stylized", label: "Stylized 3D", family: "3d", look: "stylized 3D animation, exaggerated proportions, soft global illumination, rich materials", motion: "appealing, bouncy character animation", avoid: NOT_PHOTO, pipeline: "video" },
+  "3d_toy": { id: "3d_toy", label: "Toy-like 3D", family: "3d", look: "toy-like 3D, plastic and felt materials, miniature sets, shallow depth of field", motion: "stop-motion-like, slightly stepped movement", avoid: NOT_PHOTO, pipeline: "video" },
+  "3d_family": { id: "3d_family", label: "Family animation", family: "3d", look: "family feature 3D animation, warm lighting, big expressive faces, polished render", motion: "lively, readable acting", avoid: NOT_PHOTO, pipeline: "video" },
+  "3d_cinematic": { id: "3d_cinematic", label: "Cinematic 3D", family: "3d", look: "cinematic 3D animation, dramatic lighting, detailed environments, filmic camera", motion: "grounded, weighty movement", avoid: "live action, real photograph", pipeline: "video" },
+  low_poly: { id: "low_poly", label: "Low-poly", family: "3d", look: "low-poly 3D, faceted geometry, flat-shaded pastel colours", motion: "simple, clean movement", avoid: NOT_PHOTO, pipeline: "video" },
+  storybook: { id: "storybook", label: "Storybook", family: "storybook", look: "illustrated storybook page, painterly illustration, textured paper", motion: "slow camera drifts across the page, subtle character animation", avoid: NOT_PHOTO, pipeline: "still_motion" },
+  motion_comic: { id: "motion_comic", label: "Motion comic", family: "motion_comic", look: "comic panel, inked line art, flat colours, halftone texture, panel composition", motion: "camera pans, tilts and slow pushes across the panel; limited character motion", avoid: NOT_PHOTO, pipeline: "still_motion" },
 };
 
 export interface ProductionSpec {
@@ -137,6 +159,14 @@ export interface ProductionSpec {
   animationStyle: AnimationStyle | null;
   /** Series: episodes in the season. */
   episodes?: number | null;
+  /** Episode (W12): the show it belongs to and its number in the show. */
+  seriesId?: string | null;
+  episodeNumber?: number | null;
+}
+
+/** True when the production's shots are drawn stills moved by the camera (storybook, motion comic). */
+export function isStillMotion(p: Pick<ProductionSpec, "medium" | "animationStyle">): boolean {
+  return renderLook(p)?.pipeline === "still_motion";
 }
 
 export const DEFAULT_PRODUCTION: ProductionSpec = { kind: "film", medium: "live_action", animationStyle: null };
@@ -152,8 +182,16 @@ export function productionIssues(p: ProductionSpec, targetSeconds?: number, aspe
   if (p.animationStyle && !ANIMATION_STYLES.includes(p.animationStyle)) out.push(`unknown animation style ${JSON.stringify(p.animationStyle)}`);
   if (k.medium && p.medium !== k.medium) out.push(`a ${k.label.toLowerCase()} is ${k.medium.replace("_", " ")}`);
   if (k.style && p.animationStyle !== k.style) out.push(`a ${k.label.toLowerCase()} uses the ${STYLE_PROFILES[k.style].label} style`);
-  if (p.kind === "series" ? !p.episodes || p.episodes < 1 || p.episodes > 52 : p.episodes != null) {
-    out.push(p.kind === "series" ? "a series needs 1–52 episodes" : "only a series has episodes");
+  if (p.kind === "series" ? !p.episodes || p.episodes < 1 || p.episodes > SERIES_MAX_EPISODES : p.episodes != null) {
+    out.push(p.kind === "series"
+      ? `a series made in one pass has 1–${SERIES_MAX_EPISODES} episodes; make longer shows episode by episode`
+      : "only a series has episodes");
+  }
+  const isEpisode = p.kind === "episode";
+  if (isEpisode !== Boolean(p.seriesId) || (p.episodeNumber != null) !== isEpisode) {
+    out.push(isEpisode ? "an episode names its show and its number" : "only an episode belongs to a show");
+  } else if (isEpisode && (!Number.isInteger(p.episodeNumber) || p.episodeNumber! < 1 || p.episodeNumber! > EPISODE_MAX_NUMBER)) {
+    out.push(`an episode number is 1–${EPISODE_MAX_NUMBER}`);
   }
   if (targetSeconds !== undefined && (targetSeconds < k.minSec || targetSeconds > k.maxSec)) {
     out.push(`a ${k.label.toLowerCase()} runs ${k.minSec}–${k.maxSec}s, not ${targetSeconds}s`);

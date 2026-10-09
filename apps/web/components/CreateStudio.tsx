@@ -12,7 +12,7 @@ import { Chips, ExampleShelf, Field, StudioFooter, StudioGrid, StudioPage, Unloc
 import { NotifyToggle } from "./cf/NotifyToggle";
 import { ClockIcon, ConfigCard, EngineIcon, FormatIcon } from "./cf/ConfigCard";
 import { offeredFormats, useCapabilities, videoAvailable } from "../lib/truth";
-import { ANIMATION_STYLES, STYLE_PROFILES, type AnimationStyle, type ProductionKind, type ProductionSpec } from "../lib/production-types";
+import { ANIMATION_STYLES, SERIES_MAX_EPISODES, STYLE_PROFILES, type AnimationStyle, type ProductionKind, type ProductionSpec } from "../lib/production-types";
 
 const STAGE_LABEL: Record<ProjectStatus, string> = {
   PLANNING: "Writing",
@@ -124,7 +124,9 @@ export function CreateStudio(props: CreateStudioProps) {
   const allowedMax = Math.max(...durations.filter((d) => d.value <= maxSec).map((d) => d.value));
   const effSeconds = seconds <= maxSec ? seconds : allowedMax;
 
-  const estMs = useMemo(() => estimateMs(modelId, effSeconds), [modelId, effSeconds]);
+  // Storybook / motion comic draw stills and move the camera: no GPU video (W12).
+  const stillMotion = look !== "live_action" && STYLE_PROFILES[look].pipeline === "still_motion";
+  const estMs = useMemo(() => estimateMs(modelId, effSeconds, { stillMotion }), [modelId, effSeconds, stillMotion]);
   // One serialized GPU: wall-clock ≈ total GPU time + assembly overhead.
   const readyEstimate = fmtDuration(Math.round(estMs / 1000) + 60);
   const model = MODELS.find((m) => m.id === modelId);
@@ -138,7 +140,8 @@ export function CreateStudio(props: CreateStudioProps) {
       kind,
       medium: look === "live_action" ? "live_action" : "animation",
       animationStyle: look === "live_action" ? null : look,
-      episodes: kind === "series" ? Math.max(1, Math.round(effSeconds / 600)) : null,
+      // One pass plans at most SERIES_MAX_EPISODES (one act each); longer shows go episode by episode.
+      episodes: kind === "series" ? Math.min(SERIES_MAX_EPISODES, Math.max(1, Math.round(effSeconds / 600))) : null,
     };
     void run({ prompt, modelId, targetSeconds: effSeconds, resolution: effectiveRes, aspectRatio: aspect, passMode: review ? "three" : "single", production });
     // Phones: the preview sits under the options — bring it into view.

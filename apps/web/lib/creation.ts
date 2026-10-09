@@ -18,6 +18,8 @@ export interface ProjectType {
   blurb: string;
   href: string;
   defaultSeconds: number;
+  /** Opens the Animation Studio (W12) instead of a live-action studio. */
+  animation?: boolean;
 }
 
 export const PROJECT_TYPES: ProjectType[] = [
@@ -28,6 +30,13 @@ export const PROJECT_TYPES: ProjectType[] = [
   { id: "social", title: "Social Campaign", blurb: "Vertical clips for every feed.", href: "/create/shorts", defaultSeconds: 15 },
   { id: "music", title: "Music Video", blurb: "Visuals cut to a track.", href: "/create/film?type=music", defaultSeconds: 180 },
   { id: "documentary", title: "Documentary", blurb: "Narration-led, archival feel.", href: "/create/film?type=documentary", defaultSeconds: 1800 },
+  // CineForge Animation Studio (W12; Part 5 §185): each opens the animation workspace.
+  { id: "cartoon", title: "Cartoon", blurb: "An animated film in the style you pick.", href: "/create/animation?make=cartoon", defaultSeconds: 600, animation: true },
+  { id: "short_film", title: "Short Film", blurb: "30 seconds to 20 minutes, animated.", href: "/create/animation?make=short", defaultSeconds: 180, animation: true },
+  { id: "story", title: "Story", blurb: "One sentence becomes a narrated cartoon.", href: "/create/animation?make=story", defaultSeconds: 180, animation: true },
+  { id: "motion_comic", title: "Motion Comic", blurb: "Comic panels brought to life by the camera.", href: "/create/animation?make=motion_comic", defaultSeconds: 120, animation: true },
+  { id: "episode", title: "Episode", blurb: "The next episode of your show — it remembers the last.", href: "/create/animation?make=episode", defaultSeconds: 600, animation: true },
+  { id: "character", title: "Character", blurb: "A reusable character card, voice and look.", href: "/create/animation?make=character", defaultSeconds: 0, animation: true },
 ];
 
 export const projectTypeById = (id?: string | null) => PROJECT_TYPES.find((t) => t.id === id);

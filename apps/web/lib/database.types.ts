@@ -36,7 +36,7 @@ export type ShotStatus =
   | "READY"
   | "FAILED";
 
-export type ProjectMode = "auto" | "storyboard" | "library";
+export type ProjectMode = "auto" | "storyboard" | "library" | "show";
 export type ShotSource = "text" | "image";
 export type LocationKind = "CITY" | "KINGDOM" | "BUILDING" | "ROOM" | "LANDSCAPE" | "INTERIOR" | "EXTERIOR";
 
@@ -86,6 +86,8 @@ export interface Database {
           medium: "live_action" | "animation";
           animation_style: string | null;
           episodes: number | null;
+          series_id: string | null;
+          episode_number: number | null;
           story_approved_at: string | null;
           created_at: string;
           updated_at: string;
@@ -108,6 +110,8 @@ export interface Database {
           medium?: "live_action" | "animation";
           animation_style?: string | null;
           episodes?: number | null;
+          series_id?: string | null;
+          episode_number?: number | null;
         };
         Update: {
           status?: ProjectStatus;
@@ -390,6 +394,13 @@ export interface Database {
           arc: string | null;
           reference_urls: string[];
           voice_profile: Json | null;
+          height_cm: number | null;
+          hair: string | null;
+          eyes: string | null;
+          clothing: string | null;
+          animation_style: string | null;
+          design: Json | null;
+          source_character_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -403,6 +414,12 @@ export interface Database {
           personality?: string | null;
           arc?: string | null;
           reference_urls?: string[];
+          height_cm?: number | null;
+          hair?: string | null;
+          eyes?: string | null;
+          clothing?: string | null;
+          animation_style?: string | null;
+          design?: Json | null;
         };
         Update: {
           name?: string;
@@ -411,6 +428,63 @@ export interface Database {
           arc?: string | null;
           reference_urls?: string[];
           voice_profile?: Json | null;
+          age?: number | null;
+          gender?: string | null;
+          height_cm?: number | null;
+          hair?: string | null;
+          eyes?: string | null;
+          clothing?: string | null;
+          animation_style?: string | null;
+          design?: Json | null;
+        };
+        Relationships: [];
+      };
+      project_cast: {
+        Row: { project_id: string; character_id: string; created_at: string };
+        Insert: { project_id: string; character_id: string };
+        Update: never;
+        Relationships: [];
+      };
+      series: {
+        Row: { id: string; project_id: string; title: string; synopsis: string | null; created_at: string };
+        Insert: { project_id: string; title: string; synopsis?: string | null };
+        Update: { title?: string; synopsis?: string | null };
+        Relationships: [];
+      };
+      show_bibles: {
+        Row: {
+          series_id: string;
+          genre: string | null;
+          audience: string | null;
+          world_rules: string | null;
+          locations: string | null;
+          music_identity: string | null;
+          narrative_rules: string | null;
+          episode_format: string | null;
+          continuity_rules: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          series_id: string;
+          genre?: string | null;
+          audience?: string | null;
+          world_rules?: string | null;
+          locations?: string | null;
+          music_identity?: string | null;
+          narrative_rules?: string | null;
+          episode_format?: string | null;
+          continuity_rules?: string | null;
+        };
+        Update: {
+          genre?: string | null;
+          audience?: string | null;
+          world_rules?: string | null;
+          locations?: string | null;
+          music_identity?: string | null;
+          narrative_rules?: string | null;
+          episode_format?: string | null;
+          continuity_rules?: string | null;
+          updated_at?: string;
         };
         Relationships: [];
       };

@@ -98,3 +98,35 @@ create table if not exists public.usage_records (
   cost_usd   double precision not null default 0,
   created_at timestamptz not null default now()
 );
+-- Minimal episodic hierarchy + ownership helpers for 0046 (real: 0002, 0003).
+create table if not exists public.series (
+  id         uuid primary key default gen_random_uuid(),
+  project_id uuid unique not null references public.projects(id) on delete cascade,
+  title      text not null
+);
+create table if not exists public.seasons (
+  id        uuid primary key default gen_random_uuid(),
+  series_id uuid not null references public.series(id) on delete cascade,
+  number    integer not null,
+  unique (series_id, number)
+);
+create table if not exists public.episodes (
+  id        uuid primary key default gen_random_uuid(),
+  season_id uuid not null references public.seasons(id) on delete cascade,
+  number    integer not null,
+  title     text not null,
+  unique (season_id, number)
+);
+grant select, insert, update, delete on public.series, public.seasons, public.episodes to anon, authenticated;
+create or replace function public.owns_character(c uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from characters ch join projects p on p.id = ch.project_id where ch.id = c and p.user_id = auth.uid());
+$$;
+create or replace function public.owns_series(sr uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from series s join projects p on p.id = s.project_id where s.id = sr and p.user_id = auth.uid());
+$$;
+grant execute on function public.owns_character(uuid), public.owns_series(uuid) to authenticated;
+-- projects.mode / status for 0047 (real: 0002, 0006).
+alter table public.projects add column if not exists mode text not null default 'auto';
+alter table public.projects add column if not exists status text not null default 'DRAFT';

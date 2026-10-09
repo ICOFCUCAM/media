@@ -30,4 +30,10 @@ describe("cost estimator (C8)", () => {
     expect(MODEL_VERSIONS["wan-2.1"]).toBeTruthy();
     expect(MODEL_VERSIONS["hunyuan"]).toBeTruthy();
   });
+
+  it("storybook / motion comic shots run no video model: only the camera pass and audio are estimated (W12)", () => {
+    const p = { shotCount: 40, sceneCount: 10, width: 1280, height: 720 };
+    expect(estimateFilmMs("wan-2.1", { ...p, stillMotion: true })).toBe(10 * 2_000 + 40 * 500);
+    expect(estimateFilmMs("wan-2.1", { ...p, stillMotion: true })).toBeLessThan(estimateFilmMs("wan-2.1", p) / 10);
+  });
 });

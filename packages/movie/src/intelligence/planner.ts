@@ -10,6 +10,7 @@ import type { FilmPackage } from "../ir/schema";
 import { formatIssues, validateFilmPackage, type Issue, type ProductionConstraints } from "../ir/validate";
 import { PROMPTS, renderPlanRequest, renderRevisionRequest, type PlanProduction } from "./prompts";
 import type { IntelligenceRouter } from "./router";
+import { applyCast } from "./cast";
 
 export class PlanInvalidError extends Error {
   constructor(readonly issues: Issue[]) {
@@ -58,7 +59,9 @@ export async function planFilm(
     ctx,
   );
   const v1 = validateFilmPackage(first.output, constraints);
-  if (v1.ok) return { pkg: v1.pkg, revised: false, fixedIssues: [], provider: first.provider, model: first.model };
+  // A cast character's identity is CineForge's, not the model's (W12): restored after validation.
+  const cast = ctx.production?.cast ?? [];
+  if (v1.ok) return { pkg: applyCast(v1.pkg, cast), revised: false, fixedIssues: [], provider: first.provider, model: first.model };
 
   const second = await router.call(
     {
@@ -71,5 +74,5 @@ export async function planFilm(
   );
   const v2 = validateFilmPackage(second.output, constraints);
   if (!v2.ok) throw new PlanInvalidError(v2.issues);
-  return { pkg: v2.pkg, revised: true, fixedIssues: v1.issues, provider: second.provider, model: second.model };
+  return { pkg: applyCast(v2.pkg, cast), revised: true, fixedIssues: v1.issues, provider: second.provider, model: second.model };
 }

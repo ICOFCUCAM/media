@@ -27,6 +27,8 @@ export interface CanonicalMediaRequest {
       /** Canonical look, for characters: identity, age, wardrobe, visible state. */
       look: string;
       holding: string[];
+      /** How an animated character moves (W12 design), for motion models. */
+      movement?: string;
     }[];
   };
   camera: {
@@ -80,7 +82,9 @@ export const sizeWords = (s: string) => SIZE_WORDS[s] ?? s;
 function look(c: GenerationContext["characters"][number]): string {
   const marks = c.identity.marks.length ? `, ${c.identity.marks.join(", ")}` : "";
   const age = c.age !== null ? `${c.age}-year-old, ` : "";
-  return `${age}${c.identity.face}, ${c.identity.hair}, ${c.identity.body}${marks}; wearing ${c.wardrobe}${c.physical ? `; ${c.physical}` : ""}`;
+  // Animated characters (W12) keep their proportions and exact colours in every shot.
+  const design = c.design ? `; ${c.design.proportions}; colours: ${c.design.palette}` : "";
+  return `${age}${c.identity.face}, ${c.identity.hair}, ${c.identity.body}${marks}${design}; wearing ${c.wardrobe}${c.physical ? `; ${c.physical}` : ""}`;
 }
 
 export function compileGeneration(
@@ -100,7 +104,10 @@ export function compileGeneration(
   const locs = new Map(pkg.locations.map((l) => [l.id, l]));
   const subjects: CanonicalMediaRequest["visualIntent"]["subjects"] = shot.subjectIds.map((id) => {
     const c = ctx.characters.find((x) => x.characterId === id);
-    if (c) return { id, kind: "character" as const, name: c.name, look: look(c), holding: c.holding.map((h) => h.name) };
+    if (c) {
+      return { id, kind: "character" as const, name: c.name, look: look(c), holding: c.holding.map((h) => h.name),
+        ...(c.design ? { movement: c.design.movement } : {}) };
+    }
     const p = props.get(id);
     if (p) return { id, kind: "prop" as const, name: p.name, look: p.description, holding: [] };
     const l = locs.get(id)!;

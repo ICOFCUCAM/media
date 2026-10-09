@@ -28,12 +28,14 @@ import {
   degradation,
   type Degradation,
 } from "@cineforge/shared";
-import { buildClusterRegistry, MODEL_VERSIONS, type JobContext, type ShotRequest } from "@cineforge/model-adapters";
+import { buildClusterRegistry, MODEL_VERSIONS, type JobContext, type ShotRequest, type VideoModelAdapter } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
 import { checkContinuity, compileFor, compileGeneration, FilmPackage, reviewFrame, type GenerationContext } from "@cineforge/movie";
 import { imageProvider } from "../images/providers";
 import { meter, meteredImages } from "../billing";
 import { productionOf, renderStyleFor } from "../director/production";
+import { isStillMotion } from "@cineforge/shared";
+import { StillMotionEngine, STILL_MOTION_FPS } from "../animation/still-motion";
 import { pickCandidate, seedCandidates } from "../images/candidates";
 import { recordSeedCandidates, type MediaVersionDb } from "../images/record";
 import { assembleReferencePack, endFrameKey } from "../canon/reference-pack";
@@ -53,6 +55,11 @@ import { recordVideoGeneration, videoGenerationRow, type LedgerDb } from "../run
 
 // Bytes uploader for provider adapters (OpenAI seed frames).
 const storage = new S3Storage();
+// Storybook and motion-comic shots (W12): the drawn page/panel + a camera move, no video model.
+const stillMotion = new StillMotionEngine({
+  storage,
+  clipKey: (req) => `projects/${req.job?.projectId ?? "unknown"}/shots/${req.job?.shotId ?? "unknown"}/still-motion-${Date.now()}.mp4`,
+});
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
@@ -468,8 +475,9 @@ export const videoWorker = new Worker<VideoJob>(
     // The self-hosted Wan path can't do that — route the shot to the first
     // registered adapter that can (fal/cinematic), keeping the project's
     // engine for everything else. No capable engine -> fail with the reason.
-    let adapter = registry.get(modelId);
-    const wantsV2v = Boolean(shot.referenceVideoKey && !PREVIEW_SEED.test(shot.referenceVideoKey));
+    const drawn = isStillMotion(productionOf(shot.scene.project));
+    let adapter: VideoModelAdapter = drawn ? stillMotion : registry.get(modelId);
+    const wantsV2v = !drawn && Boolean(shot.referenceVideoKey && !PREVIEW_SEED.test(shot.referenceVideoKey));
     if (wantsV2v && !adapter.capabilities().supportsReferenceVideo) {
       const capable = registry.listCapabilities().find((c) => c.supportsReferenceVideo);
       if (!capable) {
@@ -491,6 +499,8 @@ export const videoWorker = new Worker<VideoJob>(
       seedKey = await resolveSeedKey(shot);
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
+      // A storybook page or comic panel IS the shot: without it there is nothing to move across.
+      if (drawn) throw new UnrecoverableError(`This storybook/motion-comic shot needs its drawn page, but none could be drawn: ${reason}`);
       gaps.push(degradation("SEED_IMAGE_UNAVAILABLE", "shot", "No seed still for this shot; it was generated from text only.", {
         refId: shotId, detail: { reason },
       }));
@@ -503,6 +513,10 @@ export const videoWorker = new Worker<VideoJob>(
     const pack = assembleReferencePack({ seed: seedKey, previousEndFrame: endFrame, wardrobe: wardrobeKeys, identity: identityKeys });
     const request = buildShotRequest(shot, seedKey, preamble, pack.keys, loraKeys, loraSha256);
     // Job authorization reads the job's state fresh, immediately before dispatch.
+    if (drawn) {
+      if (!seedKey) throw new UnrecoverableError("This storybook/motion-comic shot has no drawn page (it was planned without a still).");
+      request.fps = STILL_MOTION_FPS;
+    }
     request.job = await jobContext(shotId, adapter.id);
     const result = await adapter.generate(request);
 
@@ -516,7 +530,7 @@ export const videoWorker = new Worker<VideoJob>(
       throw new UnrecoverableError(judged.failure.message);
     }
     gaps.push(...judged.degradations);
-    if (adapter.id !== modelId) {
+    if (!drawn && adapter.id !== modelId) {
       gaps.push(degradation("MODEL_SUBSTITUTED", "shot", `Generated with ${adapter.id} instead of ${modelId} (video-to-video).`, {
         refId: shotId, severity: "info", detail: { requested: modelId, used: adapter.id },
       }));

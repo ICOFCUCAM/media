@@ -14,6 +14,12 @@ const TYPE_SCENE: Record<string, Scene> = {
   social: "figure",
   music: "stage",
   documentary: "savannah",
+  cartoon: "forest",
+  short_film: "sea",
+  story: "kingdom",
+  motion_comic: "city",
+  episode: "interior",
+  character: "figure",
 };
 
 /** Types that open inside the film studio and accept every entry mode. */
@@ -26,6 +32,7 @@ const FILM_FAMILY = new Set(["film", "documentary", "music"]);
  * starts go to their libraries.
  */
 function pathFor(type: ProjectType, mode: CreationMode): string {
+  if (type.animation) return type.href;
   if (!mode.studio) return mode.href;
   if (!FILM_FAMILY.has(type.id)) return type.href;
   const q = new URLSearchParams({ mode: mode.studio });
@@ -37,7 +44,7 @@ export function CreateGate() {
   const [type, setType] = useState<ProjectType>(PROJECT_TYPES[0]!);
   const [mode, setMode] = useState<CreationMode>(CREATION_MODES[0]!);
   const href = pathFor(type, mode);
-  const ownStudio = !FILM_FAMILY.has(type.id) && !!mode.studio;
+  const ownStudio = Boolean(type.animation) || (!FILM_FAMILY.has(type.id) && !!mode.studio);
 
   return (
     <div className="space-y-7 pb-28">
@@ -74,7 +81,7 @@ export function CreateGate() {
 
       {ownStudio ? (
         <p className="rounded-lg border border-cf-line bg-cf-panel px-4 py-3.5 text-[14px] text-cf-muted">
-          <span className="text-cf-fg">{type.title}</span> has its own studio — you start from a written brief there.
+          <span className="text-cf-fg">{type.title}</span> {type.animation ? "opens the Animation Studio — characters, styles and shows live there." : "has its own studio — you start from a written brief there."}
         </p>
       ) : (
         <section aria-labelledby="gate-from">
@@ -110,10 +117,10 @@ export function CreateGate() {
       <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-cf-line2 bg-cf-panel/95 p-3 pl-5 shadow-[0_20px_50px_rgba(0,0,0,.45)] backdrop-blur">
         <span className="text-[14px] text-cf-muted">
           <span className="font-semibold text-cf-fg">{type.title}</span>
-          {ownStudio ? ` · opens the ${type.title.toLowerCase()} studio` : ` · from ${mode.title.replace(/ → .*/, "").toLowerCase()} · ${mode.studio ? "opens the director's room" : "opens the library"}`}
+          {ownStudio ? (type.animation ? " · opens the Animation Studio" : ` · opens the ${type.title.toLowerCase()} studio`) : ` · from ${mode.title.replace(/ → .*/, "").toLowerCase()} · ${mode.studio ? "opens the director's room" : "opens the library"}`}
         </span>
         <Link href={href} className="cf-btn-accent">
-          Begin {type.title.toLowerCase()} →
+          {type.id === "character" ? "Create a character →" : `Begin ${type.title.toLowerCase()} →`}
         </Link>
       </div>
     </div>

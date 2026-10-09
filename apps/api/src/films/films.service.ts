@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { Queue } from "bullmq";
-import { QUEUES, remainingBudgetMs, type FilmJob, planSceneCount, planShotCount, outputDimensions } from "@cineforge/shared";
+import { QUEUES, remainingBudgetMs, type FilmJob, planSceneCount, planShotCount, outputDimensions, isStillMotion, type AnimationStyle, type Medium } from "@cineforge/shared";
 import { estimateFilmMs, isModelAllowed, allowedModels, type Tier } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
 import { GpuService } from "../gpu/gpu.service";
@@ -23,7 +23,7 @@ export class FilmsService {
   constructor(private readonly gpu: GpuService) {}
 
   /** Pre-flight cost estimate in GPU-ms, before anything is generated. */
-  estimate(project: { modelId: string; targetSeconds: number; aspectRatio: string; resolution?: string | null }) {
+  estimate(project: { modelId: string; targetSeconds: number; aspectRatio: string; resolution?: string | null; medium?: string | null; animationStyle?: string | null }) {
     // The size the worker will actually generate (every aspect, every format).
     const [width, height] = outputDimensions(project.resolution ?? "720p", project.aspectRatio);
     return estimateFilmMs(project.modelId, {
@@ -31,6 +31,8 @@ export class FilmsService {
       sceneCount: planSceneCount(project.targetSeconds),
       width,
       height,
+      // Storybook / motion comic (W12) are drawn stills moved by the camera: no GPU video.
+      stillMotion: isStillMotion({ medium: (project.medium ?? "live_action") as Medium, animationStyle: (project.animationStyle ?? null) as AnimationStyle | null }),
     });
   }
 
