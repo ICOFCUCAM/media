@@ -17,6 +17,7 @@ import { recordGates, type GateDb } from "../quality/recorder";
 import { recordDegradations, type DegradationDb } from "../truth/recorder";
 import { prisma } from "@cineforge/db";
 import { NarrationOverrunError } from "../ffmpeg/commands";
+import { ffmpeg } from "../ffmpeg/ffmpeg";
 import { nextVersion, recordVersion, type VersionDb } from "../versions/record";
 import { RenderEngine, type SceneAssets } from "../ffmpeg/render-engine";
 import { S3Storage } from "../storage/storage";
@@ -27,6 +28,9 @@ import { voiceContinuity } from "../voice/continuity";
 import { syncAfterRender } from "../avsync/run";
 import { applyCut, cutFromTimeline } from "../timeline/lock";
 import { renderProfile } from "../render/profile";
+import { framedFromCast, lipSyncEnabled, lipSyncFilm } from "../lipsync/run";
+import { lipSyncProvider } from "../lipsync/provider";
+import { loadFilmPackage, type CanonDb } from "../canon/revision";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
@@ -107,7 +111,10 @@ export const renderWorker = new Worker<RenderJob>(
       const scenes = await prisma.scene.findMany({
         where: { projectId },
         orderBy: { index: "asc" },
-        include: { shots: { orderBy: { index: "asc" } }, audioTracks: true },
+        include: {
+          shots: { orderBy: { index: "asc" } }, audioTracks: true,
+          dialogueLines: { orderBy: { index: "asc" }, select: { id: true, characterId: true, audioKey: true, startMs: true } },
+        },
       });
       // Guard: a flow enqueued against a not-yet-planned project has no
       // children, so its root runs instantly. Never record a phantom film.
@@ -121,10 +128,46 @@ export const renderWorker = new Worker<RenderJob>(
       // audio rows recorded a key without uploading a file — downloading one
       // kills the assembly ("Object not found"), so exclude them.
       const real = (t: { meta: unknown }) => (t.meta as { generated?: string } | null)?.generated !== "stub";
+
+      // Lip sync (W21): dialogue shots get their speakers' lines on the mouth. LIP_SYNC=1; never blocks.
+      let lipClips = new Map<string, string>();
+      if (lipSyncEnabled() && process.env.S3_ENDPOINT) {
+        try {
+          const storage = new S3Storage();
+          const pkg = await loadFilmPackage(prisma as unknown as CanonDb, projectId).catch(() => null);
+          const framedOf = pkg
+            ? framedFromCast(pkg.cast, await prisma.character.findMany({ where: { projectId }, select: { id: true, name: true } }))
+            : () => [];
+          const provider = lipSyncProvider();
+          const ls = await lipSyncFilm({
+            provider,
+            download: (k, d) => storage.download(k, d), getBytes: (k) => storage.getBytes(k),
+            putBytes: (k, b, ct) => storage.putBytes(k, b, ct), size: (k) => storage.size(k), ffmpeg: (a) => ffmpeg(a),
+            meter: async (t) => { await meter({ kind: "video", provider: "fal", model: provider?.model ?? "lipsync", unit: "requests", units: 1, projectId, meta: { purpose: "lip_sync", shotId: t.shotId, speechSec: t.speechSec } }); },
+          }, projectId, scenes.map((s) => ({
+            sceneId: s.id, index: s.index,
+            shots: s.shots.map((sh) => ({
+              id: sh.id, videoKey: sh.videoKey, durationSec: sh.durationSec, cutSec: sh.cutSec == null ? null : Number(sh.cutSec),
+              size: (sh.cameraPlan as { shotSize?: string } | null)?.shotSize ?? sh.cameraType ?? null,
+              subjectKeys: (sh.cameraPlan as { subjectKeys?: string[] } | null)?.subjectKeys ?? [],
+            })),
+            lines: s.dialogueLines,
+            lineMs: Object.fromEntries(s.audioTracks.filter((t) => t.kind === "VOICE")
+              .flatMap((t) => ((t.meta as { cues?: { lineId?: string | null; durationMs?: number }[] } | null)?.cues ?? []))
+              .filter((c) => c.lineId && c.durationMs).map((c) => [c.lineId!, c.durationMs!])),
+          })), framedOf);
+          lipClips = ls.clips;
+          await record(projectId, ls.gaps);
+          console.log(JSON.stringify({ event: "render.lip_sync", projectId, made: ls.made, reused: ls.reused, gaps: ls.gaps.length }));
+        } catch (e) {
+          console.warn(`[render] lip sync skipped: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+      const clipOf = (sh: { id: string; videoKey: string | null }) => lipClips.get(sh.id) ?? sh.videoKey;
       let assets: SceneAssets[] = scenes.map((s) => ({
         sceneId: s.id,
         index: s.index,
-        shotKeys: s.shots.map((sh) => sh.videoKey).filter((k): k is string => !!k),
+        shotKeys: s.shots.map(clipOf).filter((k): k is string => !!k),
         // The editor's cut lengths (W13), aligned with shotKeys: the clip is trimmed to it.
         shotCutSec: s.shots.filter((sh) => !!sh.videoKey).map((sh) => (sh.cutSec == null ? null : Number(sh.cutSec))),
         musicKey: s.audioTracks.filter(real).find((t) => t.kind === "MUSIC")?.key,
@@ -141,7 +184,7 @@ export const renderWorker = new Worker<RenderJob>(
       if (timelineId) {
         const events = await prisma.timelineEvent.findMany({ where: { timelineVersionId: timelineId }, select: { kind: true, refId: true, startUs: true, endUs: true } });
         const cut = cutFromTimeline(events, new Map(scenes.flatMap((s) => s.shots.map((sh) => [sh.id, s.id] as const))));
-        assets = applyCut(assets, cut, new Map(scenes.flatMap((s) => s.shots.map((sh) => [sh.id, sh.videoKey] as const))));
+        assets = applyCut(assets, cut, new Map(scenes.flatMap((s) => s.shots.map((sh) => [sh.id, clipOf(sh)] as const))));
         durationSec = cut.durationSec;
         console.log(`[render] project=${projectId} from approved timeline ${timelineId} (${cut.scenes.length} scenes, ${durationSec.toFixed(2)}s)`);
       }

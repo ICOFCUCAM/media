@@ -18,6 +18,10 @@ import { prisma } from "@cineforge/db";
 import { enqueueSceneFlow } from "./film-flow";
 import { advancePasses } from "./passes";
 import { advanceLocks } from "./locks";
+import { drawPortraits, type PortraitDb } from "../images/portraits";
+import { imageProvider } from "../images/providers";
+import { meteredImages } from "../billing/meter";
+import { meter } from "../billing";
 import { processEditRequest } from "../canon/edits";
 import { processDirectorMessage } from "../canon/conversation";
 import { loadFilmPackage } from "../canon/revision";
@@ -317,6 +321,14 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
       await claimStoryboardWork();
       // Production passes (W8b): previs, approved scenes, final render of three-pass films.
       await advancePasses();
+      // Character Card portraits (W21; 0054): draw what owners asked for.
+      await (async () => {
+        const storage = new S3Storage();
+        const found = imageProvider((k, b, ct) => storage.putBytes(k, b, ct)).provider;
+        const provider = found ? meteredImages(found, { purpose: "portrait" }, meter) : null;
+        const r = await drawPortraits(prisma as unknown as PortraitDb, provider);
+        if (r.drawn || r.failed) console.log(JSON.stringify({ event: "portraits", ...r }));
+      })().catch(() => {}); // before migration 0054
       // Locked films (W19): render once more from an approved timeline.
       await advanceLocks().catch((e) => console.error(`[poller] locks: ${e instanceof Error ? e.message : String(e)}`));
       // Director chat (W9): plain-language instructions become edit requests.

@@ -246,6 +246,10 @@ model Character {
   loraVersion   String?  @map("lora_version")
   /// Content hash of the LoRA artifact (migration 0027; authz v2). Server-written only.
   loraSha256    String?  @map("lora_sha256")
+  /// Character Card portrait (migration 0054; W21). Owners request; the server draws and writes the key.
+  portraitKey    String?  @map("portrait_key")
+  portraitStatus String?  @map("portrait_status")
+  portraitError  String?  @map("portrait_error")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

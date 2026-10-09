@@ -30,6 +30,8 @@ import {
 import { buildClusterRegistry, buildOpenAIProviders, falFindUrl, falRunQueue, type ExternalHooks, type JobContext } from "@cineforge/model-adapters";
 import { ENGINE_REGISTRY } from "@cineforge/voice-contracts";
 import { imageProvider, imageProviderStatuses } from "../images/providers";
+import { lipSyncProvider } from "../lipsync/provider";
+import { ffmpeg } from "../ffmpeg/ffmpeg";
 import { FalMinimaxEngine, OpenAiTtsEngine } from "../voice/engines";
 import { SCORE_MODEL } from "../audio/score";
 import type { Capability, ProbeResult, ProbeStatus } from "./report";
@@ -148,6 +150,38 @@ const imageFal: Probe = {
   },
 };
 
+/**
+ * Lip sync (W21): a face drawn by the fal image model, held for 3 s, given a
+ * spoken-length tone, through the lip-sync model; the result must be a real
+ * clip of the same length.
+ */
+const lipSyncFal: Probe = {
+  id: "lipsync:fal",
+  capability: "video",
+  provider: "fal",
+  ready: (env) => need(env, ["FAL_KEY"]),
+  async run({ env, dir }) {
+    let face: Uint8Array | null = null;
+    const { provider: images } = imageProvider(async (key, bytes) => { face = bytes; return key; }, { ...env, IMAGE_PROVIDERS: "fal", S3_BUCKET: env.S3_BUCKET ?? "probe" });
+    if (!images) throw new ArtifactError("the fal image provider could not be built");
+    await images.generate("Front-facing head-and-shoulders photo of a woman speaking, mouth slightly open, neutral background, soft light", "probe://face", { width: 768, height: 768 }, { seed: 11 });
+    if (!face) throw new ArtifactError("no face image");
+    const still = join(dir, "face.png");
+    const clip = join(dir, "face.mp4");
+    const tone = join(dir, "speech.wav");
+    await writeFile(still, face);
+    await ffmpeg(["-y", "-loop", "1", "-i", still, "-t", "3", "-r", "25", "-vf", "scale=512:512,format=yuv420p", "-c:v", "libx264", clip]);
+    await ffmpeg(["-y", "-f", "lavfi", "-i", "sine=frequency=220:sample_rate=48000:duration=3", "-af", "volume=0.5,tremolo=f=4:d=0.9", tone]);
+    const ls = lipSyncProvider(env);
+    if (!ls) throw new ArtifactError("the lip-sync provider could not be built");
+    const { readFile } = await import("node:fs/promises");
+    const out = await ls.sync(new Uint8Array(await readFile(clip)), new Uint8Array(await readFile(tone)));
+    const path = join(dir, "lipsync.mp4");
+    await writeFile(path, out);
+    return { model: ls.model, ...(await verifyClip(path, { durationSec: 3, width: 256, height: 256 }, true)) };
+  },
+};
+
 const imageComfy: Probe = {
   id: "image:comfyui",
   capability: "image",
@@ -243,6 +277,7 @@ export function allProbes(): Probe[] {
     planningProbe("openai"),
     imageOpenAI, imageFal,
     imageComfy,
+    lipSyncFal,
     videoProbe("wan", () => "wan-2.1", ["DATABASE_URL", "S3_BUCKET"], false),
     videoProbe("hunyuan", () => "hunyuan", ["DATABASE_URL", "S3_BUCKET"], false),
     videoProbe("fal", (env) => env.FAL_MODEL_ID ?? "cinematic", ["FAL_KEY", "S3_BUCKET"], true),

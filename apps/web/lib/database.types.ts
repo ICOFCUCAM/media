@@ -412,6 +412,9 @@ export interface Database {
           animation_style: string | null;
           design: Json | null;
           source_character_id: string | null;
+          portrait_key: string | null;
+          portrait_status: "requested" | "generating" | "ready" | "failed" | null;
+          portrait_error: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -439,6 +442,8 @@ export interface Database {
           arc?: string | null;
           reference_urls?: string[];
           voice_profile?: Json | null;
+          /** Clients may only request a portrait (0054); the server draws it. */
+          portrait_status?: "requested";
           age?: number | null;
           gender?: string | null;
           height_cm?: number | null;

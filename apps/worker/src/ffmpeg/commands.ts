@@ -19,16 +19,29 @@ export const DEFAULT_FORMAT: VideoFormat = { width: 1920, height: 1080, fps: 24 
  * nearest-frame sampling with the last partial frame kept — exactly what
  * planConform / sourceFrameFor in @cineforge/shared describe.
  */
-export function normalizeArgs(input: string, output: string, fmt: VideoFormat = DEFAULT_FORMAT): string[] {
+export function normalizeArgs(input: string, output: string, fmt: VideoFormat = DEFAULT_FORMAT, env: Record<string, string | undefined> = process.env): string[] {
   const { width, height, fps } = fmt;
   return [
     "-i", input,
     "-vf",
     `scale=${width}:${height}:force_original_aspect_ratio=decrease,` +
-      `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,${conformFilter(parseFrameRate(fps))}`,
+      `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,${interpolating(env) ? interpolateFilter(fps) : conformFilter(parseFrameRate(fps))}`,
     "-c:v", "libx264", "-crf", "18", "-preset", "medium", "-an",
     output,
   ];
+}
+
+/**
+ * Frame interpolation (W21; Part 1 §2.4). RENDER_INTERPOLATE=1 changes a
+ * clip's frame rate by motion-compensated interpolation (new in-between
+ * frames) instead of repeating or dropping frames: a 16 fps model clip plays
+ * smoothly at 24. CPU only (ffmpeg minterpolate); slower than the conform.
+ */
+export function interpolating(env: Record<string, string | undefined> = process.env): boolean {
+  return env.RENDER_INTERPOLATE === "1";
+}
+export function interpolateFilter(fps: number | string): string {
+  return `minterpolate=fps=${fps}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1`;
 }
 
 /** Content of the concat demuxer list file (hard cuts within a scene). */

@@ -27,6 +27,7 @@ import {
   listCards,
   listShows,
   nextEpisodeNumber,
+  requestPortrait,
   saveBible,
   setShowCast,
   type BibleInput,
@@ -34,6 +35,7 @@ import {
   type CardRow,
   type Show,
 } from "../lib/animation";
+import { signedUrl } from "../lib/storyboard";
 
 /**
  * CineForge Animation Studio (W12; Part 5 §185). The CREATE menu's animated
@@ -382,6 +384,25 @@ const voiceIdOf = (c: CardRow): string | null => {
 /** The Character Card (§183.1): who they are, their voice and style, and "Use character". */
 export function CharacterCard({ card, voiceName, cast, onUse }: { card: CardRow; voiceName?: string; cast: boolean; onUse: () => void }) {
   const design = card.design as { proportions?: string; palette?: string; movement?: string } | null;
+  // The card's portrait (W21): drawn by the image engine from the card itself.
+  const [status, setStatus] = useState(card.portrait_status);
+  const [portrait, setPortrait] = useState<string | null>(null);
+  const [portraitError, setPortraitError] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    if (card.portrait_key) void signedUrl(card.portrait_key).then((u) => live && setPortrait(u ?? null));
+    return () => { live = false; };
+  }, [card.portrait_key]);
+  async function draw() {
+    setPortraitError(null);
+    try {
+      await requestPortrait(card.id);
+      setStatus("requested");
+    } catch (e) {
+      setPortraitError(e instanceof Error ? e.message : "Refused");
+    }
+  }
+  const drawing = status === "requested" || status === "generating";
   const rows: [string, string | null][] = [
     ["Voice", voiceName ?? ((card.voice_profile as { description?: string } | null)?.description ?? null)],
     ["Style", card.animation_style ? STYLE_PROFILES[card.animation_style as AnimationStyle]?.label ?? card.animation_style : null],
@@ -393,6 +414,14 @@ export function CharacterCard({ card, voiceName, cast, onUse }: { card: CardRow;
   ];
   return (
     <li className="flex flex-col rounded-lg border border-cf-line bg-cf-panel p-4">
+      {portrait ? (
+        /* Plain <img>: a signed, short-lived storage URL. */
+        <img src={portrait} alt={`Portrait of ${card.name}`} className="mb-3 aspect-square w-full rounded object-cover" />
+      ) : (
+        <div className="mb-3 flex aspect-square w-full items-center justify-center rounded border border-dashed border-cf-line text-[12px] text-cf-muted">
+          {drawing ? "Drawing the portrait…" : "No portrait yet"}
+        </div>
+      )}
       <p className="font-display text-[20px] font-semibold uppercase tracking-[0.02em]">{card.name}</p>
       <p className="mt-1 line-clamp-2 text-[13px] text-cf-muted">{card.appearance}</p>
       <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-[13px]">
@@ -403,9 +432,17 @@ export function CharacterCard({ card, voiceName, cast, onUse }: { card: CardRow;
           </div>
         ))}
       </dl>
-      <button type="button" className={`mt-4 ${cast ? "cf-btn-line" : "cf-btn-accent"}`} onClick={onUse} aria-pressed={cast}>
-        {cast ? "Cast ✓" : "Use character"}
-      </button>
+      {(status === "failed" && card.portrait_error) || portraitError ? (
+        <p role="alert" className="mt-2 text-[12px] text-cf-danger">{portraitError ?? card.portrait_error}</p>
+      ) : null}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="button" className={cast ? "cf-btn-line" : "cf-btn-accent"} onClick={onUse} aria-pressed={cast}>
+          {cast ? "Cast ✓" : "Use character"}
+        </button>
+        <button type="button" className="cf-btn-line" onClick={() => void draw()} disabled={drawing}>
+          {drawing ? "Drawing…" : portrait ? "Redraw portrait" : "Draw portrait"}
+        </button>
+      </div>
     </li>
   );
 }

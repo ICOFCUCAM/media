@@ -48,6 +48,8 @@ export type DegradationCode =
   | "PROMPT_LIMITED" // the video model could not take part of the shot's canonical request (length, motion, negative prompt)
   | "CINEMA_ADVISORY" // a film-grammar advisory on the plan (establishing shot, size repeat/jump, screen direction)
   | "AUDIO_CONTINUITY" // ambience / music / room tone breaks on the plan, or a voice that changes between scenes (§32.6)
+  | "LIP_SYNC_UNAVAILABLE" // dialogue shots not lip-synced: no lip-sync provider (W21)
+  | "LIP_SYNC_FAILED" // a dialogue shot keeps its original clip: its lip sync failed (W21)
   | "PREVIS_TIMING" // previs: a scene's rough voice runs longer than its planned pictures (W19)
   | "QUALITY_FLAGGED"; // a quality gate found a defect it does not block on (record mode) or a minor one
 
@@ -89,6 +91,8 @@ const SEVERITY: Record<DegradationCode, DegradationSeverity> = {
   PROMPT_LIMITED: "info",
   CINEMA_ADVISORY: "info",
   AUDIO_CONTINUITY: "info",
+  LIP_SYNC_UNAVAILABLE: "info",
+  LIP_SYNC_FAILED: "warning",
   PREVIS_TIMING: "warning",
   QUALITY_FLAGGED: "warning",
 };

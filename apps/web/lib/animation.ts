@@ -11,6 +11,12 @@ import type { AnimationStyle } from "./production-types";
 export type CardRow = Database["public"]["Tables"]["characters"]["Row"];
 export type BibleRow = Database["public"]["Tables"]["show_bibles"]["Row"];
 
+/** Ask the server to draw (or redraw) a card's portrait (W21; 0054). */
+export async function requestPortrait(cardId: string): Promise<void> {
+  const { error } = await client().from("characters").update({ portrait_status: "requested" }).eq("id", cardId);
+  if (error) throw new Error(error.message);
+}
+
 export interface CardDesign {
   proportions: string;
   palette: string;
