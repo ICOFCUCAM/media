@@ -476,6 +476,16 @@ direction (W4), audio continuity (W7).
 - Proof: Maya red→blue test (Part 2 §62); knowledge-violation and unpaid-setup
   fixtures fail validation.
 
+### WA — Ads Studio (product line)
+
+Owner direction 2026-10-08: a website-to-advertisement studio that can be sold
+on its own domain (pay as you go from $10 per ad, or monthly). A1 done
+2026-10-09: the `/ads` page from the owner's design, hand-off of its brief to
+the real advert pipeline, own-domain routing. A2 website intelligence (rides
+on W2/W5), A3 brand assets into production (W4/W6), A4 standalone billing
+(after cost measurement), A5 scene-level editing of the live project (W3/W8).
+Details: docs/47.
+
 ### W4 — Shot design and compilation
 
 - BUILD Shot Architect (LLM-planned ShotIR per scene) and Cinematography
