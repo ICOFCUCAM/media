@@ -31,7 +31,7 @@ import {
 import { buildClusterRegistry, MODEL_VERSIONS, type JobContext, type ShotRequest, type VideoModelAdapter } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
 import { checkContinuity, compileFor, compileGeneration, FilmPackage, reviewFrame, type GenerationContext } from "@cineforge/movie";
-import { imageProvider } from "../images/providers";
+import { candidateSeed, imageProvider } from "../images/providers";
 import { meter, meteredImages } from "../billing";
 import { productionOf, renderStyleFor } from "../director/production";
 import { isStillMotion } from "@cineforge/shared";
@@ -47,6 +47,8 @@ import { intelligence } from "../intelligence";
 import { ffmpeg, probeDuration } from "../ffmpeg/ffmpeg";
 import { shotReferences } from "../canon/references";
 import { wardrobeReferenceKeys, type ReferenceImageGenerator, type WardrobeRefDb } from "../canon/wardrobe-refs";
+import { worldReferenceKeys, type WorldRefDb } from "../canon/world-refs";
+import { imageGenerationRow, recordImageGeneration, type ImageLedgerDb, type ImagePurpose } from "../images/ledger";
 import { S3Storage } from "../storage/storage";
 import { enqueueLora } from "../orchestration/lora-queue";
 import { buildGatewayAuthority } from "../gateway";
@@ -142,7 +144,7 @@ function loadShot(shotId: string) {
 async function resolveContinuity(
   shot: ShotWithScene,
 ): Promise<{
-  preamble: string; wardrobeKeys: string[]; identityKeys: string[]; previousEndFrame: string | null;
+  preamble: string; wardrobeKeys: string[]; identityKeys: string[]; locationKeys: string[]; propKeys: string[]; previousEndFrame: string | null;
   loraKeys: string[]; loraSha256: Record<string, string>; gaps: Degradation[];
   /** What canon says this shot shows (Film IR projects) — the Visual Reviewer checks the clip against it. */
   canonContext: GenerationContext | null;
@@ -213,13 +215,24 @@ async function resolveContinuity(
   const gaps: Degradation[] = [];
   let wardrobeKeys: string[] = [];
   if (pkg && refs.result) {
-    const pack = await wardrobeReferenceKeys(prisma as unknown as WardrobeRefDb, wardrobeImageGenerator(shot.scene.projectId), shot.scene.projectId, shot.id,
+    const pack = await wardrobeReferenceKeys(prisma as unknown as WardrobeRefDb, referenceImageGenerator(shot.scene.projectId, "wardrobe_reference", { width: 1024, height: 1536 }), shot.scene.projectId, shot.id,
       pkg, refs.result, refs.charIdByKey, wardrobeUnavailableReason());
     gaps.push(...pack.gaps);
     wardrobeKeys = pack.keys;
   }
+  // Location and prop reference stills (W17; §34–35, migration 0052).
+  let locationKeys: string[] = [];
+  let propKeys: string[] = [];
+  if (pkg && refs.result && process.env.WORLD_REFERENCES !== "0") {
+    const [w, h] = outputDimensions(shot.scene.project.resolution, shot.scene.project.aspectRatio);
+    const world = await worldReferenceKeys(prisma as unknown as WorldRefDb, worldImageGenerator(shot.scene.projectId, { width: w, height: h }), shot.scene.projectId, shot.id,
+      pkg, refs.result, wardrobeUnavailableReason());
+    gaps.push(...world.gaps);
+    locationKeys = world.location;
+    propKeys = world.props;
+  }
   return {
-    preamble, wardrobeKeys, identityKeys: referenceImageKeys, previousEndFrame: pkg ? await previousEndFrame(shot, pkg) : null,
+    preamble, wardrobeKeys, identityKeys: referenceImageKeys, locationKeys, propKeys, previousEndFrame: pkg ? await previousEndFrame(shot, pkg) : null,
     loraKeys, loraSha256, gaps, canonContext: refs.result?.correctedGenerationContext ?? null,
   };
 }
@@ -259,14 +272,31 @@ function wardrobeUnavailableReason(): string {
   return imageProvider((k, b, ct) => storage.putBytes(k, b, ct)).reason ?? "no image provider configured";
 }
 
-/** Reference stills via the image provider registry (W6); null when disabled or none is configured. */
-function wardrobeImageGenerator(projectId: string): ReferenceImageGenerator | null {
-  if (process.env.WARDROBE_REFERENCES === "0") return null;
+/**
+ * Reference stills via the image provider registry (W6), metered and recorded
+ * in the Image Engine's ledger (W17); null when disabled or none is configured.
+ */
+function referenceImageGenerator(projectId: string, purpose: ImagePurpose, size: { width: number; height: number }): ReferenceImageGenerator | null {
+  if (purpose === "wardrobe_reference" && process.env.WARDROBE_REFERENCES === "0") return null;
   const found = imageProvider((k, b, ct) => storage.putBytes(k, b, ct)).provider;
   if (!found) return null;
-  const provider = meteredImages(found, { projectId, purpose: "wardrobe_reference" }, meter);
-  // Portrait: a full-body reference.
-  return { id: provider.id, generate: (prompt, key) => provider.generate(prompt, key, { width: 1024, height: 1536 }) };
+  const provider = meteredImages(found, { projectId, purpose }, meter);
+  return {
+    id: provider.id,
+    generate: async (prompt, key, meta) => {
+      const img = await provider.generate(prompt, key, size);
+      await recordImageGeneration(prisma as unknown as ImageLedgerDb, imageGenerationRow(projectId, purpose, meta?.subject ?? key, img, { canonDigest: meta?.digest ?? null }));
+      return img.key;
+    },
+  };
+}
+
+/** Places and props: the location in the film's frame, a prop the same. */
+function worldImageGenerator(projectId: string, size: { width: number; height: number }): ReferenceImageGenerator | null {
+  const loc = referenceImageGenerator(projectId, "location_reference", size);
+  const prop = referenceImageGenerator(projectId, "prop_reference", { width: 1024, height: 1024 });
+  if (!loc || !prop) return null;
+  return { id: loc.id, generate: (prompt, key, meta) => (meta?.subject.startsWith("prop_") ? prop : loc).generate(prompt, key, meta) };
 }
 
 /** Compose the final ShotRequest. `seedKey` is the resolved seed frame for
@@ -333,8 +363,11 @@ async function resolveSeedKey(shot: ShotWithScene): Promise<string | undefined> 
   const n = seedCandidates();
   const base = `projects/${shot.scene.projectId}/seeds/${shot.id}`;
   const keys = n === 1 ? [`${base}.png`] : Array.from({ length: n }, (_, i) => `${base}-c${i + 1}.png`);
-  const stored = await Promise.all(keys.map((k) => provider.generate(prompt, k, { width: w, height: h })));
+  // Each candidate has its own stable seed (W17): with a seeded provider the same shot draws the same candidates again.
+  const images = await Promise.all(keys.map((k, i) => provider.generate(prompt, k, { width: w, height: h }, { seed: candidateSeed(shot.id, i) })));
+  const stored = images.map((im) => im.key);
   let chosen = stored[0]!;
+  let chosenIndex = 0;
   if (n > 1) {
     // Seed candidates (W6): the Visual Reviewer picks the still that best shows canon.
     const ctx = await seedReviewContext(shot);
@@ -348,7 +381,14 @@ async function resolveSeedKey(shot: ShotWithScene): Promise<string | undefined> 
     }));
     const pick = pickCandidate(cands);
     chosen = pick.chosen.key;
+    chosenIndex = pick.index;
     await recordSeedCandidates(prisma as unknown as MediaVersionDb, shot.scene.projectId, shot.id, cands, pick.index);
+  }
+  // The Image Engine's record (W17): every still drawn for this shot, and which one it uses.
+  for (const [i, img] of images.entries()) {
+    await recordImageGeneration(prisma as unknown as ImageLedgerDb, n === 1
+      ? imageGenerationRow(shot.scene.projectId, "seed_frame", shot.id, img)
+      : imageGenerationRow(shot.scene.projectId, "seed_candidate", shot.id, img, { candidate: i, chosen: i === chosenIndex }));
   }
   await prisma.shot.update({ where: { id: shot.id }, data: { seedImageKey: chosen } });
   return chosen;
@@ -507,10 +547,10 @@ export const videoWorker = new Worker<VideoJob>(
     }
     // Continuity: inherit prior scenes into the prompt + reuse the same character
     // reference frames so identity is locked pixel-level (docs/28).
-    const { preamble, wardrobeKeys, identityKeys, previousEndFrame: endFrame, loraKeys, loraSha256, gaps: refGaps, canonContext } = await resolveContinuity(shot);
+    const { preamble, wardrobeKeys, identityKeys, locationKeys, propKeys, previousEndFrame: endFrame, loraKeys, loraSha256, gaps: refGaps, canonContext } = await resolveContinuity(shot);
     gaps.push(...refGaps);
     // Reference pack (W6): seed → previous end frame → wardrobe → identity, capped.
-    const pack = assembleReferencePack({ seed: seedKey, previousEndFrame: endFrame, wardrobe: wardrobeKeys, identity: identityKeys });
+    const pack = assembleReferencePack({ seed: seedKey, previousEndFrame: endFrame, wardrobe: wardrobeKeys, identity: identityKeys, location: locationKeys, props: propKeys });
     const request = buildShotRequest(shot, seedKey, preamble, pack.keys, loraKeys, loraSha256);
     // Job authorization reads the job's state fresh, immediately before dispatch.
     if (drawn) {

@@ -1,23 +1,46 @@
 /**
- * Image providers (DirectorOS Part 2 §106; W6). One registry for every still
- * CineForge generates — seed frames, wardrobe references — instead of each
- * call site building its own client.
+ * Image providers (DirectorOS Part 2 §69, §95, §106; W6, W17). One registry for
+ * every still CineForge generates — seed frames and candidates, wardrobe,
+ * location and prop references — instead of each call site building its own
+ * client. Every provider returns what it made: the stored key, the provider
+ * and model, the seed it drew with (null when the provider takes none), the
+ * stored object's sha256 and the prompt's sha256 — the Image Engine's record.
  *
  *   IMAGE_PROVIDERS   ordered list, default "openai". The first configured
  *                     provider that is not gated is used.
  *
- *   openai   GPT-image (API). Configured with OPENAI_API_KEY and storage.
+ *   openai   GPT-image (API). Configured with OPENAI_API_KEY and storage. No seeds.
+ *   fal      a hosted text-to-image model on fal (FAL_IMAGE_MODEL, default
+ *            Flux dev). Configured with FAL_KEY and storage. Takes a seed, so a
+ *            still can be drawn again exactly.
  *   comfyui  self-hosted ComfyUI workflows (docs/38 Phases 6–8). GATED: no
  *            ComfyUI or model work until Phase 1 (GPU execution security,
  *            docs/39) is operationally complete — listed so the registry and
  *            the Capability Registry say so, never silently skipped.
  */
-import { buildOpenAIProviders } from "@cineforge/model-adapters";
+import { createHash } from "node:crypto";
+import { buildOpenAIProviders, falFindUrl, falRunQueue } from "@cineforge/model-adapters";
+
+export interface GeneratedImage {
+  key: string;
+  provider: string;
+  model: string | null;
+  /** The seed the still was drawn with; null when the provider takes none. */
+  seed: number | null;
+  /** sha256 of the stored bytes. */
+  sha256: string | null;
+  promptSha256: string;
+  width: number;
+  height: number;
+}
 
 export interface ImageProvider {
   readonly id: string;
-  /** Generate a still from `prompt` and store it at `key`; returns the stored key. */
-  generate(prompt: string, key: string, size: { width: number; height: number }): Promise<string>;
+  readonly model: string | null;
+  /** Whether a seed reproduces a still. */
+  readonly seeds: boolean;
+  /** Generate a still from `prompt` and store it at `key`. */
+  generate(prompt: string, key: string, size: { width: number; height: number }, opts?: { seed?: number }): Promise<GeneratedImage>;
 }
 
 export interface ImageProviderStatus {
@@ -29,18 +52,67 @@ export interface ImageProviderStatus {
 type Env = Record<string, string | undefined>;
 type Put = (key: string, bytes: Uint8Array, contentType: string) => Promise<string>;
 
-const KNOWN: Record<string, (env: Env, put: Put) => { status: ImageProviderStatus; provider: ImageProvider | null }> = {
-  openai: (env, put) => {
+export const sha256Hex = (data: string | Uint8Array) => createHash("sha256").update(data).digest("hex");
+
+/** A put that remembers the sha256 of what it stored, per key. */
+function hashingPut(put: Put): { put: Put; sha: Map<string, string> } {
+  const sha = new Map<string, string>();
+  return { sha, put: async (key, bytes, ct) => { sha.set(key, sha256Hex(bytes)); return put(key, bytes, ct); } };
+}
+
+/** fal's text-to-image call, injectable for tests. */
+export interface FalImageDeps {
+  run(model: string, input: Record<string, unknown>): Promise<Record<string, unknown>>;
+  fetch(url: string): Promise<{ ok: boolean; status: number; bytes: Uint8Array; contentType: string }>;
+}
+
+const defaultFalDeps = (key: string): FalImageDeps => ({
+  run: (model, input) => falRunQueue(key, model, input, { timeoutMs: 5 * 60_000 }),
+  fetch: async (url) => {
+    const res = await fetch(url);
+    return { ok: res.ok, status: res.status, bytes: new Uint8Array(await res.arrayBuffer()), contentType: res.headers.get("content-type") ?? "image/png" };
+  },
+});
+
+const KNOWN: Record<string, (env: Env, put: Put, fal?: FalImageDeps) => { status: ImageProviderStatus; provider: ImageProvider | null }> = {
+  openai: (env, rawPut) => {
     const configured = Boolean(env.OPENAI_API_KEY && env.S3_BUCKET);
+    const model = env.OPENAI_IMAGE_MODEL ?? "gpt-image-1";
     return {
       status: { id: "openai", configured, gated: null },
       provider: configured
         ? {
-            id: "openai-image",
+            id: "openai-image", model, seeds: false,
             async generate(prompt, key, size) {
+              const { put, sha } = hashingPut(rawPut);
               const { image } = buildOpenAIProviders(env as never, (bytes, ct) => put(key, bytes, ct));
               if (!image) throw new Error("image provider unavailable");
-              return (await image.generate({ prompt, width: size.width, height: size.height })).imageKey;
+              const out = await image.generate({ prompt, width: size.width, height: size.height });
+              return { key: out.imageKey, provider: "openai-image", model, seed: null, sha256: sha.get(key) ?? null, promptSha256: sha256Hex(prompt), width: out.width, height: out.height };
+            },
+          }
+        : null,
+    };
+  },
+  fal: (env, rawPut, deps) => {
+    const configured = Boolean(env.FAL_KEY && env.S3_BUCKET);
+    const model = env.FAL_IMAGE_MODEL ?? "fal-ai/flux/dev";
+    return {
+      status: { id: "fal", configured, gated: null },
+      provider: configured
+        ? {
+            id: "fal-image", model, seeds: true,
+            async generate(prompt, key, size, opts) {
+              const d = deps ?? defaultFalDeps(env.FAL_KEY!);
+              const seed = opts?.seed ?? Math.floor(Math.random() * 2 ** 31);
+              const result = await d.run(model, { prompt, image_size: { width: size.width, height: size.height }, seed, num_images: 1, enable_safety_checker: true });
+              const url = falFindUrl(result);
+              if (!url) throw new Error(`image model returned no image (${JSON.stringify(result).slice(0, 200)})`);
+              const res = await d.fetch(url);
+              if (!res.ok) throw new Error(`image download ${res.status}`);
+              if (!res.bytes.length) throw new Error("image model returned an empty image");
+              const stored = await rawPut(key, res.bytes, res.contentType);
+              return { key: stored, provider: "fal-image", model, seed, sha256: sha256Hex(res.bytes), promptSha256: sha256Hex(prompt), width: size.width, height: size.height };
             },
           }
         : null,
@@ -58,16 +130,21 @@ export function imageProviderStatuses(env: Env = process.env): ImageProviderStat
 }
 
 /** The image provider to use, or null with the reason (recorded by the caller). */
-export function imageProvider(put: Put, env: Env = process.env): { provider: ImageProvider | null; reason: string | null } {
+export function imageProvider(put: Put, env: Env = process.env, fal?: FalImageDeps): { provider: ImageProvider | null; reason: string | null } {
   if (env.IMAGE_PROVIDERS?.trim() === "none") return { provider: null, reason: "image generation disabled (IMAGE_PROVIDERS=none)" };
   const ids = (env.IMAGE_PROVIDERS ?? "openai").split(",").map((s) => s.trim()).filter(Boolean);
   const reasons: string[] = [];
   for (const id of ids) {
-    const built = KNOWN[id]?.(env, put);
+    const built = KNOWN[id]?.(env, put, fal);
     if (!built) { reasons.push(`${id}: unknown`); continue; }
     if (built.status.gated) { reasons.push(`${id}: ${built.status.gated}`); continue; }
     if (built.provider) return { provider: built.provider, reason: null };
     reasons.push(`${id}: not configured`);
   }
   return { provider: null, reason: reasons.join("; ") || "no image provider listed" };
+}
+
+/** A stable seed for candidate `i` of a subject: the same shot draws the same candidates again. */
+export function candidateSeed(subject: string, i: number): number {
+  return (parseInt(sha256Hex(subject).slice(0, 8), 16) + i * 7919) % 2 ** 31;
 }

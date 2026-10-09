@@ -29,7 +29,7 @@ import {
 } from "@cineforge/movie";
 import { buildClusterRegistry, buildOpenAIProviders, falFindUrl, falRunQueue, type ExternalHooks, type JobContext } from "@cineforge/model-adapters";
 import { ENGINE_REGISTRY } from "@cineforge/voice-contracts";
-import { imageProviderStatuses } from "../images/providers";
+import { imageProvider, imageProviderStatuses } from "../images/providers";
 import { FalMinimaxEngine, OpenAiTtsEngine } from "../voice/engines";
 import { SCORE_MODEL } from "../audio/score";
 import type { Capability, ProbeResult, ProbeStatus } from "./report";
@@ -129,6 +129,25 @@ const imageOpenAI: Probe = {
   },
 };
 
+const imageFal: Probe = {
+  id: "image:fal",
+  capability: "image",
+  provider: "fal",
+  ready: (env) => need(env, ["FAL_KEY"]),
+  async run({ env, dir }) {
+    let captured: { bytes: Uint8Array; contentType: string } | null = null;
+    const { provider } = imageProvider(async (key, bytes, contentType) => {
+      captured = { bytes, contentType };
+      return key;
+    }, { ...env, IMAGE_PROVIDERS: "fal", S3_BUCKET: env.S3_BUCKET ?? "probe" });
+    if (!provider) throw new ArtifactError("the fal image provider could not be built");
+    const out = await provider.generate("A weathered lighthouse on a rocky coast at dusk, film still, 35mm", "probe://image", { width: 1280, height: 720 }, { seed: 7 });
+    const got = captured as { bytes: Uint8Array; contentType: string } | null;
+    if (!got) throw new ArtifactError("the provider returned no image bytes");
+    return { contentType: got.contentType, model: out.model, seed: out.seed, sha256: out.sha256, ...(await verifyImage(got.bytes, dir)) };
+  },
+};
+
 const imageComfy: Probe = {
   id: "image:comfyui",
   capability: "image",
@@ -222,7 +241,7 @@ export function allProbes(): Probe[] {
   return [
     planningProbe("anthropic"),
     planningProbe("openai"),
-    imageOpenAI,
+    imageOpenAI, imageFal,
     imageComfy,
     videoProbe("wan", () => "wan-2.1", ["DATABASE_URL", "S3_BUCKET"], false),
     videoProbe("hunyuan", () => "hunyuan", ["DATABASE_URL", "S3_BUCKET"], false),

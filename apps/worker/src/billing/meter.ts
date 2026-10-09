@@ -149,8 +149,8 @@ export function meteredEngine(engine: VoiceEngine, ctx: MeterContext, record: (e
   });
 }
 
-/** An image provider whose every generated still is metered. */
-export function meteredImages<P extends { id: string; generate(prompt: string, key: string, size: { width: number; height: number }): Promise<string> }>(
+/** An image provider whose every generated still is metered (under the provider's own model). */
+export function meteredImages<P extends { id: string; model?: string | null; generate(prompt: string, key: string, size: { width: number; height: number }, opts?: { seed?: number }): Promise<unknown> }>(
   provider: P,
   ctx: MeterContext & { purpose: string },
   record: (e: UsageEvent) => Promise<unknown>,
@@ -159,10 +159,10 @@ export function meteredImages<P extends { id: string; generate(prompt: string, k
   return new Proxy(provider, {
     get(target, prop, receiver) {
       if (prop !== "generate") return Reflect.get(target, prop, receiver);
-      return async (prompt: string, key: string, size: { width: number; height: number }) => {
-        const out = await target.generate(prompt, key, size);
+      return async (prompt: string, key: string, size: { width: number; height: number }, opts?: { seed?: number }) => {
+        const out = await target.generate(prompt, key, size, opts);
         await record({
-          kind: "image", provider: target.id, model: env.OPENAI_IMAGE_MODEL ?? null, unit: "images", units: 1,
+          kind: "image", provider: target.id, model: target.model ?? env.OPENAI_IMAGE_MODEL ?? null, unit: "images", units: 1,
           projectId: ctx.projectId, userId: ctx.userId, meta: { purpose: ctx.purpose, width: size.width, height: size.height },
         });
         return out;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { loadPasses, setStoryApproved, setStoryboardApproved, type PassState } from "../lib/production";
+import { chooseTake, loadPasses, setStoryApproved, setStoryboardApproved, type PassState } from "../lib/production";
 import { signedUrl } from "../lib/storyboard";
 import { Status } from "./cf/primitives";
 
@@ -20,7 +20,7 @@ export function DirectorPasses({ projectId, refreshKey }: { projectId: string; r
   const refresh = useCallback(async () => {
     const d = await loadPasses(projectId);
     setData(d);
-    const keys = d?.scenes.flatMap((s) => s.stills.slice(0, 4)) ?? [];
+    const keys = d?.scenes.flatMap((s) => [...s.stills.slice(0, 4), ...s.takes.flatMap((t) => t.candidates.map((c) => c.key))]) ?? [];
     const entries = await Promise.all(keys.map(async (k) => [k, await signedUrl(k)] as const));
     setUrls(Object.fromEntries(entries.filter((e): e is readonly [string, string] => !!e[1])));
   }, [projectId]);
@@ -96,6 +96,32 @@ export function DirectorPasses({ projectId, refreshKey }: { projectId: string; r
                     ) : null,
                   )}
                   {!s.stills.length && <span className="text-[12px] text-cf-dim">Drawing the storyboard…</span>}
+                </div>
+              )}
+              {pass === "PREVIS" && !s.approvedAt && s.takes.some((t) => t.candidates.length > 1 && !t.hasVideo) && (
+                <div className="mt-3 grid gap-2">
+                  <span className="cf-label">Other takes — the reviewer picked the outlined one; choose another before you approve</span>
+                  {s.takes.filter((t) => t.candidates.length > 1 && !t.hasVideo).map((t) => (
+                    <div key={t.shotId} className="flex flex-wrap items-center gap-2">
+                      <span className="w-14 font-mono text-[11px] text-cf-muted">Shot {t.index + 1}</span>
+                      {t.candidates.map((c, i) =>
+                        urls[c.key] ? (
+                          <button
+                            key={c.id}
+                            type="button"
+                            disabled={busy !== null || c.key === t.still}
+                            onClick={() => void run(c.id, () => chooseTake(c.id))}
+                            aria-pressed={c.key === t.still}
+                            aria-label={`Use take ${i + 1} for shot ${t.index + 1}`}
+                            className={`rounded ${c.key === t.still ? "ring-2 ring-cf-fg" : "opacity-70 hover:opacity-100"}`}
+                          >
+                            {/* Plain <img>: a signed, short-lived storage URL. */}
+                            <img src={urls[c.key]} alt="" className="h-12 w-20 rounded object-cover" />
+                          </button>
+                        ) : null,
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

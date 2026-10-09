@@ -1354,3 +1354,43 @@ model SpeechCache {
   @@index([voiceId])
   @@map("speech_cache")
 }
+
+// ── The Image Engine's record (W17, 0052; Part 2 §69) ──────────────────────
+model ImageGeneration {
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  purpose      String
+  subject      String
+  provider     String
+  model        String?
+  seed         BigInt?
+  promptSha256 String   @map("prompt_sha256")
+  width        Int?
+  height       Int?
+  storageKey   String   @map("storage_key")
+  sha256       String?
+  canonDigest  String?  @map("canon_digest")
+  candidate    Int?
+  chosen       Boolean?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([projectId, purpose], map: "image_generations_project_idx")
+  @@index([subject, purpose], map: "image_generations_subject_idx")
+  @@map("image_generations")
+}
+
+/// One reference still per (place or prop, canon digest) — W17, 0052.
+model WorldReference {
+  id         String   @id @default(uuid()) @db.Uuid
+  projectId  String   @map("project_id") @db.Uuid
+  kind       String
+  refKey     String   @map("ref_key")
+  digest     String
+  storageKey String   @map("storage_key")
+  provider   String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([projectId, kind, refKey, digest])
+  @@map("world_references")
+}
+

@@ -114,16 +114,17 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
       realExecution: has(env, "OPENAI_API_KEY"),
     }),
     (() => {
-      // Image provider registry (W6): IMAGE_PROVIDERS, default "openai"; ComfyUI is gated on Phase 1.
+      // Image provider registry (W6, W17): IMAGE_PROVIDERS, default "openai"; fal is a hosted option; ComfyUI is gated on Phase 1.
       const listed = (env.IMAGE_PROVIDERS ?? "openai").split(",").map((x) => x.trim());
-      const openai = listed.includes("openai") && has(env, "OPENAI_API_KEY");
+      // The first configured, ungated provider in IMAGE_PROVIDERS order (W17 adds fal).
+      const ready = listed.find((id) => (id === "openai" && has(env, "OPENAI_API_KEY")) || (id === "fal" && has(env, "FAL_KEY"))) ?? null;
       const gated = listed.includes("comfyui") ? "ComfyUI waits on Phase 1 (docs/39)" : null;
       return cap({
         capability: "seed_image_generation",
-        provider: openai ? "openai" : null,
-        status: openai ? "experimental" : listed.includes("none") ? "disabled" : "unavailable",
-        realExecution: openai,
-        note: [gated, openai ? null : "no image provider configured (IMAGE_PROVIDERS / OPENAI_API_KEY)"].filter(Boolean).join("; ") || undefined,
+        provider: ready,
+        status: ready ? "experimental" : listed.includes("none") ? "disabled" : "unavailable",
+        realExecution: Boolean(ready),
+        note: [gated, ready ? null : "no image provider configured (IMAGE_PROVIDERS with OPENAI_API_KEY or FAL_KEY)"].filter(Boolean).join("; ") || undefined,
       });
     })(),
     cap({
