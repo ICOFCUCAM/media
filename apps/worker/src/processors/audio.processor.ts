@@ -15,7 +15,6 @@
  * recorded key), and a TRACK_MISSING degradation is recorded and shown.
  */
 import { Worker } from "bullmq";
-import type { VoiceEngineArtifact } from "@cineforge/voice-contracts";
 import { QUEUES, degradation, type AudioJob } from "@cineforge/shared";
 import { recordDegradations, type DegradationDb } from "../truth/recorder";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -25,28 +24,9 @@ import { falRunQueue, falFindUrl } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
 import { S3Storage } from "../storage/storage";
 import { buildScorePrompt, scoreSeconds, SCORE_MODEL } from "../audio/score";
-import { chosenVoiceId, NoVoiceEngineError, renderSceneVoice, type SceneVoiceDeps } from "../voice/film";
-import { voiceEngine } from "../voice/engines";
-import { joinSegments, masterSegment, measureSpeech } from "../voice/mastering";
+import { chosenVoiceId, NoVoiceEngineError, renderSceneVoice } from "../voice/film";
+import { sceneVoiceDeps } from "../voice/deps";
 
-function sceneVoiceDeps(): SceneVoiceDeps {
-  return {
-    env: process.env,
-    engine: (id) => voiceEngine(id, process.env),
-    voice: (id) => prisma.voice.findUnique({
-      where: { id },
-      select: { id: true, userId: true, status: true, consentType: true, consentConfirmedAt: true, provider: true, providerVoiceId: true },
-    }),
-    artifact: async (voiceId, engineId, engineVersion) => {
-      const a = await prisma.voiceEngineArtifact.findUnique({ where: { voiceId_engineId_engineVersion: { voiceId, engineId, engineVersion } } });
-      return a && ({ artifactType: a.artifactType, uri: a.artifactUri } as VoiceEngineArtifact);
-    },
-    master: masterSegment,
-    join: joinSegments,
-    measure: measureSpeech,
-    upload: (path, key, type) => storage.upload(path, key, type),
-  };
-}
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const KIND = { voice: "VOICE", music: "MUSIC", sfx: "SFX" } as const;
@@ -100,7 +80,7 @@ export const audioWorker = new Worker<AudioJob>(
             trackKey: `scenes/${sceneId}/audio/voice/${job.id}.wav`,
             dir,
           },
-          sceneVoiceDeps(),
+          sceneVoiceDeps(storage),
         );
         if (!out) return { sceneId, kind, skipped: "nothing to speak" };
         for (const c of out.cues) {

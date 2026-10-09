@@ -1,4 +1,4 @@
-# 51 — Voice Engine (DirectorOS W7a, W7b)
+# 51 — Voice Engine (DirectorOS W7a–W7c)
 
 **Status:** implemented in code (2026-10-09) for the cloud engines; migration
 0036 **applied live**. The self-hosted voice models (Qwen3-TTS, CosyVoice 3,
@@ -57,7 +57,8 @@ Engine automatically (the poller creates the job).
 
 ## 5. Limits (carried forward)
 
-- Dubbing (localize) still calls OpenAI directly; it moves to the engine next.
+- The Voice Lab reader (voiceovers) and avatar videos still call fal directly.
+- Dubs carry the voice only (no music bed), and there is no lip-sync check.
 - Self-hosted engines, the voice GPU worker, the licence registry and the
   benchmark harness: gated (owner rule, Phase 1).
 - No content-hash cache for repeated lines yet; no streaming.
@@ -93,3 +94,17 @@ The scene track is 48 kHz mono WAV (parts joined with a 350 ms pause); the
 render decodes and joins scene tracks of any format, so films started before
 this change still assemble. Narration is never cut: `RENDER_NARRATION_OVERRUN`
 still defaults to `fail`.
+
+## 7. Dubbing (W7c)
+
+Localization dubs a finished film on the Voice Engine. For each language,
+every scene's narration and each dialogue line are translated in one call
+per language, keeping who says what. They are then spoken by the same voices
+as the original: the narrator, each character's built-in voice, and a
+character's cloned voice speaking the new language. Each part is mastered and
+the scenes are joined, then the film's picture is remuxed with the dub
+(`projects/<id>/film/final_<lang>.mp4`). A chosen voice that cannot be used is
+reported once per character and language (`VOICE_SUBSTITUTED`, scope locale).
+No engine, a failed translation or a dub longer than the picture skips that
+language with the reason; subtitles are still written. Dubs never overwrite
+the original language's per-line audio.
