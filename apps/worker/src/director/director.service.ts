@@ -12,6 +12,7 @@ import { MODEL_VERSIONS } from "@cineforge/model-adapters";
 import {
   canonVersion,
   checkFilmContinuity,
+  audioAdvisories,
   cinemaAdvisories,
   compileFilm,
   IntelligenceError,
@@ -148,10 +149,14 @@ export function planGates(plan: Pick<PlanResult, "pkg" | "revised" | "fixedIssue
   return [story, continuity];
 }
 
-/** What the plan records but does not fail on: film-grammar advisories and model prompt limits (W4). */
+/** What the plan records but does not fail on: film-grammar and audio-continuity advisories, and model prompt limits (W4, W14). */
 export function planDegradations(pkg: PlanResult["pkg"], modelId: string): Degradation[] {
   const out: Degradation[] = cinemaAdvisories(pkg).map((a) =>
     degradation("CINEMA_ADVISORY", "shot", a.message, { refId: `${a.sceneId}#${a.shotIndex}`, detail: { code: a.code } }));
+  // Audio continuity (W14; §32.6): ambience, music and room tone across scenes.
+  for (const a of audioAdvisories(pkg)) {
+    out.push(degradation("AUDIO_CONTINUITY", "scene", a.message, { refId: a.sceneId, detail: { code: a.code, against: a.againstSceneId } }));
+  }
   for (const sc of compileFilm(pkg, { modelId }).scenes) {
     for (const sh of sc.shots) {
       if (sh.promptDropped.length) {

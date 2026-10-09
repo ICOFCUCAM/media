@@ -22,6 +22,8 @@ import { processDirectorMessage } from "../canon/conversation";
 import { loadFilmPackage } from "../canon/revision";
 import { interpretInstruction } from "@cineforge/movie";
 import { applyEditorialReview, editorialReview, processEditorialReview } from "../editor/editorial";
+import { purgeOrphanedSpeech } from "../voice/cache";
+import { S3Storage } from "../storage/storage";
 import { constraintsFor, productionOf } from "../director/production";
 import { intelligence } from "../intelligence";
 import { applyCanonRevision, type CanonDb } from "../canon/revision";
@@ -320,6 +322,10 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
       await claimEditRequests();
       // The Editor (W13): reviews of the cut, and the edits owners approved.
       await runEditor();
+      // Speech cache (W14): a deleted voice's cached clips are deleted too.
+      await purgeOrphanedSpeech(prisma as never, (keys) => new S3Storage().deleteKeys(keys))
+        .then((n) => n && console.log(JSON.stringify({ event: "speech_cache.purged", clips: n })))
+        .catch(() => {}); // before migration 0049
 
       // ── Voice Lab (docs/29): claim pending clones + voiceovers ─────────
       // Same producer/consumer split as films: the web writes PENDING rows,

@@ -1314,3 +1314,23 @@ model EditProposal {
   @@index([reviewId, position])
   @@map("edit_proposals")
 }
+
+/// W14 (0049): one generated sentence, served again instead of generated again (Part 4 §154). Worker only.
+model SpeechCache {
+  key           String    @id
+  engineId      String    @map("engine_id")
+  engineVersion String    @map("engine_version")
+  voiceId       String?   @map("voice_id") @db.Uuid
+  cloned        Boolean
+  language      String
+  chars         Int
+  storageKey    String    @unique @map("storage_key")
+  format        String
+  bytes         BigInt?
+  hits          Int       @default(0)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastHitAt     DateTime? @map("last_hit_at") @db.Timestamptz(6)
+
+  @@index([voiceId])
+  @@map("speech_cache")
+}

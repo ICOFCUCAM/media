@@ -6,7 +6,7 @@
 import { isMissingTable } from "../timeline/store";
 
 export interface BenchmarkRunRow {
-  suite: "offline" | "live_planning" | "providers" | "sync_calibration";
+  suite: "offline" | "live_planning" | "providers" | "sync_calibration" | "voice";
   status: "pass" | "fail" | "incomplete";
   score: number | null;
   promptId?: string | null;

@@ -2433,6 +2433,62 @@ export type Database = {
           },
         ]
       }
+      speech_cache: {
+        Row: {
+          bytes: number | null
+          chars: number
+          cloned: boolean
+          created_at: string
+          engine_id: string
+          engine_version: string
+          format: string
+          hits: number
+          key: string
+          language: string
+          last_hit_at: string | null
+          storage_key: string
+          voice_id: string | null
+        }
+        Insert: {
+          bytes?: number | null
+          chars: number
+          cloned: boolean
+          created_at?: string
+          engine_id: string
+          engine_version: string
+          format: string
+          hits?: number
+          key: string
+          language: string
+          last_hit_at?: string | null
+          storage_key: string
+          voice_id?: string | null
+        }
+        Update: {
+          bytes?: number | null
+          chars?: number
+          cloned?: boolean
+          created_at?: string
+          engine_id?: string
+          engine_version?: string
+          format?: string
+          hits?: number
+          key?: string
+          language?: string
+          last_hit_at?: string | null
+          storage_key?: string
+          voice_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "speech_cache_voice_id_fkey"
+            columns: ["voice_id"]
+            isOneToOne: false
+            referencedRelation: "voices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       story_events: {
         Row: {
           created_at: string

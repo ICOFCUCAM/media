@@ -44,6 +44,13 @@ describe("plan degradations (W4): grammar advisories and model limits are record
     const ext = planDegradations(pkg, "fal-kling");
     expect(ext.filter((d) => d.code === "PROMPT_LIMITED")).toHaveLength(12); // no negative prompt on that model
   });
+
+  it("records audio continuity advisories (W14; §32.6)", () => {
+    const pkg = mayaCoatFixture();
+    pkg.scenes[2]!.audio.ambience = "busy café chatter"; // continues scene_11 in the same place
+    const audio = planDegradations(pkg, "wan-2.1").filter((d) => d.code === "AUDIO_CONTINUITY");
+    expect(audio).toEqual([expect.objectContaining({ severity: "info", scope: "scene", refId: "scene_12", detail: { code: "AMBIENCE_BREAK", against: "scene_11" } })]);
+  });
 });
 
 describe("plan gates (W5 gate chain: story, continuity)", () => {

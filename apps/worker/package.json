@@ -19,7 +19,8 @@
     "bench:live": "tsx src/bench/cli.ts live",
     "bench:record": "tsx src/bench/cli.ts offline",
     "sync:calibrate": "tsx src/bench/cli.ts calibrate",
-    "film:accept": "tsx src/acceptance/film-cli.ts"
+    "film:accept": "tsx src/acceptance/film-cli.ts",
+    "voice:bench": "tsx src/bench/voice-cli.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.580.0",

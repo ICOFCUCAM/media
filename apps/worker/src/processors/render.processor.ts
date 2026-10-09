@@ -23,6 +23,7 @@ import { S3Storage } from "../storage/storage";
 import { notifyFinish } from "../notify";
 import { meter } from "../billing";
 import { enqueueLocalize } from "../orchestration/localize-queue";
+import { voiceContinuity } from "../voice/continuity";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
@@ -132,6 +133,18 @@ export const renderWorker = new Worker<RenderJob>(
         await notifyFinish(projectId, "FAILED", message);
         return { projectId, failed: "SHOTS_MISSING", missing };
       }
+      // Voice continuity over what was spoken (W14; §32.6): recorded, never blocking.
+      // Replaces the previous render's findings so a re-render does not repeat them.
+      try {
+        const voiceTracks = scenes.flatMap((s) => s.audioTracks.filter((t) => t.kind === "VOICE" && real(t)).map((t) => ({ sceneId: s.id, sceneIndex: s.index, meta: t.meta })));
+        const names = new Map((await prisma.character.findMany({ where: { projectId }, select: { id: true, name: true } })).map((c) => [c.id, c.name]));
+        const voiceGaps = voiceContinuity(voiceTracks, names);
+        await prisma.productionDegradation.deleteMany({ where: { projectId, code: "AUDIO_CONTINUITY", scope: "film" } });
+        await recordDegradations(prisma as unknown as DegradationDb, projectId, voiceGaps);
+      } catch (e) {
+        console.warn(`[render] project=${projectId} voice continuity check skipped: ${e instanceof Error ? e.message : String(e)}`);
+      }
+
       console.log(
         `[render] project=${projectId} scenes=${scenes.length} clips=${totalClips} ` +
           `s3Endpoint=${process.env.S3_ENDPOINT ? "set" : "MISSING"} ` +

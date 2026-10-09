@@ -140,7 +140,7 @@ export function chosenVoiceId(profile: unknown): string | undefined {
 /** No configured engine can speak at all: the caller records the missing track. */
 export class NoVoiceEngineError extends Error {}
 
-type Speaker = { engine: VoiceEngine; artifact: VoiceEngineArtifact | null; preset?: string; cloned: boolean };
+type Speaker = { engine: VoiceEngine; artifact: VoiceEngineArtifact | null; preset?: string; cloned: boolean; voiceId?: string };
 
 export async function renderSceneVoice(input: SceneVoiceInput, deps: SceneVoiceDeps): Promise<SceneVoiceResult | null> {
   const cues = sceneCues(input.scene);
@@ -181,7 +181,7 @@ export async function renderSceneVoice(input: SceneVoiceInput, deps: SceneVoiceD
     let artifact = await deps.artifact(v.id, engine.id, engine.version);
     if (!artifact && v.provider === engine.id && v.providerVoiceId) artifact = { artifactType: "provider_voice_id", uri: v.providerVoiceId };
     if (!artifact) return substitute(characterId, "the chosen voice is not enrolled with the current voice engine");
-    return { engine, artifact, cloned: true };
+    return { engine, artifact, cloned: true, voiceId: v.id };
   }
 
   const spoken: { cue: Cue; file: string; speaker: Speaker }[] = [];
@@ -192,7 +192,7 @@ export async function renderSceneVoice(input: SceneVoiceInput, deps: SceneVoiceD
     const mastered: string[] = [];
     for (const seg of segmentScript(cue.text, limit)) {
       const raw = join(input.dir, `cue-${i}-${seg.sequence}.raw`);
-      const r = await speaker.engine.synthesize({ text: seg.text, language: input.language, voice: speaker.artifact, preset: speaker.preset, style, outPath: raw });
+      const r = await speaker.engine.synthesize({ text: seg.text, language: input.language, voice: speaker.artifact, preset: speaker.preset, style, outPath: raw, voiceId: speaker.voiceId ?? null });
       const m = join(input.dir, `cue-${i}-${seg.sequence}.wav`);
       await deps.master(r.path, m);
       mastered.push(m);
