@@ -130,3 +130,21 @@ grant execute on function public.owns_character(uuid), public.owns_series(uuid) 
 -- projects.mode / status for 0047 (real: 0002, 0006).
 alter table public.projects add column if not exists mode text not null default 'auto';
 alter table public.projects add column if not exists status text not null default 'DRAFT';
+-- voices sharing + voiceovers for 0050 (real: 0015, 0016).
+alter table public.voices add column if not exists share_status text not null default 'PRIVATE';
+alter table public.voices add column if not exists share_terms text;
+create table if not exists public.voiceovers (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.users (id) on delete cascade,
+  voice_id   uuid references public.voices (id) on delete set null,
+  title      text not null,
+  text       text not null,
+  language   text not null default 'en',
+  audio_key  text,
+  status     text not null default 'PENDING',
+  error_message text
+);
+alter table public.voiceovers enable row level security;
+drop policy if exists voiceovers_owner on public.voiceovers;
+create policy voiceovers_owner on public.voiceovers for all using (user_id = auth.uid());
+grant select, insert, update, delete on public.voiceovers to anon, authenticated;

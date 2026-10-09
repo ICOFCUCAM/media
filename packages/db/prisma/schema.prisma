@@ -674,6 +674,20 @@ model Voice {
   @@map("voices")
 }
 
+// ── Per-use licences to community voices (W15, 0050; Part 4 §170) ───────────
+model VoiceLicence {
+  id         String    @id @default(uuid()) @db.Uuid
+  voiceId    String    @map("voice_id") @db.Uuid
+  licenseeId String    @map("licensee_id") @db.Uuid
+  terms      String    @default("")
+  acceptedAt DateTime  @default(now()) @map("accepted_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  @@unique([voiceId, licenseeId])
+  @@index([licenseeId], map: "voice_licences_licensee_idx")
+  @@map("voice_licences")
+}
+
 // ── Voice Engine (W7, 0036): engine artifacts + jobs with eight states ─────
 model VoiceEngineArtifact {
   id            String   @id @default(uuid()) @db.Uuid
@@ -720,6 +734,12 @@ model Voiceover {
   audioKey     String?  @map("audio_key")
   status       String   @default("PENDING")
   errorMessage String?  @map("error_message")
+  // W15 (0050): how the reading is spoken, and what was delivered.
+  mode         String   @default("narrator")
+  style        Json     @default("{}")
+  speakers     Json     @default("[]")
+  engine       String?
+  durationMs   Int?     @map("duration_ms")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
