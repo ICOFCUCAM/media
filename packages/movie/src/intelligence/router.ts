@@ -27,7 +27,7 @@ export interface Route {
   model: string;
 }
 
-const TASKS: IntelligenceTask[] = ["film_plan", "film_plan_revision", "translation", "social_kit", "visual_review", "edit_interpret"];
+const TASKS: IntelligenceTask[] = ["film_plan", "film_plan_revision", "translation", "social_kit", "visual_review", "edit_interpret", "editorial"];
 
 export function parseRoutes(env: Record<string, string | undefined>): Record<IntelligenceTask, Route[]> {
   const fallback: Route[] = [{ provider: "anthropic", model: env.ANTHROPIC_MODEL || DEFAULT_MODEL }];
