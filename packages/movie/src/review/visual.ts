@@ -94,7 +94,7 @@ export function renderReviewRequest(ctx: GenerationContext, media: ReviewMedia =
     clip ? "Frames: start, middle and end of the generated clip, in order." : "Frame: one generated still.",
     `Shot prompt: ${ctx.prompt}`,
     `Location: ${ctx.location.name} (${ctx.location.id}) — ${ctx.location.description}`,
-    `Time: ${ctx.clock.timeOfDay}${ctx.clock.flashback ? " (flashback)" : ""}`,
+    `Time: ${ctx.clock.timeOfDay}${ctx.clock.clock ? ` (${ctx.clock.clock}, ${ctx.clock.sun})` : ""}${ctx.clock.flashback ? " (flashback)" : ""}${ctx.clock.weather ? `; weather: ${ctx.clock.weather}` : ""}`,
     ctx.characters.length ? "In frame:" : "In frame: no characters (nobody should be visible as a featured person).",
     ...ctx.characters.map((c) =>
       `- ${c.name} (${c.characterId})${c.age !== null ? `, age ${c.age}` : ""}: face ${c.identity.face}; hair ${c.identity.hair}; body ${c.identity.body}` +

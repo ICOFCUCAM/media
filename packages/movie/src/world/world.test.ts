@@ -15,7 +15,7 @@ describe("World State Engine (Part 1 §55)", () => {
   it("materializes typed, id-keyed state per scene", () => {
     const w = materializeWorld(fixturePackage());
     const s1 = w.scenes[0]!;
-    expect(s1.clock).toEqual({ day: 1, timeOfDay: "night", continuous: false, flashback: false });
+    expect(s1.clock).toMatchObject({ day: 1, timeOfDay: "night", continuous: false, flashback: false });
     expect(s1.characters.char_maya).toMatchObject({
       present: true, locationId: "loc_harbour", wardrobeId: "wardrobe_raincoat", holding: ["prop_key"],
       knows: ["fact_bridge_swings", "fact_key_opens_vault"],

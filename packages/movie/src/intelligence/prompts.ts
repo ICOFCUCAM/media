@@ -29,6 +29,11 @@ const DIRECTOR_RULES = [
   "- World state: every scene has storyTime (story day from 1; continuous = it picks up the previous scene's",
   "  action with no time cut; flashback = it is set earlier). Time only runs backwards in flashbacks. In",
   "  continuous action nobody changes clothes and visible injuries stay. One person holds a prop at a time.",
+  "- Time and weather: give storyTime.clock (24h, HH:MM) when the hour matters; it must fall in the scene's",
+  "  timeOfDay, never run backwards within a day outside flashbacks, and continuous action picks up within the",
+  "  hour. Give weather when it shows (exteriors, windows); continuous action keeps its weather, and later scenes",
+  "  of the same day keep it unless they say otherwise.",
+  "- Film bible: fill premise, audience, rating, era, geography and narrativeStructure.",
   "- Knowledge: facts are what is true in the story; knownAtStart says who (characters, \"audience\") knows each",
   "  before scene one, and each scene's reveals say who learns what there (only people in the scene). A line",
   "  lists in references the facts it relies on, and its speaker must already know them. A setup names the",
@@ -38,7 +43,8 @@ const DIRECTOR_RULES = [
   "  say how a pair stands after it (one of them must be in the scene). deaths lists who dies in a scene (they",
   "  must be in it); after that they appear only in flashbacks.",
   "- Shots: whole seconds, coverage chosen for the scene's purpose (establish, then move in for emotion,",
-  "  reactions, inserts), never more shots or seconds than the constraints allow.",
+  "  reactions, inserts), never more shots or seconds than the constraints allow. Each shot may state its",
+  "  composition, depthOfField (shallow, medium, deep) and focus (or a rack focus) when they matter.",
   "- Cinematography: each shot states its side of the scene's action line (A or B; neutral for a shot on the",
   "  line or a move across it) and which way its main subject faces on screen. Never cut straight from side A",
   "  to side B — cross on a neutral shot. In a reverse (consecutive singles of two people) their screen",
@@ -58,14 +64,16 @@ export const PROMPTS = {
     id: "director.master",
     // v5 (W11): the plan request carries the production type, medium and animation style.
     // v6 (W12): character design for animation; CAST, SHOW BIBLE and PREVIOUSLY sections.
-    version: 6,
+    // v7 (W20): story clock, weather, the full film bible, composition / depth of field / focus.
+    version: 7,
     purpose: "One master call: brief → complete Film Production Package (Part 2 §85, §93).",
     system: DIRECTOR_RULES,
   },
   directorRevision: {
     id: "director.revision",
     // v5 (W12): the rules and package schema gained character design and fixed cast/canon.
-    version: 5,
+    // v6 (W20): the rules gained the story clock, weather, film bible and shot record.
+    version: 6,
     purpose: "Surgical revision: fix exactly the validator's issues in a package (Part 2 §93).",
     system: [
       DIRECTOR_RULES,
