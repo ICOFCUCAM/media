@@ -22,8 +22,8 @@ export interface WardrobeRefDb {
 
 export interface ReferenceImageGenerator {
   readonly id: string;
-  /** Generate a still and store it at `key`; returns the stored key. */
-  generate(prompt: string, key: string): Promise<string>;
+  /** Generate a still and store it at `key`; returns the stored key. `meta` names the canon it depicts (for the image record). */
+  generate(prompt: string, key: string, meta?: { subject: string; digest: string }): Promise<string>;
 }
 
 let tableMissing = false;
@@ -70,7 +70,7 @@ export async function wardrobeReferenceKeys(
     if (!image) { gap(ref.id, unavailable); continue; }
     const key = `projects/${projectId}/wardrobe/${ref.id}-${spec.digest.slice(0, 16)}.png`;
     try {
-      const stored = await image.generate(spec.prompt, key);
+      const stored = await image.generate(spec.prompt, key, { subject: ref.id, digest: spec.digest });
       try {
         await db.wardrobeReference.create({
           data: { projectId, characterId, wardrobeKey: ref.id, digest: spec.digest, storageKey: stored, provider: image.id },

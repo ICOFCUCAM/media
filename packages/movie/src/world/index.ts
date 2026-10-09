@@ -5,3 +5,4 @@ export * from "./continuity";
 export * from "./version";
 export * from "./wardrobe";
 export * from "./dependencies";
+export * from "./places";

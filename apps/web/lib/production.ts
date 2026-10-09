@@ -96,6 +96,16 @@ export interface PassScene {
   stills: string[];
   shots: number;
   ready: number;
+  /** Per shot: its still and, when several were drawn, the other takes (W17). */
+  takes: ShotStills[];
+}
+
+export interface ShotStills {
+  shotId: string;
+  index: number;
+  still: string | null;
+  hasVideo: boolean;
+  candidates: { id: string; key: string; chosen: boolean }[];
 }
 
 export interface PassState {
@@ -108,13 +118,19 @@ export interface PassState {
 export async function loadPasses(projectId: string): Promise<PassState | null> {
   const sb = untyped();
   if (!sb) return null;
-  const [project, scenes] = await Promise.all([
+  const [project, scenes, cands] = await Promise.all([
     sb.from("projects").select("pass_mode,story_approved_at,status").eq("id", projectId).maybeSingle(),
-    sb.from("scenes").select("id,index,heading,summary,narration,storyboard_approved_at,shots(index,seed_image_key,status,video_key)").eq("project_id", projectId).order("index"),
+    sb.from("scenes").select("id,index,heading,summary,narration,storyboard_approved_at,shots(id,index,seed_image_key,status,video_key)").eq("project_id", projectId).order("index"),
+    // Seed candidates (W17, 0052); absent before the migration.
+    sb.from("image_generations").select("id,subject,storage_key,candidate,chosen").eq("project_id", projectId).eq("purpose", "seed_candidate").order("candidate"),
   ]);
+  const takesBy = new Map<string, { id: string; key: string; chosen: boolean }[]>();
+  for (const c of ((cands.error ? [] : cands.data) ?? []) as { id: string; subject: string; storage_key: string; chosen: boolean | null }[]) {
+    takesBy.set(c.subject, [...(takesBy.get(c.subject) ?? []), { id: c.id, key: c.storage_key, chosen: Boolean(c.chosen) }]);
+  }
   if (project.error || scenes.error || !project.data) return null; // before 0040
   const p = project.data as { pass_mode: "single" | "three"; story_approved_at: string | null; status: string };
-  const rows = (scenes.data ?? []) as { id: string; index: number; heading: string; summary: string; narration: string | null; storyboard_approved_at: string | null; shots: { index: number; seed_image_key: string | null; status: string; video_key: string | null }[] }[];
+  const rows = (scenes.data ?? []) as { id: string; index: number; heading: string; summary: string; narration: string | null; storyboard_approved_at: string | null; shots: { id: string; index: number; seed_image_key: string | null; status: string; video_key: string | null }[] }[];
   return {
     passMode: p.pass_mode,
     storyApprovedAt: p.story_approved_at,
@@ -124,8 +140,19 @@ export async function loadPasses(projectId: string): Promise<PassState | null> {
       stills: [...r.shots].sort((a, b) => a.index - b.index).map((s) => s.seed_image_key).filter((k): k is string => !!k),
       shots: r.shots.length,
       ready: r.shots.filter((s) => s.status === "READY" && s.video_key).length,
+      takes: [...r.shots].sort((a, b) => a.index - b.index).map((s) => ({
+        shotId: s.id, index: s.index, still: s.seed_image_key, hasVideo: !!s.video_key, candidates: takesBy.get(s.id) ?? [],
+      })),
     })),
   };
+}
+
+/** Use a different candidate still for a shot that has no video yet (W17; the database checks ownership). */
+export async function chooseTake(generationId: string): Promise<void> {
+  const sb = untyped();
+  if (!sb) throw new Error("Supabase not configured");
+  const { error } = await sb.rpc("choose_seed_candidate", { p_generation: generationId });
+  if (error) throw new Error(error.message);
 }
 
 /** Approve (or withdraw) the story; the database refuses what the pass rules forbid. */
