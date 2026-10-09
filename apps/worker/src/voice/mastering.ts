@@ -35,6 +35,15 @@ export async function masterSegment(input: string, output: string): Promise<void
   await ffmpeg(["-i", input, "-af", masteringFilter(), ...WAV_OUT, output]);
 }
 
+/**
+ * A character's loudness trait (§19.2): a fixed gain after mastering, then a
+ * limiter at the mastering true-peak ceiling so a louder voice never clips.
+ */
+export async function applyGain(input: string, output: string, db: number): Promise<void> {
+  const ceiling = Math.pow(10, MASTER_TARGET.truePeakDbtp / 20).toFixed(3);
+  await ffmpeg(["-i", input, "-af", `volume=${db.toFixed(1)}dB,alimiter=limit=${ceiling}:level=disabled`, ...WAV_OUT, output]);
+}
+
 /** Join mastered segments with a fixed pause into one WAV. */
 export async function joinSegments(files: string[], output: string, dir: string, gapMs = SEGMENT_GAP_MS): Promise<void> {
   if (files.length === 1) {

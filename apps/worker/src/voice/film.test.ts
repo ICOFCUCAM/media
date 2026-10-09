@@ -165,3 +165,21 @@ describe("dubbing", () => {
     await expect(translateSpeech([scene()], async () => ["only one"])).rejects.toThrow(/returned 1 parts for 3/);
   });
 });
+
+describe("a character's voice traits (Part 1 §19.2; W15)", () => {
+  it("pitch and rate go to the engine on every line; loudness is a gain after mastering; the ledger fields are filled", async () => {
+    const { d } = deps();
+    const styles: unknown[] = [];
+    const inner = d.engine;
+    d.engine = (id) => {
+      const e = inner(id)!;
+      return { ...e, synthesize: async (r) => { styles.push(r.style); return e.synthesize(r); } };
+    };
+    const gains: [string, number][] = [];
+    d.gain = async (i, o, db) => { gains.push([o, db]); await copyFile(i, o); };
+    const r = (await renderSceneVoice(input({ traits: { "c-maya": { pitch: -2, rate: 0.9, loudnessDb: 2 } } }), d))!;
+    expect(styles).toEqual([undefined, { emotion: "angry", speed: 0.9, pitch: -2 }, undefined]);
+    expect(gains).toEqual([[expect.stringMatching(/cue-1-level\.wav$/), 2]]);
+    expect(r.cues[1]).toMatchObject({ engine: "fal-minimax", engineVersion: "v1", voiceId: null, preset: expect.any(String), segments: 1 });
+  });
+});

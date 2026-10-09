@@ -7,7 +7,7 @@ import { StudioGate } from "./cf/StudioGate";
 import { Composer } from "./cf/Composer";
 import { CinemaArt } from "./cf/CinemaArt";
 import { Cell, EmptyState, PageHeader, Section, SpecList, Split } from "./cf/primitives";
-import { createCharacter, listCharacters, listUsableVoices, setCharacterVoice, type CharacterWithOrigin } from "../lib/library";
+import { characterTraits, createCharacter, listCharacters, listUsableVoices, setCharacterTraits, setCharacterVoice, type CharacterWithOrigin } from "../lib/library";
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
 import type { Json } from "../lib/database.types";
@@ -180,6 +180,7 @@ export function CharacterLibrary() {
                       {voices.length === 0 && (
                         <Link href="/library/voices" className="mt-1.5 text-[11px] text-cf-dim hover:text-cf-fg">Clone a voice to give it to a character →</Link>
                       )}
+                      <TraitsEditor character={c} onSaved={(profile) => setItems((rows) => rows?.map((r) => (r.id === c.id ? { ...r, voice_profile: profile } : r)) ?? rows)} onError={setError} />
                       <Link href="/create/film?mode=storyboard" className="cf-link mt-auto pt-5 text-cf-muted hover:text-cf-fg">
                         Cast in a film →
                       </Link>
@@ -203,5 +204,43 @@ function Field({ id, label, children }: { id: string; label: string; children: R
       </label>
       {children}
     </div>
+  );
+}
+
+/** Pitch, pace and loudness the character keeps in every scene and every dub (W15; §19.2). */
+function TraitsEditor({ character, onSaved, onError }: { character: CharacterWithOrigin; onSaved: (profile: Json) => void; onError: (e: string | null) => void }) {
+  const saved = characterTraits(character);
+  const [t, setT] = useState({ pitch: saved.pitch ?? 0, rate: saved.rate ?? 1, loudnessDb: saved.loudnessDb ?? 0 });
+  const [busy, setBusy] = useState(false);
+  const dirty = t.pitch !== (saved.pitch ?? 0) || t.rate !== (saved.rate ?? 1) || t.loudnessDb !== (saved.loudnessDb ?? 0);
+  async function save() {
+    setBusy(true);
+    onError(null);
+    try {
+      onSaved(await setCharacterTraits(character, t));
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "Could not save the voice traits");
+    } finally {
+      setBusy(false);
+    }
+  }
+  const row = (label: string, k: keyof typeof t, min: number, max: number, step: number, show: (v: number) => string) => (
+    <label className="block">
+      <span className="flex justify-between text-[11px] text-cf-dim"><span>{label}</span><span className="font-mono text-cf-fg">{show(t[k])}</span></span>
+      <input type="range" min={min} max={max} step={step} value={t[k]} onChange={(e) => setT((x) => ({ ...x, [k]: Number(e.target.value) }))} className="w-full" aria-label={`${label} for ${character.name}`} />
+    </label>
+  );
+  return (
+    <details className="mt-3">
+      <summary className="cursor-pointer font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-dim">Voice traits</summary>
+      <div className="mt-2 grid gap-2">
+        {row("Pitch", "pitch", -6, 6, 1, (v) => `${v > 0 ? "+" : ""}${v} st`)}
+        {row("Pace", "rate", 0.8, 1.25, 0.05, (v) => `${v.toFixed(2)}×`)}
+        {row("Loudness", "loudnessDb", -6, 3, 1, (v) => `${v > 0 ? "+" : ""}${v} dB`)}
+        <button type="button" onClick={() => void save()} disabled={!dirty || busy} className="cf-btn-line mt-1 px-3 py-1.5 text-[11px]">
+          {busy ? "Saving…" : "Keep these in every scene"}
+        </button>
+      </div>
+    </details>
   );
 }

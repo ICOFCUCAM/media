@@ -15,9 +15,11 @@ import { join } from "node:path";
 import {
   routeVoice,
   segmentScript,
+  withTraits,
   type VoiceEngine,
   type VoiceEngineArtifact,
   type VoiceStyle,
+  type VoiceTraits,
 } from "@cineforge/voice-contracts";
 import type { SpeechMeasure } from "./mastering";
 
@@ -88,6 +90,8 @@ export interface SceneVoiceDeps {
   join(files: string[], output: string, dir: string, gapMs?: number): Promise<void>;
   measure(path: string): Promise<SpeechMeasure>;
   upload(path: string, key: string, contentType: string): Promise<void>;
+  /** A character's loudness trait: gain (dB) after mastering, peak-limited (§19.2). */
+  gain?(input: string, output: string, db: number): Promise<void>;
 }
 
 export interface SceneVoiceInput {
@@ -99,6 +103,8 @@ export interface SceneVoiceInput {
   castOrder: string[];
   /** Character id → the voice the owner chose for them (characters.voice_profile.voiceId). */
   chosenVoices: Record<string, string | undefined>;
+  /** Character id → fixed voice traits (characters.voice_profile.traits): pitch, rate, loudness (§19.2). */
+  traits?: Record<string, VoiceTraits>;
   /** Where the scene track goes (`…/voice/<job>.wav`). */
   trackKey: string;
   /** Where each line's own audio goes (`<prefix>/<lineId>.wav`); null stores no per-line files (dubs). */
@@ -113,6 +119,12 @@ export interface SpokenCue {
   startMs: number;
   durationMs: number;
   audioKey: string | null;
+  /** What spoke it, for the segment ledger (§149). */
+  engine: string;
+  engineVersion: string;
+  voiceId: string | null;
+  preset: string | null;
+  segments: number;
 }
 
 export interface Substitution {
@@ -184,10 +196,12 @@ export async function renderSceneVoice(input: SceneVoiceInput, deps: SceneVoiceD
     return { engine, artifact, cloned: true, voiceId: v.id };
   }
 
-  const spoken: { cue: Cue; file: string; speaker: Speaker }[] = [];
+  const spoken: { cue: Cue; file: string; speaker: Speaker; segments: number }[] = [];
   for (const [i, cue] of cues.entries()) {
     const speaker = await speakerFor(cue.characterId);
-    const style: VoiceStyle | undefined = cue.emotion ? { emotion: cue.emotion } : undefined;
+    const traits = (cue.characterId && input.traits?.[cue.characterId]) || {};
+    // The character keeps their pitch and rate in every scene; the line keeps its emotion (§19.2).
+    const style: VoiceStyle | undefined = withTraits(cue.emotion ? { emotion: cue.emotion } : undefined, traits);
     const limit = Math.min(speaker.engine.getCapabilities().maxChars, 1000);
     const mastered: string[] = [];
     for (const seg of segmentScript(cue.text, limit)) {
@@ -197,9 +211,14 @@ export async function renderSceneVoice(input: SceneVoiceInput, deps: SceneVoiceD
       await deps.master(r.path, m);
       mastered.push(m);
     }
-    const file = join(input.dir, `cue-${i}.wav`);
+    let file = join(input.dir, `cue-${i}.wav`);
     await deps.join(mastered, file, input.dir);
-    spoken.push({ cue, file, speaker });
+    if (traits.loudnessDb && deps.gain) {
+      const leveled = join(input.dir, `cue-${i}-level.wav`);
+      await deps.gain(file, leveled, traits.loudnessDb);
+      file = leveled;
+    }
+    spoken.push({ cue, file, speaker, segments: mastered.length });
   }
 
   const out: SpokenCue[] = [];
@@ -213,7 +232,10 @@ export async function renderSceneVoice(input: SceneVoiceInput, deps: SceneVoiceD
       audioKey = `${prefix}/${s.cue.lineId}.wav`;
       await deps.upload(s.file, audioKey, "audio/wav");
     }
-    out.push({ lineId: s.cue.lineId, characterId: s.cue.characterId, voice: s.speaker.cloned ? "cloned" : "built-in", startMs: at, durationMs, audioKey });
+    out.push({
+      lineId: s.cue.lineId, characterId: s.cue.characterId, voice: s.speaker.cloned ? "cloned" : "built-in", startMs: at, durationMs, audioKey,
+      engine: s.speaker.engine.id, engineVersion: s.speaker.engine.version, voiceId: s.speaker.voiceId ?? null, preset: s.speaker.preset ?? null, segments: s.segments,
+    });
     at += durationMs + CUE_GAP_MS;
   }
 
