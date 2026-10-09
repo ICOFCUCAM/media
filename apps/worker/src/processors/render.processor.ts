@@ -17,6 +17,7 @@ import { recordGates, type GateDb } from "../quality/recorder";
 import { recordDegradations, type DegradationDb } from "../truth/recorder";
 import { prisma } from "@cineforge/db";
 import { NarrationOverrunError } from "../ffmpeg/commands";
+import { nextVersion, recordVersion, type VersionDb } from "../versions/record";
 import { RenderEngine, type SceneAssets } from "../ffmpeg/render-engine";
 import { S3Storage } from "../storage/storage";
 import { realtime } from "../realtime";
@@ -153,16 +154,25 @@ export const renderWorker = new Worker<RenderJob>(
         });
         const branded = owner && (owner.user.role === "ADMIN" || owner.user.tier === "AGENCY" || owner.user.tier === "ENTERPRISE");
         const kit = branded ? await prisma.brandKit.findUnique({ where: { userId: owner!.userId } }) : null;
+        const version = await nextVersion(prisma as unknown as VersionDb, "master", projectId);
         const out = await engine.renderFinal(
           projectId,
           assets,
           (p) => realtime.emit("render.progress", { projectId, renderJobId: job.id, progress: p }),
           kit ? { logoKey: kit.logoKey, primaryColor: kit.primaryColor, outroText: kit.outroText } : undefined,
-          { filmSec: durationSec, gate: masterGate(durationSec) },
+          { filmSec: durationSec, gate: masterGate(durationSec), version },
         );
         mp4Key = out.mp4Key;
         hlsKey = out.hlsKey;
         posterKey = out.posterKey;
+        // Every delivered master stays a version; films.mp4_key points at the newest (W8).
+        await recordVersion(prisma as unknown as VersionDb, {
+          projectId, assetType: "master", assetId: projectId, storageKey: out.mp4Key, sha256: out.sha256, durationSec,
+          derivation: {
+            role: "master", poster: out.posterKey, hls: out.hlsKey, renderJob: String(job.id),
+            shots: assets.flatMap((a) => a.shotKeys), voice: assets.map((a) => a.voiceKey ?? null), music: assets.find((a) => a.musicKey)?.musicKey ?? null,
+          },
+        });
         await record(projectId, out.degradations);
         await recordFilmGates(projectId, out.quality);
         // What the gate noted without blocking is shown on the project.

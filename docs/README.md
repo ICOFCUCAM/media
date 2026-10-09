@@ -56,6 +56,7 @@ and [01-architecture](01-architecture.md); this page is the map.
 - [49 — Quality gates (W5)](49-directoros-quality-gates.md) · every clip measured before READY, bounded regenerate with a new seed, Final Quality Gate on the master, gate chain recorded (migration 0035, applied live)
 - [50 — Image providers, seed candidates and visual memory (W6)](50-directoros-images-and-references.md) · image provider registry (ComfyUI gated on Phase 1), reviewer-picked seed candidates, reference pack, shot-to-shot end frames
 - [51 — Voice Engine (W7a–W7c)](51-directoros-voice-engine.md) · model-independent voice service: consent, recording quality check, engine router, eight-state jobs, mastering, the `/v1` API (migration 0036, applied live; self-hosted models gated on Phase 1); film narration, each character's dialogue in their own voice, and dubs in the same voices
+- [52 — Versions and locks (W8a)](52-directoros-versions-and-locks.md) · every clip, voice track and master kept as a version; scene and film locks enforced by the database (migrations 0037–0038, applied live)
 
 ## Continuity & identity — the coherent-movie spine
 
