@@ -54,6 +54,7 @@ and [01-architecture](01-architecture.md); this page is the map.
 - [47 — CineForge Ads Studio](47-ads-studio.md) · `/ads`: website-to-advertisement studio page (owner design), hand-off to the real advert pipeline, own-domain routing (`ADS_STUDIO_HOSTS`), planned pay-as-you-go/monthly model
 - [48 — Cinematography and the Prompt Compiler (W4)](48-directoros-shots-and-prompts.md) · 180°/eyeline rules, grammar advisories, canonical media request, per-model prompt compilers (Wan, Hunyuan, OpenAI image), cache key over the compiled prompt
 - [49 — Quality gates (W5)](49-directoros-quality-gates.md) · every clip measured before READY, bounded regenerate with a new seed, Final Quality Gate on the master, gate chain recorded (migration 0035, applied live)
+- [50 — Image providers, seed candidates and visual memory (W6)](50-directoros-images-and-references.md) · image provider registry (ComfyUI gated on Phase 1), reviewer-picked seed candidates, reference pack, shot-to-shot end frames
 
 ## Continuity & identity — the coherent-movie spine
 

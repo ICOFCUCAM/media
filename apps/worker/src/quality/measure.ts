@@ -52,8 +52,17 @@ export async function grabFrame(path: string, durationSec: number | null, dir: s
   return { mediaType: "image/jpeg", data: (await readFile(out)).toString("base64") };
 }
 
+/** The clip's last frame as JPEG bytes (end-state memory for the next shot). */
+export async function grabLastFrame(path: string, dir: string): Promise<Uint8Array> {
+  const out = join(dir, "end.jpg");
+  await ffmpeg(["-y", "-sseof", "-0.25", "-i", path, "-frames:v", "1", "-q:v", "3", out]);
+  return new Uint8Array(await readFile(out));
+}
+
 export interface ClipInspection {
   facts: MediaFacts;
+  /** Last frame, when asked for and the clip has picture. */
+  endFrame?: Uint8Array | null;
   /** Mid-clip frame for the Visual Reviewer, when asked for and the clip has picture. */
   frame: RequestImage | null;
   frameError?: string;
@@ -63,7 +72,7 @@ export interface ClipInspection {
 export async function inspectClip(
   download: (key: string, dest: string) => Promise<void>,
   key: string,
-  opts: { frame: boolean },
+  opts: { frame: boolean; endFrame?: boolean },
 ): Promise<ClipInspection> {
   const dir = await mkdtemp(join(tmpdir(), "cf-qc-"));
   try {
@@ -79,7 +88,9 @@ export async function inspectClip(
         frameError = e instanceof Error ? e.message.slice(0, 200) : String(e);
       }
     }
-    return { facts, frame, frameError };
+    let endFrame: Uint8Array | null = null;
+    if (opts.endFrame && facts.hasVideo) endFrame = await grabLastFrame(clip, dir).catch(() => null);
+    return { facts, frame, frameError, endFrame };
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

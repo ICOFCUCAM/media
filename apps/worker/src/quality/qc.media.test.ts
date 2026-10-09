@@ -50,10 +50,12 @@ describe.runIf(HAVE_FFMPEG)("quality gates on real media", () => {
 
   it("inspectClip downloads once and returns facts plus a frame for the reviewer", async () => {
     const { copyFile } = await import("node:fs/promises");
-    const i = await inspectClip((_k, dest) => copyFile(join(dir, "good.mp4"), dest), "projects/p/shots/s.mp4", { frame: true });
+    const i = await inspectClip((_k, dest) => copyFile(join(dir, "good.mp4"), dest), "projects/p/shots/s.mp4", { frame: true, endFrame: true });
     expect(i.facts).toMatchObject({ readable: true, hasVideo: true, width: 320, height: 240 });
     expect(i.facts.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(i.frame?.mediaType).toBe("image/jpeg");
+    // End-state memory (W6): the clip's last frame as a JPEG.
+    expect(i.endFrame && [i.endFrame[0], i.endFrame[1]]).toEqual([0xff, 0xd8]);
   }, 60_000);
 
   it("the Final Quality Gate measures loudness and catches a silent master", async () => {
