@@ -118,8 +118,9 @@ export async function applyCanonRevision(
     return { outcome: "rejected", affectedScenes: [], invalidatedShotIds: [], ...base };
   }
 
-  const compiled = compileFilm(rev.pkg);
-  const project = await db.project.findUniqueOrThrow({ where: { id: projectId }, select: { modelId: true, resolution: true, aspectRatio: true } });
+  const project0 = await db.project.findUniqueOrThrow({ where: { id: projectId }, select: { modelId: true, resolution: true, aspectRatio: true } });
+  const compiled = compileFilm(rev.pkg, { modelId: project0.modelId });
+  const project = project0;
   const [width, height] = outputDimensions(project.resolution, project.aspectRatio);
   const keying = { projectId, modelId: project.modelId, modelVersion: MODEL_VERSIONS[project.modelId] ?? "unknown", width, height };
   const byName = new Map((await db.character.findMany({ where: { projectId }, select: { id: true, name: true } })).map((c) => [c.name, c.id]));

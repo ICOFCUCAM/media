@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { IntelligenceError, PlanInvalidError, validateFilmPackage } from "@cineforge/movie";
 import { planShotCount } from "@cineforge/shared";
-import { planningConstraints, toProductionFailure } from "./director.service";
+import { planDegradations, planningConstraints, toProductionFailure } from "./director.service";
+import { mayaCoatFixture } from "@cineforge/movie";
 import { stubPackage } from "./stub";
 
 describe("planning constraints keep the plan inside the estimate", () => {
@@ -29,5 +30,18 @@ describe("planning failures are reported in production vocabulary", () => {
     expect(toProductionFailure(new IntelligenceError("TRUNCATED", "max"))?.code).toBe("DIRECTOR_OUTPUT_INVALID");
     expect(toProductionFailure(new IntelligenceError("PROVIDER_UNAVAILABLE", "none"))?.code).toBe("DIRECTOR_UNAVAILABLE");
     expect(toProductionFailure(new Error("db down"))).toBeNull();
+  });
+});
+
+describe("plan degradations (W4): grammar advisories and model limits are recorded, not failing", () => {
+  it("records cinema advisories and what a model could not take", () => {
+    const pkg = mayaCoatFixture();
+    pkg.scenes[0]!.shots[0]!.size = "MS"; // new place, no establishing shot
+    pkg.scenes[0]!.shots[1]!.movement = "dolly";
+    const wan = planDegradations(pkg, "wan-2.1");
+    expect(wan.map((d) => d.code)).toEqual(["CINEMA_ADVISORY"]);
+    expect(wan[0]).toMatchObject({ severity: "info", refId: "scene_10#0", detail: { code: "NO_ESTABLISHING_SHOT" } });
+    const ext = planDegradations(pkg, "fal-kling");
+    expect(ext.filter((d) => d.code === "PROMPT_LIMITED")).toHaveLength(12); // no negative prompt on that model
   });
 });

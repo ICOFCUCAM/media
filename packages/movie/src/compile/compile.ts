@@ -6,10 +6,17 @@
  *
  * Canon is keyed by the IR's stable ids; the worker maps those keys to database
  * ids when it persists. Shot prompts are assembled from canon (identity,
- * wardrobe, location, visual style) rather than pasted prose. This is the
- * interim prompt assembly; the model-specific Prompt Compiler is W4.
+ * wardrobe, location, visual style) rather than pasted prose: each shot's
+ * canonical media request (prompt/canonical.ts) is compiled for the video
+ * model the project uses (prompt/compilers.ts).
  */
 import type { FilmCharacter, FilmLocation, FilmPackage, FilmScene, FilmShot } from "../ir/schema";
+import { appearanceOf } from "./shot-prompt";
+import { canonicalHash, compileGeneration } from "../prompt/canonical";
+import { compileFor } from "../prompt/compilers";
+import { materializeWorld } from "../world/state";
+
+export { NEGATIVE_PROMPT, shotPrompt } from "./shot-prompt";
 
 export interface CompiledCharacter {
   key: string;
@@ -41,8 +48,13 @@ export interface CompiledProp {
 export interface CompiledShot {
   index: number;
   durationSec: number;
+  /** The video model's prompt, compiled from the canonical request (W4). */
   prompt: string;
   negativePrompt: string;
+  /** What the model could not take (recorded, never silent). */
+  promptDropped: string[];
+  /** Hash of the model-independent canonical request. */
+  canonicalHash: string;
   cameraPlan: {
     shotSize: FilmShot["size"];
     angle: FilmShot["angle"];
@@ -99,59 +111,6 @@ export interface CompiledFilm {
   scenes: CompiledScene[];
 }
 
-const SIZE: Record<FilmShot["size"], string> = {
-  EWS: "extreme wide shot",
-  WS: "wide shot",
-  MS: "medium shot",
-  MCU: "medium close-up",
-  CU: "close-up",
-  ECU: "extreme close-up",
-  INSERT: "insert shot",
-};
-
-export const NEGATIVE_PROMPT = "blurry, watermark, text, captions, extra limbs, deformed hands, duplicate faces";
-const PROMPT_MAX = 1500;
-
-function appearanceOf(c: FilmCharacter): string {
-  const marks = c.identity.marks.length ? `; marks: ${c.identity.marks.join(", ")}` : "";
-  return `${c.identity.face}; ${c.identity.hair}; ${c.identity.body}${marks}`;
-}
-
-function clip(s: string, max: number): string {
-  return s.length <= max ? s : `${s.slice(0, max - 1).trimEnd()}…`;
-}
-
-function subjectLine(pkg: FilmPackage, scene: FilmScene, key: string): string | null {
-  const ch = pkg.cast.find((c) => c.id === key);
-  if (ch) {
-    const st = scene.characters.find((s) => s.characterId === key);
-    const wardrobe = ch.wardrobe.find((w) => w.id === st?.wardrobeId)?.description;
-    const parts = [appearanceOf(ch), wardrobe ? `wearing ${wardrobe}` : null, st?.physical ?? null].filter(Boolean);
-    return `${ch.name} (${parts.join("; ")})`;
-  }
-  const prop = pkg.props.find((p) => p.id === key);
-  if (prop) return `${prop.name} (${prop.description})`;
-  return null;
-}
-
-/** Shot prompt from canon: framing, action, who (canonical look + scene wardrobe), where, light, style. */
-export function shotPrompt(pkg: FilmPackage, scene: FilmScene, shot: FilmShot): string {
-  const loc = pkg.locations.find((l) => l.id === scene.locationId)!;
-  const framing = [SIZE[shot.size], `${shot.angle} angle`, shot.movement === "static" ? "locked-off camera" : `${shot.movement} camera`,
-    shot.lens ? `${shot.lens} lens` : null].filter(Boolean).join(", ");
-  const subjects = shot.subjectIds.map((k) => subjectLine(pkg, scene, k)).filter((s): s is string => !!s);
-  const parts = [
-    `Cinematic film still, ${framing}.`,
-    shot.action,
-    subjects.length ? `Featuring ${subjects.join("; ")}.` : null,
-    `Setting: ${loc.name}, ${loc.description}, ${loc.architecture}, ${loc.era}; ${scene.timeOfDay}.`,
-    `Light: ${shot.lighting ?? loc.lighting}.`,
-    shot.emotion ? `Mood: ${shot.emotion}.` : null,
-    `Look: ${pkg.film.visualStyle.palette}; ${pkg.film.visualStyle.texture}.`,
-  ].filter(Boolean);
-  return clip(parts.join(" "), PROMPT_MAX);
-}
-
 /** How the scene's characters stand with each other, after the scene's changes ("Maya → Ewan": "trust"). */
 function relationshipsIn(pkg: FilmPackage, sceneAt: number): Record<string, string> {
   const sc = pkg.scenes[sceneAt]!;
@@ -178,7 +137,14 @@ function storyTimeLine(sc: FilmScene): Record<string, string> {
   return { "story time": `day ${t.day}, ${sc.timeOfDay}${tags.length ? ` (${tags.join(", ")})` : ""}` };
 }
 
-export function compileFilm(pkg: FilmPackage): CompiledFilm {
+export interface CompileOptions {
+  /** Registry id of the video model the shots are generated with (prompt syntax and limits). */
+  modelId?: string;
+}
+
+export function compileFilm(pkg: FilmPackage, opts: CompileOptions = {}): CompiledFilm {
+  const modelId = opts.modelId ?? "wan-2.1";
+  const world = materializeWorld(pkg);
   const castByKey = new Map(pkg.cast.map((c) => [c.id, c]));
   const locByKey = new Map(pkg.locations.map((l) => [l.id, l]));
   const sceneIndex = new Map(pkg.scenes.map((s) => [s.id, s.index]));
@@ -228,8 +194,11 @@ export function compileFilm(pkg: FilmPackage): CompiledFilm {
       shots: sc.shots.map((sh) => ({
         index: sh.index,
         durationSec: sh.durationSec,
-        prompt: shotPrompt(pkg, sc, sh),
-        negativePrompt: NEGATIVE_PROMPT,
+        ...(() => {
+          const req = compileGeneration(pkg, sc.id, sh.index, world);
+          const m = compileFor(modelId, req);
+          return { prompt: m.prompt, negativePrompt: m.negativePrompt ?? "", promptDropped: m.dropped, canonicalHash: canonicalHash(req) };
+        })(),
         cameraPlan: {
           shotSize: sh.size, angle: sh.angle, movement: sh.movement, lens: sh.lens, transition: sh.transition, subjectKeys: sh.subjectIds,
         },

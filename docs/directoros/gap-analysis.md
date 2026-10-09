@@ -488,6 +488,15 @@ Details: docs/47.
 
 ### W4 — Shot design and compilation
 
+**Done 2026-10-09** (docs/48; contract cinematography-and-prompts.md).
+Cinematography Engine (180° and eyeline enforced, grammar advised),
+Canonical Media Request, compilers for Wan / Hunyuan / OpenAI image / default,
+compiled prompts in every Film IR shot and seed still, cache key over the
+compiled prompt. Decided differently: no separate Shot Architect model call —
+the master call plans coverage under the engine's rules (one-pass doctrine,
+Part 2 §93). Carried forward: Flux/SDXL/ComfyUI compilers (W6), TTS/music/SFX
+compilers (W7), scene timing from measured media (W5 timeline).
+
 - BUILD Shot Architect (LLM-planned ShotIR per scene) and Cinematography
   Engine (coverage grammar, 180°, eyeline, lens rules, LLM override).
 - BUILD the Prompt Compiler: pure
@@ -644,4 +653,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 93 built, 127 shallow, 22 poorly built, 143 not built, 69 n/a. Of the 385 IDs that are requirements, 93 (24%) are built; 149 exist but need upgrading or changing; 143 must be built. (Updated after the W3 follow-ups, 2026-10-08.)
+454 IDs: 101 built, 123 shallow, 22 poorly built, 138 not built, 70 n/a. Of the 384 IDs that are requirements, 101 (26%) are built; 145 exist but need upgrading or changing; 138 must be built. (Updated after W4, 2026-10-09.)

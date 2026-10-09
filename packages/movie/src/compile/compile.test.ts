@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixturePackage } from "../ir/fixture";
-import { compileFilm, NEGATIVE_PROMPT } from "./compile";
+import { compileFilm } from "./compile";
+import { VIDEO_NEGATIVE } from "../prompt/compilers";
 
 describe("Production Compiler (Part 2 §85–86)", () => {
   const out = compileFilm(fixturePackage());
@@ -22,15 +23,22 @@ describe("Production Compiler (Part 2 §85–86)", () => {
     expect(s.camera).toBe("WS/eye/static · MS/eye/static · CU/eye/static · MCU/eye/static");
   });
 
-  it("shot prompts carry canonical identity and the scene's wardrobe", () => {
+  it("shot prompts are compiled for the model from canon: identity, the scene's wardrobe and state, place", () => {
     const p1 = out.scenes[0]!.shots[1]!.prompt;
     const p2 = out.scenes[1]!.shots[1]!.prompt;
-    expect(p1).toContain("Maya (angular face, dark brown eyes; short red hair");
+    expect(p1).toContain("Maya, 29-year-old, angular face, dark brown eyes, short red hair, lean, athletic, scar above left eyebrow");
     expect(p1).toContain("wearing yellow raincoat over black jumper");
+    expect(p1).toContain("holding Sealed key");
     expect(p2).toContain("wearing raincoat torn at the sleeve, soaked; soaked");
-    expect(p1).toContain("Setting: The Harbour");
-    expect(p1.length).toBeLessThanOrEqual(1500);
-    expect(out.scenes[0]!.shots[0]!.negativePrompt).toBe(NEGATIVE_PROMPT);
+    expect(p1).toContain("The Harbour: stone quays");
+    expect(p1).toContain("the camera holds still");
+    expect(p1.length).toBeLessThanOrEqual(1200);
+    expect(out.scenes[0]!.shots[0]!.negativePrompt).toBe(VIDEO_NEGATIVE);
+    expect(out.scenes[0]!.shots[0]!.canonicalHash).toMatch(/^[0-9a-f]{64}$/);
+    // Another model, another syntax — same canon.
+    const hy = compileFilm(fixturePackage(), { modelId: "hunyuan" }).scenes[0]!.shots[1]!.prompt;
+    expect(hy).toContain("locked-off static camera");
+    expect(hy).toContain("wearing yellow raincoat over black jumper");
   });
 
   it("dialogue is structured by character; continuity is per character", () => {

@@ -8,7 +8,7 @@
  * canon says the shot must show — the thing to generate from instead of the
  * request when they disagree.
  */
-import { shotPrompt } from "../compile/compile";
+import { shotPrompt } from "../compile/shot-prompt";
 import type { FilmCharacter, FilmPackage, FilmTimeOfDay } from "../ir/schema";
 import { canonVersion } from "./version";
 import { materializeWorld, type SceneWorld, type StoryClock, type WorldTimeline } from "./state";

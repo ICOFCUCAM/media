@@ -14,6 +14,8 @@
  *                 nobody says what they cannot know,
  *                 setups are established before they pay off, mysteries are
  *                 answered for the audience
+ *   cinema      — film grammar the plan must keep: no jump across the
+ *                 180° line, reverses whose eyelines meet (W4)
  *   production  — scene count, shots per scene, shot length vs the runtime's
  *                 per-clip maximum, scene length on the plan
  *   budget      — the film's total runtime matches what was paid for
@@ -25,8 +27,9 @@
 import { AUDIENCE, FilmPackage } from "./schema";
 import { applyReveals, initialKnowledge, timeOfDayRank } from "../world/state";
 import { checkFilmContinuity } from "../world/continuity";
+import { cinemaIssues } from "../cinema/engine";
 
-export type IssueStage = "schema" | "references" | "story" | "canon" | "production" | "budget";
+export type IssueStage = "schema" | "references" | "story" | "canon" | "cinema" | "production" | "budget";
 
 export interface Issue {
   stage: IssueStage;
@@ -79,7 +82,7 @@ export function validateFilmPackage(raw: unknown, c: ProductionConstraints): Val
 export function validateCanon(pkg: FilmPackage): Issue[] {
   const refs = references(pkg);
   // Canon checks walk the world state, which assumes every id resolves.
-  return [...refs, ...story(pkg), ...(refs.length ? [] : canon(pkg))];
+  return [...refs, ...story(pkg), ...(refs.length ? [] : [...canon(pkg), ...cinemaIssues(pkg)])];
 }
 
 function dupes<T>(items: T[], key: (t: T) => string, stage: IssueStage, path: string): Issue[] {

@@ -13,6 +13,8 @@ const shot = (index: number, durationSec: number, subject: string) => ({
   emotion: "tense",
   lighting: "sodium streetlight through rain",
   transition: "cut" as const,
+  side: "A" as "A" | "B" | "neutral" | null,
+  screenDirection: (index % 2 ? "left" : "right") as "left" | "right" | null,
   rationale: "Coverage builds from geography to emotion.",
 });
 
