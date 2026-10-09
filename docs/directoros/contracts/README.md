@@ -49,6 +49,7 @@ evidence files that exist (`scripts/check-truth.mjs`).
 | [editor.md](editor.md) | Editor Agent: structured edit operations, editorial review, timing requests, owner-approved apply, directorial roles | W13 | FUNCTIONAL |
 | [voice-ops.md](voice-ops.md) | Voice licence registry (router-enforced), speech cache, voice benchmark, audio continuity | W14 | FUNCTIONAL |
 | [voice-studio.md](voice-studio.md) | Voice Studio readings on the Voice Engine (modes, delivery, conversations), per-use licences to community voices, character voice traits, speech ledger | W15 | FUNCTIONAL |
+| [sound-design.md](sound-design.md) | Sound design: per-scene ambience beds and shot-anchored effects (generated, content-addressed), placed stems, mix and master by the production profile | W16 | FUNCTIONAL |
 | [visual-review.md](visual-review.md) | Visual Reviewer and visual quality gate (record mode) | W5 (first slice) | INTEGRATED |
 
 Contracts to write before their workstream starts (from the gap analysis):

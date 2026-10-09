@@ -226,9 +226,9 @@ Conflicts to settle (decisions in §10):
 | 15 Image generation | shallow | one gpt-image-1 still per shot, `n:1` | UPGRADE to N candidates as image jobs, each a `MediaVersion` |
 | 16 Visual Reviewer | not built | `Shot.qcScore` never set; QC statuses unused | BUILD multimodal reviewer → structured scores → PASS/REVISE loop (bounded) |
 | 17 Video review | shallow | timing gate + black/freeze validator; avsync CLI-only | BUILD frame extraction + visual/continuity/motion evaluators → PASS/REGENERATE via repair planner |
-| 18 Audio architecture | shallow | per-scene audio; one score; no SFX/foley/room tone | BUILD a per-shot `AudioPlan` wired to generators |
-| 19 Voice identity | not built | `Character.voiceProfile` unused; every line in "onyx" | BUILD `Character.voiceId` → Voice Engine (W7) |
-| 20 Audio continuity | shallow | ducking + loudnorm −16 hard-coded, ignores `SyncPolicy` | UPGRADE: policy targets, per-speaker matching, de-click, crossfades, room tone |
+| 18 Audio architecture | built (W16) | `movie/src/sound/plan.ts`, audio processor | Done: per-scene ambience beds and shot-anchored effects generated and placed beside dialogue and score (docs/61) |
+| 19 Voice identity | built (W7b, W15) | `voice/film.ts` | Done: each character speaks in the chosen or a fixed built-in voice with fixed traits (docs/51, docs/60) |
+| 20 Audio continuity | built (W16) | `ffmpeg/commands.ts`, `sync/mix.ts` | Done: dialogue-anchored mix, score and ambience ducked, stem levels and loudness/true peak from the production profile, ambience beds as room tone (docs/61) |
 | 21 Editor Agent | built (W13) | `packages/movie/src/edit`, `apps/worker/src/editor`, Editor panel | Done: typed `EditOperation`s, whole-cut review, owner-approved apply (docs/58) |
 | 22 Compilable movie | shallow | pipeline real; timeline IR CLI-only | BUILD persisted stage compilers Source→Film→Scene→Shot→Media→Timeline→Master |
 | 23 Film IR | not built | no IR; `FilmDraft` thin | BUILD `packages/movie` IR schemas (zod + JSON Schema) |
@@ -326,7 +326,7 @@ is stored and shown to the user (Part 2 §73–75; docs/38 §AV.1 decisions 14, 
 | 16 | `pipeline.py:251` | LoRA load failure printed, job continues without identity |
 | 17 | `pipeline.py:369-373` | no S3 credentials → upload skipped, key returned (phantom artifact) |
 | 18 | `render.processor.ts:140-144` | no S3 → READY film row with a non-existent `mp4Key` |
-| 19 | `processors/audio.processor.ts:90-101` | score failure or missing provider → track skipped; SFX never generated |
+| 19 | `processors/audio.processor.ts` | FIXED (W1, W16): a missing provider or failed score/sound is recorded as TRACK_MISSING; ambience and effects are generated |
 | 20 | `localize.processor.ts:97`, `openai.ts:113` | TTS input truncated at 4000 characters |
 | 21 | `processors/lora.processor.ts:37` | trainer not configured → skip; identity silently weaker |
 | 22 | `packages/model-adapters/src/policy.ts:25-27` | disallowed model silently falls back to `wan-2.1` |
@@ -805,6 +805,25 @@ existing engines, migrations 0046–0047 live.
 
 ---
 
+### W16 — Sound design (Part 1 §18, §20; Part 5 §178–181)
+
+**Done (docs/61, 2026-10-09; no migration).**
+
+- BUILT the sound plan: each scene's ambience becomes a loopable soundscape
+  request and each planned effect is anchored to the shot whose action it
+  belongs to (§18).
+- BUILT generation: ambience and sfx jobs per scene on a cloud text-to-audio
+  model, content-addressed (the same place keeps the same room tone, paid
+  once), metered, ledgered, TRACK_MISSING when a sound cannot be made.
+- BUILT the mix: ambience and effects as stems placed on the cut's scene
+  spans; dialogue anchors the mix; stem levels from the production profile's
+  mix spec; loudness and true peak from the sync policy, used by the master
+  gate too (§20).
+- OPEN: narration placed per scene on the timeline, per-shot audio cues in
+  the IR, loop-seam crossfades.
+
+---
+
 ## 9. Sequenced roadmap
 
 DirectorOS work is placed **inside** the docs/38 §AX.2 order, not beside it.
@@ -829,6 +848,7 @@ approved models wait for docs/38 gates.
 | **S13 Editor** | W13 Editor Agent and directorial roles | W8 versions, W9 workspace | S12 |
 | **S14 Voice operations** | W14 licence registry, speech cache, voice benchmark, audio continuity | W7 Voice Engine, W10 benchmark | S13 |
 | **S15 Voice Studio** | W15 readings on the Voice Engine, per-use licences, voice traits, speech ledger | W7, W14 | S14 |
+| **S16 Sound design** | W16 ambience, effects, profile-driven mix | W7, W10 | S15 |
 
 W11 hygiene items ride along with whichever stage touches the same files.
 
@@ -853,4 +873,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-487 IDs: 278 built, 114 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 278 (67%) are built; 114 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W15, 2026-10-09.)
+487 IDs: 289 built, 103 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 289 (70%) are built; 103 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W16, 2026-10-09.)
