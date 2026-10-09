@@ -9,11 +9,15 @@ import { Control, EmptyState, PageHeader, Section, Status } from "./cf/primitive
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
 import { LANGUAGES } from "../lib/system";
+import { DEFAULT_DELIVERY, EMOTIONS, MAX_SPEAKERS, READING_MODES, deliveryStyle, scriptSpeakers, type Delivery, type ReadingMode } from "../lib/readings";
 
 /**
  * Voice Studio (W9; was the Voice Lab) — clone your voice from a short sample, then have it read
  * anything (speeches, news, narration) in any supported language. Rows are
  * written PENDING; the worker clones/speaks and flips them READY (docs/29).
+ * W15: readings have a mode (narrator, presenter, conversation) and delivery
+ * controls, and a community voice is used only after accepting its owner's
+ * terms (a per-use licence the database checks on every reading).
  */
 
 interface VoiceRow {
@@ -76,6 +80,12 @@ export function VoiceLab() {
   const [voiceId, setVoiceId] = useState<string>("");
   const [language, setLanguage] = useState("en");
   const [speakBusy, setSpeakBusy] = useState(false);
+  const [mode, setMode] = useState<ReadingMode>("narrator");
+  const [delivery, setDelivery] = useState<Delivery>(DEFAULT_DELIVERY);
+  const [touched, setTouched] = useState<Partial<Record<keyof Delivery, boolean>>>({});
+  const [speakerVoices, setSpeakerVoices] = useState<Record<string, string>>({});
+  const [licensed, setLicensed] = useState<Set<string>>(new Set());
+  const [licBusy, setLicBusy] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -99,6 +109,8 @@ export function VoiceLab() {
       .order("created_at", { ascending: false })
       .limit(12);
     if (av.data) setAvatars(av.data as AvatarRow[]);
+    const lic = await sb.from("voice_licences").select("voice_id").eq("licensee_id", user.id).is("revoked_at", null);
+    if (lic.data) setLicensed(new Set(lic.data.map((l) => l.voice_id)));
     const rows = (v.data ?? []) as VoiceRow[];
     setVoices(rows.filter((r) => r.user_id === user.id));
     setCommunity(rows.filter((r) => r.user_id !== user.id && r.share_status === "APPROVED" && r.status === "READY"));
@@ -152,12 +164,24 @@ export function VoiceLab() {
     setSpeakBusy(true);
     setError(null);
     try {
+      const conversation = mode === "conversation";
+      const speakers = conversation
+        ? scriptSpeakers(text).map((label) => {
+            const v = speakerVoices[label.toLowerCase()];
+            return v ? { label, voice_id: v } : { label };
+          })
+        : [];
+      if (conversation && (speakers.length < 2 || speakers.length > MAX_SPEAKERS))
+        throw new Error(`A conversation needs 2–${MAX_SPEAKERS} speakers, each line written as “Name: line”.`);
       const ins = await sb.from("voiceovers").insert({
         user_id: user.id,
-        voice_id: voiceId || null,
+        voice_id: conversation ? null : voiceId || null,
         title: title || "Untitled speech",
         text,
         language,
+        mode,
+        style: deliveryStyle(delivery, touched),
+        speakers,
       });
       if (ins.error) throw new Error(ins.error.message);
       setTitle("");
@@ -228,7 +252,26 @@ export function VoiceLab() {
     await refresh();
   }
 
-  const readyVoices = [...(voices ?? []).filter((v) => v.status === "READY"), ...(community ?? [])];
+  // A community voice is offered only once its terms are accepted (a per-use licence, W15).
+  const readyVoices = [...(voices ?? []).filter((v) => v.status === "READY"), ...(community ?? []).filter((v) => licensed.has(v.id))];
+  const speakersInScript = mode === "conversation" ? scriptSpeakers(text) : [];
+  const setDel = <K extends keyof Delivery>(k: K, v: Delivery[K]) => {
+    setDelivery((d) => ({ ...d, [k]: v }));
+    setTouched((t) => ({ ...t, [k]: true }));
+  };
+
+  async function toggleLicence(v: VoiceRow) {
+    const sb = getSupabase();
+    if (!sb || licBusy) return;
+    setLicBusy(v.id);
+    setError(null);
+    const r = licensed.has(v.id)
+      ? await sb.rpc("revoke_voice_licence", { p_voice: v.id })
+      : await sb.rpc("accept_voice_terms", { p_voice: v.id });
+    if (r.error) setError(r.error.message);
+    await refresh();
+    setLicBusy(null);
+  }
 
   const fileCls =
     "w-full";
@@ -333,19 +376,29 @@ export function VoiceLab() {
 
               {/* Read */}
               <form onSubmit={onSpeak} className="bg-cf-bg p-6">
-                <Dept n="02" title="Read a speech" copy="Any length — speeches, news scripts, narration — in your clone, a community voice or the stock narrator." />
+                <Dept n="02" title="Read a speech" copy="Any length — speeches, news scripts, narration, a conversation — in your clone, a licensed community voice or a built-in voice." />
                 <label htmlFor="vo-title" className="cf-label mb-2 mt-7 block text-cf-fg">Title</label>
                 <input id="vo-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Independence Day address" className="cf-input" />
+                <Control name="Mode" value={READING_MODES.find((m) => m.id === mode)?.label ?? mode}>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {READING_MODES.map((m) => (
+                      <button key={m.id} type="button" onClick={() => setMode(m.id)} aria-pressed={mode === m.id} title={m.hint} className="cf-option">
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-cf-muted">{READING_MODES.find((m) => m.id === mode)?.hint}</p>
+                </Control>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2 sm:gap-2 lg:grid-cols-1 lg:gap-4 2xl:grid-cols-2 2xl:gap-2">
-                  <label className="block">
+                  {mode !== "conversation" && <label className="block">
                     <span className="cf-label mb-2 block text-cf-fg">Voice</span>
                     <select value={voiceId} onChange={(e) => setVoiceId(e.target.value)} className="cf-input py-2.5">
-                      <option value="">Narrator (stock)</option>
+                      <option value="">Built-in voice</option>
                       {readyVoices.map((v) => (
                         <option key={v.id} value={v.id}>{v.name}</option>
                       ))}
                     </select>
-                  </label>
+                  </label>}
                   <label className="block">
                     <span className="cf-label mb-2 block text-cf-fg">Language</span>
                     <select value={language} onChange={(e) => setLanguage(e.target.value)} className="cf-input py-2.5">
@@ -356,7 +409,60 @@ export function VoiceLab() {
                   </label>
                 </div>
                 <label htmlFor="vo-text" className="cf-label mb-2 mt-5 block text-cf-fg">Text</label>
-                <textarea id="vo-text" value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste the speech, news script or any long text…" required rows={7} className="cf-input resize-y" />
+                <textarea
+                  id="vo-text"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder={mode === "conversation" ? "Ada: Did you see the launch?\nBen: I did — the whole town was watching." : "Paste the speech, news script or any long text…"}
+                  required
+                  rows={7}
+                  className="cf-input resize-y"
+                />
+                {mode === "conversation" && (
+                  <div className="mt-4">
+                    <span className="cf-label mb-2 block text-cf-fg">Speakers</span>
+                    {speakersInScript.length === 0 ? (
+                      <p className="text-[11px] text-cf-muted">Write each line as “Name: line” — the speakers appear here.</p>
+                    ) : (
+                      <ul className="grid gap-2">
+                        {speakersInScript.map((label, i) => (
+                          <li key={label} className="flex items-center gap-2">
+                            <span className={`w-24 truncate text-[13px] ${i >= MAX_SPEAKERS ? "text-cf-danger" : ""}`}>{label}</span>
+                            <select
+                              aria-label={`Voice for ${label}`}
+                              value={speakerVoices[label.toLowerCase()] ?? ""}
+                              onChange={(e) => setSpeakerVoices((m) => ({ ...m, [label.toLowerCase()]: e.target.value }))}
+                              className="cf-input flex-1 py-2"
+                            >
+                              <option value="">Built-in voice</option>
+                              {readyVoices.map((v) => (
+                                <option key={v.id} value={v.id}>{v.name}</option>
+                              ))}
+                            </select>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {speakersInScript.length > MAX_SPEAKERS && <p className="mt-1.5 text-[11px] text-cf-danger">Up to {MAX_SPEAKERS} speakers.</p>}
+                  </div>
+                )}
+                <details className="mt-5">
+                  <summary className="cf-label cursor-pointer text-cf-fg">Delivery</summary>
+                  <div className="mt-3 grid gap-3">
+                    <label className="block">
+                      <span className="cf-label mb-1 block">Emotion</span>
+                      <select value={delivery.emotion} onChange={(e) => setDel("emotion", e.target.value as Delivery["emotion"])} className="cf-input py-2">
+                        {EMOTIONS.map((em) => (
+                          <option key={em} value={em}>{em[0]!.toUpperCase() + em.slice(1)}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <Slider label="Energy" value={delivery.energy} min={0} max={1} step={0.05} show={(v) => `${Math.round(v * 100)}%`} onChange={(v) => setDel("energy", v)} />
+                    <Slider label="Speed" value={delivery.speed} min={0.75} max={1.5} step={0.05} show={(v) => `${v.toFixed(2)}×`} onChange={(v) => setDel("speed", v)} />
+                    <Slider label="Pitch" value={delivery.pitch} min={-6} max={6} step={1} show={(v) => `${v > 0 ? "+" : ""}${v} st`} onChange={(v) => setDel("pitch", v)} />
+                    <p className="text-[11px] text-cf-muted">Untouched controls follow the mode. Engines that cannot change one of these ignore it.</p>
+                  </div>
+                </details>
                 <button type="submit" disabled={speakBusy || !text.trim()} className="cf-btn-ink mt-7 w-full">
                   {speakBusy ? "Queuing…" : "Generate audio"}
                 </button>
@@ -426,9 +532,17 @@ export function VoiceLab() {
                   {community!.map((v) => (
                     <div key={v.id} className="bg-cf-bg px-4 py-3">
                       <div className="truncate font-display font-semibold text-[17px]">{v.name}</div>
-                      <div className="truncate text-[11px] text-cf-muted" title={v.share_terms ?? undefined}>
-                        {v.share_terms || "No terms specified"}
+                      <div className="text-[11px] text-cf-muted" title={v.share_terms ?? undefined}>
+                        Terms: {v.share_terms || "none specified"}
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => void toggleLicence(v)}
+                        disabled={licBusy === v.id}
+                        className={licensed.has(v.id) ? "cf-link mt-2 text-[11px] text-cf-muted hover:text-cf-fg" : "cf-btn-line mt-2 px-3 py-1.5 text-[11px]"}
+                      >
+                        {licensed.has(v.id) ? "Licensed — stop using" : "Accept terms and use"}
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -568,5 +682,14 @@ function StatusChip({ status, error }: { status: string; error: string | null })
     <span title={error ?? undefined}>
       <Status tone={tone}>{status === "READY" ? "Ready" : status === "FAILED" ? "Failed" : "Working"}</Status>
     </span>
+  );
+}
+
+function Slider({ label, value, min, max, step, show, onChange }: { label: string; value: number; min: number; max: number; step: number; show: (v: number) => string; onChange: (v: number) => void }) {
+  return (
+    <label className="block">
+      <span className="cf-label mb-1 flex justify-between"><span>{label}</span><span className="font-mono text-cf-fg">{show(value)}</span></span>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full" />
+    </label>
   );
 }
