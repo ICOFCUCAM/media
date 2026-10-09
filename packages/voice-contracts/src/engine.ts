@@ -21,6 +21,12 @@ export interface VoiceCapabilities {
   batch: boolean;
   /** Longest text one synthesis call takes; longer scripts are segmented first. */
   maxChars: number;
+  /**
+   * The engine's built-in voices, by opaque name. CineForge never chooses one
+   * by name — it picks by position (e.g. one per character) so the cast sounds
+   * distinct on any engine. The first is the default narrator.
+   */
+  presets: string[];
 }
 
 export interface VoiceStyle {
@@ -55,8 +61,10 @@ export interface VoiceEnrollmentResult {
 export interface SpeechSynthesisRequest {
   text: string;
   language: string;
-  /** The engine's artifact for a cloned voice, or null for the engine's stock narrator. */
+  /** The engine's artifact for a cloned voice, or null for a built-in voice. */
   voice: VoiceEngineArtifact | null;
+  /** With no cloned voice: one of the engine's presets (unknown names fall back to the default). */
+  preset?: string;
   style?: VoiceStyle;
   /** Local path to write the raw audio to. */
   outPath: string;

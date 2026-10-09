@@ -163,12 +163,19 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
       realExecution: has(env, "LORA_TRAINER_URL"),
       note: has(env, "LORA_TRAINER_URL") ? undefined : "trainer not configured; the GPU worker's /train is disabled",
     }),
-    cap({
-      capability: "narration_tts",
-      provider: has(env, "OPENAI_API_KEY") ? "openai" : null,
-      status: has(env, "OPENAI_API_KEY") ? "experimental" : "unavailable",
-      realExecution: has(env, "OPENAI_API_KEY"),
-    }),
+    (() => {
+      // Film narration and dialogue run on the Voice Engine (W7b): the first
+      // listed cloud engine that is configured speaks.
+      const listed = (env.VOICE_ENGINES ?? "fal-minimax:90,openai-tts:80").split(",").map((x) => x.split(":")[0]!.trim());
+      const engine = listed.find((id) => (id === "fal-minimax" && has(env, "FAL_KEY")) || (id === "openai-tts" && has(env, "OPENAI_API_KEY"))) ?? null;
+      return cap({
+        capability: "narration_tts",
+        provider: engine,
+        status: engine ? "experimental" : "unavailable",
+        realExecution: !!engine,
+        note: engine ? "narration and each character's dialogue, mastered per line" : "no voice engine configured (VOICE_ENGINES / FAL_KEY / OPENAI_API_KEY) — films have no voice track",
+      });
+    })(),
     (() => {
       // Voice Engine router (W7): VOICE_ENGINES, default "fal-minimax:90,openai-tts:80".
       // Self-hosted voice models are listed but gated on Phase 1 (docs/39).

@@ -1,4 +1,4 @@
-# 51 — Voice Engine (DirectorOS W7a)
+# 51 — Voice Engine (DirectorOS W7a, W7b)
 
 **Status:** implemented in code (2026-10-09) for the cloud engines; migration
 0036 **applied live**. The self-hosted voice models (Qwen3-TTS, CosyVoice 3,
@@ -57,9 +57,7 @@ Engine automatically (the poller creates the job).
 
 ## 5. Limits (carried forward)
 
-- **W7b:** film narration and per-character dialogue voices
-  (`characters.voice_profile.voiceId`, `dialogue_lines.audio_key`) on the
-  Voice Engine; dubbing through `/v1/speech/batch`.
+- Dubbing (localize) still calls OpenAI directly; it moves to the engine next.
 - Self-hosted engines, the voice GPU worker, the licence registry and the
   benchmark harness: gated (owner rule, Phase 1).
 - No content-hash cache for repeated lines yet; no streaming.
@@ -69,3 +67,29 @@ Engine automatically (the poller creates the job).
   without a per-use licence.
 - The API returns storage keys; signed download URLs come with the
   standalone voice product.
+
+## 6. Film voices (W7b)
+
+| Before | Now |
+|---|---|
+| One narrator ("onyx") read either the voice-over or every line, joined into one MP3 | Each scene's **voice-over and every dialogue line** are spoken, in order, on the Voice Engine |
+| Characters had no voice | A character speaks in **the voice the owner chose** (Casting Room → Voice), or a **built-in voice of their own** — the same one in every scene, never the narrator's |
+| Lines had no audio of their own | Each line is mastered and stored (`scenes/<scene>/audio/lines/<line>.wav`); `dialogue_lines.audio_key` and `start_ms` say where it sits in the scene track |
+| Nothing checked that speech fits | The plan validator flags `SPEECH_TOO_LONG` when a scene's narration and dialogue (≈2.6 words/s plus pauses) run past its shots, so the Director's revision fixes it before anything renders |
+
+How a voice is chosen for a character:
+
+1. In the Casting Room, pick one of your ready, consented voices for a
+   character. A film you plan afterwards gives that voice to its character of
+   the same name.
+2. Before speaking, the worker checks the voice is the film owner's, has
+   recorded consent and is ready, and that a configured engine can speak
+   cloned voices. If any check fails, a built-in voice speaks that character
+   and a `VOICE_SUBSTITUTED` notice on the production says why.
+3. If no voice engine is configured at all, the scene has no voice track and
+   `TRACK_MISSING` says so (as before).
+
+The scene track is 48 kHz mono WAV (parts joined with a 350 ms pause); the
+render decodes and joins scene tracks of any format, so films started before
+this change still assemble. Narration is never cut: `RENDER_NARRATION_OVERRUN`
+still defaults to `fail`.

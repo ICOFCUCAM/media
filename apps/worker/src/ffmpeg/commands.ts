@@ -37,6 +37,13 @@ export function concatListContent(files: string[]): string {
   return files.map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join("\n") + "\n";
 }
 
+/** Join audio files of any format/rate end to end (concat filter, resampled to 48 kHz) into AAC. */
+export function concatAudioArgs(inputs: string[], output: string): string[] {
+  const filter = inputs.map((_, i) => `[${i}:a]aresample=48000,aformat=channel_layouts=stereo[a${i}]`).join(";") +
+    ";" + inputs.map((_, i) => `[a${i}]`).join("") + `concat=n=${inputs.length}:v=0:a=1[out]`;
+  return [...inputs.flatMap((f) => ["-i", f]), "-filter_complex", filter, "-map", "[out]", "-c:a", "aac", "-b:a", "160k", output];
+}
+
 /** Concat normalized clips via the concat demuxer (stream copy). */
 export function concatArgs(listPath: string, output: string): string[] {
   return ["-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", output];

@@ -1,8 +1,9 @@
 /**
  * Audio processor — consumes `audio-queue` (voice / music / sfx).
  *
- * Voice: synthesized with OpenAI TTS (tts-1, voice "onyx") from the scene's
- * dialogue/narration, uploaded to storage.
+ * Voice: the scene's voice-over and dialogue on the Voice Engine (W7b,
+ * docs/51 §6) — each character in the voice the owner chose for them or a
+ * distinct built-in voice, mastered, each line's audio and start recorded.
  * Music: the film's score — composed once, on the opening scene, by a fal
  * text-to-music model (FAL_MUSIC_MODEL, default Stable Audio) from the brief
  * and every scene's style and mood; the render engine loops it under the cut.
@@ -14,12 +15,38 @@
  * recorded key), and a TRACK_MISSING degradation is recorded and shown.
  */
 import { Worker } from "bullmq";
+import type { VoiceEngineArtifact } from "@cineforge/voice-contracts";
 import { QUEUES, degradation, type AudioJob } from "@cineforge/shared";
 import { recordDegradations, type DegradationDb } from "../truth/recorder";
-import { buildOpenAIProviders, falRunQueue, falFindUrl } from "@cineforge/model-adapters";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { falRunQueue, falFindUrl } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
 import { S3Storage } from "../storage/storage";
 import { buildScorePrompt, scoreSeconds, SCORE_MODEL } from "../audio/score";
+import { chosenVoiceId, NoVoiceEngineError, renderSceneVoice, type SceneVoiceDeps } from "../voice/film";
+import { voiceEngine } from "../voice/engines";
+import { joinSegments, masterSegment, measureSpeech } from "../voice/mastering";
+
+function sceneVoiceDeps(): SceneVoiceDeps {
+  return {
+    env: process.env,
+    engine: (id) => voiceEngine(id, process.env),
+    voice: (id) => prisma.voice.findUnique({
+      where: { id },
+      select: { id: true, userId: true, status: true, consentType: true, consentConfirmedAt: true, provider: true, providerVoiceId: true },
+    }),
+    artifact: async (voiceId, engineId, engineVersion) => {
+      const a = await prisma.voiceEngineArtifact.findUnique({ where: { voiceId_engineId_engineVersion: { voiceId, engineId, engineVersion } } });
+      return a && ({ artifactType: a.artifactType, uri: a.artifactUri } as VoiceEngineArtifact);
+    },
+    master: masterSegment,
+    join: joinSegments,
+    measure: measureSpeech,
+    upload: (path, key, type) => storage.upload(path, key, type),
+  };
+}
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const KIND = { voice: "VOICE", music: "MUSIC", sfx: "SFX" } as const;
@@ -41,39 +68,67 @@ export const audioWorker = new Worker<AudioJob>(
     });
     if (existing) return { sceneId, kind, key: existing.key, skipped: true };
 
-    // ── Voice: real narration via OpenAI TTS ────────────────────────────
+    // ── Voice: the scene's narration and dialogue on the Voice Engine (W7b) ─
     if (kind === "voice") {
       const scene = await prisma.scene.findUnique({
         where: { id: sceneId },
         include: { dialogueLines: { orderBy: { index: "asc" } } },
       });
-      const fromLines = scene?.dialogueLines.map((d) => d.text).join(" ") ?? "";
-      // One narrator voice speaks the film's audio bed. Preference: the
-      // Director's VOICE-OVER (narration), then dialogue lines (until per-
-      // character voices exist — Voice Engine, W7), then the summary as a last
-      // resort (it describes the picture rather than telling the story).
-      const text = (scene?.narration || fromLines || scene?.dialogue || scene?.summary || "").trim();
-      if (!text) return { sceneId, kind, skipped: "nothing to speak" };
-      const key = `scenes/${sceneId}/audio/voice/${job.id}.mp3`;
-      const { tts } = process.env.S3_BUCKET
-        ? buildOpenAIProviders(process.env, (bytes, ct) => storage.putBytes(key, bytes, ct))
-        : { tts: undefined };
-      const label = `Scene ${(scene?.index ?? 0) + 1}`;
-      if (!tts) {
-        await trackMissing(projectId, "scene", `${label} has no narration: no voice provider is configured.`, { track: "voice" }, sceneId);
-        return { sceneId, kind, skipped: "no provider configured" };
+      if (!scene) return { sceneId, kind, skipped: "scene gone" };
+      const label = `Scene ${scene.index + 1}`;
+      if (!process.env.S3_BUCKET) {
+        await trackMissing(projectId, "scene", `${label} has no voice track: storage is not configured.`, { track: "voice" }, sceneId);
+        return { sceneId, kind, skipped: "no storage" };
       }
+      const [project, cast] = await Promise.all([
+        prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } }),
+        prisma.character.findMany({ where: { projectId }, orderBy: { name: "asc" }, select: { id: true, voiceProfile: true } }),
+      ]);
+      const chosenVoices = Object.fromEntries(cast.map((c) => [c.id, chosenVoiceId(c.voiceProfile)]));
+      const dir = await mkdtemp(join(tmpdir(), "cf-scene-voice-"));
       try {
-        const { audioKey } = await tts.synthesize({ text });
+        const out = await renderSceneVoice(
+          {
+            scene: {
+              id: scene.id, narration: scene.narration, dialogue: scene.dialogue, summary: scene.summary,
+              lines: scene.dialogueLines.map((l) => ({ id: l.id, characterId: l.characterId, text: l.text, emotion: l.emotion })),
+            },
+            language: "en",
+            ownerId: project?.userId ?? "",
+            castOrder: cast.map((c) => c.id),
+            chosenVoices,
+            trackKey: `scenes/${sceneId}/audio/voice/${job.id}.wav`,
+            dir,
+          },
+          sceneVoiceDeps(),
+        );
+        if (!out) return { sceneId, kind, skipped: "nothing to speak" };
+        for (const c of out.cues) {
+          if (c.lineId) await prisma.dialogueLine.update({ where: { id: c.lineId }, data: { audioKey: c.audioKey, startMs: c.startMs }, select: { id: true } });
+        }
         await prisma.audioTrack.create({
-          data: { sceneId, kind: "VOICE", key: audioKey, meta: { provider: "openai-tts", voice: process.env.OPENAI_TTS_VOICE ?? "onyx" } },
+          data: {
+            sceneId, kind: "VOICE", key: out.trackKey, durationMs: Math.round(out.durationSec * 1000),
+            meta: { provider: "voice-engine", engine: out.engine, loudnessLufs: out.loudnessLufs, cues: out.cues.map((c) => ({ lineId: c.lineId, characterId: c.characterId, voice: c.voice, startMs: c.startMs, durationMs: c.durationMs })) },
+          },
         });
-        return { sceneId, kind, key: audioKey, provider: "openai-tts" };
+        if (out.substitutions.length) {
+          const names = new Map((await prisma.character.findMany({ where: { id: { in: out.substitutions.map((x) => x.characterId) } }, select: { id: true, name: true } })).map((c) => [c.id, c.name]));
+          await recordDegradations(prisma as unknown as DegradationDb, projectId, out.substitutions.map((x) =>
+            degradation("VOICE_SUBSTITUTED", "scene", `${label}: ${names.get(x.characterId) ?? "a character"} spoke in a built-in voice — ${x.reason}.`, { refId: sceneId, detail: { characterId: x.characterId, reason: x.reason } })));
+        }
+        return { sceneId, kind, key: out.trackKey, engine: out.engine, cues: out.cues.length };
       } catch (e) {
+        if (e instanceof NoVoiceEngineError) {
+          await trackMissing(projectId, "scene", `${label} has no voice track: no voice engine is configured.`, { track: "voice", engines: e.message }, sceneId);
+          return { sceneId, kind, skipped: "no voice engine" };
+        }
         if (!lastAttempt) throw e; // retry first
         const reason = (e instanceof Error ? e.message : String(e)).slice(0, 300);
-        await trackMissing(projectId, "scene", `${label} has no narration: the voice provider failed.`, { track: "voice", error: reason }, sceneId);
+        await trackMissing(projectId, "scene", `${label} has no voice track: the voice engine failed.`, { track: "voice", error: reason }, sceneId);
         return { sceneId, kind, skipped: "voice generation failed" };
+      } finally {
+        await rm(dir, { recursive: true, force: true });
       }
     }
 

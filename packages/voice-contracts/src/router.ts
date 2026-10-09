@@ -28,23 +28,25 @@ const SELF_HOSTED_GATE = "self-hosted voice model — waits on Phase 1 (docs/39)
 export const ENGINE_REGISTRY: Record<string, EngineDescriptor> = {
   "fal-minimax": {
     id: "fal-minimax", kind: "cloud", gated: null, requires: ["FAL_KEY"],
-    capabilities: { voiceCloning: true, voiceDesign: false, multilingual: true, languages: ANY, emotionControl: true, speedControl: true, streaming: false, batch: false, maxChars: 1800 },
+    capabilities: { voiceCloning: true, voiceDesign: false, multilingual: true, languages: ANY, emotionControl: true, speedControl: true, streaming: false, batch: false, maxChars: 1800,
+      presets: ["Deep_Voice_Man", "Wise_Woman", "Friendly_Person", "Calm_Woman", "Casual_Guy", "Lively_Girl", "Patient_Man", "Young_Knight", "Determined_Man", "Lovely_Girl", "Decent_Boy", "Elegant_Man", "Imposing_Manner", "Inspirational_girl"] },
   },
   "openai-tts": {
     id: "openai-tts", kind: "cloud", gated: null, requires: ["OPENAI_API_KEY"],
-    capabilities: { voiceCloning: false, voiceDesign: false, multilingual: true, languages: ANY, emotionControl: false, speedControl: true, streaming: false, batch: false, maxChars: 4000 },
+    capabilities: { voiceCloning: false, voiceDesign: false, multilingual: true, languages: ANY, emotionControl: false, speedControl: true, streaming: false, batch: false, maxChars: 4000,
+      presets: ["onyx", "nova", "alloy", "shimmer", "echo", "fable"] },
   },
   "qwen3-tts": {
     id: "qwen3-tts", kind: "self-hosted", gated: SELF_HOSTED_GATE, requires: ["VOICE_GPU_URL"],
-    capabilities: { voiceCloning: true, voiceDesign: true, multilingual: true, languages: ANY, emotionControl: true, speedControl: true, streaming: false, batch: true, maxChars: 600 },
+    capabilities: { voiceCloning: true, voiceDesign: true, multilingual: true, languages: ANY, emotionControl: true, speedControl: true, streaming: false, batch: true, maxChars: 600, presets: [] },
   },
   "cosyvoice-3": {
     id: "cosyvoice-3", kind: "self-hosted", gated: SELF_HOSTED_GATE, requires: ["VOICE_GPU_URL"],
-    capabilities: { voiceCloning: true, voiceDesign: false, multilingual: true, languages: ANY, emotionControl: true, speedControl: true, streaming: true, batch: true, maxChars: 600 },
+    capabilities: { voiceCloning: true, voiceDesign: false, multilingual: true, languages: ANY, emotionControl: true, speedControl: true, streaming: true, batch: true, maxChars: 600, presets: [] },
   },
   "gpt-sovits": {
     id: "gpt-sovits", kind: "self-hosted", gated: SELF_HOSTED_GATE, requires: ["VOICE_GPU_URL"],
-    capabilities: { voiceCloning: true, voiceDesign: false, multilingual: true, languages: ["en", "zh", "ja", "ko", "yue"], emotionControl: false, speedControl: true, streaming: false, batch: true, maxChars: 400 },
+    capabilities: { voiceCloning: true, voiceDesign: false, multilingual: true, languages: ["en", "zh", "ja", "ko", "yue"], emotionControl: false, speedControl: true, streaming: false, batch: true, maxChars: 400, presets: [] },
   },
 };
 

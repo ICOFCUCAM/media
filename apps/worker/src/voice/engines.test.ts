@@ -59,6 +59,15 @@ describe("openai-tts engine", () => {
     expect(r.format).toBe("wav");
   });
 
+  it("uses a known preset and ignores an unknown one", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const f = (async (_u: string, init: RequestInit) => { bodies.push(JSON.parse(String(init.body))); return audio(); }) as unknown as typeof fetch;
+    const e = new OpenAiTtsEngine({ OPENAI_API_KEY: "k" }, f);
+    await e.synthesize({ text: "a", language: "en", voice: null, preset: "nova", outPath: join(dir, "p1.wav") });
+    await e.synthesize({ text: "a", language: "en", voice: null, preset: "Deep_Voice_Man", outPath: join(dir, "p2.wav") });
+    expect(bodies.map((b) => b.voice)).toEqual(["nova", "onyx"]);
+  });
+
   it("cannot clone and refuses a cloned voice", async () => {
     const e = new OpenAiTtsEngine({ OPENAI_API_KEY: "k" });
     await expect(e.enrollVoice()).rejects.toThrow(/cannot clone/);

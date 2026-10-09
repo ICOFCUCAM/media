@@ -8,6 +8,7 @@ import { degradation, ProductionFailure, type Degradation } from "@cineforge/sha
 import { ffmpeg, probeDuration, type DurationProbe, type FfmpegRunner } from "./ffmpeg";
 import {
   normalizeArgs,
+  concatAudioArgs,
   concatListContent,
   concatArgs,
   audioMixArgs,
@@ -183,16 +184,17 @@ export class RenderEngine {
         // Voice bed: ordered concat of per-scene narration.
         let voice: string | undefined;
         const voiceScenes = scenes.filter((s) => s.voiceKey);
+        // Scene tracks may differ in format (Voice Engine WAV, older MP3), so
+        // they are decoded and joined by the concat filter, not the demuxer.
+        const ext = (k: string) => (/\.(wav|mp3|m4a|aac|ogg|flac)$/i.exec(k)?.[1] ?? "audio").toLowerCase();
         if (voiceScenes.length === 1) {
-          voice = await dl(voiceScenes[0]!.voiceKey!, "voice_0.mp3");
+          voice = await dl(voiceScenes[0]!.voiceKey!, `voice_0.${ext(voiceScenes[0]!.voiceKey!)}`);
         } else if (voiceScenes.length > 1) {
           const parts: string[] = [];
-          for (const s of voiceScenes) parts.push(await dl(s.voiceKey!, `voice_${s.index}.mp3`));
-          const vlist = join(work, "voices.txt");
-          await writeFile(vlist, concatListContent(parts));
+          for (const s of voiceScenes) parts.push(await dl(s.voiceKey!, `voice_${s.index}.${ext(s.voiceKey!)}`));
           voice = join(work, "voice_all.m4a");
           console.log(`[render] narration bed: ${parts.length} scene tracks`);
-          await this.run(["-f", "concat", "-safe", "0", "-i", vlist, "-c:a", "aac", "-b:a", "160k", voice]);
+          await this.run(concatAudioArgs(parts, voice));
         }
         // Narration is never cut to fit the picture (docs/38 §AW.2, regression
         // test 1): measure both, then fit explicitly. A real overrun fails the

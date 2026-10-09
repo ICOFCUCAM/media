@@ -72,6 +72,13 @@ describe("capability registry (DOS-77/78)", () => {
     expect(gated.note).toMatch(/qwen3-tts wait on Phase 1/);
   });
 
+  it("film voice follows the voice router", () => {
+    const get = (env: Record<string, string>) => buildCapabilityRegistry({ env }).find((c) => c.capability === "narration_tts")!;
+    expect(get({ FAL_KEY: "k", OPENAI_API_KEY: "k" }).provider).toBe("fal-minimax");
+    expect(get({ OPENAI_API_KEY: "k" }).provider).toBe("openai-tts");
+    expect(get({ FAL_KEY: "k", VOICE_ENGINES: "openai-tts:80" })).toMatchObject({ provider: null, status: "unavailable" });
+  });
+
   it("a placeholder GPU worker never counts as video generation", () => {
     const reg = buildCapabilityRegistry({ env: {}, gpu: { "wan-2.1": { execution: "placeholder", realExecution: false } } });
     const v = reg.find((c) => c.capability === "video_generation")!;

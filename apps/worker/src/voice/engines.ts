@@ -61,6 +61,9 @@ export class FalMinimaxEngine implements VoiceEngine {
     if (!k) throw new Error("FAL_KEY not configured");
     return k;
   }
+  private preset(name: string | undefined): string {
+    return name && this.getCapabilities().presets.includes(name) ? name : this.stockVoice;
+  }
   async enrollVoice(req: VoiceEnrollmentRequest): Promise<VoiceEnrollmentResult> {
     const ext = req.referencePath.split(".").pop()?.toLowerCase() ?? "wav";
     const url = await this.deps.upload(this.key(), new Uint8Array(await readFile(req.referencePath)), MIME[ext] ?? "audio/wav", `sample.${ext}`);
@@ -78,7 +81,7 @@ export class FalMinimaxEngine implements VoiceEngine {
     const input: Record<string, unknown> = {
       text: req.text,
       voice_setting: {
-        voice_id: req.voice?.uri ?? this.stockVoice,
+        voice_id: req.voice?.uri ?? this.preset(req.preset),
         speed: req.style?.speed ?? 1,
         ...(req.style?.pitch !== undefined ? { pitch: Math.round(req.style.pitch) } : {}),
         ...(emotion && MINIMAX_EMOTIONS.has(emotion) ? { emotion } : {}),
@@ -118,7 +121,7 @@ export class OpenAiTtsEngine implements VoiceEngine {
       headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
       body: JSON.stringify({
         model: this.version,
-        voice: this.env.OPENAI_TTS_VOICE ?? "onyx",
+        voice: req.preset && this.getCapabilities().presets.includes(req.preset) ? req.preset : this.env.OPENAI_TTS_VOICE ?? "onyx",
         input: req.text,
         response_format: "wav",
         ...(req.style?.speed !== undefined ? { speed: req.style.speed } : {}),

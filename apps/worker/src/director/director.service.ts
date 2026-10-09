@@ -24,6 +24,7 @@ import { intelligence } from "../intelligence";
 import { stubPackage } from "./stub";
 import { shotGenerationFields, statePatchRow } from "./rows";
 import type { GateResult } from "../quality/gates";
+import { chosenVoiceId } from "../voice/film";
 
 /**
  * Director — planning service (DirectorOS W2: One-Pass Intelligence /
@@ -159,6 +160,29 @@ export function planDegradations(pkg: PlanResult["pkg"], modelId: string): Degra
   return out;
 }
 
+/**
+ * Voices the owner already gave characters of the same name in their other
+ * productions or the Casting Room (W7b): a planned "Maya" speaks in the voice
+ * the owner chose for Maya. The newest choice wins; the scene voice step
+ * still checks ownership, readiness and consent before using it.
+ */
+async function castVoices(projectId: string): Promise<Map<string, string>> {
+  const owner = await prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } });
+  if (!owner) return new Map();
+  const rows = await prisma.character.findMany({
+    where: { project: { userId: owner.userId }, NOT: { projectId } },
+    orderBy: { updatedAt: "desc" },
+    select: { name: true, voiceProfile: true },
+  });
+  const out = new Map<string, string>();
+  for (const r of rows) {
+    const id = chosenVoiceId(r.voiceProfile);
+    const key = r.name.trim().toLowerCase();
+    if (id && !out.has(key)) out.set(key, id);
+  }
+  return out;
+}
+
 /** Compile and persist a plan (exported for the database integration test). */
 export async function persistPlan(
   projectId: string,
@@ -177,11 +201,13 @@ export async function persistPlan(
   // deployed schema has (a full return also read characters.lora_sha256,
   // which needs migration 0027).
   const charId = new Map<string, string>();
+  const voices = await castVoices(projectId);
   for (const c of compiled.characters) {
+    const voiceId = voices.get(c.name.trim().toLowerCase());
     const row = await prisma.character.create({
       data: {
         projectId, name: c.name, age: c.age, gender: c.gender, appearance: c.appearance,
-        personality: c.personality, arc: c.arc, voiceProfile: c.voiceProfile,
+        personality: c.personality, arc: c.arc, voiceProfile: voiceId ? { ...c.voiceProfile, voiceId } : c.voiceProfile,
       },
       select: { id: true },
     });

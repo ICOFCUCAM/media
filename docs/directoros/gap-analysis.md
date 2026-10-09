@@ -572,8 +572,14 @@ the API lives in `apps/api` and the worker side in `apps/worker` until the
 self-hosted engines need their own apps. **Blocked by the owner's rule:**
 Qwen3-TTS / CosyVoice / GPT-SoVITS adapters, the voice GPU worker, licence
 registry and benchmark harness wait on Phase 1 (the router lists them as
-gated). **Next (W7b):** film narration and per-character dialogue on the
-Voice Engine, dubbing via batch. Carried forward: content-hash cache,
+gated). **W7b done 2026-10-09:** each scene's voice-over and dialogue are
+spoken on the Voice Engine — every character in the voice the owner chose
+(carried from the Casting Room by name) or a stable built-in voice, each line
+mastered and timed (`dialogue_lines.audio_key`, `start_ms`), a chosen voice
+that cannot be used reported as `VOICE_SUBSTITUTED`; the plan validator
+checks that speech fits each scene (`SPEECH_TOO_LONG`); the render joins
+mixed-format voice tracks. **Next:** dubbing (localize) through the engine.
+Carried forward: content-hash cache,
 deleting recordings and provider clones with the voice, per-use licence for
 community voices.
 
@@ -690,4 +696,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 162 built, 144 shallow, 1 poorly built, 75 not built, 72 n/a. Of the 382 IDs that are requirements, 162 (42%) are built; 145 exist but need upgrading or changing; 75 must be built. (Updated after W7a, 2026-10-09.)
+454 IDs: 173 built, 136 shallow, 1 poorly built, 72 not built, 72 n/a. Of the 382 IDs that are requirements, 173 (45%) are built; 137 exist but need upgrading or changing; 72 must be built. (Updated after W7b, 2026-10-09.)

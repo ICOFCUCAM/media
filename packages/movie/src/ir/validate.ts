@@ -351,6 +351,18 @@ function canon(pkg: FilmPackage): Issue[] {
   return out;
 }
 
+/** Words spoken per second at a natural film pace, and the pause between spoken parts. */
+export const SPEECH_WPS = 2.6;
+export const SPEECH_GAP_SEC = 0.35;
+
+/** Estimated seconds to speak these parts (empty parts are skipped). */
+export function speechSeconds(parts: string[]): number {
+  const spoken = parts.map((t) => t.trim()).filter(Boolean);
+  if (!spoken.length) return 0;
+  const words = spoken.reduce((n, t) => n + t.split(/\s+/).length, 0);
+  return words / SPEECH_WPS + SPEECH_GAP_SEC * (spoken.length - 1);
+}
+
 function production(pkg: FilmPackage, c: ProductionConstraints): Issue[] {
   const out: Issue[] = [];
   const P = (code: string, path: string, message: string) => out.push({ stage: "production", code, path, message });
@@ -363,6 +375,12 @@ function production(pkg: FilmPackage, c: ProductionConstraints): Issue[] {
       if (sh.durationSec > c.maxShotSec) P("SHOT_TOO_LONG", `${p}.shots[${j}].durationSec`, `${sh.durationSec}s exceeds the ${c.maxShotSec}s per-clip maximum`);
     });
     const total = sc.shots.reduce((a, s) => a + s.durationSec, 0);
+    // Narration and dialogue are spoken in full and never cut (docs/38 §AW.2):
+    // a scene must be long enough to hold them, or the render fails.
+    const speech = speechSeconds([sc.narration ?? "", ...sc.dialogue.map((d) => d.line)]);
+    if (speech > total + 0.5) {
+      P("SPEECH_TOO_LONG", `${p}.dialogue`, `narration and dialogue need about ${speech.toFixed(1)}s spoken; the scene's shots run ${total}s — shorten the lines or lengthen the scene`);
+    }
     if (Math.abs(total - c.sceneSec) > c.sceneSec * c.sceneTolerance) {
       P("SCENE_LENGTH", `${p}.shots`, `shots total ${total}s; the scene should run ${c.sceneSec}s (±${Math.round(c.sceneTolerance * 100)}%)`);
     }

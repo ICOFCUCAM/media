@@ -10,7 +10,7 @@ function fakeEngine(id: string, cloning: boolean, calls: string[]): VoiceEngine 
   return {
     id,
     version: "v1",
-    getCapabilities: () => ({ voiceCloning: cloning, voiceDesign: false, multilingual: true, languages: "any", emotionControl: false, speedControl: true, streaming: false, batch: false, maxChars: 120 }),
+    getCapabilities: () => ({ voiceCloning: cloning, voiceDesign: false, multilingual: true, languages: "any", emotionControl: false, speedControl: true, streaming: false, batch: false, maxChars: 120, presets: ["p0", "p1", "p2"] }),
     enrollVoice: async () => ({ artifacts: [{ artifactType: "provider_voice_id", uri: `${id}-voice-1` }] }),
     synthesize: async (r) => {
       calls.push(`${id}:${r.voice?.uri ?? "stock"}:${r.text.length}`);

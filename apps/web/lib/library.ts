@@ -1,7 +1,7 @@
 "use client";
 
 import { getSupabase } from "./supabase";
-import type { Database, LocationKind } from "./database.types";
+import type { Database, Json, LocationKind } from "./database.types";
 
 export type CharacterRow = Database["public"]["Tables"]["characters"]["Row"];
 export type LocationRow = Database["public"]["Tables"]["locations"]["Row"];
@@ -80,6 +80,32 @@ export async function listCharacters(): Promise<CharacterWithOrigin[]> {
     .select("*, projects(title)")
     .order("created_at", { ascending: false });
   return (data as CharacterWithOrigin[] | null) ?? [];
+}
+
+/** The caller's own voices that can speak in a film (cloned, ready, consented). */
+export async function listUsableVoices(): Promise<{ id: string; name: string }[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data: auth } = await sb.auth.getUser();
+  if (!auth.user) return [];
+  const { data } = await sb
+    .from("voices")
+    .select("id,name,consent_type")
+    .eq("user_id", auth.user.id)
+    .eq("status", "READY")
+    .order("created_at", { ascending: false });
+  return (data ?? []).filter((v) => v.consent_type).map((v) => ({ id: v.id, name: v.name }));
+}
+
+/** Give a character one of your voices (null = a built-in voice). Keeps the rest of the profile. */
+export async function setCharacterVoice(character: CharacterRow, voiceId: string | null): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("Supabase not configured");
+  const profile = { ...((character.voice_profile as Record<string, unknown> | null) ?? {}) };
+  if (voiceId) profile.voiceId = voiceId;
+  else delete profile.voiceId;
+  const { error } = await sb.from("characters").update({ voice_profile: profile as Json }).eq("id", character.id);
+  if (error) throw new Error(error.message);
 }
 
 /* ── Worlds / locations ─────────────────────────────────────── */
