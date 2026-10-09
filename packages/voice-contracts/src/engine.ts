@@ -68,6 +68,8 @@ export interface SpeechSynthesisRequest {
   style?: VoiceStyle;
   /** Local path to write the raw audio to. */
   outPath: string;
+  /** The CineForge voice behind `voice` (speech cache bookkeeping only; engines ignore it). */
+  voiceId?: string | null;
 }
 
 export interface SpeechSynthesisResult {

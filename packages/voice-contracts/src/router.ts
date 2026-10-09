@@ -11,6 +11,7 @@
  *       needs its licence registry entry and owner approval (Part 4 §130, §141)
  */
 import type { VoiceCapabilities } from "./engine";
+import { licenceStatus } from "./licences";
 
 export interface EngineDescriptor {
   id: string;
@@ -23,7 +24,7 @@ export interface EngineDescriptor {
 }
 
 const ANY = "any" as const;
-const SELF_HOSTED_GATE = "self-hosted voice model — waits on Phase 1 (docs/39) and a licence registry entry with owner approval";
+const SELF_HOSTED_GATE = "self-hosted voice model — waits on Phase 1 (docs/39) being operationally complete";
 
 export const ENGINE_REGISTRY: Record<string, EngineDescriptor> = {
   "fal-minimax": {
@@ -77,6 +78,9 @@ export function routeVoice(needs: RouteNeeds, env: Record<string, string | undef
     const d = ENGINE_REGISTRY[id];
     if (!d) { passedOver.push({ id, reason: "unknown engine" }); continue; }
     if (d.gated) { passedOver.push({ id, reason: d.gated }); continue; }
+    // The licence registry (W14; Part 4 §141): an engine that is not cleared never speaks.
+    const licence = licenceStatus(id, env);
+    if (!licence.cleared) { passedOver.push({ id, reason: `licence: ${licence.reasons.join("; ")}` }); continue; }
     const missing = d.requires.filter((k) => !env[k]);
     if (missing.length) { passedOver.push({ id, reason: `not configured (${missing.join(", ")})` }); continue; }
     if (needs.cloning && !d.capabilities.voiceCloning) { passedOver.push({ id, reason: "cannot speak in a cloned voice" }); continue; }

@@ -14,6 +14,7 @@ import { voiceEngine } from "../voice/engines";
 import { runVoiceJob, type VoiceJobDeps } from "../voice/jobs";
 import { joinSegments, masterSegment, measureSpeech } from "../voice/mastering";
 import { meter, meteredEngine } from "../billing";
+import { cachedEngine, prismaSpeechCache, speechCacheEnabled } from "../voice/cache";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const storage = new S3Storage();
@@ -64,7 +65,9 @@ export function prismaVoiceJobDeps(onProgress?: (p: number) => Promise<void>, us
     },
     engine: (id) => {
       const e = voiceEngine(id, process.env);
-      return e && meteredEngine(e, { userId }, meter);
+      if (!e) return null;
+      const metered = meteredEngine(e, { userId }, meter);
+      return speechCacheEnabled() ? cachedEngine(metered, prismaSpeechCache(prisma as never, storage)) : metered;
     },
     download: (key, dest) => storage.download(key, dest),
     upload: (path, key, type) => storage.upload(path, key, type),

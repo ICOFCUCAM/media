@@ -7,6 +7,7 @@ import {
   S3Client,
   GetObjectCommand,
   HeadObjectCommand,
+  DeleteObjectsCommand,
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
 
@@ -76,6 +77,14 @@ export class S3Storage implements Storage {
   }
 
   /** Read an object into memory (small assets: seed stills for data-URI handoff). */
+  /** Delete objects (up to 1000 per request); missing keys are not an error. */
+  async deleteKeys(keys: string[]): Promise<void> {
+    for (let i = 0; i < keys.length; i += 1000) {
+      const batch = keys.slice(i, i + 1000);
+      await this.s3.send(new DeleteObjectsCommand({ Bucket: this.bucket, Delete: { Objects: batch.map((Key) => ({ Key })), Quiet: true } }));
+    }
+  }
+
   async getBytes(key: string): Promise<Uint8Array> {
     const res = await this.s3.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
     return res.Body!.transformToByteArray();

@@ -219,7 +219,7 @@ async function speak(job: VoiceJobRow, deps: VoiceJobDeps, dir: string, set: Set
     const files: string[] = [];
     for (const seg of p.segments) {
       const out = join(dir, `raw-${i}-${seg.sequence}`);
-      const r = await engine.synthesize({ text: seg.text, language: body.language, voice: artifact, style, outPath: out });
+      const r = await engine.synthesize({ text: seg.text, language: body.language, voice: artifact, style, outPath: out, voiceId: voice?.id ?? null });
       files.push(r.path);
       await deps.progress?.(++done / count);
     }

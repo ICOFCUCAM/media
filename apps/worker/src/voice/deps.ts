@@ -6,6 +6,7 @@ import { voiceEngine } from "./engines";
 import { meter, meteredEngine, type MeterContext } from "../billing";
 import type { SceneVoiceDeps } from "./film";
 import { joinSegments, masterSegment, measureSpeech } from "./mastering";
+import { cachedEngine, prismaSpeechCache, speechCacheEnabled } from "./cache";
 
 /** `ctx` names who pays for the speech (W11 metering). */
 export function sceneVoiceDeps(storage: S3Storage, ctx: MeterContext): SceneVoiceDeps {
@@ -13,7 +14,10 @@ export function sceneVoiceDeps(storage: S3Storage, ctx: MeterContext): SceneVoic
     env: process.env,
     engine: (id) => {
       const e = voiceEngine(id, process.env);
-      return e && meteredEngine(e, ctx, meter);
+      if (!e) return null;
+      // Metered inside, cached outside: a sentence served from the cache is never billed (W14).
+      const metered = meteredEngine(e, ctx, meter);
+      return speechCacheEnabled() ? cachedEngine(metered, prismaSpeechCache(prisma as never, storage)) : metered;
     },
     voice: (id) => prisma.voice.findUnique({
       where: { id },
