@@ -83,3 +83,156 @@ export async function setFilmLock(projectId: string, locked: boolean): Promise<v
   const { error } = await sb.from("projects").update({ locked_at: locked ? new Date().toISOString() : null }).eq("id", projectId);
   if (error) throw new Error(error.message);
 }
+
+/* ── Passes (W8b, 0040): STORY → PREVIS → FINAL ─────────────────────────── */
+
+export interface PassScene {
+  id: string;
+  index: number;
+  heading: string;
+  summary: string;
+  narration: string | null;
+  approvedAt: string | null;
+  stills: string[];
+  shots: number;
+  ready: number;
+}
+
+export interface PassState {
+  passMode: "single" | "three";
+  storyApprovedAt: string | null;
+  status: string;
+  scenes: PassScene[];
+}
+
+export async function loadPasses(projectId: string): Promise<PassState | null> {
+  const sb = untyped();
+  if (!sb) return null;
+  const [project, scenes] = await Promise.all([
+    sb.from("projects").select("pass_mode,story_approved_at,status").eq("id", projectId).maybeSingle(),
+    sb.from("scenes").select("id,index,heading,summary,narration,storyboard_approved_at,shots(index,seed_image_key,status,video_key)").eq("project_id", projectId).order("index"),
+  ]);
+  if (project.error || scenes.error || !project.data) return null; // before 0040
+  const p = project.data as { pass_mode: "single" | "three"; story_approved_at: string | null; status: string };
+  const rows = (scenes.data ?? []) as { id: string; index: number; heading: string; summary: string; narration: string | null; storyboard_approved_at: string | null; shots: { index: number; seed_image_key: string | null; status: string; video_key: string | null }[] }[];
+  return {
+    passMode: p.pass_mode,
+    storyApprovedAt: p.story_approved_at,
+    status: p.status,
+    scenes: rows.map((r) => ({
+      id: r.id, index: r.index, heading: r.heading, summary: r.summary, narration: r.narration, approvedAt: r.storyboard_approved_at,
+      stills: [...r.shots].sort((a, b) => a.index - b.index).map((s) => s.seed_image_key).filter((k): k is string => !!k),
+      shots: r.shots.length,
+      ready: r.shots.filter((s) => s.status === "READY" && s.video_key).length,
+    })),
+  };
+}
+
+/** Approve (or withdraw) the story; the database refuses what the pass rules forbid. */
+export async function setStoryApproved(projectId: string, approved: boolean): Promise<void> {
+  const sb = untyped();
+  if (!sb) throw new Error("Supabase not configured");
+  const { error } = await sb.from("projects").update({ story_approved_at: approved ? new Date().toISOString() : null }).eq("id", projectId);
+  if (error) throw new Error(error.message);
+}
+
+/** Approve (or withdraw) a scene's storyboard: an approved scene generates video. */
+export async function setStoryboardApproved(sceneId: string, approved: boolean): Promise<void> {
+  const sb = untyped();
+  if (!sb) throw new Error("Supabase not configured");
+  const { error } = await sb.from("scenes").update({ storyboard_approved_at: approved ? new Date().toISOString() : null }).eq("id", sceneId);
+  if (error) throw new Error(error.message);
+}
+
+/* ── Edit requests (W8b, 0039) ──────────────────────────────────────────── */
+
+export interface CanonCast {
+  characters: { id: string; name: string; wardrobe: { id: string; description: string }[] }[];
+  scenes: { id: string; index: number; heading: string }[];
+}
+
+/** The film's canon (Film IR) for the edit form; null for films planned before the IR. */
+export async function loadCanon(projectId: string): Promise<CanonCast | null> {
+  const sb = untyped();
+  if (!sb) return null;
+  const { data } = await sb.from("screenplays").select("raw").eq("project_id", projectId).maybeSingle();
+  const pkg = (data as { raw?: { package?: { cast?: unknown[]; scenes?: unknown[] } } } | null)?.raw?.package;
+  if (!pkg?.cast || !pkg.scenes) return null;
+  return {
+    characters: (pkg.cast as { id: string; name: string; wardrobe: { id: string; description: string }[] }[]).map((c) => ({ id: c.id, name: c.name, wardrobe: c.wardrobe ?? [] })),
+    scenes: (pkg.scenes as { id: string; heading?: string; slugline?: string }[]).map((s, index) => ({ id: s.id, index, heading: s.heading ?? s.slugline ?? s.id })),
+  };
+}
+
+export interface EditRequestRow {
+  id: string;
+  change: { kind: string } & Record<string, unknown>;
+  status: "pending" | "applying" | "applied" | "rejected" | "failed";
+  issues: { code: string; message: string }[];
+  affected_shots: number | null;
+  error: string | null;
+  created_at: string;
+}
+
+export async function listEditRequests(projectId: string): Promise<EditRequestRow[]> {
+  const sb = untyped();
+  if (!sb) return [];
+  const { data, error } = await sb.from("edit_requests").select("id,change,status,issues,affected_shots,error,created_at").eq("project_id", projectId).order("created_at", { ascending: false }).limit(20);
+  return error ? [] : ((data ?? []) as EditRequestRow[]);
+}
+
+/** Ask for one canon change; the worker applies it and regenerates only what it touches. */
+export async function requestEdit(projectId: string, change: Record<string, unknown>): Promise<void> {
+  const sb = untyped();
+  if (!sb) throw new Error("Supabase not configured");
+  const { data: auth } = await sb.auth.getUser();
+  if (!auth.user) throw new Error("Not signed in");
+  const { error } = await sb.from("edit_requests").insert({ project_id: projectId, requested_by: auth.user.id, change });
+  if (error) throw new Error(error.message);
+}
+
+/** How many shots depend on an entity (dependency edges, 0041). */
+export async function dependentShots(projectId: string, entityType: string, entityKey: string): Promise<number | null> {
+  const sb = untyped();
+  if (!sb) return null;
+  const { count, error } = await sb.from("shot_dependencies").select("id", { count: "exact", head: true }).eq("project_id", projectId).eq("entity_type", entityType).eq("entity_key", entityKey);
+  return error ? null : count ?? 0;
+}
+
+/* ── Takes (W8a/W8b): play an earlier clip, make it current ─────────────── */
+
+export interface Take {
+  version: number;
+  storageKey: string;
+  createdAt: string;
+  current: boolean;
+}
+
+export interface ShotTakes {
+  shotId: string;
+  index: number;
+  takes: Take[];
+}
+
+export async function loadTakes(sceneId: string, projectId: string): Promise<ShotTakes[]> {
+  const sb = untyped();
+  if (!sb) return [];
+  const { data: shots } = await sb.from("shots").select("id,index,video_key").eq("scene_id", sceneId).order("index");
+  const list = (shots ?? []) as { id: string; index: number; video_key: string | null }[];
+  if (!list.length) return [];
+  const { data: versions } = await sb.from("media_versions").select("asset_id,version,storage_key,created_at").eq("project_id", projectId).eq("asset_type", "video").in("asset_id", list.map((s) => s.id)).order("version", { ascending: false });
+  const rows = (versions ?? []) as { asset_id: string; version: number; storage_key: string; created_at: string }[];
+  return list.map((s) => ({
+    shotId: s.id,
+    index: s.index,
+    takes: rows.filter((v) => v.asset_id === s.id).map((v) => ({ version: v.version, storageKey: v.storage_key, createdAt: v.created_at, current: v.storage_key === s.video_key })),
+  }));
+}
+
+/** Point a shot back at an earlier take (refused by the database if its scene is locked). Re-assemble to hear and see it. */
+export async function restoreTake(shotId: string, storageKey: string): Promise<void> {
+  const sb = untyped();
+  if (!sb) throw new Error("Supabase not configured");
+  const { error } = await sb.from("shots").update({ video_key: storageKey }).eq("id", shotId);
+  if (error) throw new Error(error.message);
+}

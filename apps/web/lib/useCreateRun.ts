@@ -16,6 +16,8 @@ export interface RunConfig {
   /** Placement aspect ("16:9", "9:16", "1:1", "4:5"). Persisted: the worker
    *  generates at this shape (it used to be shown only, then made at 16:9). */
   aspectRatio?: string;
+  /** "three": review the story and each storyboard before any video (W8b). */
+  passMode?: "single" | "three";
 }
 
 /** Shared generation runner — drives the live API when configured, else the

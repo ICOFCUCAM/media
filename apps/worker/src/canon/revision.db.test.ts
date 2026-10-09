@@ -14,6 +14,7 @@ import { prisma } from "@cineforge/db";
 import { FilmPackage, mayaCoatFixture } from "@cineforge/movie";
 import { persistPlan } from "../director/director.service";
 import { applyCanonRevision, type CanonDb } from "./revision";
+import { processEditRequest } from "./edits";
 import { shotReferences } from "./references";
 import { wardrobeReferenceKeys, type WardrobeRefDb } from "./wardrobe-refs";
 import { checkContinuity } from "@cineforge/movie";
@@ -95,6 +96,24 @@ describe.runIf(RUN)("canon revision on a real database (§62.9)", () => {
     expect(FilmPackage.parse(raw.package).scenes[1]!.characters[0]!.wardrobeId).toBe("wardrobe_blue_coat");
     const rows = await prisma.canonRevision.findMany({ where: { projectId } });
     expect(rows).toEqual([expect.objectContaining({ kind: "scene_wardrobe", outcome: "applied", invalidated: 2, actor: "test:db" })]);
+
+    // W8b: the two scenes were kept as they were, and the regenerated shots now depend on the blue coat.
+    const kept = await prisma.sceneVersion.findMany({ where: { projectId, reason: "canon_edit" }, select: { sceneIndex: true, canonVersion: true, snapshot: true } });
+    expect(kept.map((k) => k.sceneIndex).sort()).toEqual([1, 2]);
+    expect(kept.every((k) => k.canonVersion === r.fromVersion)).toBe(true);
+    const keptShots = (kept[0]!.snapshot as { shots: { videoKey: string | null }[] }).shots;
+    expect(keptShots.every((sh) => sh.videoKey?.startsWith("clips/"))).toBe(true);
+    const blue = await prisma.shotDependency.findMany({ where: { projectId, entityType: "wardrobe", entityKey: "wardrobe_blue_coat" }, select: { shotId: true, canonVersion: true } });
+    expect(blue.map((b) => b.shotId).sort()).toEqual([...r.invalidatedShotIds].sort());
+    expect(blue.every((b) => b.canonVersion === r.toVersion)).toBe(true);
+  });
+
+  it("planning recorded every shot's dependency edges (W8b)", async () => {
+    const shots = await prisma.shot.count({ where: { scene: { projectId } } });
+    const withEdges = await prisma.shotDependency.groupBy({ by: ["shotId"], where: { projectId } });
+    expect(withEdges).toHaveLength(shots);
+    const loc = await prisma.shotDependency.count({ where: { projectId, entityType: "location" } });
+    expect(loc).toBe(shots);
   });
 
   it("references and the wardrobe pack resolve from the persisted rows", async () => {
@@ -134,5 +153,29 @@ describe.runIf(RUN)("canon revision on a real database (§62.9)", () => {
     const last = await prisma.canonRevision.findFirstOrThrow({ where: { projectId }, orderBy: { createdAt: "desc" } });
     expect(last).toMatchObject({ outcome: "rejected", invalidated: 0 });
     await prisma.scene.update({ where: { id: scene12.id }, data: { lockedAt: null } });
+  });
+
+  it("an owner's edit request is applied end to end and only its shots regenerate (W8b)", async () => {
+    const req = await prisma.editRequest.create({
+      data: { projectId, requestedBy: null, change: { kind: "wardrobe_description", characterId: "char_maya", wardrobeId: "wardrobe_blue_coat", description: "long blue wool coat, collar up" } },
+    });
+    const regenerated: string[] = [];
+    const outcome = await processEditRequest(req, {
+      claim: async (id) => (await prisma.editRequest.updateMany({ where: { id, status: "pending" }, data: { status: "applying" } })).count === 1,
+      finish: async (id, d) => {
+        await prisma.editRequest.update({ where: { id }, data: { status: d.status, issues: (d.issues ?? []) as object[], affectedShots: d.affectedShots, toVersion: d.toVersion, error: d.error, finishedAt: new Date() } });
+      },
+      apply: (pid, change, actor) => applyCanonRevision(prisma as unknown as CanonDb, pid, change, { actor }),
+      regenerate: async (pid, v) => { regenerated.push(`${pid}@${v}`); },
+    });
+    expect(outcome).toBe("applied");
+    const row = await prisma.editRequest.findUniqueOrThrow({ where: { id: req.id } });
+    expect(row.status).toBe("applied");
+    expect(row.affectedShots).toBeGreaterThan(0);
+    expect(regenerated).toEqual([`${projectId}@${row.toVersion}`]);
+    const pending = await prisma.shot.count({ where: { scene: { projectId }, status: "PENDING" } });
+    expect(pending).toBeGreaterThanOrEqual(row.affectedShots!);
+    // The same claim cannot run twice.
+    expect(await processEditRequest(req, { claim: async () => false, finish: async () => {}, apply: async () => { throw new Error("must not run"); }, regenerate: async () => {} })).toBe("skipped");
   });
 });

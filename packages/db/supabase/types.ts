@@ -524,6 +524,11 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          locked_at: string | null
+          locked_by: string | null
+          pass_mode: string
+          previs_started_at: string | null
+          story_approved_at: string | null
         }
         Insert: {
           aspect_ratio?: string
@@ -542,6 +547,11 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          locked_at?: string | null
+          locked_by?: string | null
+          pass_mode?: string
+          previs_started_at?: string | null
+          story_approved_at?: string | null
         }
         Update: {
           aspect_ratio?: string
@@ -560,6 +570,11 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          pass_mode?: string
+          previs_started_at?: string | null
+          story_approved_at?: string | null
         }
         Relationships: [
           {
@@ -1621,6 +1636,7 @@ export type Database = {
         | "PAUSED"
         | "READY"
         | "FAILED"
+        | "REVIEW"
       render_status: "QUEUED" | "ASSEMBLING" | "TRANSCODING" | "DONE" | "FAILED"
       role: "USER" | "ADMIN"
       scene_status:
@@ -1786,6 +1802,7 @@ export const Constants = {
         "PAUSED",
         "READY",
         "FAILED",
+        "REVIEW",
       ],
       render_status: ["QUEUED", "ASSEMBLING", "TRANSCODING", "DONE", "FAILED"],
       role: ["USER", "ADMIN"],

@@ -16,6 +16,9 @@ import { Queue } from "bullmq";
 import { QUEUES, planCapSec, type FilmJob, type VoiceLabJob, type VoiceEngineJob, type SocialJob, type RenderJob } from "@cineforge/shared";
 import { prisma } from "@cineforge/db";
 import { enqueueSceneFlow } from "./film-flow";
+import { advancePasses } from "./passes";
+import { processEditRequest } from "../canon/edits";
+import { applyCanonRevision, type CanonDb } from "../canon/revision";
 import { notifyFinish } from "../notify";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
@@ -104,6 +107,28 @@ async function claimStoryboardWork(): Promise<void> {
     }
     await renderQueue.add("final", { projectId: p.id, kind: "final" }, { jobId: `storyboard-render-${p.id}-${Date.now()}`, attempts: 2, removeOnComplete: 100 });
     console.log(`[poller] enqueued storyboard assembly for project ${p.id}`);
+  }
+}
+
+async function claimEditRequests(): Promise<void> {
+  const pending = await prisma.editRequest.findMany({ where: { status: "pending" }, orderBy: { createdAt: "asc" }, take: 5 })
+    .catch(() => []); // before migration 0039
+  for (const req of pending) {
+    const outcome = await processEditRequest(req, {
+      claim: async (id) => (await prisma.editRequest.updateMany({ where: { id, status: "pending" }, data: { status: "applying" } })).count === 1,
+      finish: async (id, d) => {
+        await prisma.editRequest.update({
+          where: { id },
+          data: { status: d.status, issues: (d.issues ?? []) as object[], affectedShots: d.affectedShots, toVersion: d.toVersion, error: d.error, finishedAt: new Date() },
+          select: { id: true },
+        });
+      },
+      apply: (projectId, change, actor) => applyCanonRevision(prisma as unknown as CanonDb, projectId, change, { actor }),
+      regenerate: async (projectId, toVersion) => {
+        await filmQueue.add("resume", { projectId }, { jobId: `film-edit-${projectId}-${toVersion}`, attempts: 2, removeOnComplete: 100 });
+      },
+    });
+    console.log(`[poller] edit request ${req.id} ${outcome}`);
   }
 }
 
@@ -206,6 +231,10 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
       }
       // ── Scene-by-scene: queued shots + assembly requests ───────────────
       await claimStoryboardWork();
+      // Production passes (W8b): previs, approved scenes, final render of three-pass films.
+      await advancePasses();
+      // Edit requests (W8b): an owner's canon change, applied; only affected shots regenerate.
+      await claimEditRequests();
 
       // ── Voice Lab (docs/29): claim pending clones + voiceovers ─────────
       // Same producer/consumer split as films: the web writes PENDING rows,

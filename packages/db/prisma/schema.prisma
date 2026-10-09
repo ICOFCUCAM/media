@@ -78,6 +78,7 @@ enum ProjectStatus {
   PAUSED
   READY
   FAILED
+  REVIEW // W8b (0040): a three-pass production waiting for the owner's approval
 
   @@map("project_status")
 }
@@ -116,6 +117,11 @@ model Project {
   // W8 (0037): a locked film locks every scene in it.
   lockedAt DateTime? @map("locked_at") @db.Timestamptz(6)
   lockedBy String?   @map("locked_by") @db.Uuid
+
+  // W8b (0040): production passes — single (straight through) or three (STORY → PREVIS → FINAL).
+  passMode        String    @default("single") @map("pass_mode")
+  storyApprovedAt DateTime? @map("story_approved_at") @db.Timestamptz(6)
+  previsStartedAt DateTime? @map("previs_started_at") @db.Timestamptz(6)
 
   @@index([userId, status])
   @@map("projects")
@@ -365,6 +371,9 @@ model Scene {
   // W8 (0037): a locked scene is frozen in the database until unlocked.
   lockedAt DateTime? @map("locked_at") @db.Timestamptz(6)
   lockedBy String?   @map("locked_by") @db.Uuid
+
+  // W8b (0040): a three-pass scene generates video only once its storyboard is approved.
+  storyboardApprovedAt DateTime? @map("storyboard_approved_at") @db.Timestamptz(6)
 
   @@unique([projectId, index])
   @@index([projectId, status])
@@ -1073,4 +1082,51 @@ model QualityGateResult {
   @@index([projectId, createdAt], map: "quality_gate_results_project_idx")
   @@index([scope, refId], map: "quality_gate_results_ref_idx")
   @@map("quality_gate_results")
+}
+
+// ── Edit requests (W8b, 0039): an owner's canon change, applied by the worker ─
+model EditRequest {
+  id            String    @id @default(uuid()) @db.Uuid
+  projectId     String    @map("project_id") @db.Uuid
+  requestedBy   String?   @map("requested_by") @db.Uuid
+  change        Json
+  status        String    @default("pending")
+  issues        Json      @default("[]")
+  affectedShots Int?      @map("affected_shots")
+  toVersion     String?   @map("to_version")
+  error         String?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  finishedAt    DateTime? @map("finished_at") @db.Timestamptz(6)
+
+  @@index([projectId, createdAt])
+  @@map("edit_requests")
+}
+
+// ── Dependency edges + scene versions (W8b, 0041) ──────────────────────────
+model ShotDependency {
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  shotId       String   @map("shot_id") @db.Uuid
+  entityType   String   @map("entity_type")
+  entityKey    String   @map("entity_key")
+  canonVersion String?  @map("canon_version")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([shotId, entityType, entityKey])
+  @@index([projectId, entityType, entityKey], map: "shot_dependencies_entity_idx")
+  @@map("shot_dependencies")
+}
+
+model SceneVersion {
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  sceneId      String   @map("scene_id") @db.Uuid
+  sceneIndex   Int      @map("scene_index")
+  reason       String
+  canonVersion String?  @map("canon_version")
+  snapshot     Json
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([projectId, sceneIndex, createdAt])
+  @@map("scene_versions")
 }

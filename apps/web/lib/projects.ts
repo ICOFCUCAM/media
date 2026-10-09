@@ -16,6 +16,7 @@ export async function createProject(input: {
   estimatedMs: number;
   resolution?: string;
   aspectRatio?: string;
+  passMode?: "single" | "three";
 }): Promise<ProjectRow> {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase not configured");
@@ -31,6 +32,7 @@ export async function createProject(input: {
       prompt: input.prompt,
       ...(input.resolution ? { resolution: input.resolution } : {}),
       ...(input.aspectRatio ? { aspect_ratio: input.aspectRatio } : {}),
+      ...(input.passMode === "three" ? { pass_mode: "three" as const } : {}),
       target_seconds: input.targetSeconds,
       model_id: input.modelId,
       estimated_ms: input.estimatedMs,

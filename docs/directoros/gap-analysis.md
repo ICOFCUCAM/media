@@ -613,9 +613,13 @@ master is an append-only `media_versions` row (masters under `film/v<N>/`);
 scene and film locks enforced by database triggers (only finished scenes and
 films lock; a locked scene's shots, lines and audio are frozen); canon edits
 touching a locked scene are refused; a Locks and versions panel on the
-production page. **Next (W8b):** the STORY → PREVIS → FINAL pass machine,
-the edit command API, re-plan without deleting scenes, play/restore earlier
-versions.
+production page. **W8b done 2026-10-09** (docs/53; contract
+passes-and-edits.md; migrations 0039–0041 applied live): STORY → PREVIS →
+FINAL passes with database-enforced approvals (opt-in at creation), the edit
+command (edit_requests → canon revision → only affected shots regenerate),
+dependency edges per shot, scene snapshots before any re-plan or canon edit,
+play/restore earlier takes. Carried forward: three passes as the default
+(owner decision), rough voice/timing in previs, the Editor Agent.
 
 - BUILD entity → scene → shot → media dependency edges at compile time;
   invalidation re-queues only affected shots.
@@ -707,4 +711,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 177 built, 135 shallow, 0 poorly built, 70 not built, 72 n/a. Of the 382 IDs that are requirements, 177 (46%) are built; 135 exist but need upgrading or changing; 70 must be built. (Updated after W8a, 2026-10-09.)
+454 IDs: 186 built, 134 shallow, 0 poorly built, 62 not built, 72 n/a. Of the 382 IDs that are requirements, 186 (49%) are built; 134 exist but need upgrading or changing; 62 must be built. (Updated after W8b, 2026-10-09.)

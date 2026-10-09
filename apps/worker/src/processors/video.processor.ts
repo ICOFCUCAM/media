@@ -414,6 +414,20 @@ export const videoWorker = new Worker<VideoJob>(
     const { shotId, modelId, projectId, sceneId } = job.data;
     const shot = await loadShot(shotId);
 
+    // ── PREVIS (W8b): the storyboard still only — no video ───────────────
+    if (job.name === "previs") {
+      if (shot.status === "READY" && shot.videoKey) return { shotId, previs: "already final" };
+      try {
+        const seedImageKey = await resolveSeedKey(shot);
+        await realtime.emit("shot.ready", { projectId, sceneId, shotId, thumbnailKey: seedImageKey });
+        return { shotId, previs: seedImageKey ?? "text-led shot (no still)" };
+      } catch (e) {
+        if (!(e instanceof SeedUnavailable)) throw e;
+        await recordDegradations(prisma as unknown as DegradationDb, projectId, [degradation("SEED_IMAGE_UNAVAILABLE", "shot", "No storyboard still could be drawn for this shot.", { refId: shotId, detail: { reason: e.message, pass: "previs" } })]);
+        return { shotId, previs: "unavailable" };
+      }
+    }
+
     // ── Idempotent resume (C8): a shot already generated is a no-op ──────
     if (shot.status === "READY" && shot.videoKey) {
       await realtime.emit("shot.ready", { projectId, sceneId, shotId, thumbnailKey: shot.thumbnailKey ?? undefined });

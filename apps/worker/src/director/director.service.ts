@@ -25,6 +25,7 @@ import { stubPackage } from "./stub";
 import { shotGenerationFields, statePatchRow } from "./rows";
 import type { GateResult } from "../quality/gates";
 import { chosenVoiceId } from "../voice/film";
+import { snapshotScenes, writeShotDependencies, type PlanHistoryDb } from "../versions/plan";
 
 /**
  * Director — planning service (DirectorOS W2: One-Pass Intelligence /
@@ -244,6 +245,8 @@ export async function persistPlan(
 
   const keying = { projectId, modelId: project.modelId, modelVersion, width, height };
   const out: PlannedScene[] = [];
+  // A re-plan replaces scenes: keep each one as it was first (W8b, append-only plan history).
+  await snapshotScenes(prisma as unknown as PlanHistoryDb, projectId, { indexes: compiled.scenes.map((s) => s.index) }, "replan", raw.canonVersion);
   for (const sc of compiled.scenes) {
     await prisma.scene.deleteMany({ where: { projectId, index: sc.index } });
     const scene = await prisma.scene.create({
@@ -286,5 +289,8 @@ export async function persistPlan(
     });
     out.push({ id: scene.id, index: scene.index, shots: scene.shots });
   }
+  // Dependency edges (W8b): what each shot depends on, so an edit touches only those shots.
+  const byIndex = new Map(out.map((sc) => [sc.index, new Map(sc.shots.map((sh) => [sh.index, sh.id]))]));
+  await writeShotDependencies(prisma as unknown as PlanHistoryDb, projectId, pkg, (si, hi) => byIndex.get(si)?.get(hi), raw.canonVersion);
   return out;
 }

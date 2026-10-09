@@ -59,6 +59,8 @@ export function CreateStudio(props: CreateStudioProps) {
   const [platform, setPlatform] = useState(props.platforms?.[0]?.id ?? "");
   const [modelId, setModelId] = useState("wan-2.1");
   const [resolution, setResolution] = useState<Resolution | null>(null);
+  // W8b: review the story and every storyboard before any video is made.
+  const [review, setReview] = useState(false);
   const { state, running, run, reset } = useCreateRun();
 
   // Hand-off from another studio (Ads Studio → /create/advert?brief=&seconds=&aspect=):
@@ -116,7 +118,7 @@ export function CreateStudio(props: CreateStudioProps) {
   const noun = production.toLowerCase();
 
   function onCreate() {
-    void run({ prompt, modelId, targetSeconds: effSeconds, resolution: effectiveRes, aspectRatio: aspect });
+    void run({ prompt, modelId, targetSeconds: effSeconds, resolution: effectiveRes, aspectRatio: aspect, passMode: review ? "three" : "single" });
     // Phones: the preview sits under the options — bring it into view.
     if (window.innerWidth < 1024) document.getElementById("studio-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -163,6 +165,22 @@ export function CreateStudio(props: CreateStudioProps) {
           </Chips>
         </Field>
       )}
+
+      <Field label="Production passes">
+        <Chips>
+          <button type="button" className="cf-option" aria-pressed={!review} onClick={() => setReview(false)}>
+            Straight through
+          </button>
+          <button type="button" className="cf-option" aria-pressed={review} onClick={() => setReview(true)}>
+            Review story &amp; storyboard first
+          </button>
+        </Chips>
+        {review && (
+          <p className="mt-2 text-[12px] leading-relaxed text-cf-muted">
+            You approve the story, then each scene&apos;s storyboard stills; no video is made for a scene until you approve it.
+          </p>
+        )}
+      </Field>
 
       <Field label="Configure">
         <div className="cf-config-host">

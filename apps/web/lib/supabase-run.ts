@@ -29,6 +29,7 @@ const STATUS_MAP: Record<string, ProjectStatus> = {
   GENERATING: "GENERATING",
   RENDERING: "RENDERING",
   READY: "READY",
+  REVIEW: "PLANNING", // a three-pass production waiting for the owner (W8b) — the Passes panel says what
 };
 
 const ts = () => new Date().toLocaleTimeString([], { hour12: false });
@@ -167,6 +168,7 @@ export class SupabaseRun {
         estimatedMs: estMs,
         resolution: this.cfg.resolution,
         aspectRatio: this.cfg.aspectRatio,
+        passMode: this.cfg.passMode,
       });
       if (this.cancelled) return;
       projectId = project.id;
