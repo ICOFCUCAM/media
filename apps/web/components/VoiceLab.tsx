@@ -63,6 +63,9 @@ export function VoiceLab() {
   const [voiceName, setVoiceName] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [cloneBusy, setCloneBusy] = useState(false);
+  // Consent is recorded with every voice; the Voice Engine refuses a voice without it.
+  const [consentType, setConsentType] = useState<"self" | "authorised">("self");
+  const [consented, setConsented] = useState(false);
 
   // New-voiceover form
   const [title, setTitle] = useState("");
@@ -112,7 +115,7 @@ export function VoiceLab() {
     e.preventDefault();
     const sb = getSupabase();
     const file = fileRef.current?.files?.[0];
-    if (!sb || !user || !file || cloneBusy) return;
+    if (!sb || !user || !file || cloneBusy || !consented) return;
     setCloneBusy(true);
     setError(null);
     try {
@@ -120,9 +123,16 @@ export function VoiceLab() {
       const key = `voices/${user.id}/${crypto.randomUUID()}.${ext}`;
       const up = await sb.storage.from(BUCKET).upload(key, file, { upsert: true });
       if (up.error) throw new Error(up.error.message);
-      const ins = await sb.from("voices").insert({ user_id: user.id, name: voiceName, sample_key: key });
+      const ins = await sb.from("voices").insert({
+        user_id: user.id,
+        name: voiceName,
+        sample_key: key,
+        consent_type: consentType,
+        consent_confirmed_at: new Date().toISOString(),
+      });
       if (ins.error) throw new Error(ins.error.message);
       setVoiceName("");
+      setConsented(false);
       if (fileRef.current) fileRef.current.value = "";
       await refresh();
     } catch (err) {
@@ -245,12 +255,32 @@ export function VoiceLab() {
             <div className="grid gap-px border border-cf-line bg-cf-line lg:grid-cols-3">
               {/* Clone */}
               <form onSubmit={onClone} className="bg-cf-bg p-6">
-                <Dept n="01" title="Clone a voice" copy="Upload 10–60 seconds of clear speech (mp3 / wav / m4a). The clone is ready in about a minute." />
+                <Dept n="01" title="Clone a voice" copy="Upload 20–60 seconds of clear speech in a quiet room (mp3 / wav / m4a). The recording is checked first; the clone is ready in about a minute." />
                 <label htmlFor="voice-name" className="cf-label mb-2 mt-7 block text-cf-fg">Voice name</label>
                 <input id="voice-name" value={voiceName} onChange={(e) => setVoiceName(e.target.value)} placeholder="My voice" required className="cf-input" />
                 <label htmlFor="voice-sample" className="cf-label mb-2 mt-5 block text-cf-fg">Sample</label>
                 <input id="voice-sample" ref={fileRef} type="file" accept="audio/*" required className={fileCls} />
-                <button type="submit" disabled={cloneBusy || !voiceName} className="cf-btn-ink mt-7 w-full">
+                <fieldset className="mt-5">
+                  <legend className="cf-label mb-2 block text-cf-fg">Whose voice is this?</legend>
+                  <label className="flex items-center gap-2 text-[13px]">
+                    <input type="radio" name="consent-type" checked={consentType === "self"} onChange={() => setConsentType("self")} />
+                    My own voice
+                  </label>
+                  <label className="mt-1 flex items-center gap-2 text-[13px]">
+                    <input type="radio" name="consent-type" checked={consentType === "authorised"} onChange={() => setConsentType("authorised")} />
+                    Someone who has authorised me to use it
+                  </label>
+                </fieldset>
+                <label className="mt-4 flex items-start gap-2 text-[12px] leading-snug text-cf-muted">
+                  <input type="checkbox" checked={consented} onChange={(e) => setConsented(e.target.checked)} required className="mt-0.5" />
+                  <span>
+                    {consentType === "self"
+                      ? "I confirm this recording is my own voice."
+                      : "I confirm the speaker has given me permission to clone and use their voice."}{" "}
+                    Voices are never cloned without this confirmation.
+                  </span>
+                </label>
+                <button type="submit" disabled={cloneBusy || !voiceName || !consented} className="cf-btn-ink mt-7 w-full">
                   {cloneBusy ? "Uploading…" : "Clone voice"}
                 </button>
 

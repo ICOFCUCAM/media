@@ -63,6 +63,15 @@ describe("capability registry (DOS-77/78)", () => {
     expect(vq({ VISUAL_REVIEW: "off" }, true)).toMatchObject({ status: "disabled", realExecution: false });
   });
 
+  it("voice cloning follows the voice router; self-hosted voice models are shown as gated", () => {
+    const get = (env: Record<string, string>) => buildCapabilityRegistry({ env }).find((c) => c.capability === "voice_cloning")!;
+    expect(get({ FAL_KEY: "k" })).toMatchObject({ provider: "fal-minimax", status: "experimental", realExecution: true });
+    expect(get({ FAL_KEY: "k", VOICE_ENGINES: "openai-tts:80" })).toMatchObject({ provider: null, status: "unavailable" });
+    const gated = get({ VOICE_ENGINES: "qwen3-tts:100,fal-minimax:90" });
+    expect(gated).toMatchObject({ status: "unavailable", realExecution: false });
+    expect(gated.note).toMatch(/qwen3-tts wait on Phase 1/);
+  });
+
   it("a placeholder GPU worker never counts as video generation", () => {
     const reg = buildCapabilityRegistry({ env: {}, gpu: { "wan-2.1": { execution: "placeholder", realExecution: false } } });
     const v = reg.find((c) => c.capability === "video_generation")!;

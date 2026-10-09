@@ -1442,12 +1442,16 @@ export type Database = {
       }
       voices: {
         Row: {
+          consent_confirmed_at: string | null
+          consent_type: string | null
           created_at: string
           error_message: string | null
           id: string
+          language: string | null
           name: string
           provider: string | null
           provider_voice_id: string | null
+          quality: Json | null
           sample_key: string | null
           share_status: string
           share_terms: string | null
@@ -1456,12 +1460,16 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          consent_confirmed_at?: string | null
+          consent_type?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
+          language?: string | null
           name: string
           provider?: string | null
           provider_voice_id?: string | null
+          quality?: Json | null
           sample_key?: string | null
           share_status?: string
           share_terms?: string | null
@@ -1470,12 +1478,16 @@ export type Database = {
           user_id: string
         }
         Update: {
+          consent_confirmed_at?: string | null
+          consent_type?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
+          language?: string | null
           name?: string
           provider?: string | null
           provider_voice_id?: string | null
+          quality?: Json | null
           sample_key?: string | null
           share_status?: string
           share_terms?: string | null

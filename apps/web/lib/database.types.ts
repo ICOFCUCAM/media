@@ -284,10 +284,21 @@ export interface Database {
           provider_voice_id: string | null;
           status: string;
           error_message: string | null;
+          consent_type: string | null;
+          consent_confirmed_at: string | null;
+          language: string | null;
+          quality: Json | null;
           created_at: string;
           updated_at: string;
         };
-        Insert: { user_id: string; name: string; sample_key?: string | null };
+        Insert: {
+          user_id: string;
+          name: string;
+          sample_key?: string | null;
+          consent_type?: "self" | "authorised" | null;
+          consent_confirmed_at?: string | null;
+          language?: string | null;
+        };
         Update: { name?: string; status?: string; share_status?: string; share_terms?: string | null };
         Relationships: [];
       };
