@@ -25,6 +25,7 @@
     "@cineforge/movie": "workspace:*",
     "@cineforge/realtime": "workspace:*",
     "@cineforge/shared": "workspace:*",
+    "@cineforge/voice-contracts": "workspace:*",
     "bullmq": "^5.7.0",
     "ioredis": "^5.4.0"
   },

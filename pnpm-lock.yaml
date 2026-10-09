@@ -160,6 +160,9 @@ importers:
       '@cineforge/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@cineforge/voice-contracts':
+        specifier: workspace:*
+        version: link:../../packages/voice-contracts
       bullmq:
         specifier: ^5.7.0
         version: 5.78.0

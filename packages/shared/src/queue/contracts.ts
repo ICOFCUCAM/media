@@ -14,6 +14,7 @@ export const QUEUES = {
   localize: "localize-queue",
   publish: "publish-queue",
   voiceLab: "voice-lab-queue",
+  voiceEngine: "voice-engine-queue",
   social: "social-queue",
 } as const;
 
@@ -52,6 +53,11 @@ export interface VoiceLabJob {
   kind: "clone" | "speak" | "avatar";
   /** voices.id for clone, voiceovers.id for speak, avatar_videos.id for avatar. */
   id: string;
+}
+
+/** Voice Engine (W7, docs/51): one voice_jobs row — enroll, synthesis or batch. */
+export interface VoiceEngineJob {
+  jobId: string;
 }
 
 /** Social Launchpad (docs/31): generate the per-platform kit, then post. */
@@ -98,5 +104,6 @@ export interface JobPayloads {
   [QUEUES.localize]: LocalizeJob;
   [QUEUES.publish]: PublishJob;
   [QUEUES.voiceLab]: VoiceLabJob;
+  [QUEUES.voiceEngine]: VoiceEngineJob;
   [QUEUES.social]: SocialJob;
 }

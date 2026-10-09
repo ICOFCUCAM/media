@@ -55,7 +55,11 @@ export const BatchSpeechBody = z.object({
   voice_id: z.string().uuid().optional(),
   language: lang.default("en"),
   style: StyleSchema.optional(),
-  items: z.array(z.object({ id: z.string().trim().min(1).max(64), text: z.string().trim().min(1).max(5000) })).min(1).max(500),
+  items: z
+    .array(z.object({ id: z.string().trim().regex(/^[A-Za-z0-9_-]{1,64}$/, "item ids are 1–64 letters, digits, _ or -"), text: z.string().trim().min(1).max(5000) }))
+    .min(1)
+    .max(500)
+    .refine((items) => new Set(items.map((i) => i.id)).size === items.length, "item ids must be unique"),
   output: OutputSchema,
 });
 export type BatchSpeechBody = z.infer<typeof BatchSpeechBody>;
