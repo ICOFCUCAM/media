@@ -23,10 +23,12 @@ export interface ConversationDeps {
   available(): boolean;
   interpret(pkg: FilmPackage, text: string, projectId: string): Promise<Interpretation>;
   fileEdit(projectId: string, requestedBy: string | null, change: Record<string, unknown>): Promise<string>;
+  /** A cut/timing request for the Editor (W13): files an editorial review with the owner's words. */
+  fileReview(projectId: string, requestedBy: string | null, instruction: string): Promise<string>;
   reply(projectId: string, replyTo: string, body: string, editRequestId: string | null): Promise<void>;
 }
 
-export type ConversationOutcome = "edit_filed" | "answered" | "skipped";
+export type ConversationOutcome = "edit_filed" | "review_filed" | "answered" | "skipped";
 
 export async function processDirectorMessage(msg: OwnerMessage, deps: ConversationDeps): Promise<ConversationOutcome> {
   if (!(await deps.claim(msg.id))) return "skipped";
@@ -42,6 +44,12 @@ export async function processDirectorMessage(msg: OwnerMessage, deps: Conversati
       return "answered";
     }
     const r = await deps.interpret(pkg, msg.body, msg.projectId);
+    if (r.action === "editorial") {
+      // Part 1 §46: the Editor works out the exact cuts; nothing changes until the owner approves them.
+      await deps.fileReview(msg.projectId, msg.userId, msg.body);
+      await say(`${r.reply || "I've asked the Editor."} The Editor will propose the exact edits in the Editor panel; nothing changes until you approve them.`);
+      return "review_filed";
+    }
     if (r.action !== "change" || !r.change) {
       await say(r.reply || "That isn't a change I can make to the film's canon.");
       return "answered";

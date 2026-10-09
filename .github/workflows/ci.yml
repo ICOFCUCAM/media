@@ -203,7 +203,7 @@ jobs:
           pnpm install --frozen-lockfile --filter @cineforge/worker...
           pnpm db:generate
           DATABASE_URL="$IT_URL" pnpm --filter @cineforge/db exec prisma db push --skip-generate
-          DB_INTEGRATION=1 DATABASE_URL="$IT_URL" pnpm --filter @cineforge/worker exec vitest run src/canon/revision.db.test.ts
+          DB_INTEGRATION=1 DATABASE_URL="$IT_URL" pnpm --filter @cineforge/worker exec vitest run src/canon/revision.db.test.ts src/editor/editorial.db.test.ts
         env:
           IT_URL: postgresql://postgres:postgres@localhost:5432/cf_it
 

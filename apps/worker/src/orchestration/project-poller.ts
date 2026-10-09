@@ -21,6 +21,8 @@ import { processEditRequest } from "../canon/edits";
 import { processDirectorMessage } from "../canon/conversation";
 import { loadFilmPackage } from "../canon/revision";
 import { interpretInstruction } from "@cineforge/movie";
+import { applyEditorialReview, editorialReview, processEditorialReview } from "../editor/editorial";
+import { constraintsFor, productionOf } from "../director/production";
 import { intelligence } from "../intelligence";
 import { applyCanonRevision, type CanonDb } from "../canon/revision";
 import { notifyFinish } from "../notify";
@@ -125,11 +127,67 @@ async function answerDirectorMessages(): Promise<void> {
       interpret: (pkg, text, projectId) => interpretInstruction(intelligence(), pkg, text, { projectId }),
       fileEdit: async (projectId, requestedBy, change) =>
         (await prisma.editRequest.create({ data: { projectId, requestedBy, change: change as object }, select: { id: true } })).id,
+      fileReview: async (projectId, requestedBy, instruction) =>
+        (await prisma.editorialReview.create({ data: { projectId, requestedBy, instruction: instruction.slice(0, 2000) }, select: { id: true } })).id,
       reply: async (projectId, replyTo, body, editRequestId) => {
         await prisma.directorMessage.create({ data: { projectId, author: "director", body, status: "answered", replyTo, editRequestId }, select: { id: true } });
       },
     });
     console.log(`[poller] director message ${msg.id} ${outcome}`);
+  }
+}
+
+/** The Editor (W13): review pending cuts, and apply the edits owners approved. */
+async function runEditor(): Promise<void> {
+  const pending = await prisma.editorialReview.findMany({ where: { status: "pending" }, orderBy: { createdAt: "asc" }, take: 3 })
+    .catch(() => []); // before migration 0048
+  for (const row of pending) {
+    const outcome = await processEditorialReview(row, {
+      claim: async (id) => (await prisma.editorialReview.updateMany({ where: { id, status: "pending" }, data: { status: "reviewing" } })).count === 1,
+      loadPackage: async (projectId) => {
+        const pkg = await loadFilmPackage(prisma as unknown as CanonDb, projectId).catch(() => null);
+        if (!pkg) return null;
+        const p = await prisma.project.findUniqueOrThrow({
+          where: { id: projectId },
+          select: { targetSeconds: true, kind: true, medium: true, animationStyle: true, episodes: true, seriesId: true, episodeNumber: true },
+        });
+        return { pkg, maxShotSec: constraintsFor(p.targetSeconds, productionOf(p)).maxShotSec };
+      },
+      available: () => intelligence().available("editorial"),
+      review: editorialReview(intelligence()),
+      save: async (id, o) => {
+        await prisma.$transaction(async (tx) => {
+          for (const p of o.proposals ?? []) {
+            await tx.editProposal.create({ data: { reviewId: id, projectId: row.projectId, position: p.position, op: p.op as object, description: p.description, effect: p.effect as object } });
+          }
+          await tx.editorialReview.update({
+            where: { id },
+            data: {
+              status: o.status, canonVersion: o.canonVersion, summary: o.summary, findings: (o.findings ?? []) as object[],
+              dropped: (o.dropped ?? []) as object[], error: o.error, reviewedAt: new Date(),
+            },
+          });
+        });
+      },
+    });
+    console.log(`[poller] editorial review ${row.id} ${outcome}`);
+  }
+  const toApply = await prisma.editorialReview.findMany({ where: { status: "apply_requested" }, orderBy: { createdAt: "asc" }, take: 2, select: { id: true, projectId: true } })
+    .catch(() => []);
+  for (const r of toApply) {
+    if ((await prisma.editorialReview.updateMany({ where: { id: r.id, status: "apply_requested" }, data: { status: "applying" } })).count !== 1) continue;
+    try {
+      const out = await applyEditorialReview(prisma, r.id);
+      if (out.outcome === "applied") {
+        // Only the regenerated shots generate; the master renders again as a new version.
+        await filmQueue.add("resume", { projectId: r.projectId }, { jobId: `film-editor-${r.projectId}-${out.toVersion}`, attempts: 2, removeOnComplete: 100 });
+      }
+      console.log(JSON.stringify({ event: "editor.applied", reviewId: r.id, ...out }));
+    } catch (e) {
+      const error = (e instanceof Error ? e.message : String(e)).slice(0, 1000);
+      await prisma.editorialReview.update({ where: { id: r.id }, data: { status: "failed", error } }).catch(() => {});
+      console.error(JSON.stringify({ event: "editor.apply_failed", reviewId: r.id, error }));
+    }
   }
 }
 
@@ -260,6 +318,8 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
       await answerDirectorMessages();
       // Edit requests (W8b): an owner's canon change, applied; only affected shots regenerate.
       await claimEditRequests();
+      // The Editor (W13): reviews of the cut, and the edits owners approved.
+      await runEditor();
 
       // ── Voice Lab (docs/29): claim pending clones + voiceovers ─────────
       // Same producer/consumer split as films: the web writes PENDING rows,
