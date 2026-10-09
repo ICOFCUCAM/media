@@ -46,7 +46,7 @@ const SLOTS = {
 
 async function generate(slot) {
   const [size, prompt] = SLOTS[slot];
-  const res = await fetch("https://api.openai.com/v1/images/generations", {
+  const res = await fetch(`${(process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1").replace(/\/$/, "")}/images/generations`, {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model: "gpt-image-1", prompt: `${prompt} ${STYLE}`, size, quality: "high", output_format: "webp", output_compression: 82, n: 1 }),

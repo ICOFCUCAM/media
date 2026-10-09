@@ -1,4 +1,5 @@
 import { prisma } from "@cineforge/db";
+import { providerUrl } from "@cineforge/shared";
 
 /*
  * Finish notifications (docs/36 §5). When a production reaches READY or
@@ -33,7 +34,7 @@ export async function notifyFinish(projectId: string, outcome: Outcome, detail?:
         : [`“${p.title}” stopped before the final cut.`, detail ? `Reason: ${detail}` : ""];
     const text = [...lines, link && `Open it: ${link}`, "— Cineforge"].filter(Boolean).join("\n\n");
 
-    const res = await fetch("https://api.resend.com/emails", {
+    const res = await fetch(`${providerUrl("resend")}/emails`, {
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: process.env.NOTIFY_FROM, to: [p.user.email], subject, text }),

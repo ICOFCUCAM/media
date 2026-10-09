@@ -8,6 +8,14 @@
 - **API keys** for programmatic access (Studio+): hashed at rest, scoped,
   revocable, last-used tracked.
 
+> **Status (2026-10-09):** auth is **Supabase Auth**, not a CineForge-issued
+> JWT. The browser holds a Supabase session; `apps/api` verifies that session
+> token against the project's JWKS at `SUPABASE_URL` (or `SUPABASE_JWT_SECRET`,
+> HS256, on the legacy shared secret) and reads the role from `users.role`
+> (`apps/api/src/auth/jwt-auth.guard.ts`, `supabase-token.ts`). No refresh
+> tokens or API keys are issued by CineForge. Prompt moderation (input only)
+> runs before planning (`apps/worker/src/director/moderation.ts`).
+
 ```mermaid
 flowchart LR
   REQ[Request] --> AUTH[JWT/API-key guard]
@@ -56,7 +64,7 @@ flowchart LR
   CI ([18](18-devops.md)).
 
 ## Implementation checklist
-- [ ] JWT (RS256 + JWKS) + refresh rotation
+- [x] Session-token verification (Supabase JWKS / HS256); refresh is handled by Supabase Auth
 - [ ] Guards: auth, role, ownership, rate-limit, quota
 - [ ] Prompt safety classifier (in/out) + moderation log
 - [ ] Presigned-URL ownership checks + SSRF guard

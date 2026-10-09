@@ -127,8 +127,8 @@ queue depth > 10 jobs        → start another GPU
 a GPU idle (its share == 0) for 15 min → stop that excess GPU
 ```
 The reference-counted shutdown rule is applied **per GPU**; the last GPU follows
-the exact predicate above. This is the `autoscaler.ts` evolution referenced in
-[12-runpod-gpu.md](12-runpod-gpu.md).
+the exact predicate above. This replaces the `autoscaler.ts` planned in
+[12-runpod-gpu.md](12-runpod-gpu.md), which was never written.
 
 ## Configuration (`.env`)
 ```

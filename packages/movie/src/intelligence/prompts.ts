@@ -52,7 +52,8 @@ const DIRECTOR_RULES = [
 export const PROMPTS = {
   directorMaster: {
     id: "director.master",
-    version: 4,
+    // v5 (W11): the plan request carries the production type, medium and animation style.
+    version: 5,
     purpose: "One master call: brief → complete Film Production Package (Part 2 §85, §93).",
     system: DIRECTOR_RULES,
   },
@@ -127,11 +128,40 @@ export const PROMPTS = {
   },
 } as const satisfies Record<string, PromptDef>;
 
-export function renderPlanRequest(brief: string, c: ProductionConstraints): string {
+/**
+ * What is being made (W11; Part 5): the format, the medium and — for
+ * animation — the style, with the rules the plan must follow for them.
+ * Supplied by the worker from @cineforge/shared's production profiles.
+ */
+export interface PlanProduction {
+  format: string;
+  medium: "live_action" | "animation";
+  style: { label: string; look: string; motion: string } | null;
+  narrated: boolean;
+  episodes?: number | null;
+  direction: string[];
+}
+
+function productionSection(p: PlanProduction): string[] {
+  return [
+    "PRODUCTION (hard)",
+    `- format: ${p.format}`,
+    `- medium: ${p.medium === "animation" ? "ANIMATION" : "live action"}`,
+    ...(p.style ? [`- animation style: ${p.style.label} — ${p.style.look}; motion: ${p.style.motion}`,
+      "- describe characters, wardrobe, locations and lighting in this style's terms (shapes, colours, line, materials), never as photographs"] : []),
+    ...(p.episodes ? [`- exactly ${p.episodes} episodes: one act per episode, acts indexed 1 to ${p.episodes}`] : []),
+    ...(p.narrated ? ["- every scene has narration (voice-over) that tells the story"] : []),
+    ...p.direction.map((d) => `- ${d}`),
+    "",
+  ];
+}
+
+export function renderPlanRequest(brief: string, c: ProductionConstraints, production?: PlanProduction): string {
   return [
     "CREATIVE BRIEF",
     brief.trim(),
     "",
+    ...(production ? productionSection(production) : []),
     "CONSTRAINTS (hard)",
     `- exactly ${c.sceneCount} scenes, indexed 0 to ${c.sceneCount - 1}, ids scene_01 … scene_${String(c.sceneCount).padStart(2, "0")}`,
     `- each scene's shots total ${c.sceneSec} seconds (±${Math.round(c.sceneTolerance * 100)}%)`,

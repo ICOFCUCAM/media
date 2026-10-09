@@ -4,6 +4,15 @@ A **pnpm + Turborepo monorepo**. Shared types and the model-adapter layer live
 in `packages/` and are consumed by every app, guaranteeing one source of truth
 for queue contracts and DTOs.
 
+> **Status (2026-10-09):** the tree below is the original plan; several folders
+> were never created. Notably `apps/api/src` today holds only `admin/`,
+> `auth/` (Supabase session-token guard), `films/`, `gpu/`, `health/` and
+> `voices/`; there is no WebSocket gateway (`apps/api/src/realtime` and
+> `packages/realtime` were deleted), and `apps/web/lib` has no API or WS client
+> (`apps/web/lib/api.ts` was deleted — the web app talks to Supabase directly,
+> with live status from Supabase Realtime). `packages/` also holds `movie`
+> (DirectorOS), `voice-contracts` and `bench`.
+
 ```
 cineforge/
 ├─ apps/
@@ -17,14 +26,14 @@ cineforge/
 │  │  │  ├─ admin/                 # admin dashboard
 │  │  │  └─ api/                   # route handlers (BFF, webhooks)
 │  │  ├─ components/
-│  │  ├─ lib/                      # api client, ws client, auth
+│  │  ├─ lib/                      # Supabase client + Realtime, auth (no API/WS client)
 │  │  └─ package.json
 │  │
-│  ├─ api/                         # NestJS REST + WS gateway
+│  ├─ api/                         # NestJS REST (/v1, /livez, /readyz, /metrics)
 │  │  ├─ src/
 │  │  │  ├─ main.ts
 │  │  │  ├─ app.module.ts
-│  │  │  ├─ auth/                  # JWT, guards, refresh
+│  │  │  ├─ auth/                  # Supabase session-token guard, role from users.role
 │  │  │  ├─ users/
 │  │  │  ├─ projects/
 │  │  │  ├─ films/
@@ -36,7 +45,6 @@ cineforge/
 │  │  │  ├─ gpu/                   # GpuService -> @cineforge/gpu (ensureRunning, status)
 │  │  │  ├─ billing/               # tiers, quotas, Stripe
 │  │  │  ├─ queue/                 # BullMQ producers + flow definitions
-│  │  │  ├─ realtime/              # WebSocket gateway (Redis adapter)
 │  │  │  ├─ storage/               # S3 service, presigned URLs
 │  │  │  ├─ admin/                 # admin endpoints
 │  │  │  └─ common/                # filters, interceptors, rate-limit

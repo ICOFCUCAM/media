@@ -27,6 +27,7 @@ import { S3Storage } from "../storage/storage";
 import { buildScorePrompt, scoreSeconds, SCORE_MODEL } from "../audio/score";
 import { chosenVoiceId, NoVoiceEngineError, renderSceneVoice } from "../voice/film";
 import { sceneVoiceDeps } from "../voice/deps";
+import { meter } from "../billing";
 
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
@@ -81,7 +82,7 @@ export const audioWorker = new Worker<AudioJob>(
             trackKey: `scenes/${sceneId}/audio/voice/${job.id}.wav`,
             dir,
           },
-          sceneVoiceDeps(storage),
+          sceneVoiceDeps(storage, { projectId }),
         );
         if (!out) return { sceneId, kind, skipped: "nothing to speak" };
         for (const c of out.cues) {
@@ -139,6 +140,7 @@ export const audioWorker = new Worker<AudioJob>(
         const seconds = scoreSeconds(filmSec);
         console.log(`[audio] composing score project=${scene.projectId} model=${SCORE_MODEL} ${seconds}s`);
         const result = await falRunQueue(process.env.FAL_KEY, SCORE_MODEL, { prompt, seconds_total: seconds }, { timeoutMs: 8 * 60_000 });
+        await meter({ kind: "music", provider: "fal", model: SCORE_MODEL, unit: "audio_seconds", units: seconds, projectId: scene.projectId, meta: { purpose: "score" } });
         const url = falFindUrl(result);
         if (!url) throw new Error(`music model returned no audio (${JSON.stringify(result).slice(0, 200)})`);
         const res = await fetch(url);

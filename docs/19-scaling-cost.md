@@ -23,7 +23,7 @@ patterns. GPUs scale to zero, so cost tracks usage, not user count.
 - Stateless tiers replicated per region; GeoDNS/anycast.
 - Postgres: partition `Shot`/`UsageRecord`/`AudioTrack`; read replicas per
   region; consider Citus/Vitess-style sharding by `projectId` if needed.
-- Redis Cluster; WebSocket fan-out via Redis adapter (or NATS).
+- Redis Cluster. Client fan-out is Supabase Realtime (no WebSocket tier of our own).
 - Object storage with cross-region replication; CDN multi-PoP.
 - GPU capacity across multiple RunPod regions/providers; queue-routed.
 - Async everything: generation is already async; keep API hot-path < 300ms.
@@ -51,7 +51,7 @@ flowchart TB
 | Redis memory | separate queue/cache, eviction policy, cluster |
 | Render CPU | GPU-accelerated FFmpeg (nvenc), parallel scene render |
 | Egress cost | R2/B2 zero-egress + CDN caching |
-| WebSocket fan-out | Redis adapter, room-scoped events |
+| Live-update fan-out | Supabase Realtime (Postgres Changes, RLS-scoped) |
 
 ## Cost optimization (system-wide)
 1. **Scale GPUs to zero** — biggest lever; pay per generation-second.

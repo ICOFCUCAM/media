@@ -132,7 +132,7 @@ export const localizeWorker = new Worker<LocalizeJob>(
                   trackKey: `projects/${projectId}/film/dub/${lang}/${sp.id}.wav`,
                   lineKeyPrefix: null,
                   dir,
-                }, sceneVoiceDeps(storage));
+                }, sceneVoiceDeps(storage, { projectId }));
                 if (!out) continue;
                 tracks.push(out.trackPath);
                 for (const x of out.substitutions) {

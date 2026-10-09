@@ -86,3 +86,22 @@ describe("Film IR validator chain (DOS-24, DOS-94)", () => {
     expect(JSON.stringify(s)).toContain("^char_");
   });
 });
+
+describe("production formats (W11)", () => {
+  it("a series needs one act per episode", async () => {
+    const { fixturePackage, FIXTURE_CONSTRAINTS, validateFilmPackage } = await import("./index");
+    const pkg = fixturePackage();
+    expect(validateFilmPackage(pkg, { ...FIXTURE_CONSTRAINTS, episodes: 2 }).ok).toBe(true);
+    const r = validateFilmPackage(pkg, { ...FIXTURE_CONSTRAINTS, episodes: 3 });
+    expect(r.ok ? [] : r.issues.map((i) => i.code)).toEqual(["EPISODE_COUNT"]);
+  });
+
+  it("a narrated story needs narration in every scene", async () => {
+    const { fixturePackage, FIXTURE_CONSTRAINTS, validateFilmPackage } = await import("./index");
+    const pkg = fixturePackage();
+    pkg.scenes[0]!.narration = "Maya had never crossed the harbour at night.";
+    pkg.scenes[0]!.dialogue = [];
+    const r = validateFilmPackage(pkg, { ...FIXTURE_CONSTRAINTS, narrated: true });
+    expect(r.ok ? [] : r.issues.map((i) => `${i.code}@${i.path}`)).toEqual(["NARRATION_MISSING@scenes[1].narration"]);
+  });
+});

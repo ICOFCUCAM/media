@@ -53,6 +53,10 @@ export interface ProductionConstraints {
   targetSeconds: number;
   /** Allowed deviation of the film total from targetSeconds (fraction). */
   filmTolerance: number;
+  /** Series (W11): exactly this many episodes, one act each. */
+  episodes?: number;
+  /** Narrated formats (story): every scene carries narration. */
+  narrated?: boolean;
 }
 
 export type ValidationResult = { ok: true; pkg: FilmPackage; issues: [] } | { ok: false; issues: Issue[]; pkg?: FilmPackage };
@@ -367,6 +371,12 @@ function production(pkg: FilmPackage, c: ProductionConstraints): Issue[] {
   const out: Issue[] = [];
   const P = (code: string, path: string, message: string) => out.push({ stage: "production", code, path, message });
   if (pkg.scenes.length !== c.sceneCount) P("SCENE_COUNT", "scenes", `the plan has ${pkg.scenes.length} scenes; ${c.sceneCount} are required`);
+  if (c.episodes && pkg.acts.length !== c.episodes) {
+    P("EPISODE_COUNT", "acts", `a series of ${c.episodes} episodes needs ${c.episodes} acts (one per episode); the plan has ${pkg.acts.length}`);
+  }
+  if (c.narrated) {
+    pkg.scenes.forEach((sc, i) => !sc.narration?.trim() && P("NARRATION_MISSING", `scenes[${i}].narration`, `${sc.id} has no narration; this format is told by a narrator`));
+  }
   pkg.scenes.forEach((sc, i) => {
     const p = `scenes[${i}]`;
     if (sc.shots.length > c.maxShotsPerScene) P("TOO_MANY_SHOTS", `${p}.shots`, `${sc.shots.length} shots; at most ${c.maxShotsPerScene}`);

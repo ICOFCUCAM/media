@@ -12,6 +12,7 @@ import { Chips, ExampleShelf, Field, StudioFooter, StudioGrid, StudioPage, Unloc
 import { NotifyToggle } from "./cf/NotifyToggle";
 import { ClockIcon, ConfigCard, EngineIcon, FormatIcon } from "./cf/ConfigCard";
 import { offeredFormats, useCapabilities, videoAvailable } from "../lib/truth";
+import { ANIMATION_STYLES, STYLE_PROFILES, type AnimationStyle, type ProductionKind, type ProductionSpec } from "../lib/production-types";
 
 const STAGE_LABEL: Record<ProjectStatus, string> = {
   PLANNING: "Writing",
@@ -38,6 +39,18 @@ export interface CreateStudioProps {
   embedded?: boolean;
 }
 
+/** The production format each studio makes (W11): data on the project, not words in the brief. */
+const STUDIO_KIND: Record<CreateStudioProps["kind"], ProductionKind> = {
+  film: "film",
+  series: "series",
+  trailer: "trailer",
+  shorts: "social_short",
+  advert: "advert",
+};
+
+/** Animation looks offered here; the motion-comic look belongs to the Motion Comic format. */
+const PICKABLE_STYLES = ANIMATION_STYLES.filter((s) => s !== "motion_comic");
+
 const KIND_LABEL: Record<CreateStudioProps["kind"], string> = {
   film: "Film",
   series: "Series",
@@ -61,6 +74,8 @@ export function CreateStudio(props: CreateStudioProps) {
   const [resolution, setResolution] = useState<Resolution | null>(null);
   // W8b: review the story and every storyboard before any video is made.
   const [review, setReview] = useState(false);
+  // What is being made (W11; Part 5): live action, or an animation style.
+  const [look, setLook] = useState<AnimationStyle | "live_action">("live_action");
   const { state, running, run, reset } = useCreateRun();
 
   // Hand-off from another studio (Ads Studio → /create/advert?brief=&seconds=&aspect=):
@@ -118,7 +133,14 @@ export function CreateStudio(props: CreateStudioProps) {
   const noun = production.toLowerCase();
 
   function onCreate() {
-    void run({ prompt, modelId, targetSeconds: effSeconds, resolution: effectiveRes, aspectRatio: aspect, passMode: review ? "three" : "single" });
+    const kind = STUDIO_KIND[props.kind];
+    const production: ProductionSpec = {
+      kind,
+      medium: look === "live_action" ? "live_action" : "animation",
+      animationStyle: look === "live_action" ? null : look,
+      episodes: kind === "series" ? Math.max(1, Math.round(effSeconds / 600)) : null,
+    };
+    void run({ prompt, modelId, targetSeconds: effSeconds, resolution: effectiveRes, aspectRatio: aspect, passMode: review ? "three" : "single", production });
     // Phones: the preview sits under the options — bring it into view.
     if (window.innerWidth < 1024) document.getElementById("studio-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -165,6 +187,19 @@ export function CreateStudio(props: CreateStudioProps) {
           </Chips>
         </Field>
       )}
+
+      <Field label="Look" value={look === "live_action" ? "Live action" : STYLE_PROFILES[look].label}>
+        <Chips>
+          <button type="button" className="cf-option" aria-pressed={look === "live_action"} onClick={() => setLook("live_action")}>
+            Live action
+          </button>
+          {PICKABLE_STYLES.map((id) => (
+            <button key={id} type="button" className="cf-option" aria-pressed={look === id} onClick={() => setLook(id)}>
+              {STYLE_PROFILES[id].label}
+            </button>
+          ))}
+        </Chips>
+      </Field>
 
       <Field label="Production passes">
         <Chips>

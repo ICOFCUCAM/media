@@ -31,6 +31,12 @@ unit. The Director emits `Scene 1 … Scene 100` with complete instructions.
 
 ## Pipeline stages (multi-pass LLM)
 
+> **Status (2026-10-09):** not built as described. The Director makes **one**
+> master planning call that returns the Film IR, validated by a zod validator
+> chain (schema, references, story, canon, cinema, production, budget) with at most **one** surgical
+> revision call (`packages/movie/src/intelligence/planner.ts`,
+> `packages/movie/src/ir/validate.ts`; [docs/45](45-directoros-intelligence.md)).
+
 ```mermaid
 flowchart TB
   P[Prompt + targetSeconds] --> S1[Pass 1: Concept]
@@ -48,7 +54,8 @@ as soon as the scene list exists.
 
 ## LLM provider
 Uses Claude (Anthropic API) as the reasoning model for planning. The client
-lives in `apps/api/src/director/llm.ts`. Default model: latest Claude (see
+was planned for `apps/api/src/director/llm.ts`; it is actually the model router in
+`packages/movie/src/intelligence/` (Anthropic and OpenAI providers). Default model: latest Claude (see
 `docs/claude-api` guidance / repo skill). Structured output is enforced with
 **tool/JSON schemas** so every pass returns validated objects.
 
@@ -57,6 +64,10 @@ lives in `apps/api/src/director/llm.ts`. Default model: latest Claude (see
 > hardcode model ids from memory.
 
 ## Output contracts (zod, in `packages/shared`)
+
+> **Status (2026-10-09):** the `ScenePlan` below was never built. The real
+> contract is the Film IR zod schema in `packages/movie/src/ir/schema.ts`,
+> checked by `validateFilmPackage` in `packages/movie/src/ir/validate.ts` (docs/45).
 
 ```ts
 // Scene as produced by the Director
@@ -99,7 +110,7 @@ a **BullMQ flow** to fan out one `scene-job` per scene with a parent
 - [ ] LLM client with retry + JSON-schema validation
 - [ ] 6-pass prompt templates + caching of system/context
 - [ ] Duration→structure planner (configurable per genre)
-- [ ] Persist + emit `project.progress` per pass
+- [ ] Persist + emit `project.progress` per pass (no WS event exists; progress is written to `projects` and seen via Supabase Realtime)
 - [ ] Idempotency: re-running a pass is safe (upsert by index)
 
 ## Status — Anthropic Director wired
@@ -114,8 +125,15 @@ Character/World Bible, `screenplays`, `scenes` and `shots`.
 Because each shot's `prompt` is composed from this bible + scene beat, the shot
 prompts are **bible-aware**, and any seed frame generated from a shot prompt
 (`OpenAIImageAdapter`, docs/22) inherits the same look — keeping the AI seed in
-line with the Director. Falls back to a deterministic stub when the key is unset
-or the call fails, so the render pipeline never hard-stops on an LLM hiccup.
+line with the Director.
 
-Implementation: `apps/worker/src/director/llm.ts` (Claude call + parsing) and
-`director.service.ts` (persistence + prompt composition).
+**Status (2026-10-09):** there is no silent stub fallback any more. If the plan
+cannot be produced or fails validation after its one revision, the production
+fails with a reason; the deterministic stub (`apps/worker/src/director/stub.ts`)
+is used only when no planning provider is configured **and**
+`DIRECTOR_ALLOW_STUB=1`.
+
+Implementation: `packages/movie/src/intelligence/planner.ts` (master call +
+revision), `packages/movie/src/ir/validate.ts` (validator chain) and
+`apps/worker/src/director/director.service.ts` (persistence + prompt
+composition). There is no `apps/worker/src/director/llm.ts`.

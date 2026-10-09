@@ -22,6 +22,8 @@ import { S3Storage } from "../storage/storage";
 import { ffmpeg } from "../ffmpeg/ffmpeg";
 import { concatListContent } from "../ffmpeg/commands";
 
+import { meter } from "../billing";
+
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const storage = new S3Storage();
 
@@ -78,6 +80,7 @@ export const voiceLabWorker = new Worker<VoiceLabJob>(
         const mime = ext === "wav" ? "audio/wav" : ext === "m4a" ? "audio/mp4" : "audio/mpeg";
         const sampleUrl = await falUploadBytes(apiKey, bytes, mime, `sample.${ext}`);
         const result = await falRunQueue(apiKey, CLONE_MODEL, { audio_url: sampleUrl });
+        await meter({ kind: "tts", provider: "fal", model: CLONE_MODEL, unit: "requests", units: 1, userId: voice.userId, meta: { purpose: "voice_clone", voiceId: id } });
         const voiceId =
           (result.custom_voice_id as string | undefined) ??
           (result.voice_id as string | undefined) ??
@@ -128,6 +131,7 @@ export const voiceLabWorker = new Worker<VoiceLabJob>(
           { image_url: imgUrl, audio_url: audioUrl, source_image_url: imgUrl, driven_audio_url: audioUrl },
           { timeoutMs: 20 * 60_000 },
         );
+        await meter({ kind: "video", provider: "fal", model: avatarModel, unit: "requests", units: 1, userId: av.userId, meta: { purpose: "avatar", seconds: Math.round(vo.text.length / 15) } });
         const url = falFindUrl(result);
         if (!url) throw new Error(`avatar model returned no video (${JSON.stringify(result).slice(0, 200)})`);
         const res = await fetch(url);
@@ -165,6 +169,7 @@ export const voiceLabWorker = new Worker<VoiceLabJob>(
           ...(langBoost ? { language_boost: langBoost } : {}),
         };
         const result = await falRunQueue(apiKey, SPEECH_MODEL, input, { timeoutMs: 5 * 60_000 });
+        await meter({ kind: "tts", provider: "fal", model: SPEECH_MODEL, unit: "characters", units: chunk.length, userId: vo.userId, meta: { purpose: "voiceover" } });
         const url = falFindUrl(result);
         if (!url) throw new Error(`speech returned no audio url (chunk ${i + 1}/${chunks.length})`);
         const res = await fetch(url);

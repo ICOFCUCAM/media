@@ -169,6 +169,7 @@ export class SupabaseRun {
         resolution: this.cfg.resolution,
         aspectRatio: this.cfg.aspectRatio,
         passMode: this.cfg.passMode,
+        production: this.cfg.production,
       });
       if (this.cancelled) return;
       projectId = project.id;

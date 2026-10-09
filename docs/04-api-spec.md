@@ -5,6 +5,26 @@ Bearer <JWT>` (user) or `X-Api-Key` (programmatic). Real-time updates over
 WebSocket. All long operations return `202` with a job id and are tracked via
 WS or polling `GET /jobs/:id`.
 
+> **Status (2026-10-09):** most of this spec is design, not code. What
+> `apps/api` (NestJS) actually serves:
+>
+> - **Auth:** `Authorization: Bearer <Supabase session token>`, verified against
+>   the project's JWKS at `SUPABASE_URL` or, on the legacy shared secret,
+>   `SUPABASE_JWT_SECRET` (HS256) (`apps/api/src/auth/supabase-token.ts`). The
+>   role (USER / ADMIN) comes from `users.role`; a valid token with no CineForge
+>   user is refused. There are no `/auth/*` routes, no API keys, no
+>   `JWT_ACCESS_SECRET`.
+> - **Routes:** `POST /v1/generate-film`, `GET /v1/projects/:id/estimate`,
+>   `POST /v1/projects/:id/resume` (`apps/api/src/films`); the Voice Engine
+>   `/v1/voices`, `/v1/speech`, `/v1/speech/batch`, `/v1/jobs/:id`
+>   (`apps/api/src/voices`, docs/51); `GET /v1/admin/gpu`, `GET /v1/admin/cost`;
+>   and unprefixed `/livez`, `/readyz`, `/metrics`.
+> - **No WebSocket.** The Socket.IO gateway and `packages/realtime` were deleted
+>   (nothing consumed them). The web app gets live status from **Supabase
+>   Realtime** on the `projects` table ([25](25-supabase.md)).
+> - **Deployment:** deployable (`apps/api/Dockerfile`, `deploy/render-api.yaml`)
+>   but **not deployed**; the web app talks to Supabase directly.
+
 ## Conventions
 - IDs are cuids.
 - Timestamps ISO-8601 UTC.
@@ -71,7 +91,7 @@ POST /generate-film
 { "jobId": "film_job_91...", "projectId": "ckp_8s...", "status": "PLANNING" }
 ```
 
-Subscribe to progress (WebSocket, see below) or:
+Subscribe to progress (planned WebSocket — not built; see Status above) or:
 ```
 GET /jobs/:jobId   -> { id, type, state, progress, data }
 ```
@@ -94,8 +114,8 @@ POST /projects/:id/resume       -> { jobId, status, estimatedMs, spentMs }   // 
 ```
 `POST /generate-film` may reject with `MODEL_NOT_ALLOWED` (tier gating) or
 `INSUFFICIENT_CREDITS` (pre-flight estimate). A project that exceeds its budget
-ceiling mid-generation transitions to `PAUSED` and emits a `project.paused` WS
-event; `resume` continues it without re-planning.
+ceiling mid-generation transitions to `PAUSED` (visible to the web app through
+Supabase Realtime on `projects`); `resume` continues it without re-planning.
 
 ## Per-scene / per-shot generation & regeneration
 
@@ -126,7 +146,7 @@ POST /projects/:id/continuity/validate         -> { issues:[{sceneIndex,type,mes
 ## Render & film
 
 ```
-POST /render            { projectId, kind: "preview"|"final" }  -> 202 { renderJobId }
+POST /render            { projectId, kind: "final"|"upscale" }  -> 202 { renderJobId }   // not built; render kinds are final | upscale only
 GET  /render/:id                                                 -> { renderJob }
 GET  /film/:id                                                   -> { film, streamUrl, downloadUrl }
 GET  /film/:id/stream                                            -> 302 -> signed HLS .m3u8
@@ -162,14 +182,11 @@ GET /admin/revenue              GET /admin/films          GET /admin/models
 `wss://api.cineforge.app/v1/ws?token=<JWT>` — Socket.IO, Redis adapter for
 multi-node fan-out. Client subscribes to a project room.
 
-**Implemented:** `apps/api/src/realtime/realtime.gateway.ts` authenticates the
-JWT on connect and joins `project:<id>` rooms **only after verifying the caller
-owns the project** (Prisma ownership check in `onSubscribe`; unauthorized
-subscribes are rejected with an `error` event). Workers (separate processes)
-publish events via `@cineforge/realtime` (`RealtimePublisher` → Redis channel);
-the gateway's `RealtimeSubscriber` forwards them into the right room, so it works
-across many API nodes. Event names/payloads are typed once in
-`packages/realtime/src/events.ts`.
+> **Status (2026-10-09):** removed. A Socket.IO gateway
+> (`apps/api/src/realtime`) and `packages/realtime` existed but nothing
+> consumed them; both were deleted. Live progress reaches the web app through
+> Supabase Realtime on the `projects` table (docs/25). The event shapes below
+> are kept as design only.
 
 ```jsonc
 // client -> server

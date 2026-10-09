@@ -72,7 +72,19 @@ GET  /projects/:id/continuity?sceneIndex=N   -> { state }
 POST /projects/:id/continuity/validate        -> { issues[] }
 ```
 
-## Engine internals (`apps/api/src/continuity`)
+> **Status (2026-10-09):** these routes do not exist; `apps/api` has no
+> continuity module.
+
+## Engine internals (planned for `apps/api/src/continuity`)
+
+> **Status (2026-10-09):** not built there. The scene-to-scene state fold
+> (`computeContinuity`, `applyPatch`, `continuityScore`, `renderStatePreamble`)
+> is `packages/shared/src/continuity.ts`, with a client-safe mirror in
+> `apps/web/lib/continuity.ts` (kept in sync by hand; see [docs/28](28-continuity-engine.md)).
+> The DirectorOS World State / Continuity Engine (canon graph, revisions,
+> wardrobe, dependencies) is `packages/movie/src/world`
+> ([docs/46](46-directoros-world-state.md)). The `ContinuityService` /
+> `ContinuityRules` classes below were never written.
 - `ContinuityService.stateAt(projectId, n)` — reads snapshot (O(1) via unique
   index), falling back to nearest prior + replay if sparse.
 - `ContinuityService.advance(projectId, n, diff)` — writes snapshot n+1.

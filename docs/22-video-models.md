@@ -39,7 +39,7 @@ frontend — they sit behind:
 1. `packages/model-adapters` — the `VideoModelAdapter` interface + `WanAdapter`
    / `HunyuanAdapter` (both proxy to a RunPod A40 worker via `RunpodClient`).
 2. `ModelRegistry` — resolve a model by `id`; `GET /models` lists capabilities.
-3. Your REST/WS API ([04](04-api-spec.md)) — `/generate-film`,
+3. Your REST API ([04](04-api-spec.md); no WS — live status is Supabase Realtime) — `/generate-film`,
    `/generate-scene`, `/render`, streaming, billing — none of which expose the
    underlying model vendor.
 

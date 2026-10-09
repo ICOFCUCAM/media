@@ -1,12 +1,11 @@
 import { prisma } from "@cineforge/db";
 import {
-  AVG_SHOT_SEC,
-  planSceneCount,
-  planShotsPerScene,
+  DEFAULT_PRODUCTION,
   outputDimensions,
   ProductionFailure,
   degradation,
   type Degradation,
+  type ProductionSpec,
 } from "@cineforge/shared";
 import { MODEL_VERSIONS } from "@cineforge/model-adapters";
 import {
@@ -26,6 +25,7 @@ import { shotGenerationFields, statePatchRow } from "./rows";
 import type { GateResult } from "../quality/gates";
 import { chosenVoiceId } from "../voice/film";
 import { snapshotScenes, writeShotDependencies, type PlanHistoryDb } from "../versions/plan";
+import { constraintsFor, planProductionFor, productionOf, renderStyleFor, type ProductionRow } from "./production";
 
 /**
  * Director — planning service (DirectorOS W2: One-Pass Intelligence /
@@ -63,18 +63,13 @@ export interface FilmPlan {
   gates: GateResult[];
 }
 
-/** The plan must fit what was estimated and charged (scene count, shot budget, runtime). */
-export function planningConstraints(targetSeconds: number): ProductionConstraints {
-  const sceneCount = planSceneCount(targetSeconds);
-  return {
-    sceneCount,
-    sceneSec: Math.max(2, Math.round(targetSeconds / sceneCount)),
-    sceneTolerance: 0.15,
-    maxShotsPerScene: planShotsPerScene(),
-    maxShotSec: AVG_SHOT_SEC,
-    targetSeconds,
-    filmTolerance: 0.15,
-  };
+/**
+ * The plan must fit what was estimated and charged (scene count, shot budget,
+ * runtime). A live-action film plans exactly as before W11; other formats are
+ * paced by their production profile (./production.ts).
+ */
+export function planningConstraints(targetSeconds: number, spec: ProductionSpec = DEFAULT_PRODUCTION): ProductionConstraints {
+  return constraintsFor(targetSeconds, spec);
 }
 
 /** Planning failures in the vocabulary the film processor reports. */
@@ -99,9 +94,10 @@ export class DirectorService {
   async plan(projectId: string): Promise<FilmPlan> {
     const project = await prisma.project.findUniqueOrThrow({
       where: { id: projectId },
-      select: { prompt: true, targetSeconds: true, modelId: true, resolution: true, aspectRatio: true },
+      select: { prompt: true, targetSeconds: true, modelId: true, resolution: true, aspectRatio: true, kind: true, medium: true, animationStyle: true, episodes: true },
     });
-    const constraints = planningConstraints(project.targetSeconds);
+    const spec = productionOf(project);
+    const constraints = planningConstraints(project.targetSeconds, spec);
 
     // 1–2: plan + validate (+ one revision). Fails instead of inventing.
     let plan: PlanResult;
@@ -110,7 +106,7 @@ export class DirectorService {
       if (!router.available("film_plan") && process.env.DIRECTOR_ALLOW_STUB === "1") {
         plan = { pkg: stubPackage(project.prompt, constraints), revised: false, fixedIssues: [], provider: "stub", model: "stub" };
       } else {
-        plan = await planFilm(router, project.prompt, constraints, { projectId });
+        plan = await planFilm(router, project.prompt, constraints, { projectId, production: planProductionFor(spec) });
       }
     } catch (e) {
       throw toProductionFailure(e) ?? e;
@@ -184,14 +180,47 @@ async function castVoices(projectId: string): Promise<Map<string, string>> {
   return out;
 }
 
+/**
+ * A series (W11; Part 5 §178.2): the plan's acts are its episodes. The series,
+ * season 1 and one episode per act are kept (updated on a re-plan, never
+ * duplicated), and every scene is linked to its episode. Returns act → episode id.
+ */
+async function persistEpisodes(projectId: string, pkg: PlanResult["pkg"]): Promise<Map<number, string>> {
+  const series = await prisma.series.upsert({
+    where: { projectId },
+    create: { projectId, title: pkg.film.title, synopsis: pkg.film.synopsis },
+    update: { title: pkg.film.title, synopsis: pkg.film.synopsis },
+    select: { id: true },
+  });
+  const season = await prisma.season.upsert({
+    where: { seriesId_number: { seriesId: series.id, number: 1 } },
+    create: { seriesId: series.id, number: 1, title: "Season 1" },
+    update: {},
+    select: { id: true },
+  });
+  const out = new Map<number, string>();
+  for (const act of pkg.acts) {
+    const ep = await prisma.episode.upsert({
+      where: { seasonId_number: { seasonId: season.id, number: act.index } },
+      create: { seasonId: season.id, number: act.index, title: `Episode ${act.index}`, synopsis: act.purpose },
+      update: { synopsis: act.purpose },
+      select: { id: true },
+    });
+    out.set(act.index, ep.id);
+  }
+  return out;
+}
+
 /** Compile and persist a plan (exported for the database integration test). */
 export async function persistPlan(
   projectId: string,
-  project: { modelId: string; resolution: string; aspectRatio: string },
+  project: { modelId: string; resolution: string; aspectRatio: string } & ProductionRow,
   plan: PlanResult,
 ): Promise<PlannedScene[]> {
   const pkg = plan.pkg;
-  const compiled = compileFilm(pkg, { modelId: project.modelId });
+  const spec = productionOf(project);
+  // Animation (W11): every shot prompt is drawn in the production's style.
+  const compiled = compileFilm(pkg, { modelId: project.modelId, render: renderStyleFor(spec) });
   const [width, height] = outputDimensions(project.resolution, project.aspectRatio);
   const modelVersion = MODEL_VERSIONS[project.modelId] ?? "unknown";
   // Scene stills: when OpenAI is configured, every shot starts as an image
@@ -244,6 +273,7 @@ export async function persistPlan(
   });
 
   const keying = { projectId, modelId: project.modelId, modelVersion, width, height };
+  const episodeOfAct = spec.kind === "series" ? await persistEpisodes(projectId, pkg) : new Map<number, string>();
   const out: PlannedScene[] = [];
   // A re-plan replaces scenes: keep each one as it was first (W8b, append-only plan history).
   await snapshotScenes(prisma as unknown as PlanHistoryDb, projectId, { indexes: compiled.scenes.map((s) => s.index) }, "replan", raw.canonVersion);
@@ -267,6 +297,7 @@ export async function persistPlan(
         bridge: sc.bridge,
         statePatch: statePatchRow(sc, charId),
         dependsOn: sc.index > 0 ? [sc.index - 1] : [],
+        ...(episodeOfAct.has(sc.act) ? { episodeId: episodeOfAct.get(sc.act)! } : {}),
         characters: { create: sc.characterKeys.map((k) => ({ characterId: charId.get(k)! })) },
         dialogueLines: {
           create: sc.dialogue.map((d) => ({ index: d.index, characterId: charId.get(d.characterKey)!, text: d.text, emotion: d.emotion })),

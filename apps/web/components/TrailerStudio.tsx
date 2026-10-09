@@ -44,9 +44,11 @@ export function TrailerStudio() {
 
   function onCreate() {
     run({
-      prompt: `${type} trailer (${effSeconds}s) for: ${subject}. Music: ${music}. Voiceover: ${vo}.`,
+      // The format is data (W11); the brief carries only the creator's choices.
+      prompt: `${subject}\n\nTrailer style: ${type}. Music: ${music}. Voiceover: ${vo}.`,
       modelId: "wan-2.1",
       targetSeconds: effSeconds,
+      production: { kind: "trailer", medium: "live_action", animationStyle: null },
     });
     if (window.innerWidth < 1024) document.getElementById("studio-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }

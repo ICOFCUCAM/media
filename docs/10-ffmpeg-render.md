@@ -106,8 +106,10 @@ export function ffmpeg(args: string[], onProgress?: (p: number) => void) {
 }
 ```
 
-The render processor streams `render.progress` over WebSocket using
-`onProgress`, uploads `final.mp4` + `hls/` to S3, and writes the `Film` row.
+The render processor uploads `final.mp4` + `hls/` to S3 and writes the `Film`
+row. *(Status (2026-10-09): no `render.progress` stream — there is no WebSocket;
+the processor passes no `onProgress`, and the web app sees the project's status
+change through Supabase Realtime on `projects`.)*
 
 ## Performance
 - Use hardware encoders (`h264_nvenc`) on GPU render nodes for long films.

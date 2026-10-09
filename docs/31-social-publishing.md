@@ -1,38 +1,49 @@
-# 31 — Social publishing
+# 31 — Social publishing (Social Launchpad)
 
 Push a finished film/ad straight to social platforms. One interface, one queue,
-per-provider results recorded on the film.
+per-platform results recorded on the launch.
+
+> **Status (2026-10-09):** the earlier `publish-queue` / `publish.processor` /
+> `enqueuePublish` path (results on `films.publications`) was deleted; it had
+> no producer. Social posting is the Social Launchpad below.
 
 ## Flow
 
 ```
-film ready (films.mp4Key) ─► publish-queue ─► for each requested + configured provider:
-      Publisher.publish({ title, description, tags, videoUrl }) ─► result
-                                         │
-                       films.publications[provider] = { status, id?, url?, detail? }
-                       films.publishedAt = now (if any succeeded)
+SocialLaunchpad (web) inserts social_launches row (status PENDING, brief, videoKey)
+  ─► worker project poller ─► social-queue { kind: "kit", id }
+        planning model writes a per-platform kit ─► status KIT_READY
+user asks to launch (status LAUNCH_REQUESTED)
+  ─► worker project poller ─► social-queue { kind: "launch", id }
+        for each publisher from buildPublishers(env):
+          Publisher.publish({ title, description, tags, videoUrl }) ─► result
+        social_launches.results[provider] = { status, id?, url?, detail? }
+        status LAUNCHED if any published, else KIT_READY with the reason
 ```
 
 ## What's built
 
 - **Adapters** (`packages/model-adapters/src/publish/publish.ts`) — a `Publisher`
-  interface with `YouTubePublisher` / `TikTokPublisher` and `buildPublishers(env)`.
-  Each exposes `configured` (are its OAuth creds present?). Extend by adding a
-  provider class — Instagram/Facebook/LinkedIn/X/Threads/Pinterest/etc. follow
-  the same shape, credentialed by the env in `.env.example`.
-- **Queue + processor** — `publish-queue` / `publish.processor`: resolves the
-  film's MP4 to a public URL (`ASSET_PUBLIC_BASE_URL`), publishes to the
-  requested providers, and writes `films.publications` (+ `publishedAt`).
-  Producer: `enqueuePublish`.
+  interface and `buildPublishers(env)`. Real HTTP uploads for YouTube (OAuth
+  refresh + resumable upload, default private), TikTok (Content Posting
+  `PULL_FROM_URL`), Instagram Reels and Facebook Pages; X remains a scaffold
+  (paid API tier) and returns an error. Each exposes `configured` (are its
+  credentials present?).
+- **Queue + processor** — `social-queue` / `apps/worker/src/processors/social.processor.ts`,
+  job kinds `kit` and `launch`. Producer: the worker's project poller
+  (`apps/worker/src/orchestration/project-poller.ts`), which claims
+  `PENDING` and `LAUNCH_REQUESTED` rows. The video is passed as a presigned
+  URL (24 h), so the bucket stays private.
+- **Kit** — written by the planning model via the intelligence router
+  (prompt `social.kit`). If it cannot be written the launch is `FAILED` with the
+  reason; no template is passed off as a kit.
+- **Web** — `apps/web/components/SocialLaunchpad.tsx`.
 
 ## Safety
 
 Publishing is outward-facing, so the design is fail-safe:
 
-- A provider with **no credentials is skipped** — it never posts.
-- The **actual upload is a marked integration point** (OAuth refresh + the
-  platform upload API). Until wired, a *configured* provider returns
-  `status: "error", detail: "upload not wired (scaffold)"` rather than silently
-  succeeding — so nothing is ever posted by accident.
-- Wire each provider's upload, then connect the creator's "Publish to…" action to
-  `enqueuePublish`.
+- A provider with **no credentials is skipped** (`status: "skipped"`) — it never posts.
+- YouTube uploads default to **private** so the creator reviews first.
+- Re-launching is idempotent per provider: an already `published` result is not
+  posted again.

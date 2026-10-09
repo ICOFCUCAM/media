@@ -42,7 +42,7 @@ flowchart LR
 ## Smoke / acceptance test
 A scripted e2e that:
 1. registers a user, 2. creates a project, 3. `POST /generate-film` (1-min),
-4. waits for `film.ready` over WS, 5. fetches `streamUrl` and validates the
+4. waits for the project to reach `READY` (Supabase Realtime or polling; there is no WS), 5. fetches `streamUrl` and validates the
 HLS manifest + MP4 with ffprobe. Run in CI against staging and post-prod.
 
 ## Backups & DR
@@ -53,7 +53,7 @@ HLS manifest + MP4 with ffprobe. Run in CI against staging and post-prod.
 
 ## Runbooks (in repo `docs/runbooks/` — to add)
 - GPU pool stuck / RunPod outage → reroute to backup provider.
-- Queue backlog → scale workers/GPU, check DLQ.
+- Queue backlog → scale workers/GPU, check BullMQ's failed set (there are no DLQs).
 - Failed renders spike → inspect FFmpeg logs, roll back render image.
 - Stripe webhook failures → replay from Stripe dashboard.
 

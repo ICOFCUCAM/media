@@ -24,13 +24,14 @@ Rules for this folder:
 | 2 | [part-02-engineering-verification-contract.md](part-02-engineering-verification-contract.md) | 2026-10-08 | 60–107 |
 | 3 | [part-03-voice-clone-talker.md](part-03-voice-clone-talker.md) | 2026-10-08 | 108–129 |
 | 4 | [part-04-voice-engine-models-and-implementation.md](part-04-voice-engine-models-and-implementation.md) | 2026-10-08 | 130–176 |
+| 5 | [part-05-cartoon-animation-layer.md](part-05-cartoon-animation-layer.md) | 2026-10-09 | 177–186 |
 
-Requirements index: [requirements-index.md](requirements-index.md), 454 IDs (Part 1: 140, Part 2: 138, Part 3: 52, Part 4: 124), with
+Requirements index: [requirements-index.md](requirements-index.md), 487 IDs (Part 1: 140, Part 2: 138, Part 3: 52, Part 4: 124, Part 5: 33), with
 status and workstream columns filled by the gap analysis.
 
 **Gap analysis:** [gap-analysis.md](gap-analysis.md) — Parts 1–4 against the code at
 merge `9c957bf` (2026-10-08): the as-built baseline, section-by-section status,
-the silent-degradation register, workstreams W0–W11, the sequenced roadmap inside
+the silent-degradation register, workstreams W0–W12, the sequenced roadmap inside
 the docs/38 §AX.2 order, and the decisions needed. Parts sent after this are
 added to the index and analysed the same way.
 

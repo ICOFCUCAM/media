@@ -29,7 +29,6 @@
     "@cineforge/gpu": "workspace:*",
     "@cineforge/model-adapters": "workspace:*",
     "@cineforge/movie": "workspace:*",
-    "@cineforge/realtime": "workspace:*",
     "@cineforge/shared": "workspace:*",
     "@cineforge/voice-contracts": "workspace:*",
     "bullmq": "^5.7.0",

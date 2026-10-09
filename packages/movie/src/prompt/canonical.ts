@@ -47,13 +47,29 @@ export interface CanonicalMediaRequest {
     flashback: boolean;
     lighting: string;
   };
-  style: { palette: string; texture: string; lensLanguage: string; lighting: string };
+  style: {
+    palette: string;
+    texture: string;
+    lensLanguage: string;
+    lighting: string;
+    /** Animation (W11; Part 5 §181): the style's look, motion and what to avoid. Absent for live action. */
+    render?: RenderStyle;
+  };
   continuity: {
     worldStateVersion: string;
     requiredReferences: { kind: string; id: string; characterId?: string }[];
     relationships: { a: string; b: string; state: string }[];
   };
   audio: { ambience: string; music: string | null; sfx: string[] };
+}
+
+/** An animation style as the compilers need it (from @cineforge/shared STYLE_PROFILES). */
+export interface RenderStyle {
+  medium: "animation";
+  style: string;
+  look: string;
+  motion: string;
+  avoid: string;
 }
 
 const SIZE_WORDS: Record<string, string> = {
@@ -67,7 +83,13 @@ function look(c: GenerationContext["characters"][number]): string {
   return `${age}${c.identity.face}, ${c.identity.hair}, ${c.identity.body}${marks}; wearing ${c.wardrobe}${c.physical ? `; ${c.physical}` : ""}`;
 }
 
-export function compileGeneration(pkg: FilmPackage, sceneId: string, shotIndex: number, world: WorldTimeline = materializeWorld(pkg)): CanonicalMediaRequest {
+export function compileGeneration(
+  pkg: FilmPackage,
+  sceneId: string,
+  shotIndex: number,
+  world: WorldTimeline = materializeWorld(pkg),
+  opts: { render?: RenderStyle | null } = {},
+): CanonicalMediaRequest {
   const scene = pkg.scenes.find((s) => s.id === sceneId);
   const shot = scene?.shots.find((s) => s.index === shotIndex);
   if (!scene || !shot) throw new Error(`no shot ${sceneId}#${shotIndex}`);
@@ -100,6 +122,8 @@ export function compileGeneration(pkg: FilmPackage, sceneId: string, shotIndex: 
     style: {
       palette: pkg.film.visualStyle.palette, texture: pkg.film.visualStyle.texture,
       lensLanguage: pkg.film.visualStyle.lensLanguage, lighting: pkg.film.visualStyle.lighting,
+      // Only present for animation, so live-action requests (and their hashes) are unchanged.
+      ...(opts.render ? { render: opts.render } : {}),
     },
     continuity: {
       worldStateVersion: r.worldStateVersion,

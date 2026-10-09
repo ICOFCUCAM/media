@@ -12,7 +12,7 @@
  */
 import type { FilmCharacter, FilmLocation, FilmPackage, FilmScene, FilmShot } from "../ir/schema";
 import { appearanceOf } from "./shot-prompt";
-import { canonicalHash, compileGeneration } from "../prompt/canonical";
+import { canonicalHash, compileGeneration, type RenderStyle } from "../prompt/canonical";
 import { compileFor } from "../prompt/compilers";
 import { materializeWorld } from "../world/state";
 
@@ -140,6 +140,8 @@ function storyTimeLine(sc: FilmScene): Record<string, string> {
 export interface CompileOptions {
   /** Registry id of the video model the shots are generated with (prompt syntax and limits). */
   modelId?: string;
+  /** Animation (W11): the style every shot is drawn in; absent for live action. */
+  render?: RenderStyle | null;
 }
 
 export function compileFilm(pkg: FilmPackage, opts: CompileOptions = {}): CompiledFilm {
@@ -195,7 +197,7 @@ export function compileFilm(pkg: FilmPackage, opts: CompileOptions = {}): Compil
         index: sh.index,
         durationSec: sh.durationSec,
         ...(() => {
-          const req = compileGeneration(pkg, sc.id, sh.index, world);
+          const req = compileGeneration(pkg, sc.id, sh.index, world, { render: opts.render });
           const m = compileFor(modelId, req);
           return { prompt: m.prompt, negativePrompt: m.negativePrompt ?? "", promptDropped: m.dropped, canonicalHash: canonicalHash(req) };
         })(),

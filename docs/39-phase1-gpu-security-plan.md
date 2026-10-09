@@ -60,6 +60,11 @@ The gateway has two halves that together form the single boundary of §AV.2.
 
 ### 3.1 Gateway Authority — the Cineforge side (`packages/runtime-gateway`, TypeScript)
 
+> **Status (2026-10-09):** there is no `packages/runtime-gateway`. The authority
+> was built in `packages/model-adapters/src/gateway` (authorization, token
+> minting, admin) with the worker side in `apps/worker/src/gateway`
+> (attestor, presigners, Prisma store, `gateway:admin` CLI).
+
 Called by `video.processor.ts` in place of the bare `RunpodClient`. For each GPU call it:
 
 1. **Authorizes the job (requirement 2).**
@@ -187,7 +192,7 @@ Steps R0–R4 need dashboard actions by you: the RunPod pod image tag and env, t
   - startup with `S3_*` present refuses in enforce mode;
   - `/train` is disabled in enforce mode.
 
-**Cineforge side** (vitest, `packages/runtime-gateway`):
+**Cineforge side** (vitest, `packages/model-adapters/src/gateway` + `apps/worker/src/gateway`):
 - **Mint-time refusals:**
   - input key from another project;
   - shot not `GENERATING`.
@@ -211,7 +216,7 @@ Steps R0–R4 need dashboard actions by you: the RunPod pod image tag and env, t
 | PR | Content | Requirements |
 |---|---|---|
 | **1** | GPU-side enforcer core + FastAPI dependency (`off`/`report`/`enforce`), `/livez`, scopes, `/train` disabled in enforce mode, pytest in CI, immutable image tags (R0) | 1, 4, 6, 10 |
-| **2** | `packages/runtime-gateway` authority: job authorization, minting, audit migration + Prisma; swap `RunpodClient` headers (removes `RUNPOD_API_KEY` from GPU calls); lenient result mode | 1, 2, 4, 6, 8 |
+| **2** | Gateway authority (built in `packages/model-adapters/src/gateway` + `apps/worker/src/gateway`): job authorization, minting, audit migration + Prisma; swap `RunpodClient` headers (removes `RUNPOD_API_KEY` from GPU calls); lenient result mode | 1, 2, 4, 6, 8 |
 | **3** | Presigned one-time I/O on both sides; pod drops boto3 and `S3_*`; `projects/{projectId}/video/…` output layout; strict output verification | 5, 7, 8, 9 |
 | **4** | Model manifest pinning + §AV.3 digest (workflow + model + LoRA + timing fields) on both sides; golden vectors | 3, 9 |
 | **5** | Rollout runbook (R1–R4), env docs, key-rotation checklist, end-to-end CI test, docs/38 status note | all |

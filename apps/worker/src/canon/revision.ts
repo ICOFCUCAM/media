@@ -28,6 +28,7 @@ import { MODEL_VERSIONS } from "@cineforge/model-adapters";
 import { snapshotScenes, writeShotDependencies, type PlanHistoryDb } from "../versions/plan";
 import { isMissingTable } from "../timeline/store";
 import { shotGenerationFields, statePatchRow } from "../director/rows";
+import { productionOf, renderStyleFor } from "../director/production";
 
 type Row = Record<string, unknown>;
 export interface CanonDb {
@@ -35,7 +36,7 @@ export interface CanonDb {
     findUnique(a: unknown): Promise<{ raw: unknown } | null>;
     update(a: unknown): Promise<unknown>;
   };
-  project: { findUniqueOrThrow(a: unknown): Promise<{ modelId: string; resolution: string; aspectRatio: string; lockedAt?: Date | null }> };
+  project: { findUniqueOrThrow(a: unknown): Promise<{ modelId: string; resolution: string; aspectRatio: string; lockedAt?: Date | null; kind?: string | null; medium?: string | null; animationStyle?: string | null; episodes?: number | null }> };
   character: { findMany(a: unknown): Promise<{ id: string; name: string }[]> };
   scene: {
     findMany(a: unknown): Promise<{ id: string; index: number; lockedAt?: Date | null; shots: { id: string; index: number; seedImageKey: string | null }[] }[]>;
@@ -119,8 +120,12 @@ export async function applyCanonRevision(
     return { outcome: "rejected", affectedScenes: [], invalidatedShotIds: [], ...base };
   }
 
-  const project0 = await db.project.findUniqueOrThrow({ where: { id: projectId }, select: { modelId: true, resolution: true, aspectRatio: true, lockedAt: true } });
-  const compiled = compileFilm(rev.pkg, { modelId: project0.modelId });
+  const project0 = await db.project.findUniqueOrThrow({
+    where: { id: projectId },
+    select: { modelId: true, resolution: true, aspectRatio: true, lockedAt: true, kind: true, medium: true, animationStyle: true, episodes: true },
+  });
+  // The same style the plan was drawn in (W11): a revised shot keeps the production's look.
+  const compiled = compileFilm(rev.pkg, { modelId: project0.modelId, render: renderStyleFor(productionOf(project0)) });
   const project = project0;
   const [width, height] = outputDimensions(project.resolution, project.aspectRatio);
   const keying = { projectId, modelId: project.modelId, modelVersion: MODEL_VERSIONS[project.modelId] ?? "unknown", width, height };

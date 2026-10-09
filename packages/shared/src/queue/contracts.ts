@@ -12,7 +12,6 @@ export const QUEUES = {
   render: "render-queue",
   lora: "lora-queue",
   localize: "localize-queue",
-  publish: "publish-queue",
   voiceLab: "voice-lab-queue",
   voiceEngine: "voice-engine-queue",
   social: "social-queue",
@@ -67,10 +66,10 @@ export interface SocialJob {
   id: string;
 }
 
+/** final = assemble and deliver the master; upscale = the 4K master from it (docs/33). */
 export interface RenderJob {
   projectId: string;
-  kind: "preview" | "final" | "scene" | "upscale";
-  sceneId?: string;
+  kind: "final" | "upscale";
 }
 
 /** Train a per-character LoRA from the character's reference frames (docs/28). */
@@ -85,15 +84,6 @@ export interface LocalizeJob {
   languages: string[]; // target language codes; e.g. ["es", "fr", "sw"]
 }
 
-/** Publish a finished film/ad to social platforms (docs/31). */
-export interface PublishJob {
-  projectId: string;
-  providers: string[]; // e.g. ["youtube", "tiktok"]
-  title?: string;
-  description?: string;
-  tags?: string[];
-}
-
 export interface JobPayloads {
   [QUEUES.film]: FilmJob;
   [QUEUES.scene]: SceneJob;
@@ -102,7 +92,6 @@ export interface JobPayloads {
   [QUEUES.render]: RenderJob;
   [QUEUES.lora]: LoraJob;
   [QUEUES.localize]: LocalizeJob;
-  [QUEUES.publish]: PublishJob;
   [QUEUES.voiceLab]: VoiceLabJob;
   [QUEUES.voiceEngine]: VoiceEngineJob;
   [QUEUES.social]: SocialJob;

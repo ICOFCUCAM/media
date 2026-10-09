@@ -1,115 +1,96 @@
 # 11 — Audio Systems: Voice, Music, SFX
 
 All audio is generated per scene, placed on a timeline, and mixed by the Render
-Engine ([10](10-ffmpeg-render.md)). Audio jobs run on the `audio-queue`.
+Engine ([10](10-ffmpeg-render.md)). Audio jobs run on the `audio-queue`
+(`apps/worker/src/processors/audio.processor.ts`).
 
-## Voice System
+> **Status (2026-10-09):** the original design here (ElevenLabs, XTTS-v2,
+> Piper, MusicGen, an SFX tagger with AudioGen) was never built. This page now
+> describes what exists. Voice details: [docs/51](51-directoros-voice-engine.md).
 
-### Engines (pluggable, like model-adapters)
-| Engine | Use | Notes |
-|--------|-----|-------|
-| ElevenLabs | premium narration/dialogue | best quality, paid |
-| XTTS-v2 / Coqui | open-source default | self-hosted, voice cloning |
-| Piper | low-latency narration | lightweight |
+## Voice System — the Voice Engine
 
-### Voice cloning
-A character's `voiceProfile` points to a cloned voice (ElevenLabs voiceId or an
-XTTS reference sample in S3). Every line that character speaks uses the same
-voice → consistent across the whole film.
+### Engines
+One **`VoiceEngine`** interface (`packages/voice-contracts/src/engine.ts`) with
+cloud adapters in `apps/worker/src/voice/engines.ts`:
 
-### Types of speech
-- **Narration** — project-level narrator voice.
-- **Dialogue** — `DialogueLine.characterId` → that character's voice + emotion.
-- **Character voices** — bound via Character Bible.
+| Engine id | Provider | Notes |
+|-----------|----------|-------|
+| `fal-minimax` | fal (MiniMax speech + voice clone) | stock and cloned voices |
+| `openai-tts` | OpenAI TTS | stock voices only |
 
-### Flow
-```mermaid
-flowchart LR
-  DL[DialogueLine] --> SEL[Select engine from voiceProfile]
-  SEL --> TTS[Synthesize with emotion + accent]
-  TTS --> S3[(S3 audioKey)]
-  S3 --> TL[Place on scene timeline @ startMs]
-```
+Which engine serves a request is configuration: `VOICE_ENGINES`
+(default `fal-minimax:90,openai-tts:80`, priority order). A cloned voice never
+falls back to a stock narrator; if no configured engine can speak it, the job
+fails and names the engines passed over and why.
 
-### Adapter interface
-```ts
-interface VoiceAdapter {
-  id: string;
-  synthesize(req: {
-    text: string; voiceId: string; emotion?: string;
-    language?: string; speed?: number;
-  }): Promise<{ audioKey: string; durationMs: number }>;
-  clone?(sampleKey: string, name: string): Promise<{ voiceId: string }>;
-}
-```
+Self-hosted engines (Qwen3-TTS, CosyVoice 3, GPT-SoVITS) are **not built**:
+gated on Phase 1 (docs/39) being operationally complete and on licence
+approval.
+
+### Enrollment (cloning)
+- **Consent** (`self` or `authorised`, with time) is required and stored with
+  every voice; enrollment refuses a voice without it.
+- Each recording is **measured and judged** (duration, sample rate, silence
+  share, peak, noise floor; `apps/worker/src/voice/analyze.ts`,
+  `packages/voice-contracts/src/quality.ts`); a poor one is refused with
+  reasons.
+- Engine-side voice ids live in `voice_engine_artifacts` (one per voice ×
+  engine × engine version).
+
+### Speaking and mastering
+Scripts are segmented by paragraph and sentence; each segment is spoken and
+**mastered outside the model** (trim, de-click, denoise, −16 LUFS / −1.5 dBTP,
+48 kHz mono WAV; `apps/worker/src/voice/mastering.ts`), then joined with a
+fixed pause. Jobs run on `voice-engine-queue`.
+
+### API
+The `/v1` API in `apps/api/src/voices` (Supabase session token; owner-only):
+`POST /v1/voices`, `GET`/`DELETE /v1/voices/:id`, `POST /v1/speech`,
+`POST /v1/speech/batch`, `GET /v1/jobs/:id`. Bodies are the zod schemas in
+`packages/voice-contracts/src/api.ts`.
+
+### Film voices and dubbing
+- **Narration and dialogue** — each scene's voice-over and every dialogue line
+  are spoken in order on the Voice Engine. A character speaks in the voice the
+  owner chose (Casting Room) or a built-in voice of their own, the same in
+  every scene; a voice that cannot be used is substituted and reported
+  (`VOICE_SUBSTITUTED`). Per-line audio is stored and placed via
+  `dialogue_lines.audio_key` / `start_ms` (`apps/worker/src/voice/film.ts`).
+- **Dubbing** — localization translates narration and lines per language and
+  speaks them with the same voices, then remuxes the picture
+  (docs/51 §7, `apps/worker/src/processors/localize.processor.ts`).
 
 ## Music System
 
-Scene-aware, mood-tracked soundtrack that adapts to story progression.
+The film's score is **one fal text-to-music call**, made once on the opening
+scene from the brief and every scene's style and mood
+(`apps/worker/src/audio/score.ts`, `FAL_MUSIC_MODEL`, default
+`fal-ai/stable-audio`). The render engine loops it under the cut. If the
+provider is missing or fails, no music track is written and a `TRACK_MISSING`
+degradation is recorded.
 
-### Engines
-- **MusicGen** (Meta, open-source, self-hosted on GPU) — default.
-- **Suno/Udio API** — premium (roadmap, if licensing fits).
-
-### Mood tracking
-The Director annotates each scene with a **mood** (tension, triumph, grief).
-The music system maintains a **score plan** across the film so themes recur and
-intensity follows the dramatic arc (e.g. a "kingdom theme" returns at the
-coronation). Cross-scene continuity of key/tempo avoids jarring jumps.
-
-```mermaid
-flowchart LR
-  SCENES[Scene moods over time] --> PLAN[Score plan: themes + arc]
-  PLAN --> GEN[MusicGen per scene/cue]
-  GEN --> S3[(S3)]
-  GEN --> DUCK[Ducked under dialogue in mix]
-```
-
-### Adapter interface
-```ts
-interface MusicAdapter {
-  id: string;
-  generate(req: {
-    mood: string; durationSec: number; key?: string; tempo?: number;
-    themeRef?: string;     // recurring motif id
-  }): Promise<{ audioKey: string; durationMs: number }>;
-}
-```
+Not built: per-scene cues, a score plan with recurring themes, MusicGen or any
+self-hosted music model.
 
 ## Sound Effects System
 
-Automatic, scene-content-aware SFX: footsteps, crowds, rain, battle, doors,
-animals, etc.
-
-### How cues are derived
-1. The Director/scene summary + shot descriptions are scanned for SFX triggers
-   (NLP keyword + LLM tagging) → `SfxCue[]` with type + timing.
-2. Each cue resolves to either:
-   - a **library asset** (curated CC0/licensed SFX pack in S3), or
-   - **generated SFX** via AudioGen/Stable-Audio for novel sounds.
-3. Cues are placed on the scene timeline (`AudioTrack kind=SFX/AMBIENCE`).
-
-```mermaid
-flowchart LR
-  TXT[Scene + shot text] --> TAG[SFX tagger -> cues]
-  TAG --> RES{Library hit?}
-  RES -->|yes| LIB[Library asset]
-  RES -->|no| GEN[AudioGen/Stable-Audio]
-  LIB --> TL[Timeline placement]
-  GEN --> TL
-```
-
-### Cue model
-```ts
-type SfxCue = { type: string; startMs: number; durationMs: number; gainDb?: number; loop?: boolean };
-```
+**Not built.** There is no SFX generator, library or tagger; the capability
+`sfx_generation` is `not_implemented` (`packages/shared/src/truth/capabilities.ts`)
+and the flow does not enqueue SFX jobs. Films ship without an SFX track.
 
 ## Mixing
-The Render Engine layers: **ambience (bed) → SFX → music (ducked) → voice
-(top)**, normalizes loudness (EBU R128, `loudnorm`), then muxes with video.
+The Render Engine mixes music (`volume=0.6`, ducked under the voice with
+`sidechaincompress`), SFX if present, and voice with `amix`, then normalizes
+loudness to EBU R128 (`loudnorm=I=-16:TP=-1.5`) before muxing with video
+(`apps/worker/src/ffmpeg/commands.ts`). The master's loudness and true peak
+are then checked by the Final Quality Gate (docs/49).
 
 ## Implementation checklist
-- [ ] Voice adapter registry (ElevenLabs + XTTS) + cloning
-- [ ] MusicGen worker + score-plan/mood tracker
-- [ ] SFX tagger + library index + AudioGen fallback
-- [ ] Timeline placement + R128 loudness normalization
+- [x] Voice Engine interface + `fal-minimax` / `openai-tts` adapters, consent, recording QC, mastering (docs/51)
+- [x] Per-character film voices + dubbing
+- [x] Film score via one fal text-to-music call
+- [x] Ducked mix + R128 loudness normalization
+- [ ] Self-hosted voice engines (gated on Phase 1)
+- [ ] Score plan / per-scene cues
+- [ ] SFX generation or library

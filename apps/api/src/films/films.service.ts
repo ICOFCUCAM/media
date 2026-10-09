@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { Queue } from "bullmq";
-import { QUEUES, remainingBudgetMs, type FilmJob, planSceneCount, planShotCount } from "@cineforge/shared";
+import { QUEUES, remainingBudgetMs, type FilmJob, planSceneCount, planShotCount, outputDimensions } from "@cineforge/shared";
 import { estimateFilmMs, isModelAllowed, allowedModels, type Tier } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
 import { GpuService } from "../gpu/gpu.service";
@@ -23,8 +23,9 @@ export class FilmsService {
   constructor(private readonly gpu: GpuService) {}
 
   /** Pre-flight cost estimate in GPU-ms, before anything is generated. */
-  estimate(project: { modelId: string; targetSeconds: number; aspectRatio: string }) {
-    const [width, height] = project.aspectRatio === "9:16" ? [720, 1280] : [1280, 720];
+  estimate(project: { modelId: string; targetSeconds: number; aspectRatio: string; resolution?: string | null }) {
+    // The size the worker will actually generate (every aspect, every format).
+    const [width, height] = outputDimensions(project.resolution ?? "720p", project.aspectRatio);
     return estimateFilmMs(project.modelId, {
       shotCount: planShotCount(project.targetSeconds),
       sceneCount: planSceneCount(project.targetSeconds),

@@ -13,7 +13,7 @@ consumed as source, so there's no build step), and bundles **ffmpeg**.
 
 | Var | Purpose |
 |---|---|
-| `REDIS_URL` | BullMQ queues + realtime pub/sub (**required**) |
+| `REDIS_URL` | BullMQ queues (**required**) |
 | `DATABASE_URL` | Postgres for Prisma — the Supabase **pooled** connection string (**required**) |
 | `S3_*` | Asset storage (`S3_BUCKET/REGION/ENDPOINT/ACCESS_KEY/SECRET_KEY`) |
 | `ANTHROPIC_API_KEY` (+`ANTHROPIC_MODEL`) | Director |

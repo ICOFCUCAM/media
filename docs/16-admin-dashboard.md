@@ -2,6 +2,9 @@
 
 Lives under `apps/web/app/admin` (role=ADMIN, guarded). Backed by
 `apps/api/src/admin`. Real-time panels use the same WebSocket gateway.
+*(Status (2026-10-09): there is no WebSocket gateway — it was deleted; live data
+comes from Supabase Realtime. `apps/api/src/admin` serves only `GET /v1/admin/gpu`
+and `GET /v1/admin/cost`.)*
 
 ## Panels
 ```mermaid
@@ -36,8 +39,9 @@ flowchart TB
   user satisfaction (regeneration rate as a proxy).
 
 ### Job monitoring
-- `bull-board` embed: per-queue waiting/active/failed, DLQ inspection, retry,
-  drill into a film's flow tree. Live via WebSocket.
+- `bull-board` embed: per-queue waiting/active/failed, retry, drill into a
+  film's flow tree. *(Not built. There are no DLQs; failed jobs stay in
+  BullMQ's failed set.)*
 
 ## Admin API
 ```

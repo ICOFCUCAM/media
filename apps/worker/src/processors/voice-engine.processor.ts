@@ -13,13 +13,15 @@ import { analyzeVoiceSample } from "../voice/analyze";
 import { voiceEngine } from "../voice/engines";
 import { runVoiceJob, type VoiceJobDeps } from "../voice/jobs";
 import { joinSegments, masterSegment, measureSpeech } from "../voice/mastering";
+import { meter, meteredEngine } from "../billing";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const storage = new S3Storage();
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
 
-export function prismaVoiceJobDeps(onProgress?: (p: number) => Promise<void>): VoiceJobDeps {
+/** `userId` is the job owner, who pays for the speech (W11 metering). */
+export function prismaVoiceJobDeps(onProgress?: (p: number) => Promise<void>, userId?: string | null): VoiceJobDeps {
   return {
     env: process.env,
     db: {
@@ -60,7 +62,10 @@ export function prismaVoiceJobDeps(onProgress?: (p: number) => Promise<void>): V
         });
       },
     },
-    engine: (id) => voiceEngine(id, process.env),
+    engine: (id) => {
+      const e = voiceEngine(id, process.env);
+      return e && meteredEngine(e, { userId }, meter);
+    },
     download: (key, dest) => storage.download(key, dest),
     upload: (path, key, type) => storage.upload(path, key, type),
     analyze: analyzeVoiceSample,
@@ -74,7 +79,8 @@ export function prismaVoiceJobDeps(onProgress?: (p: number) => Promise<void>): V
 export const voiceEngineWorker = new Worker<VoiceEngineJob>(
   QUEUES.voiceEngine,
   async (job) => {
-    const out = await runVoiceJob(job.data.jobId, prismaVoiceJobDeps((p) => job.updateProgress(p)));
+    const owner = await prisma.voiceJob.findUnique({ where: { id: job.data.jobId }, select: { userId: true } });
+    const out = await runVoiceJob(job.data.jobId, prismaVoiceJobDeps((p) => job.updateProgress(p), owner?.userId));
     console.log(`[voice-engine] job ${job.data.jobId} ${out.status}`);
     return out;
   },

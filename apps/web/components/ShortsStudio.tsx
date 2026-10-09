@@ -46,10 +46,12 @@ export function ShortsStudio() {
 
   function onCreate() {
     run({
-      prompt: `Vertical ${platform.name} short (${platform.aspect}, ${effSeconds}s). Hook: ${hook}. ${caption}`,
+      // Vertical framing comes from the format and the aspect (W11), not from prompt words.
+      prompt: `Hook: ${hook}.${caption ? ` ${caption}` : ""}${hashtags.trim() ? `\n\nPosted on ${platform.name} with: ${hashtags.trim()}` : ""}`,
       modelId: "wan-2.1",
       targetSeconds: effSeconds,
       aspectRatio: platform.aspect,
+      production: { kind: "social_short", medium: "live_action", animationStyle: null },
     });
     if (window.innerWidth < 1024) document.getElementById("studio-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }

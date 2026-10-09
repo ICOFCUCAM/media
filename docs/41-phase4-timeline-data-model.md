@@ -44,7 +44,7 @@ Governing order: docs/38 §AX.2, Phase 4, built on the Phase 2 clock (docs/40).
 | `buildTimelineDraft`: today's scenes, shots, dialogue and audio tracks become a draft on the clock (frames, samples, anchors, no clipping, overruns reported) | `packages/shared/src/timeline/` |
 | Saving the next draft version; `timeline:build` operator command | `apps/worker/src/timeline/` |
 | Video generation ledger: every GPU attempt with its report and outcome | `apps/worker/src/runtime/ledger.ts` |
-| Render conform = the clock's plan (FFmpeg `round=near:eof_action=pass`), verified frame by frame against real FFmpeg at 24, 23.976, 25 and 29.97 fps | `apps/worker/src/ffmpeg/commands.ts`, `conform.media.test.ts` |
+| Render conform = the clock's plan (FFmpeg `round=near:eof_action=pass`), verified frame by frame against real FFmpeg at 24, 23.976, 25 and 29.97 fps. Used by the render only with `RENDER_NORMALIZE=1`; the default light pass re-encodes at `LIGHT_FPS` = 16 (`render-engine.ts`, `masterFormat()`) | `apps/worker/src/ffmpeg/commands.ts`, `conform.media.test.ts` |
 
 ## Applying the migrations (operator)
 

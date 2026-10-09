@@ -34,11 +34,12 @@ All Node images are multi-stage (pnpm fetch → build → slim runtime).
 ## Kubernetes (prod) — `infra/k8s` (Helm)
 - Deployments: `web`, `api`, `worker-*` (one per queue), each with **HPA**
   (CPU/RPS, or KEDA on queue depth for workers).
-- `api` exposed via Ingress + WAF + CDN. WebSocket uses Redis adapter.
+- `api` exposed via Ingress + WAF + CDN. (No WebSocket tier: live updates are Supabase Realtime.)
 - PgBouncer sidecar/service for Postgres pooling.
 - Secrets via Sealed Secrets / external-secrets.
 - GPU workers are **not** in k8s — they live on RunPod, reached over the queue +
-  HTTP; the autoscaler runs as a small Deployment.
+  HTTP; the GPU lifecycle manager (`packages/gpu`) runs inside the worker
+  process (`apps/worker/src/main.ts`), not as a separate autoscaler.
 
 ## Monitoring & logging — `infra/monitoring`
 ```mermaid
@@ -54,8 +55,8 @@ flowchart LR
   exporter, RunPod metrics.
 - **Grafana** dashboards: API latency/RPS/errors, queue depth/throughput, GPU
   utilization/cost, render times, revenue/margin (from [16](16-admin-dashboard.md)).
-- **Alertmanager** rules: queue backlog, GPU stuck, error-rate spike, DLQ
-  growth, low credits-grant failures, Stripe webhook failures.
+- **Alertmanager** rules: queue backlog, GPU stuck, error-rate spike,
+  failed-job growth (there are no DLQs), low credits-grant failures, Stripe webhook failures.
 - **Loki** structured logs (pino, request-id correlation). **OpenTelemetry**
   tracing across API→queue→worker→GPU.
 

@@ -2,6 +2,13 @@
 
 All diagrams are Mermaid (render on GitHub).
 
+> **Status (2026-10-09):** these diagrams are the original target. There is no
+> WebSocket layer: the Socket.IO gateway and `packages/realtime` were deleted.
+> The web app writes and reads Supabase directly and gets live status from
+> Supabase Realtime on `projects`; the worker's project poller picks up new
+> projects. `apps/api` authenticates Supabase session tokens and is deployable
+> but not deployed (docs/04).
+
 ## 1. High-level system
 
 ```mermaid
@@ -16,7 +23,7 @@ flowchart TB
   end
 
   subgraph AppTier[Stateless App Tier - autoscaled]
-    API[NestJS API: REST + WS + JWT]
+    API[NestJS API: REST + Supabase session JWT]
   end
 
   subgraph DataTier
@@ -192,7 +199,7 @@ flowchart LR
 |-------|-------------------|
 | Web | Stateless, CDN-fronted, horizontal replicas |
 | API | Stateless, HPA on CPU/RPS, sticky-free (JWT) |
-| WebSocket | Redis adapter for multi-node fan-out |
+| Live updates | Supabase Realtime (Postgres Changes, RLS-scoped); no WebSocket tier |
 | Workers | Per-queue replica count, concurrency tuning, BullMQ priorities |
 | GPU | RunPod autoscale by queue depth, idle shutdown, per-model pools |
 | Postgres | Read replicas, PgBouncer pooling, partition large tables |

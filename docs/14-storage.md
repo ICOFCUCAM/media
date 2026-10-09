@@ -16,7 +16,7 @@ cineforge-assets/
       audio/voice/{lineId}.wav
       audio/music/{trackId}.mp3
       audio/sfx/{trackId}.wav
-      scene.mp4                                 # per-scene render
+      scene.mp4                                 # per-scene render (not produced today; no `scene` render kind)
     renders/{renderJobId}/work/...              # transient render workspace
     film/
       final.mp4

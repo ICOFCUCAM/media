@@ -90,7 +90,9 @@ function video(req: CanonicalMediaRequest, p: ModelProfile, flavour: "wan" | "hu
     `${e.location}: ${e.description}, ${e.timeOfDay}${e.flashback ? ", remembered as a flashback" : ""}.`,
     `${sizeWords(c.size)}, ${ANGLES[c.angle] ?? c.angle}${c.lens ? `, ${c.lens} lens` : ""}; ${move}.`,
     `Lighting: ${e.lighting}.`,
-    `Look: ${req.style.palette}; ${req.style.texture}; cinematic film.`,
+    req.style.render
+      ? `Look: ${req.style.render.look}; ${req.style.palette}; ${req.style.render.motion}.`
+      : `Look: ${req.style.palette}; ${req.style.texture}; cinematic film.`,
   ], p.maxPromptChars, dropped);
 }
 
@@ -103,7 +105,9 @@ function still(req: CanonicalMediaRequest, p: ModelProfile, dropped: string[]): 
     `Subject: ${who(req).join("; ") || "the setting itself"}.`,
     `Action and mood: ${req.visualIntent.action}${req.visualIntent.emotion ? `; ${req.visualIntent.emotion}` : ""}.`,
     `Framing: ${sizeWords(c.size)}, ${ANGLES[c.angle] ?? c.angle}${c.lens ? `, ${c.lens} lens look` : ""}${c.screenDirection ? `, subject facing screen ${c.screenDirection}` : ""}.`,
-    `Style: photorealistic cinematic film still; ${req.style.palette}; ${req.style.texture}.`,
+    req.style.render
+      ? `Style: ${req.style.render.look}; ${req.style.palette}. Not a photograph.`
+      : `Style: photorealistic cinematic film still; ${req.style.palette}; ${req.style.texture}.`,
     `Constraints: keep every listed face, hairstyle, mark and garment exactly as described; no text, captions, watermarks or logos.`,
     `Intended use: the first frame of a ${req.durationSec}-second film shot.`,
   ], p.maxPromptChars, dropped);
@@ -116,7 +120,7 @@ export function compileFor(modelId: string, req: CanonicalMediaRequest): Compile
     ? still(req, profile, dropped)
     : video(req, profile, modelId === "hunyuan" ? "hunyuan" : "wan", dropped);
   if (!profile.cameraMotion && !profile.still && req.camera.movement !== "static") dropped.push(`camera movement (${req.camera.movement})`);
-  const negativePrompt = profile.negativePrompt ? VIDEO_NEGATIVE : null;
+  const negativePrompt = profile.negativePrompt ? (req.style.render ? `${VIDEO_NEGATIVE}, ${req.style.render.avoid}` : VIDEO_NEGATIVE) : null;
   if (!profile.negativePrompt && !profile.still) dropped.push("negative prompt (not supported)");
   const hash = createHash("sha256").update(JSON.stringify([modelId, prompt, negativePrompt])).digest("hex");
   return { modelId, prompt, negativePrompt, dropped, hash };

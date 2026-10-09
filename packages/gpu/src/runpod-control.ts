@@ -11,6 +11,7 @@
  * Endpoints below target RunPod's GraphQL/REST control API; calibrate to the
  * exact API version at integration time.
  */
+import { providerUrl } from "@cineforge/shared";
 export interface RunpodControlOptions {
   apiKey: string;
   /** Pod id (pods mode) — resume/stop this pod. */
@@ -19,7 +20,7 @@ export interface RunpodControlOptions {
   endpointId?: string;
   /** Readiness URL of the gpu-worker (`/livez`, public; docs/39). */
   healthUrl: string;
-  apiBase?: string; // default https://api.runpod.io
+  apiBase?: string; // default RUNPOD_API_URL, else the public API
 }
 
 export type GpuPowerState = "RUNNING" | "STARTING" | "STOPPED" | "UNKNOWN";
@@ -28,7 +29,7 @@ export class RunpodControlClient {
   private readonly base: string;
 
   constructor(private readonly opts: RunpodControlOptions) {
-    this.base = opts.apiBase ?? "https://api.runpod.io";
+    this.base = opts.apiBase ?? providerUrl("runpod");
   }
 
   private async gql(query: string, variables: Record<string, unknown>): Promise<unknown> {

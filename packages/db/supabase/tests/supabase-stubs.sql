@@ -79,3 +79,22 @@ do $$ begin
   create type public.project_status as enum ('DRAFT', 'PLANNING', 'GENERATING', 'RENDERING', 'PAUSED', 'READY', 'FAILED');
 exception when duplicate_object then null; end $$;
 alter table public.shots add column if not exists seed_image_key text;
+-- service_role + users balance/tier + usage_records for 0044 (real: Supabase, 0001, 0002).
+do $$ begin
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin bypassrls; end if;
+end $$;
+do $$ begin
+  create type public.tier as enum ('FREE', 'CREATOR', 'STUDIO', 'ENTERPRISE');
+exception when duplicate_object then null; end $$;
+alter table public.users add column if not exists tier public.tier not null default 'FREE';
+alter table public.users add column if not exists credits_ms integer not null default 0;
+alter table public.users add column if not exists stripe_id text;
+create table if not exists public.usage_records (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.users (id) on delete cascade,
+  project_id uuid,
+  gpu_ms     int not null default 0,
+  kind       text not null,
+  cost_usd   double precision not null default 0,
+  created_at timestamptz not null default now()
+);
