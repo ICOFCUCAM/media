@@ -11,6 +11,7 @@ import {
 import { MODEL_VERSIONS } from "@cineforge/model-adapters";
 import {
   canonVersion,
+  checkFilmContinuity,
   cinemaAdvisories,
   compileFilm,
   IntelligenceError,
@@ -22,6 +23,7 @@ import {
 import { intelligence } from "../intelligence";
 import { stubPackage } from "./stub";
 import { shotGenerationFields, statePatchRow } from "./rows";
+import type { GateResult } from "../quality/gates";
 
 /**
  * Director — planning service (DirectorOS W2: One-Pass Intelligence /
@@ -55,6 +57,8 @@ export interface FilmPlan {
   scenes: PlannedScene[];
   /** Gaps in the plan — recorded by the caller. */
   degradations: Degradation[];
+  /** Story and continuity gates of the plan (W5 gate chain) — recorded by the caller. */
+  gates: GateResult[];
 }
 
 /** The plan must fit what was estimated and charged (scene count, shot budget, runtime). */
@@ -116,8 +120,27 @@ export class DirectorService {
 
     // 3: compile + persist.
     const scenes = await persistPlan(projectId, project, plan);
-    return { projectId, modelId: project.modelId, scenes, degradations: planDegradations(plan.pkg, project.modelId) };
+    return { projectId, modelId: project.modelId, scenes, degradations: planDegradations(plan.pkg, project.modelId), gates: planGates(plan) };
   }
+}
+
+/**
+ * The plan's place in the gate chain: it reached here only by passing the
+ * story and canon validators (a revision counts as a warning); continuity
+ * warnings across every planned shot are listed.
+ */
+export function planGates(plan: Pick<PlanResult, "pkg" | "revised" | "fixedIssues">): GateResult[] {
+  const story: GateResult = {
+    gate: "story",
+    outcome: plan.revised ? "warn" : "pass",
+    findings: plan.revised
+      ? [{ code: "PLAN_REVISED", severity: "warn", message: `the first plan had ${plan.fixedIssues.length} issue(s); the revision fixed them`, detail: { issues: plan.fixedIssues.slice(0, 20).map((i) => `${i.stage}/${i.code}`) } }]
+      : [],
+  };
+  const warnings = checkFilmContinuity(plan.pkg).flatMap(({ sceneId, shotIndex, result }) =>
+    result.violations.map((v) => ({ code: v.code, severity: "warn" as const, message: `${sceneId}#${shotIndex}: ${v.message}` })));
+  const continuity: GateResult = { gate: "continuity", outcome: warnings.length ? "warn" : "pass", findings: warnings.slice(0, 50) };
+  return [story, continuity];
 }
 
 /** What the plan records but does not fail on: film-grammar advisories and model prompt limits (W4). */

@@ -10,7 +10,10 @@
  * phantom key. What the film ran without (outro, 4K) is recorded and shown.
  */
 import { UnrecoverableError, Worker } from "bullmq";
-import { QUEUES, type RenderJob, parseLanguages, degradation, type Degradation } from "@cineforge/shared";
+import { QUEUES, type RenderJob, parseLanguages, degradation, isProductionFailure, type Degradation } from "@cineforge/shared";
+import { judgeMaster, qualityMode, type GateResult } from "../quality/gates";
+import { measureMedia } from "../quality/measure";
+import { recordGates, type GateDb } from "../quality/recorder";
 import { recordDegradations, type DegradationDb } from "../truth/recorder";
 import { prisma } from "@cineforge/db";
 import { NarrationOverrunError } from "../ffmpeg/commands";
@@ -25,6 +28,18 @@ const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 /** 4K upscale (docs/33): final.mp4 -> fal video upscaler -> final_4k.mp4. */
 const record = (projectId: string, ds: Degradation[]) =>
   recordDegradations(prisma as unknown as DegradationDb, projectId, ds);
+
+/** The film-level gate chain rows (W5): the master's technical + audio results, editorial pending (W8). */
+async function recordFilmGates(projectId: string, quality: GateResult[]) {
+  if (!quality.length) return;
+  const editorial: GateResult = { gate: "editorial", outcome: "skipped", findings: [] }; // Editor Agent: W8
+  await recordGates(prisma as unknown as GateDb, projectId, "film", "film", [...quality, editorial]);
+}
+
+/** Final Quality Gate (W5): measure the local master with ffmpeg and judge it. Delivery spec: -16 LUFS, true peak ≤ -1 dBTP. */
+const masterGate = (filmSec: number) => async (path: string, ctx: { hasSound: boolean; filmSec: number | undefined }) =>
+  judgeMaster(await measureMedia(path, { loudness: true }),
+    { durationSec: ctx.filmSec ?? filmSec, hasSound: ctx.hasSound, integratedLufs: -16, truePeakMaxDbtp: -1 }, qualityMode());
 
 async function upscaleFilm(projectId: string) {
   const apiKey = process.env.FAL_KEY;
@@ -143,12 +158,16 @@ export const renderWorker = new Worker<RenderJob>(
           assets,
           (p) => realtime.emit("render.progress", { projectId, renderJobId: job.id, progress: p }),
           kit ? { logoKey: kit.logoKey, primaryColor: kit.primaryColor, outroText: kit.outroText } : undefined,
-          { filmSec: durationSec },
+          { filmSec: durationSec, gate: masterGate(durationSec) },
         );
         mp4Key = out.mp4Key;
         hlsKey = out.hlsKey;
         posterKey = out.posterKey;
         await record(projectId, out.degradations);
+        await recordFilmGates(projectId, out.quality);
+        // What the gate noted without blocking is shown on the project.
+        await record(projectId, out.quality.filter((r) => r.outcome === "warn").flatMap((r) => r.findings.map((f) =>
+          degradation("QUALITY_FLAGGED", "film", `Final check (${r.gate}): ${f.message}.`, { severity: f.severity === "fail" ? "major" : "info", detail: { code: f.code, ...f.detail } }))));
         console.log(`[render] assembly done project=${projectId} mp4=${mp4Key}`);
       } else if (process.env.S3_ENDPOINT) {
         // PRODUCTION with storage configured but NO clips to assemble: the shots
@@ -236,8 +255,11 @@ export const renderWorker = new Worker<RenderJob>(
       await realtime
         .emit("error", { projectId, scope: "render", message: err instanceof Error ? err.message : String(err) })
         .catch(() => {});
-      // A timeline mismatch is deterministic: retrying renders the same overrun.
-      const final = err instanceof NarrationOverrunError;
+      // A failed Final Quality Gate is recorded with its findings.
+      const gateFailure = isProductionFailure(err) && err.code === "QUALITY_GATE_FAILED";
+      if (gateFailure) await recordFilmGates(projectId, ((err.detail as { quality?: GateResult[] } | undefined)?.quality) ?? []).catch(() => {});
+      // A timeline mismatch or a failed gate is deterministic: retrying renders the same film.
+      const final = err instanceof NarrationOverrunError || gateFailure;
       // Email once, on the final attempt — not on every retry.
       if (final || job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) await notifyFinish(projectId, "FAILED", short);
       if (final) throw new UnrecoverableError(short);

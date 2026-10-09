@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { degradation, type Degradation } from "@cineforge/shared";
 import type { GenerationContext, RequestImage, VisualReviewResult } from "@cineforge/movie";
+import type { GateResult } from "../quality/gates";
 
 export type VisualReviewMode = "off" | "record" | "enforce";
 
@@ -99,4 +100,17 @@ export function frameGrabber(
       await rm(dir, { recursive: true, force: true });
     }
   };
+}
+
+/** The visual gate's outcome as a gate-chain result (quality_gate_results). */
+export function visualGateResult(o: VisualGateOutcome, mode: VisualReviewMode): GateResult {
+  if (mode === "off") return { gate: "visual", outcome: "skipped", findings: [] };
+  if (!o.result) {
+    return { gate: "visual", outcome: "skipped", findings: o.gaps.map((g) => ({ code: g.code, severity: "warn" as const, message: g.message, detail: g.detail })) };
+  }
+  const findings = o.result.findings.filter((f) => f.status === "mismatch").map((f) => ({
+    code: `VISUAL_${f.check.toUpperCase()}_MISMATCH`, severity: f.blocking ? (mode === "enforce" ? "fail" as const : "warn" as const) : "warn" as const,
+    message: `${f.subjectId}: ${f.observation}`,
+  }));
+  return { gate: "visual", outcome: o.failure ? "fail" : findings.length ? "warn" : "pass", findings };
 }

@@ -1008,3 +1008,21 @@ model WardrobeReference {
   @@index([projectId], map: "wardrobe_references_project_idx")
   @@map("wardrobe_references")
 }
+
+/// Quality gate results (migration 0035): one row per gate run on a shot or
+/// the film; append-only.
+model QualityGateResult {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  scope     String
+  refId     String   @map("ref_id")
+  gate      String
+  outcome   String
+  findings  Json     @default("[]")
+  attempt   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([projectId, createdAt], map: "quality_gate_results_project_idx")
+  @@index([scope, refId], map: "quality_gate_results_ref_idx")
+  @@map("quality_gate_results")
+}

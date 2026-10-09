@@ -20,7 +20,8 @@ export type FailureCode =
   | "AUDIO_MIX_FAILED" // a film would ship without its sound
   | "STORAGE_UNCONFIGURED"
   | "CONTINUITY_VIOLATION" // a shot contradicts canon (Continuity Engine, blocking) — not generated
-  | "VISUAL_REVIEW_FAILED" // the generated frame contradicts canon twice (VISUAL_REVIEW=enforce)
+  | "VISUAL_REVIEW_FAILED" // the generated frame contradicts canon (VISUAL_REVIEW=enforce)
+  | "QUALITY_GATE_FAILED" // a shot or the film failed its quality gates after the allowed regenerations
   | "MODERATION_UNAVAILABLE"; // only when MODERATION_REQUIRED=1
 
 /** Gaps that are recorded and shown, never hidden. */
@@ -43,7 +44,8 @@ export type DegradationCode =
   | "VISUAL_REVIEW_UNAVAILABLE" // the generated frame was not reviewed (no vision provider / frame)
   | "VISUAL_REVIEW_FLAGGED" // the Visual Reviewer found the frame contradicts canon (record mode)
   | "PROMPT_LIMITED" // the video model could not take part of the shot's canonical request (length, motion, negative prompt)
-  | "CINEMA_ADVISORY"; // a film-grammar advisory on the plan (establishing shot, size repeat/jump, screen direction)
+  | "CINEMA_ADVISORY" // a film-grammar advisory on the plan (establishing shot, size repeat/jump, screen direction)
+  | "QUALITY_FLAGGED"; // a quality gate found a defect it does not block on (record mode) or a minor one
 
 export type DegradationSeverity = "info" | "warning" | "major";
 export type DegradationScope = "project" | "scene" | "shot" | "film" | "locale";
@@ -80,6 +82,7 @@ const SEVERITY: Record<DegradationCode, DegradationSeverity> = {
   VISUAL_REVIEW_FLAGGED: "major",
   PROMPT_LIMITED: "info",
   CINEMA_ADVISORY: "info",
+  QUALITY_FLAGGED: "warning",
 };
 
 export function degradation(
