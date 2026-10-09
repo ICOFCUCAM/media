@@ -199,7 +199,13 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
       status: has(env, "FAL_KEY") ? "experimental" : "unavailable",
       realExecution: has(env, "FAL_KEY"),
     }),
-    cap({ capability: "sfx_generation", provider: null, status: "not_implemented", realExecution: false }),
+    // W16: each scene's ambience bed and planned effects from the text-to-audio model.
+    cap({
+      capability: "sfx_generation",
+      provider: has(env, "FAL_KEY") && env.SOUND_DESIGN !== "0" ? "fal" : null,
+      status: env.SOUND_DESIGN === "0" ? "disabled" : has(env, "FAL_KEY") ? "experimental" : "unavailable",
+      realExecution: has(env, "FAL_KEY") && env.SOUND_DESIGN !== "0",
+    }),
     cap({
       capability: "translation",
       provider: tr.available ? tr.provider : null,
