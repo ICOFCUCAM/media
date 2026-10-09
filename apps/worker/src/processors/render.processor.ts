@@ -24,6 +24,7 @@ import { notifyFinish } from "../notify";
 import { meter } from "../billing";
 import { enqueueLocalize } from "../orchestration/localize-queue";
 import { voiceContinuity } from "../voice/continuity";
+import { syncAfterRender } from "../avsync/run";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
@@ -243,6 +244,24 @@ export const renderWorker = new Worker<RenderJob>(
 
       console.log(`[render] READY project=${projectId} film=${film.id} duration=${durationSec}s`);
       await notifyFinish(projectId, "READY");
+
+      // A/V sync on what was made (W18; §39–40): the production timeline is
+      // built from the finished scenes and the sync engine checks every clip.
+      // Recorded, never blocking; RENDER_SYNC_CHECK=0 skips it.
+      if (hasClips && process.env.RENDER_SYNC_CHECK !== "0") {
+        try {
+          const storage = new S3Storage();
+          const sync = await syncAfterRender(prisma as never, (k, d) => storage.download(k, d), projectId, renderProfile().policy.id as string);
+          console.log(`[render] sync ${JSON.stringify(sync)}`);
+          if (sync.status === "checked" && !sync.passed) {
+            await record(projectId, [degradation("QUALITY_FLAGGED", "film",
+              `The A/V sync check found ${sync.issues} issue(s) in the finished film${sync.errors ? `, ${sync.errors} of them errors` : ""}; see the sync report.`,
+              { detail: { gate: "sync", timelineId: sync.timelineId, issues: sync.issues, errors: sync.errors } })]);
+          }
+        } catch (e) {
+          console.warn(`[render] sync check skipped: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
 
       // 4K export (docs/33): CHOICE-driven — runs when the creator picked the
       // 4K format at create time (the picker is plan-classified in the UI;
