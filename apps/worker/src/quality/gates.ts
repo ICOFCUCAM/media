@@ -10,6 +10,7 @@
  *          film has sound): recorded in `record` mode, regenerated / failed in
  *          `enforce` mode (QUALITY_GATES)
  *   warn   worth knowing (slightly short, loudness off target, a long black run)
+ *   info   a measurement on record, not a defect (the Visual Reviewer's scores)
  *
  * The gate chain of a film (§39): story → visual → continuity → audio →
  * technical → editorial. Every result is recorded (quality_gate_results).
@@ -17,7 +18,7 @@
 
 export type GateName = "story" | "visual" | "continuity" | "audio" | "technical" | "editorial";
 export type GateOutcome = "pass" | "warn" | "fail" | "skipped";
-export type FindingSeverity = "fatal" | "fail" | "warn";
+export type FindingSeverity = "fatal" | "fail" | "warn" | "info";
 
 export interface GateFinding {
   code: string;
@@ -52,6 +53,25 @@ export interface MediaFacts {
   /** Integrated loudness and true peak (masters with audio). */
   loudness?: { integratedLufs: number; truePeakDbtp: number | null } | null;
   sha256?: string;
+  /** How it is encoded (W18): codecs, pixel format, frame rates, audio layout, container vs counted duration. */
+  format?: {
+    videoCodec: string | null; pixFmt: string | null; avgFps: number | null; rFps: number | null;
+    audioCodec: string | null; channels: number | null; sampleRate: number | null; containerSec: number | null;
+  } | null;
+}
+
+/** Frame-level checks shared by clips and masters (W18; §40.1). */
+function frameChecks(f: MediaFacts, F: (code: string, severity: FindingSeverity, message: string, detail?: Record<string, unknown>) => void, prefix: "CLIP" | "MASTER") {
+  const fm = f.format;
+  if (!fm || !f.durationSec) return;
+  if (fm.avgFps && fm.rFps && Math.abs(fm.avgFps - fm.rFps) / fm.rFps > 0.01) {
+    F(`${prefix}_VARIABLE_FRAME_RATE`, "warn", `variable frame rate (${fm.avgFps.toFixed(2)} average, ${fm.rFps.toFixed(2)} nominal)`, { avgFps: fm.avgFps, rFps: fm.rFps });
+  }
+  // The frames actually counted cover less time than the container claims: frames are missing.
+  if (fm.containerSec && fm.containerSec - f.durationSec > Math.max(0.2, fm.containerSec * 0.03)) {
+    F(`${prefix}_FRAMES_MISSING`, "warn", `${f.durationSec.toFixed(2)}s of frames in a ${fm.containerSec.toFixed(2)}s container`, { framesSec: f.durationSec, containerSec: fm.containerSec });
+  }
+  if (fm.avgFps && fm.avgFps < 10) F(`${prefix}_LOW_FRAME_RATE`, "warn", `${fm.avgFps.toFixed(1)} fps`, { fps: fm.avgFps });
 }
 
 const covered = (iv: [number, number][]) => iv.reduce((a, [s, e]) => a + Math.max(0, e - s), 0);
@@ -60,7 +80,7 @@ const longest = (iv: [number, number][]) => iv.reduce((a, [s, e]) => Math.max(a,
 export function outcomeOf(findings: GateFinding[], mode: QualityMode): GateOutcome {
   if (findings.some((f) => f.severity === "fatal")) return "fail";
   if (findings.some((f) => f.severity === "fail")) return mode === "enforce" ? "fail" : "warn";
-  return findings.length ? "warn" : "pass";
+  return findings.some((f) => f.severity === "warn") ? "warn" : "pass";
 }
 
 /** Technical QC of one generated clip against what was requested. */
@@ -84,6 +104,7 @@ export function judgeClip(f: MediaFacts, want: { durationSec: number; width: num
     if (f.width && f.height && (f.width < want.width * 0.9 || f.height < want.height * 0.9)) {
       F("CLIP_UNDERSIZED", "warn", `${f.width}×${f.height} delivered for ${want.width}×${want.height}`, { width: f.width, height: f.height });
     }
+    frameChecks(f, F, "CLIP");
   }
   return { gate: "technical", outcome: outcomeOf(out, mode), findings: out };
 }
@@ -91,7 +112,7 @@ export function judgeClip(f: MediaFacts, want: { durationSec: number; width: num
 /** Final Quality Gate of the assembled master: technical + audio. */
 export function judgeMaster(
   f: MediaFacts,
-  want: { durationSec: number; hasSound: boolean; integratedLufs: number; truePeakMaxDbtp: number },
+  want: { durationSec: number; hasSound: boolean; integratedLufs: number; truePeakMaxDbtp: number; sampleRate?: number },
   mode: QualityMode,
 ): GateResult[] {
   const tech: GateFinding[] = [];
@@ -110,6 +131,11 @@ export function judgeMaster(
     const inner = f.black.filter(([s, e]) => s > 1 && e < d - 1);
     if (longest(inner) > 2) T("MASTER_BLACK_RUN", "warn", `a ${longest(inner).toFixed(1)}s black run inside the film`);
     if (longest(f.frozen) > 3) T("MASTER_FROZEN_RUN", "warn", `a ${longest(f.frozen).toFixed(1)}s frozen run`);
+    frameChecks(f, T, "MASTER");
+    // Delivery format (W18): H.264 in 4:2:0 plays everywhere; anything else is worth knowing.
+    const fm = f.format;
+    if (fm?.videoCodec && fm.videoCodec !== "h264") T("MASTER_VIDEO_CODEC", "warn", `video codec ${fm.videoCodec} (expected h264)`, { codec: fm.videoCodec });
+    if (fm?.pixFmt && fm.pixFmt !== "yuv420p") T("MASTER_PIXEL_FORMAT", "warn", `pixel format ${fm.pixFmt} (expected yuv420p)`, { pixFmt: fm.pixFmt });
   }
   if (f.readable && f.hasVideo) {
     if (want.hasSound && !f.hasAudio) A("MASTER_SILENT", "fail", "the film should have sound but the master has no audio");
@@ -120,11 +146,41 @@ export function judgeMaster(
         A("TRUE_PEAK_HIGH", "warn", `true peak ${f.loudness.truePeakDbtp.toFixed(1)} dBTP (max ${want.truePeakMaxDbtp})`);
       }
     } else if (f.hasAudio) A("LOUDNESS_UNMEASURED", "warn", "loudness could not be measured");
+    const fm = f.format;
+    if (f.hasAudio && fm) {
+      if (fm.audioCodec && fm.audioCodec !== "aac") A("AUDIO_CODEC", "warn", `audio codec ${fm.audioCodec} (expected aac)`, { codec: fm.audioCodec });
+      if (fm.sampleRate && want.sampleRate && fm.sampleRate !== want.sampleRate) A("AUDIO_SAMPLE_RATE", "warn", `${fm.sampleRate} Hz (delivery ${want.sampleRate} Hz)`, { sampleRate: fm.sampleRate });
+      if (fm.channels !== null && (fm.channels < 1 || fm.channels > 2)) A("AUDIO_CHANNELS", "warn", `${fm.channels} audio channels (expected mono or stereo)`, { channels: fm.channels });
+    }
   }
   return [
     { gate: "technical", outcome: outcomeOf(tech, mode), findings: tech },
     { gate: "audio", outcome: f.readable && f.hasVideo ? outcomeOf(audio, mode) : "skipped", findings: audio },
   ];
+}
+
+/** The latest finished editorial review of a project, as the editorial gate reads it (W13 reviews; W18). */
+export interface EditorialSnapshot {
+  status: string;
+  summary: string | null;
+  findings: unknown[];
+  /** Proposals the owner has not yet approved or rejected. */
+  openProposals: number;
+}
+
+/**
+ * The editorial pass of the film's gate chain (§39; W18). Editorial review is
+ * advisory and asked for by the owner, so it never blocks: no review → skipped;
+ * an applied review → pass; a review whose notes or proposals are still open
+ * → warn, with them on record.
+ */
+export function editorialGate(r: EditorialSnapshot | null): GateResult {
+  if (!r || (r.status !== "ready" && r.status !== "applied")) return { gate: "editorial", outcome: "skipped", findings: [] };
+  if (r.status === "applied") return { gate: "editorial", outcome: "pass", findings: [] };
+  const out: GateFinding[] = [];
+  if (r.openProposals) out.push({ code: "EDITORIAL_PROPOSALS_OPEN", severity: "warn", message: `${r.openProposals} edit proposal(s) not yet decided`, detail: { open: r.openProposals } });
+  if (r.findings.length) out.push({ code: "EDITORIAL_NOTES", severity: "warn", message: (r.summary ?? `${r.findings.length} editorial note(s)`).slice(0, 300), detail: { notes: r.findings.length } });
+  return { gate: "editorial", outcome: out.length ? "warn" : "pass", findings: out };
 }
 
 /** True when a result must stop the shot / film (fatal always; fail in enforce mode). */

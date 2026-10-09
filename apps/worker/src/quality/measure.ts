@@ -7,7 +7,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RequestImage } from "@cineforge/movie";
-import { measureBlack, measureFreezes, measureLoudness, probeSize, probeStreams, sha256File } from "../ffmpeg/analysis";
+import { measureBlack, measureFreezes, measureLoudness, probeFormat, probeSize, probeStreams, sha256File } from "../ffmpeg/analysis";
 import { ffmpeg } from "../ffmpeg/ffmpeg";
 import type { MediaFacts } from "./gates";
 
@@ -23,12 +23,13 @@ export async function measureMedia(path: string, opts: { loudness?: boolean } = 
   }
   const durationSec = sec(streams.durationUs);
   const total = streams.durationUs ?? undefined;
-  const [size, black, frozen, sha256, loud] = await Promise.all([
+  const [size, black, frozen, sha256, loud, format] = await Promise.all([
     streams.hasVideo ? probeSize(path).catch(() => null) : Promise.resolve(null),
     streams.hasVideo ? measureBlack(path).catch(() => []) : Promise.resolve([]),
     streams.hasVideo ? measureFreezes(path, total).catch(() => []) : Promise.resolve([]),
     sha256File(path),
     opts.loudness && streams.hasAudio ? measureLoudness(path).catch(() => null) : Promise.resolve(null),
+    probeFormat(path).catch(() => null),
   ]);
   return {
     readable: true,
@@ -41,15 +42,37 @@ export async function measureMedia(path: string, opts: { loudness?: boolean } = 
     frozen: frozen.map((i) => [sec(i.startUs)!, sec(i.endUs)!] as [number, number]),
     loudness: loud ? { integratedLufs: loud.integratedLufs, truePeakDbtp: loud.truePeakDbtp } : null,
     sha256,
+    format,
   };
 }
 
 /** One JPEG frame from the middle of a local clip, 768 px wide. */
-export async function grabFrame(path: string, durationSec: number | null, dir: string): Promise<RequestImage> {
-  const out = join(dir, "frame.jpg");
-  const mid = Math.max(0, (durationSec ?? 0) / 2);
-  await ffmpeg(["-y", "-ss", mid.toFixed(3), "-i", path, "-frames:v", "1", "-vf", "scale=768:-2", "-q:v", "4", out]);
+export async function grabFrame(path: string, durationSec: number | null, dir: string, at = 0.5, name = "frame.jpg"): Promise<RequestImage> {
+  const out = join(dir, name);
+  const t = Math.max(0, (durationSec ?? 0) * at);
+  await ffmpeg(["-y", "-ss", t.toFixed(3), "-i", path, "-frames:v", "1", "-vf", "scale=768:-2", "-q:v", "4", out]);
   return { mediaType: "image/jpeg", data: (await readFile(out)).toString("base64") };
+}
+
+/** Where in a clip the Visual Reviewer looks (W18): near the start, the middle, near the end. */
+export const REVIEW_POINTS = [0.08, 0.5, 0.92] as const;
+
+/**
+ * Start, middle and end frames, in order (W18). A clip too short to tell them
+ * apart (< 1 s) gives the middle frame only; a frame that cannot be taken is
+ * skipped as long as the middle one exists.
+ */
+export async function grabFrames(path: string, durationSec: number | null, dir: string): Promise<RequestImage[]> {
+  if (!durationSec || durationSec < 1) return [await grabFrame(path, durationSec, dir)];
+  const out: RequestImage[] = [];
+  for (const [i, at] of REVIEW_POINTS.entries()) {
+    const f = await grabFrame(path, durationSec, dir, at, `frame-${i}.jpg`).catch((e: unknown) => {
+      if (at === 0.5) throw e;
+      return null;
+    });
+    if (f) out.push(f);
+  }
+  return out;
 }
 
 /** The clip's last frame as JPEG bytes (end-state memory for the next shot). */
@@ -63,12 +86,12 @@ export interface ClipInspection {
   facts: MediaFacts;
   /** Last frame, when asked for and the clip has picture. */
   endFrame?: Uint8Array | null;
-  /** Mid-clip frame for the Visual Reviewer, when asked for and the clip has picture. */
-  frame: RequestImage | null;
+  /** Start / middle / end frames for the Visual Reviewer (W18), when asked for and the clip has picture; empty otherwise. */
+  frames: RequestImage[];
   frameError?: string;
 }
 
-/** Download a stored clip once, measure it, optionally grab a frame, clean up. */
+/** Download a stored clip once, measure it, optionally grab the review frames, clean up. */
 export async function inspectClip(
   download: (key: string, dest: string) => Promise<void>,
   key: string,
@@ -79,18 +102,18 @@ export async function inspectClip(
     const clip = join(dir, "clip.mp4");
     await download(key, clip);
     const facts = await measureMedia(clip);
-    let frame: RequestImage | null = null;
+    let frames: RequestImage[] = [];
     let frameError: string | undefined;
     if (opts.frame && facts.hasVideo) {
       try {
-        frame = await grabFrame(clip, facts.durationSec, dir);
+        frames = await grabFrames(clip, facts.durationSec, dir);
       } catch (e) {
         frameError = e instanceof Error ? e.message.slice(0, 200) : String(e);
       }
     }
     let endFrame: Uint8Array | null = null;
     if (opts.endFrame && facts.hasVideo) endFrame = await grabLastFrame(clip, dir).catch(() => null);
-    return { facts, frame, frameError, endFrame };
+    return { facts, frames, frameError, endFrame };
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

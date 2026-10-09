@@ -38,9 +38,9 @@
     },
     {
       "id": "review.visual",
-      "version": 1,
-      "purpose": "Visual Reviewer: does a generated frame show what canon says the shot must show (Part 2 §62; W5)?",
-      "sha256": "d7ede091e8e03724aa5f1e81cd64365b3901e773f04e50de62bbdf763edc862a",
+      "version": 2,
+      "purpose": "Visual Reviewer: does a generated shot show what canon and the shot plan say it must show, and how well (Part 1 §16–17, Part 2 §62; W5, W18)?",
+      "sha256": "f786eedd4882b6bf38ab011fe17445269f09cf1f1ff5d22e8d22e88956f0eebf",
       "score": null,
       "scoredAt": null,
       "model": null

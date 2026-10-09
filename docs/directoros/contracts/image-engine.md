@@ -75,4 +75,5 @@ owner can choose a different take before a shot is filmed.
 ## 8. Status
 
 FUNCTIONAL. Self-hosted image models are gated. Style and camera reference
-images and per-dimension frame scores are open.
+images are open. Per-dimension frame scores came in W18 (quality-depth.md)
+and break ties between candidates.

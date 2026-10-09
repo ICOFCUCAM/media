@@ -23,9 +23,11 @@ describe.runIf(HAVE_FFMPEG)("Visual Reviewer frame grab with real media", () => 
     if (dir) await rm(dir, { recursive: true, force: true });
   });
 
-  it("returns one mid-clip JPEG, scaled to 768 px wide", async () => {
+  it("returns start, middle and end JPEGs, scaled to 768 px wide", async () => {
     const grab = frameGrabber((_key, dest) => copyFile(join(dir, "clip.mp4"), dest), (args) => ffmpeg(args), probeDuration);
-    const img = await grab("projects/p/shots/s.mp4");
+    const frames = await grab("projects/p/shots/s.mp4");
+    expect(frames).toHaveLength(3);
+    const img = frames[1]!;
     expect(img.mediaType).toBe("image/jpeg");
     const bytes = Buffer.from(img.data, "base64");
     expect([bytes[0], bytes[1]]).toEqual([0xff, 0xd8]); // JPEG SOI

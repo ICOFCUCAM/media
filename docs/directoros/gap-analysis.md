@@ -224,8 +224,8 @@ Conflicts to settle (decisions in §10):
 | 13 Model compilers | not built | adapters pass prompts verbatim (fal truncates at 2000) | BUILD per-model compilers keyed by registry id |
 | 14 Canonical media request | shallow | `ShotRequest` is the closest analogue | CHANGE: `CanonicalMediaRequest` in shared; persisted per shot for provenance |
 | 15 Image generation | built (W6, W17) | `images/providers.ts`, `images/ledger.ts` | Done: N seeded candidates ranked against canon, each recorded; the owner can choose another take (docs/50, docs/62) |
-| 16 Visual Reviewer | not built | `Shot.qcScore` never set; QC statuses unused | BUILD multimodal reviewer → structured scores → PASS/REVISE loop (bounded) |
-| 17 Video review | shallow | timing gate + black/freeze validator; avsync CLI-only | BUILD frame extraction + visual/continuity/motion evaluators → PASS/REGENERATE via repair planner |
+| 16 Visual Reviewer | built (W5, W18) | `movie/src/review/visual.ts`, `review/visual-gate.ts` | Done: a vision model judges canon, defects and camera on start/middle/end frames and scores five dimensions; a blocking result regenerates the shot (bounded) (docs/63) |
+| 17 Video review | built (W5, W18) | `quality/measure.ts`, `review/visual-gate.ts`, `avsync/run.ts` | Done: three frames per clip reviewed; technical, frame-rate and format checks; the sync engine runs on the finished film; repairs are planned, not yet executed (docs/63) |
 | 18 Audio architecture | built (W16) | `movie/src/sound/plan.ts`, audio processor | Done: per-scene ambience beds and shot-anchored effects generated and placed beside dialogue and score (docs/61) |
 | 19 Voice identity | built (W7b, W15) | `voice/film.ts` | Done: each character speaks in the chosen or a fixed built-in voice with fixed traits (docs/51, docs/60) |
 | 20 Audio continuity | built (W16) | `ffmpeg/commands.ts`, `sync/mix.ts` | Done: dialogue-anchored mix, score and ambience ducked, stem levels and loudness/true peak from the production profile, ambience beds as room tone (docs/61) |
@@ -246,8 +246,8 @@ Conflicts to settle (decisions in §10):
 | 36 Shot-to-shot memory | not built | shots run in parallel, no last-frame conditioning | BUILD end-state records + optional sequential edges |
 | 37 Scene lock | not built | no APPROVED/LOCKED status | BUILD DB-enforced lock (0028 trigger pattern) |
 | 38 Film lock | shallow | timeline `frozen` status, no workflow | BUILD film-lock transaction; master renders from locked versions |
-| 39 Quality gates | not built | QC omitted; scenes READY unconditionally | BUILD 6-pass gate chain; failure → revise, not export |
-| 40 Technical QC | shallow | strong primitives not in the path; DOS-40.2 **built** | UPGRADE: run `analyzeSync` + probes as a blocking stage |
+| 39 Quality gates | built (W5, W18) | `quality/gates.ts`, `quality/recorder.ts` | Done: story, continuity, visual, audio, technical and editorial passes recorded per project; blocking results revise or fail (docs/63) |
+| 40 Technical QC | built (W5, W18) | `quality/gates.ts`, `ffmpeg/analysis.ts`, `avsync/run.ts` | Done: format, frame-rate, missing-frame and audio-format checks on clips and the master; `analyzeSync` runs after every final render (recorded, not blocking) (docs/63) |
 | 41 Cost optimization | shallow | estimate, budget pause, cache; auto mode skips storyboard approval | BUILD approval gate: no video without an approved storyboard |
 | 42–43 Two/three-pass | not built | single pass | BUILD STORY→PREVIS→FINAL pass state; three-pass default |
 | 44 UI | shallow | StoryboardStudio + RunPanel | BUILD 3-column workspace + timeline strip |
@@ -841,6 +841,24 @@ existing engines, migrations 0046–0047 live.
 - OPEN: CineForge's own image system (ComfyUI) waits on Phase 1; style and
   camera reference images; per-dimension frame scores.
 
+### W18 — Quality depth (Part 1 §16–17, §39–40)
+
+**Done (docs/63, 2026-10-09; no migration).**
+
+- BUILT Visual Reviewer v2: start, middle and end frames of every clip;
+  emotion, hands, objects and camera movement beside the canon checks; five
+  0–100 scores recorded on the visual gate (§16–17).
+- BUILT technical QC depth: codec, pixel format, average vs nominal frame
+  rate, missing frames, low frame rate; the master's audio codec, sample rate
+  and channels (§40.1).
+- BUILT A/V sync in the render path: after every final render a production
+  timeline is built from what was made and the sync engine checks it; a
+  failed check is recorded as QUALITY_FLAGGED (§39–40).
+- BUILT the editorial pass of the gate chain from the latest editorial review
+  (§39.1).
+- OPEN: rendering from an approved timeline (§40.3); the repair engine that
+  executes planned sync repairs; calibrating the reviewer before enforce mode.
+
 ---
 
 ## 9. Sequenced roadmap
@@ -869,6 +887,7 @@ approved models wait for docs/38 gates.
 | **S15 Voice Studio** | W15 readings on the Voice Engine, per-use licences, voice traits, speech ledger | W7, W14 | S14 |
 | **S16 Sound design** | W16 ambience, effects, profile-driven mix | W7, W10 | S15 |
 | **S17 Image Engine** | W17 image record, fal provider, place and prop references, takes | W6 | S16 |
+| **S18 Quality depth** | W18 reviewer v2, technical QC depth, sync after render, editorial pass | W5, Phase 5 | S17 |
 
 W11 hygiene items ride along with whichever stage touches the same files.
 
@@ -893,4 +912,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-487 IDs: 295 built, 97 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 295 (71%) are built; 97 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W17, 2026-10-09.)
+487 IDs: 300 built, 92 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 300 (73%) are built; 92 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W18, 2026-10-09.)

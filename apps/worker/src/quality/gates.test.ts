@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideShot, judgeClip, judgeMaster, qualityMode, type MediaFacts } from "./gates";
+import { decideShot, editorialGate, judgeClip, judgeMaster, qualityMode, type MediaFacts } from "./gates";
 import { _resetGateRecorder, recordGates, type GateDb } from "./recorder";
 
 const ok: MediaFacts = { readable: true, hasVideo: true, hasAudio: false, durationSec: 5, width: 1280, height: 720, black: [], frozen: [] };
@@ -64,6 +64,49 @@ describe("Final Quality Gate (master)", () => {
     expect(codes(judgeMaster({ ...master, black: [[10, 13]] }, spec, "enforce")[0]!)).toEqual(["MASTER_BLACK_RUN"]);
     expect(judgeMaster({ ...master, durationSec: 12 }, spec, "enforce")[0]!.outcome).toBe("fail");
     expect(judgeMaster({ ...master, readable: false }, spec, "record")[0]!.outcome).toBe("fail");
+  });
+
+  it("delivery format (W18): codec, pixel format, sample rate and channels are warnings", () => {
+    const good = { videoCodec: "h264", pixFmt: "yuv420p", avgFps: 24, rFps: 24, audioCodec: "aac", channels: 2, sampleRate: 48_000, containerSec: 30 };
+    const s48 = { ...spec, sampleRate: 48_000 };
+    expect(judgeMaster({ ...master, format: good }, s48, "enforce").map((r) => r.outcome)).toEqual(["pass", "pass"]);
+    const odd = judgeMaster({ ...master, format: { ...good, videoCodec: "hevc", pixFmt: "yuv444p", audioCodec: "opus", channels: 6, sampleRate: 44_100 } }, s48, "enforce");
+    expect(odd.map((r) => r.outcome)).toEqual(["warn", "warn"]);
+    expect(codes(odd[0]!)).toEqual(["MASTER_VIDEO_CODEC", "MASTER_PIXEL_FORMAT"]);
+    expect(codes(odd[1]!)).toEqual(["AUDIO_CODEC", "AUDIO_SAMPLE_RATE", "AUDIO_CHANNELS"]);
+  });
+});
+
+describe("frame-level checks (W18)", () => {
+  const good = { videoCodec: "h264", pixFmt: "yuv420p", avgFps: 24, rFps: 24, audioCodec: null, channels: null, sampleRate: null, containerSec: 5 };
+
+  it("constant frame rate with all frames present passes", () => {
+    expect(judgeClip({ ...ok, format: good }, want, "enforce").outcome).toBe("pass");
+  });
+
+  it("variable frame rate, missing frames and a very low frame rate are warnings", () => {
+    expect(codes(judgeClip({ ...ok, format: { ...good, avgFps: 21.7 } }, want, "enforce"))).toEqual(["CLIP_VARIABLE_FRAME_RATE"]);
+    expect(codes(judgeClip({ ...ok, durationSec: 4.6, format: good }, want, "enforce"))).toEqual(["CLIP_FRAMES_MISSING"]);
+    expect(codes(judgeClip({ ...ok, durationSec: 4.9, format: good }, want, "enforce"))).toEqual([]);
+    const low = judgeClip({ ...ok, format: { ...good, avgFps: 8, rFps: 8 } }, want, "enforce");
+    expect([low.outcome, codes(low)]).toEqual(["warn", ["CLIP_LOW_FRAME_RATE"]]);
+  });
+
+  it("the master gets the same checks under its own prefix", () => {
+    const master: MediaFacts = { ...ok, durationSec: 30, format: { ...good, avgFps: 20, containerSec: 30 } };
+    expect(codes(judgeMaster(master, { durationSec: 30, hasSound: false, integratedLufs: -16, truePeakMaxDbtp: -1 }, "record")[0]!)).toEqual(["MASTER_VARIABLE_FRAME_RATE"]);
+  });
+});
+
+describe("editorial pass (W18)", () => {
+  it("skipped without a finished review; pass once applied; open notes and proposals warn, never block", () => {
+    expect(editorialGate(null).outcome).toBe("skipped");
+    expect(editorialGate({ status: "failed", summary: null, findings: [], openProposals: 0 }).outcome).toBe("skipped");
+    expect(editorialGate({ status: "applied", summary: "tightened", findings: [{}], openProposals: 0 }).outcome).toBe("pass");
+    expect(editorialGate({ status: "ready", summary: "fine", findings: [], openProposals: 0 }).outcome).toBe("pass");
+    const open = editorialGate({ status: "ready", summary: "scene 3 drags", findings: [{}, {}], openProposals: 2 });
+    expect([open.outcome, codes(open)]).toEqual(["warn", ["EDITORIAL_PROPOSALS_OPEN", "EDITORIAL_NOTES"]]);
+    expect(open.findings.every((f) => f.severity === "warn")).toBe(true);
   });
 });
 

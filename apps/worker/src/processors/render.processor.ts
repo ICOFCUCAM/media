@@ -11,7 +11,7 @@
  */
 import { UnrecoverableError, Worker } from "bullmq";
 import { QUEUES, type RenderJob, parseLanguages, degradation, isProductionFailure, mixSpec, syncPolicy, type Degradation } from "@cineforge/shared";
-import { judgeMaster, qualityMode, type GateResult } from "../quality/gates";
+import { editorialGate, judgeMaster, qualityMode, type GateResult } from "../quality/gates";
 import { measureMedia } from "../quality/measure";
 import { recordGates, type GateDb } from "../quality/recorder";
 import { recordDegradations, type DegradationDb } from "../truth/recorder";
@@ -24,6 +24,7 @@ import { notifyFinish } from "../notify";
 import { meter } from "../billing";
 import { enqueueLocalize } from "../orchestration/localize-queue";
 import { voiceContinuity } from "../voice/continuity";
+import { syncAfterRender } from "../avsync/run";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
@@ -31,10 +32,16 @@ const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const record = (projectId: string, ds: Degradation[]) =>
   recordDegradations(prisma as unknown as DegradationDb, projectId, ds);
 
-/** The film-level gate chain rows (W5): the master's technical + audio results, editorial pending (W8). */
+/** The film-level gate chain rows (W5): the master's technical + audio results and the editorial pass (W18). */
 async function recordFilmGates(projectId: string, quality: GateResult[]) {
   if (!quality.length) return;
-  const editorial: GateResult = { gate: "editorial", outcome: "skipped", findings: [] }; // Editor Agent: W8
+  const latest = await prisma.editorialReview.findFirst({
+    where: { projectId, status: { in: ["ready", "applied"] } }, orderBy: { createdAt: "desc" },
+    select: { status: true, summary: true, findings: true, _count: { select: { proposals: { where: { status: "proposed" } } } } },
+  }).catch(() => null); // before migration 0048
+  const editorial = editorialGate(latest && {
+    status: latest.status, summary: latest.summary, findings: Array.isArray(latest.findings) ? latest.findings : [], openProposals: latest._count.proposals,
+  });
   await recordGates(prisma as unknown as GateDb, projectId, "film", "film", [...quality, editorial]);
 }
 
@@ -51,7 +58,7 @@ export function renderProfile(env: NodeJS.ProcessEnv = process.env) {
 /** Final Quality Gate (W5): measure the local master with ffmpeg and judge it against the profile's delivery spec. */
 const masterGate = (filmSec: number, delivery: { integratedLufs: number; truePeakDbtp: number }) => async (path: string, ctx: { hasSound: boolean; filmSec: number | undefined }) =>
   judgeMaster(await measureMedia(path, { loudness: true }),
-    { durationSec: ctx.filmSec ?? filmSec, hasSound: ctx.hasSound, integratedLufs: delivery.integratedLufs, truePeakMaxDbtp: delivery.truePeakDbtp }, qualityMode());
+    { durationSec: ctx.filmSec ?? filmSec, hasSound: ctx.hasSound, integratedLufs: delivery.integratedLufs, truePeakMaxDbtp: delivery.truePeakDbtp, sampleRate: 48_000 }, qualityMode());
 
 async function upscaleFilm(projectId: string) {
   const apiKey = process.env.FAL_KEY;
@@ -205,7 +212,7 @@ export const renderWorker = new Worker<RenderJob>(
         await record(projectId, out.degradations);
         await recordFilmGates(projectId, out.quality);
         // What the gate noted without blocking is shown on the project.
-        await record(projectId, out.quality.filter((r) => r.outcome === "warn").flatMap((r) => r.findings.map((f) =>
+        await record(projectId, out.quality.filter((r) => r.outcome === "warn").flatMap((r) => r.findings.filter((f) => f.severity !== "info").map((f) =>
           degradation("QUALITY_FLAGGED", "film", `Final check (${r.gate}): ${f.message}.`, { severity: f.severity === "fail" ? "major" : "info", detail: { code: f.code, ...f.detail } }))));
         console.log(`[render] assembly done project=${projectId} mp4=${mp4Key}`);
       } else if (process.env.S3_ENDPOINT) {
@@ -243,6 +250,24 @@ export const renderWorker = new Worker<RenderJob>(
 
       console.log(`[render] READY project=${projectId} film=${film.id} duration=${durationSec}s`);
       await notifyFinish(projectId, "READY");
+
+      // A/V sync on what was made (W18; §39–40): the production timeline is
+      // built from the finished scenes and the sync engine checks every clip.
+      // Recorded, never blocking; RENDER_SYNC_CHECK=0 skips it.
+      if (hasClips && process.env.RENDER_SYNC_CHECK !== "0") {
+        try {
+          const storage = new S3Storage();
+          const sync = await syncAfterRender(prisma as never, (k, d) => storage.download(k, d), projectId, renderProfile().policy.id as string);
+          console.log(`[render] sync ${JSON.stringify(sync)}`);
+          if (sync.status === "checked" && !sync.passed) {
+            await record(projectId, [degradation("QUALITY_FLAGGED", "film",
+              `The A/V sync check found ${sync.issues} issue(s) in the finished film${sync.errors ? `, ${sync.errors} of them errors` : ""}; see the sync report.`,
+              { detail: { gate: "sync", timelineId: sync.timelineId, issues: sync.issues, errors: sync.errors } })]);
+          }
+        } catch (e) {
+          console.warn(`[render] sync check skipped: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
 
       // 4K export (docs/33): CHOICE-driven — runs when the creator picked the
       // 4K format at create time (the picker is plan-classified in the UI;

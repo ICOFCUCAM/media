@@ -74,6 +74,49 @@ export async function probeStreams(input: string): Promise<StreamFacts> {
   return { hasVideo: Boolean(v), hasAudio: Boolean(a), durationUs, frameRate: rate, frameCount: frames, sampleRate: a?.sample_rate ? Number(a.sample_rate) : null };
 }
 
+/** How a file is encoded (W18 technical QC): codecs, pixel format, frame rates, audio layout, container duration. */
+export interface FormatFacts {
+  videoCodec: string | null;
+  pixFmt: string | null;
+  /** Average and nominal frame rates (fps); they differ for variable-frame-rate video. */
+  avgFps: number | null;
+  rFps: number | null;
+  audioCodec: string | null;
+  channels: number | null;
+  sampleRate: number | null;
+  /** The container's duration (seconds), to set against the frames actually counted. */
+  containerSec: number | null;
+}
+
+const fps = (r: string | undefined): number | null => {
+  if (!r || r === "0/0") return null;
+  const [n, d] = r.split("/").map(Number);
+  return n && d ? n / d : Number.isFinite(Number(r)) && Number(r) > 0 ? Number(r) : null;
+};
+
+/** Parse ffprobe's stream/format JSON (pure; exported for tests). */
+export function parseFormat(json: string): FormatFacts {
+  const j = JSON.parse(json) as { streams?: Array<Record<string, string | number>>; format?: { duration?: string } };
+  const v = j.streams?.find((x) => x.codec_type === "video");
+  const a = j.streams?.find((x) => x.codec_type === "audio");
+  return {
+    videoCodec: (v?.codec_name as string) ?? null,
+    pixFmt: (v?.pix_fmt as string) ?? null,
+    avgFps: fps(v?.avg_frame_rate as string),
+    rFps: fps(v?.r_frame_rate as string),
+    audioCodec: (a?.codec_name as string) ?? null,
+    channels: a?.channels !== undefined ? Number(a.channels) : null,
+    sampleRate: a?.sample_rate !== undefined ? Number(a.sample_rate) : null,
+    containerSec: j.format?.duration ? Number(j.format.duration) : null,
+  };
+}
+
+export async function probeFormat(input: string): Promise<FormatFacts> {
+  const { stdout } = await run("ffprobe", ["-v", "error", "-show_entries",
+    "stream=codec_type,codec_name,pix_fmt,avg_frame_rate,r_frame_rate,channels,sample_rate:format=duration", "-of", "json", input]);
+  return parseFormat(stdout);
+}
+
 export async function measureLoudness(input: string): Promise<Ebur128Summary | null> {
   return parseEbur128Summary(await stderrOf(ebur128Args(input)));
 }

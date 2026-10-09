@@ -1,7 +1,8 @@
 /**
  * Visual quality gate for generated shots (DirectorOS W5; Part 2 §62 at the
- * pixel level). After a clip is verified in storage, a frame from its middle
- * is reviewed against the Continuity Engine's corrected generation context.
+ * pixel level). After a clip is verified in storage, its start, middle and end
+ * frames (W18) are reviewed against the Continuity Engine's corrected
+ * generation context and the shot's planned camera.
  *
  *   VISUAL_REVIEW=record   (default) a contradiction is a recorded major
  *                          degradation; the shot still becomes READY
@@ -15,8 +16,9 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { degradation, type Degradation } from "@cineforge/shared";
-import type { GenerationContext, RequestImage, VisualReviewResult } from "@cineforge/movie";
-import type { GateResult } from "../quality/gates";
+import { SCORE_DIMENSIONS, type GenerationContext, type RequestImage, type VisualReviewResult } from "@cineforge/movie";
+import type { GateFinding, GateResult } from "../quality/gates";
+import { REVIEW_POINTS } from "../quality/measure";
 
 export type VisualReviewMode = "off" | "record" | "enforce";
 
@@ -28,7 +30,8 @@ export function visualReviewMode(env: Record<string, string | undefined> = proce
 export interface VisualGateDeps {
   /** Whether a vision route is configured. */
   available(): boolean;
-  grabFrame(videoKey: string): Promise<RequestImage>;
+  /** The frames to review, in time order (start, middle, end for a clip). */
+  grabFrames(videoKey: string): Promise<RequestImage[]>;
   review(ctx: GenerationContext, frames: RequestImage[]): Promise<VisualReviewResult>;
 }
 
@@ -58,15 +61,16 @@ export async function gateVisual(
   if (!deps.available()) return unavailable("no vision provider configured (visual_review route)");
   let result: VisualReviewResult;
   try {
-    const frame = await deps.grabFrame(videoKey);
-    result = await deps.review(ctx, [frame]);
+    const frames = await deps.grabFrames(videoKey);
+    if (!frames.length) throw new Error("no frame could be taken from the clip");
+    result = await deps.review(ctx, frames);
   } catch (e) {
     return unavailable(e instanceof Error ? e.message.slice(0, 200) : String(e));
   }
   const verified = result.findings.filter((f) => f.status !== "cannot_tell");
   const qcScore = verified.length ? verified.filter((f) => f.status === "match").length / verified.length : null;
   console.log(JSON.stringify({
-    event: "visual.review", shotId, passed: result.passed, unverified: result.unverified, qcScore, provider: result.provider, model: result.model,
+    event: "visual.review", shotId, passed: result.passed, unverified: result.unverified, qcScore, scores: result.scores, provider: result.provider, model: result.model,
   }));
   if (result.passed) return { gaps: [], qcScore, result };
   const blocking = result.findings.filter((f) => f.blocking);
@@ -81,21 +85,26 @@ export async function gateVisual(
   };
 }
 
-/** One JPEG frame from the middle of a stored clip (ffmpeg). */
+/** JPEG frames near the start, at the middle and near the end of a stored clip (ffmpeg; W18). */
 export function frameGrabber(
   download: (key: string, dest: string) => Promise<void>,
   ffmpeg: (args: string[]) => Promise<void>,
   probeDuration: (path: string) => Promise<number>,
-): (videoKey: string) => Promise<RequestImage> {
+): (videoKey: string) => Promise<RequestImage[]> {
   return async (videoKey) => {
     const dir = await mkdtemp(join(tmpdir(), "cf-review-"));
     try {
       const clip = join(dir, "clip.mp4");
-      const out = join(dir, "frame.jpg");
       await download(videoKey, clip);
-      const mid = Math.max(0, (await probeDuration(clip)) / 2);
-      await ffmpeg(["-y", "-ss", mid.toFixed(3), "-i", clip, "-frames:v", "1", "-vf", "scale=768:-2", "-q:v", "4", out]);
-      return { mediaType: "image/jpeg", data: (await readFile(out)).toString("base64") };
+      const d = await probeDuration(clip);
+      const points = d >= 1 ? REVIEW_POINTS : [0.5];
+      const frames: RequestImage[] = [];
+      for (const [i, at] of points.entries()) {
+        const out = join(dir, `frame-${i}.jpg`);
+        await ffmpeg(["-y", "-ss", Math.max(0, d * at).toFixed(3), "-i", clip, "-frames:v", "1", "-vf", "scale=768:-2", "-q:v", "4", out]);
+        frames.push({ mediaType: "image/jpeg", data: (await readFile(out)).toString("base64") });
+      }
+      return frames;
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
@@ -108,9 +117,19 @@ export function visualGateResult(o: VisualGateOutcome, mode: VisualReviewMode): 
   if (!o.result) {
     return { gate: "visual", outcome: "skipped", findings: o.gaps.map((g) => ({ code: g.code, severity: "warn" as const, message: g.message, detail: g.detail })) };
   }
-  const findings = o.result.findings.filter((f) => f.status === "mismatch").map((f) => ({
+  const findings: GateFinding[] = o.result.findings.filter((f) => f.status === "mismatch").map((f) => ({
     code: `VISUAL_${f.check.toUpperCase()}_MISMATCH`, severity: f.blocking ? (mode === "enforce" ? "fail" as const : "warn" as const) : "warn" as const,
     message: `${f.subjectId}: ${f.observation}`,
   }));
-  return { gate: "visual", outcome: o.failure ? "fail" : findings.length ? "warn" : "pass", findings };
+  const outcome = o.failure ? "fail" : findings.length ? "warn" : "pass";
+  // The reviewer's per-dimension scores (W18) ride along as an info finding: on record, never a defect.
+  const s = o.result.scores;
+  if (s) {
+    findings.push({
+      code: "VISUAL_SCORES", severity: "info",
+      message: SCORE_DIMENSIONS.map((d) => `${d} ${s[d] ?? "n/a"}`).join(", "),
+      detail: { ...s, reviewer: `${o.result.provider}:${o.result.model}` },
+    });
+  }
+  return { gate: "visual", outcome, findings };
 }
