@@ -8,10 +8,11 @@ import {
 import { signedUrl } from "../lib/storyboard";
 import { useCapabilities } from "../lib/truth";
 import { Status } from "./cf/primitives";
+import { EditorPanel } from "./EditorPanel";
 
 const TASK_LABEL: Record<string, string> = {
   film_plan: "Plan", film_plan_revision: "Plan revision", visual_review: "Frame review",
-  translation: "Translation", social_kit: "Launch kit", edit_interpret: "Instruction",
+  translation: "Translation", social_kit: "Launch kit", edit_interpret: "Instruction", editorial: "Editor",
 };
 const BAR_TONE: Record<string, string> = {
   scene: "bg-cf-fg/15", shot: "bg-cf-accent/40", dialogue: "bg-sky-500/40", narration: "bg-amber-500/40", music_cue: "bg-emerald-500/30",
@@ -202,7 +203,7 @@ export function DirectorWorkspace({ projectId }: { projectId: string }) {
           ) : (
             <>
               <div className="mt-3 max-h-[360px] space-y-2 overflow-y-auto pr-1">
-                {chat.length === 0 && <p className="text-[12px] text-cf-muted">Tell the Director what to change — “give Maya a red coat from the harbour on”, “she has a cut above her eye after the fight”.</p>}
+                {chat.length === 0 && <p className="text-[12px] text-cf-muted">Tell the Director what to change — “give Maya a red coat from the harbour on”, “she has a cut above her eye after the fight”, “make the opening 15 seconds faster”.</p>}
                 {chat.map((m) => (
                   <div key={m.id} className={`rounded px-3 py-2 text-[13px] leading-relaxed ${m.author === "owner" ? "ml-6 bg-cf-panel" : "mr-6 border border-cf-line"}`}>
                     {m.body}
@@ -250,6 +251,9 @@ export function DirectorWorkspace({ projectId }: { projectId: string }) {
           )}
         </section>
       </div>
+
+      {/* The Editor (W13): reviews the whole cut and proposes structured edits. */}
+      <EditorPanel projectId={projectId} enabled={!chatOff} />
     </div>
   );
 }

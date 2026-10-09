@@ -229,7 +229,7 @@ Conflicts to settle (decisions in §10):
 | 18 Audio architecture | shallow | per-scene audio; one score; no SFX/foley/room tone | BUILD a per-shot `AudioPlan` wired to generators |
 | 19 Voice identity | not built | `Character.voiceProfile` unused; every line in "onyx" | BUILD `Character.voiceId` → Voice Engine (W7) |
 | 20 Audio continuity | shallow | ducking + loudnorm −16 hard-coded, ignores `SyncPolicy` | UPGRADE: policy targets, per-speaker matching, de-click, crossfades, room tone |
-| 21 Editor Agent | not built | nearest typed ops are `RepairAction` | BUILD typed `EditOperation`s applied to a new timeline version |
+| 21 Editor Agent | built (W13) | `packages/movie/src/edit`, `apps/worker/src/editor`, Editor panel | Done: typed `EditOperation`s, whole-cut review, owner-approved apply (docs/58) |
 | 22 Compilable movie | shallow | pipeline real; timeline IR CLI-only | BUILD persisted stage compilers Source→Film→Scene→Shot→Media→Timeline→Master |
 | 23 Film IR | not built | no IR; `FilmDraft` thin | BUILD `packages/movie` IR schemas (zod + JSON Schema) |
 | 24 Validator | shallow | tool schema + lenient `coerceDraft` defaults (`llm.ts:203-235`) | BUILD schema→canon→continuity→production→budget validators; CHANGE coerce to fail-and-revise |
@@ -518,8 +518,9 @@ applied live). Every clip measured before READY (unusable clips never pass),
 bounded regenerate-with-new-seed on a blocking result, Final Quality Gate on
 the master before delivery, the gate chain recorded per project. Modes:
 `QUALITY_GATES=record` (default) / `enforce`; `VISUAL_REVIEW` as before.
-Moved to W8: the Editor Agent (it edits timeline versions; the editorial gate
-is recorded as skipped until then). Carried forward: hands/objects/motion
+Moved to W8, built in W13 (docs/58): the Editor Agent. The editorial gate in
+the gate chain is still recorded as skipped: the Editor proposes, the owner
+decides. Carried forward: hands/objects/motion
 judgement, codec and dropped-frame checks, calibration before enforce (W10).
 
 - CHANGE "never self-certify": HEAD + ffprobe + sha256 + technical QC before
@@ -529,7 +530,7 @@ judgement, codec and dropped-frame checks, calibration before enforce (W10).
 - BUILD the Visual Reviewer (image) and video evaluators (identity, hands,
   motion, continuity) → structured scores → PASS / REVISE / REGENERATE, bounded
   retries, via `repair-planner`.
-- BUILD the Editor Agent (typed `EditOperation`s on a new timeline version).
+- BUILT in W13: the Editor Agent (typed `EditOperation`s, docs/58).
 - BUILD the 6-pass gate chain (story → visual → continuity → audio → technical
   → editorial) and fold it into docs/38 Phases 9–10 (repair, Final Quality
   Gate). `COMPLETE` only after the gate.
@@ -619,7 +620,7 @@ FINAL passes with database-enforced approvals (opt-in at creation), the edit
 command (edit_requests → canon revision → only affected shots regenerate),
 dependency edges per shot, scene snapshots before any re-plan or canon edit,
 play/restore earlier takes. Carried forward: three passes as the default
-(owner decision), rough voice/timing in previs, the Editor Agent.
+(owner decision), rough voice/timing in previs. The Editor Agent is W13.
 
 - BUILD entity → scene → shot → media dependency edges at compile time;
   invalidation re-queues only affected shots.
@@ -733,6 +734,32 @@ existing engines, migrations 0046–0047 live.
   sound-effect generator (§178.4, §180, §181.5); seasons beyond Season 1
   (§178.2).
 
+### W13 — Editor Agent and the directorial roles (Part 1 §21, §26–27, §46)
+
+**Done (docs/58, 2026-10-09; migration 0048 applied live).**
+
+- BUILT structured edit operations: CUT_SHOT, TRIM_SHOT, EXTEND_SHOT,
+  SHORTEN_SCENE, MOVE_SCENE, ADD_INSERT, REMOVE_LINE — a closed vocabulary,
+  applied as a pure function on the Film IR, validated like a canon revision
+  (story, canon, film grammar, lines never cut short) (§21.2–21.3).
+- BUILT Editorial Intelligence (`editor.review` v1): the nine questions of
+  §21.1 over the cut on its timecodes, with proposals; every proposal is
+  dry-run and dropped with its reason when impossible (§21.1).
+- BUILT timing requests: the Director chat hands "make the opening 15 seconds
+  faster" to the Editor (`director.edit` v2), which proposes the exact edits
+  (§46).
+- BUILT the apply: approved edits together; re-cuts keep their clips
+  (`shots.cut_sec`, the render trims to it), cut shots go, extensions and
+  inserts regenerate, removed lines re-voice the scene; stale reviews and
+  locked scenes/films refused; the film resumes and the master renders as a
+  new version.
+- BUILT the Editor panel in the Director workspace.
+- BUILT the directorial roles registry (§27.2): Director, Story, Visual,
+  Audio, Continuity, Editor/QC — every prompt belongs to exactly one.
+- OPEN: separate Script/Shot/Music agents (§26.1) are not built, by design
+  (§27, Part 2 §85); music is one score bed and is not re-timed by an edit;
+  transitions other than hard cuts are not rendered.
+
 ---
 
 ## 9. Sequenced roadmap
@@ -756,6 +783,7 @@ approved models wait for docs/38 gates.
 | **S10 Acceptance** | W10 real-provider tests and the 3-minute film | S8 | — |
 | **S11 Infrastructure** | docs/38 Phase 12 DeployPro GPU | DeployPro G1–G4 | any |
 | **S12 Animation** | W12 Animation Studio (Part 5) | W11 production types | S10, S11 |
+| **S13 Editor** | W13 Editor Agent and directorial roles | W8 versions, W9 workspace | S12 |
 
 W11 hygiene items ride along with whichever stage touches the same files.
 
@@ -780,4 +808,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-487 IDs: 228 built, 139 shallow, 0 poorly built, 46 not built, 74 n/a. Of the 413 IDs that are requirements, 228 (55%) are built; 139 exist but need upgrading or changing; 46 must be built. (Updated after W12, 2026-10-09.)
+487 IDs: 236 built, 140 shallow, 0 poorly built, 37 not built, 74 n/a. Of the 413 IDs that are requirements, 236 (57%) are built; 140 exist but need upgrading or changing; 37 must be built. (Updated after W13, 2026-10-09.)

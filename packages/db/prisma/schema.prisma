@@ -489,6 +489,8 @@ model Shot {
   videoKey          String?    @map("video_key")
   thumbnailKey      String?    @map("thumbnail_key")
   qcScore           Float?     @map("qc_score")
+  /// W13 (0048): the editor's cut length; the render trims the clip to it.
+  cutSec            Decimal?   @map("cut_sec") @db.Decimal(6, 3)
   gpuMs             Int?       @map("gpu_ms")
   attempts          Int        @default(0)
   createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1269,4 +1271,46 @@ model AcceptanceRun {
 
   @@index([finishedAt(sort: Desc)])
   @@map("acceptance_runs")
+}
+
+/// W13 (0048): the Editor reviews a cut, or answers one editing request (Part 1 §21, §46).
+model EditorialReview {
+  id             String    @id @default(uuid()) @db.Uuid
+  projectId      String    @map("project_id") @db.Uuid
+  requestedBy    String?   @map("requested_by") @db.Uuid
+  instruction    String?
+  status         String    @default("pending")
+  canonVersion   String?   @map("canon_version")
+  summary        String?
+  findings       Json      @default("[]")
+  dropped        Json      @default("[]")
+  appliedVersion String?   @map("applied_version")
+  error          String?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  reviewedAt     DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  appliedAt      DateTime? @map("applied_at") @db.Timestamptz(6)
+
+  proposals EditProposal[]
+
+  @@index([projectId, createdAt])
+  @@map("editorial_reviews")
+}
+
+/// W13 (0048): one structured edit operation proposed by the Editor, dry-run with its cost.
+model EditProposal {
+  id          String          @id @default(uuid()) @db.Uuid
+  reviewId    String          @map("review_id") @db.Uuid
+  review      EditorialReview @relation(fields: [reviewId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  projectId   String          @map("project_id") @db.Uuid
+  position    Int
+  op          Json
+  description String
+  effect      Json            @default("{}")
+  status      String          @default("proposed")
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  decidedAt   DateTime?       @map("decided_at") @db.Timestamptz(6)
+
+  @@unique([reviewId, position])
+  @@index([reviewId, position])
+  @@map("edit_proposals")
 }

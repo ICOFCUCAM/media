@@ -43,7 +43,7 @@ export async function snapshotScenes(
   db: PlanHistoryDb,
   projectId: string,
   where: { indexes?: number[]; ids?: string[] },
-  reason: "replan" | "canon_edit",
+  reason: "replan" | "canon_edit" | "editorial",
   canonVersion: string | null,
 ): Promise<number> {
   if (missing.sceneVersions) return 0;

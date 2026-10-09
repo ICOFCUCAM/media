@@ -2,9 +2,9 @@
   "prompts": [
     {
       "id": "director.edit",
-      "version": 1,
+      "version": 2,
       "purpose": "Director workspace (W9): read the owner's instruction as at most one canon change, and answer them.",
-      "sha256": "1e613201d53df2d9cae382681754424461ff1d2fe2213fc2b30ee70040371e81",
+      "sha256": "19aa6cea56193d5148ee92f521354917845e439bb9e59cce30c61aaaa06b3226",
       "score": null,
       "scoredAt": null,
       "model": null
@@ -23,6 +23,15 @@
       "version": 5,
       "purpose": "Surgical revision: fix exactly the validator's issues in a package (Part 2 §93).",
       "sha256": "d167b5d3e1125dc17fb056f18b6f98e7cc032360edc5e27c34e769d223f7dd53",
+      "score": null,
+      "scoredAt": null,
+      "model": null
+    },
+    {
+      "id": "editor.review",
+      "version": 1,
+      "purpose": "Editorial Intelligence (Part 1 §21, §46): review the whole cut, or answer one editing request, with structured edit operations.",
+      "sha256": "c471003d1ee0a059a980a0671e31b7befca1844eeccf77770064887bc397a8ea",
       "score": null,
       "scoredAt": null,
       "model": null

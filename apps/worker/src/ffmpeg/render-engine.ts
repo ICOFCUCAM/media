@@ -38,6 +38,8 @@ export interface SceneAssets {
   index: number;
   /** S3 keys of this scene's shot clips, in order. */
   shotKeys: string[];
+  /** The editor's cut length per clip (W13), aligned with shotKeys; null/absent = the whole clip. */
+  shotCutSec?: (number | null)[];
   /** Optional S3 keys for this scene's audio. */
   musicKey?: string;
   voiceKey?: string;
@@ -83,6 +85,7 @@ export class RenderEngine {
     const gaps: Degradation[] = [];
     try {
       const allShotKeys = scenes.flatMap((s) => s.shotKeys);
+      const allCuts = scenes.flatMap((s) => s.shotKeys.map((_, i) => s.shotCutSec?.[i] ?? null));
       if (allShotKeys.length === 0) throw new Error("no shot clips to render");
 
       // 1) Download + re-encode every shot to a byte-uniform stream so concat can
@@ -99,16 +102,15 @@ export class RenderEngine {
         console.log(`[render] download clip ${done + 1}/${allShotKeys.length} key=${key}`);
         await this.storage.download(key, raw);
         console.log(`[render] re-encode clip ${done + 1}/${allShotKeys.length}`);
-        await this.run(
-          normalize
-            ? normalizeArgs(raw, norm, this.fmt)
-            : [
-                "-i", raw,
-                "-vf", `scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=${LIGHT_FPS},format=yuv420p`,
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an",
-                norm,
-              ],
-        );
+        const args = normalize
+          ? normalizeArgs(raw, norm, this.fmt)
+          : [
+              "-i", raw,
+              "-vf", `scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=${LIGHT_FPS},format=yuv420p`,
+              "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an",
+              norm,
+            ];
+        await this.run(withCut(args, allCuts[done] ?? null));
         clips.push(norm);
         done++;
         onProgress?.((done / allShotKeys.length) * 0.6);
@@ -296,4 +298,13 @@ export class RenderEngine {
       await rm(work, { recursive: true, force: true });
     }
   }
+}
+
+/**
+ * An editor's cut (W13): trim the clip to `cutSec` from its start (an output
+ * duration placed before the output file). A clip already shorter is unchanged.
+ */
+export function withCut(args: string[], cutSec: number | null): string[] {
+  if (cutSec == null || !(cutSec > 0)) return args;
+  return [...args.slice(0, -1), "-t", cutSec.toFixed(3), args[args.length - 1]!];
 }

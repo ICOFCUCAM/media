@@ -46,8 +46,9 @@ evidence files that exist (`scripts/check-truth.mjs`).
 | [evaluation-and-acceptance.md](evaluation-and-acceptance.md) | Real-provider probes, benchmark (corpus, cases, prompt lock, live planning score), sync instrument calibration, the sixteen-check film acceptance | W10 | FUNCTIONAL |
 | [platform.md](platform.md) | Production types (incl. animation), public API auth and routes, metering, atomic grants, probes and metrics | W11 | FUNCTIONAL |
 | [animation.md](animation.md) | Animation Studio: Character Cards and cast, Show Bible and episodes, animated design, still-motion engine | W12 | FUNCTIONAL |
+| [editor.md](editor.md) | Editor Agent: structured edit operations, editorial review, timing requests, owner-approved apply, directorial roles | W13 | FUNCTIONAL |
 | [visual-review.md](visual-review.md) | Visual Reviewer and visual quality gate (record mode) | W5 (first slice) | INTEGRATED |
 
 Contracts to write before their workstream starts (from the gap analysis):
-Editor Agent (W8) · ComfyUI runtime (W6, with docs/38 §AT — gated on
-Phase 1) · Editor Agent (W8+).
+ComfyUI runtime (W6, with docs/38 §AT — gated on
+Phase 1).

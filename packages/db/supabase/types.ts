@@ -899,6 +899,60 @@ export type Database = {
           },
         ]
       }
+      edit_proposals: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          description: string
+          effect: Json
+          id: string
+          op: Json
+          position: number
+          project_id: string
+          review_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          description: string
+          effect?: Json
+          id?: string
+          op: Json
+          position: number
+          project_id: string
+          review_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          description?: string
+          effect?: Json
+          id?: string
+          op?: Json
+          position?: number
+          project_id?: string
+          review_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_proposals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_proposals_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "editorial_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       edit_requests: {
         Row: {
           affected_shots: number | null
@@ -942,6 +996,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "edit_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      editorial_reviews: {
+        Row: {
+          applied_at: string | null
+          applied_version: string | null
+          canon_version: string | null
+          created_at: string
+          dropped: Json
+          error: string | null
+          findings: Json
+          id: string
+          instruction: string | null
+          project_id: string
+          requested_by: string | null
+          reviewed_at: string | null
+          status: string
+          summary: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_version?: string | null
+          canon_version?: string | null
+          created_at?: string
+          dropped?: Json
+          error?: string | null
+          findings?: Json
+          id?: string
+          instruction?: string | null
+          project_id: string
+          requested_by?: string | null
+          reviewed_at?: string | null
+          status?: string
+          summary?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          applied_version?: string | null
+          canon_version?: string | null
+          created_at?: string
+          dropped?: Json
+          error?: string | null
+          findings?: Json
+          id?: string
+          instruction?: string | null
+          project_id?: string
+          requested_by?: string | null
+          reviewed_at?: string | null
+          status?: string
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "editorial_reviews_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -2112,6 +2225,7 @@ export type Database = {
           camera_plan: Json | null
           camera_type: string | null
           created_at: string
+          cut_sec: number | null
           duration_sec: number
           gpu_ms: number | null
           id: string
@@ -2139,6 +2253,7 @@ export type Database = {
           camera_plan?: Json | null
           camera_type?: string | null
           created_at?: string
+          cut_sec?: number | null
           duration_sec?: number
           gpu_ms?: number | null
           id?: string
@@ -2166,6 +2281,7 @@ export type Database = {
           camera_plan?: Json | null
           camera_type?: string | null
           created_at?: string
+          cut_sec?: number | null
           duration_sec?: number
           gpu_ms?: number | null
           id?: string
@@ -3184,6 +3300,10 @@ export type Database = {
         Args: { k: number; sample_rate: number }
         Returns: number
       }
+      decide_edit_proposal: {
+        Args: { p_approve: boolean; p_id: string }
+        Returns: string
+      }
       grant_credits: {
         Args: { minutes: number; target_email: string }
         Returns: number
@@ -3194,6 +3314,7 @@ export type Database = {
       owns_scene: { Args: { s: string }; Returns: boolean }
       owns_season: { Args: { se: string }; Returns: boolean }
       owns_series: { Args: { sr: string }; Returns: boolean }
+      request_editorial_apply: { Args: { p_review: string }; Returns: string }
       scene_is_locked: { Args: { s: string }; Returns: boolean }
     }
     Enums: {

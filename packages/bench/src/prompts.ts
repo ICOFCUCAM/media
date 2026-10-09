@@ -14,7 +14,7 @@
  * on every change regardless.
  */
 import { createHash } from "node:crypto";
-import { filmPackageJsonSchema, PROMPTS, renderPlanRequest, renderRevisionRequest } from "@cineforge/movie";
+import { EDITOR_SCHEMA, filmPackageJsonSchema, PROMPTS, renderPlanRequest, renderRevisionRequest } from "@cineforge/movie";
 
 export interface PromptFingerprint {
   id: string;
@@ -53,6 +53,8 @@ function rendered(id: string): string {
       JSON.stringify(filmPackageJsonSchema()),
     ].join("\n\u0000");
   }
+  // The Editor's answer shape (W13) is part of its prompt.
+  if (id === PROMPTS.editorReview.id) return JSON.stringify(EDITOR_SCHEMA);
   if (id === PROMPTS.directorRevision.id) return renderRevisionRequest({ sample: true }, "- [story/X] path: message") + JSON.stringify(filmPackageJsonSchema());
   return "";
 }

@@ -10,7 +10,8 @@ import { PROMPTS } from "./prompts";
 import type { IntelligenceRouter } from "./router";
 
 export interface Interpretation {
-  action: "change" | "none";
+  /** change: one canon change · editorial: a cut/timing request for the Editor (W13) · none. */
+  action: "change" | "editorial" | "none";
   /** Unvalidated: the caller checks it against the edit command's schema. */
   change: Record<string, unknown> | null;
   reply: string;
@@ -20,7 +21,7 @@ const STR = { type: "string" };
 const SCHEMA = {
   type: "object",
   properties: {
-    action: { type: "string", enum: ["change", "none"] },
+    action: { type: "string", enum: ["change", "editorial", "none"] },
     reply: { type: "string", description: "one or two plain sentences to the owner" },
     change: {
       type: ["object", "null"],
@@ -89,10 +90,11 @@ export async function interpretInstruction(
     schema: SCHEMA, schemaName: "DirectorEdit", maxTokens: 2000, effort: "medium",
     summarize: (o) => {
       const r = o as Partial<Interpretation> | null;
-      return `Read "${instruction.slice(0, 120)}" as ${r?.action === "change" ? `a ${(r.change as { kind?: string } | null)?.kind ?? "canon"} change` : "no canon change"}: ${r?.reply ?? ""}`;
+      const as = r?.action === "change" ? `a ${(r.change as { kind?: string } | null)?.kind ?? "canon"} change` : r?.action === "editorial" ? "a request for the Editor" : "no canon change";
+      return `Read "${instruction.slice(0, 120)}" as ${as}: ${r?.reply ?? ""}`;
     },
   }, ctx);
   const o = res.output as Partial<Interpretation>;
-  const action = o.action === "change" ? "change" : "none";
+  const action = o.action === "change" ? "change" : o.action === "editorial" ? "editorial" : "none";
   return { action, change: action === "change" ? pruneChange(o.change) : null, reply: String(o.reply ?? "").slice(0, 1500) };
 }

@@ -113,6 +113,8 @@ export const renderWorker = new Worker<RenderJob>(
         sceneId: s.id,
         index: s.index,
         shotKeys: s.shots.map((sh) => sh.videoKey).filter((k): k is string => !!k),
+        // The editor's cut lengths (W13), aligned with shotKeys: the clip is trimmed to it.
+        shotCutSec: s.shots.filter((sh) => !!sh.videoKey).map((sh) => (sh.cutSec == null ? null : Number(sh.cutSec))),
         musicKey: s.audioTracks.filter(real).find((t) => t.kind === "MUSIC")?.key,
         voiceKey: s.audioTracks.filter(real).find((t) => t.kind === "VOICE")?.key,
         sfxKey: s.audioTracks.filter(real).find((t) => t.kind === "SFX")?.key,
