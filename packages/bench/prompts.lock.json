@@ -11,18 +11,18 @@
     },
     {
       "id": "director.master",
-      "version": 6,
+      "version": 7,
       "purpose": "One master call: brief → complete Film Production Package (Part 2 §85, §93).",
-      "sha256": "f46246a8360156e13ebb2a715d1c557c534d1a7a1fc747abf08cb2f15cadc44e",
+      "sha256": "f0dce8f42adb101d265a785098b000d7b71edacc27b4c0f8b021e5726efc3ef7",
       "score": null,
       "scoredAt": null,
       "model": null
     },
     {
       "id": "director.revision",
-      "version": 5,
+      "version": 6,
       "purpose": "Surgical revision: fix exactly the validator's issues in a package (Part 2 §93).",
-      "sha256": "d167b5d3e1125dc17fb056f18b6f98e7cc032360edc5e27c34e769d223f7dd53",
+      "sha256": "852531606524faa122799f7c62fbe7733db413d9aa04f18c647f9cf01aba3636",
       "score": null,
       "scoredAt": null,
       "model": null

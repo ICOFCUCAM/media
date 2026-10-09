@@ -211,14 +211,14 @@ Conflicts to settle (decisions in §10):
 | 0 Stance | built (W2–W19) | `packages/movie`, worker pipeline | Done: the AI decides (IR), CineForge converts it through canon, compilation, generation, gates and the timeline (W19 audit, docs/64) |
 | 1 Director, not engine | **built** | LLM only plans; FFmpeg/GPU/scheduling are code | KEEP; widen what the Director decides |
 | 2 Four layers | built except media gaps (W2–W19) | `packages/movie` (intelligence, world, compile), worker (orchestration, ffmpeg, adapters) | Done: separate intelligence / canon / production / media modules; lip sync and interpolation not built (DOS-2.4) |
-| 3 Film Bible | shallow | `Screenplay` = logline, synopsis, genre, tone, `acts` (hard-coded 1 act, `director.service.ts:80`) | BUILD a typed, versioned FilmBible (25 fields of DOS-3.3), single source for every stage |
+| 3 Film Bible | built (W2, W20) | `ir/schema.ts` FilmBible | Done: typed, versioned Film Bible with the DOS-3.3 fields, the single source every stage reads (docs/65) |
 | 4 Character Bible | built (W2, W3, W12) | `ir/schema.ts` Character, Character Cards | Done: structured identity, wardrobe, voice, personality and design for the whole cast; every scene and shot references `char_` ids |
 | 5 Character state | poorly built | name-keyed `Record<string,string>`, regex-inferred (`shared/continuity.ts:29-350`); `ContinuityState` table unused | CHANGE to typed, ID-keyed, versioned state at story time T with event transitions, persisted |
-| 6 World Bible | shallow | `Location` name/kind/description; one per film; weather/time free text | UPGRADE Location + per-time LocationState |
+| 6 World Bible | built (W2, W20) | `ir/schema.ts` Location, Scene.weather, StoryTime.clock; `world/state.ts` | Done: locations with architecture, era, light; per-scene clock and weather, carried and checked through story time (docs/65) |
 | 7 Prop Bible | built (W2, W3, W17) | `world/state.ts`, `canon/world-refs.ts` | Done: props with owners, possession through story time, dependency edges and reference stills |
 | 8 Story graph | built (W2, W3) | `ir/schema.ts` acts, threads, facts; validators | Done: typed acts, threads, facts, setups and payoffs, validated |
 | 9 Scene graph | built (W2) | `ir/schema.ts` Scene, `dialogue_lines` | Done: purpose, emotional arc, beats, structured dialogue tied to `characterId` |
-| 10 Shot Architect | not built | shot count by formula (`planning.ts:13`); `cameraPlan` never written | BUILD the full DOS-10.2 shot record, persisted structurally |
+| 10 Shot Architect | built (W2, W20) | `ir/schema.ts` Shot, `shots.camera_plan` | Done: the full DOS-10.2 shot record, persisted structurally (docs/65) |
 | 11 Cinematography | not built | size cycled `i % 4`; GPU ignores `camera` | BUILD rule-based coverage grammar with LLM override |
 | 12 Prompt Compiler | shallow | string concatenation (`director.service.ts:188`, `video.processor.ts:176`) | BUILD a pure, deterministic compiler for 6 prompt kinds |
 | 13 Model compilers | not built | adapters pass prompts verbatim (fal truncates at 2000) | BUILD per-model compilers keyed by registry id |
@@ -240,10 +240,10 @@ Conflicts to settle (decisions in §10):
 | 30 Dependency graph | shallow | `dependsOn [i-1]`; cacheKey only reuse primitive | BUILD entity→scene→shot→media edges + invalidation |
 | 31 Version everything | shallow | immutable timelines/media_versions exist, but processors overwrite shots/films in place | UPGRADE: append-only versions for canon, scenes, shots, films |
 | 32 Continuity Engine | shallow | presence heuristic + one regex (`continuity.ts:153-190`) | UPGRADE to typed rules for 5 categories + vision identity + 180°/eyeline (audio category built in W14, docs/59) |
-| 33 Temporal continuity | not built | `timeOfDay` string only | BUILD story-time model |
+| 33 Temporal continuity | built (W3, W20) | `world/state.ts`, `ir/validate.ts` | Done: story day, 24h clock, sun, weather; clock and weather continuity validated (docs/65) |
 | 34 Visual memory | built (W6, W17) | `canon/reference-pack.ts`, `canon/world-refs.ts` | Done: identity, wardrobe, place and prop stills per canon digest and the previous end frame reach generation; style is the film look in every prompt (docs/62) |
 | 35 Reference pack | built (W6, W17) | `canon/reference-pack.ts` | Done: per-shot pack in priority order (seed, previous end, wardrobe, identity, location, props), overflow listed (docs/50, docs/62) |
-| 36 Shot-to-shot memory | not built | shots run in parallel, no last-frame conditioning | BUILD end-state records + optional sequential edges |
+| 36 Shot-to-shot memory | built (W6, W20) | `world/end-state.ts`, end frames | Done: end frames and structured end states carried into the next shot; optional sequential edges (docs/50, docs/65) |
 | 37 Scene lock | not built | no APPROVED/LOCKED status | BUILD DB-enforced lock (0028 trigger pattern) |
 | 38 Film lock | built (W8a, W19) | 0037 locks, `timeline/lock.ts`, `orchestration/locks.ts` | Done: locking approves the film's timeline and renders the master from it; frozen on delivery (docs/64) |
 | 39 Quality gates | built (W5, W18) | `quality/gates.ts`, `quality/recorder.ts` | Done: story, continuity, visual, audio, technical and editorial passes recorded per project; blocking results revise or fail (docs/63) |
@@ -877,6 +877,23 @@ existing engines, migrations 0046–0047 live.
 - OPEN: audio stems placed by the timeline (§40.3); lip sync and frame
   interpolation (§2.4); weather and sun state (§33.2).
 
+### W20 — World and time state (Part 1 §3, §6, §10, §32.3, §33, §36.2)
+
+**Done (docs/65, 2026-10-09; no migration).**
+
+- BUILT the rest of the Film Bible (premise, audience, rating, era,
+  geography, narrative structure) in the IR (§3).
+- BUILT the story clock and weather per scene: the sun follows the clock,
+  weather carries through the story day; validators refuse a clock outside its
+  time of day, a clock running backwards, continuous action that jumps more
+  than an hour or changes weather (§6.1, §32.3, §33).
+- BUILT the full shot record (composition, depth of field, focus) in the
+  plan, the prompts and `camera_plan` (§10).
+- BUILT a structured end state per shot, carried into the next shot's
+  request (outside the canonical hash) and recorded with every clip (§36.2).
+- All new fields are optional: earlier plans stay valid and compile exactly
+  as before. Director prompts bumped (director.master v7, revision v6).
+
 ---
 
 ## 9. Sequenced roadmap
@@ -907,6 +924,7 @@ approved models wait for docs/38 gates.
 | **S17 Image Engine** | W17 image record, fal provider, place and prop references, takes | W6 | S16 |
 | **S18 Quality depth** | W18 reviewer v2, technical QC depth, sync after render, editorial pass | W5, Phase 5 | S17 |
 | **S19 Previs and lock** | W19 rough voice + animatic previs, review-first default, lock → approved timeline → master | W8, W18 | S18 |
+| **S20 World and time state** | W20 film bible, story clock, weather and sun, shot record, structured end state | W2, W3 | S19 |
 
 W11 hygiene items ride along with whichever stage touches the same files.
 
@@ -931,4 +949,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-487 IDs: 335 built, 57 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 335 (81%) are built; 57 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W19, 2026-10-09; W19 included an audit of W2-era statuses.)
+487 IDs: 345 built, 47 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 345 (84%) are built; 47 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W20, 2026-10-09.)
