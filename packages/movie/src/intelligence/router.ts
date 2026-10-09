@@ -27,7 +27,7 @@ export interface Route {
   model: string;
 }
 
-const TASKS: IntelligenceTask[] = ["film_plan", "film_plan_revision", "translation", "social_kit", "visual_review"];
+const TASKS: IntelligenceTask[] = ["film_plan", "film_plan_revision", "translation", "social_kit", "visual_review", "edit_interpret"];
 
 export function parseRoutes(env: Record<string, string | undefined>): Record<IntelligenceTask, Route[]> {
   const fallback: Route[] = [{ provider: "anthropic", model: env.ANTHROPIC_MODEL || DEFAULT_MODEL }];
@@ -47,6 +47,16 @@ export function parseRoutes(env: Record<string, string | undefined>): Record<Int
 }
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
+
+/** A summarizer that throws or rambles never breaks the call. */
+function summaryOf(req: StructuredRequest, output: unknown): string | null {
+  try {
+    const s = req.summarize?.(output)?.replace(/\s+/g, " ").trim();
+    return s ? s.slice(0, 500) : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Errors after which the NEXT configured route may be tried. */
 const RETRY_NEXT = new Set(["PROVIDER_UNAVAILABLE", "PROVIDER_ERROR", "REFUSED"]);
@@ -92,6 +102,7 @@ export class IntelligenceRouter {
         await this.onDecision({
           ...base, model: result.model, outputSha256: sha(JSON.stringify(result.output)), outcome: "ok", errorCode: null,
           inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens, latencyMs: result.latencyMs,
+          summary: summaryOf(req, result.output),
         });
         return result;
       } catch (e) {

@@ -24,6 +24,7 @@ export async function recordDecision(db: DecisionDb, d: DecisionRecord): Promise
         schemaName: d.schemaName, provider: d.provider, model: d.model, attempt: d.attempt,
         inputSha256: d.inputSha256, outputSha256: d.outputSha256, outcome: d.outcome, errorCode: d.errorCode,
         issues: d.issues, inputTokens: d.inputTokens, outputTokens: d.outputTokens, latencyMs: d.latencyMs,
+        ...(d.summary ? { summary: d.summary } : {}),
       },
     });
     return "recorded";

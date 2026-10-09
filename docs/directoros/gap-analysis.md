@@ -637,6 +637,16 @@ play/restore earlier takes. Carried forward: three passes as the default
 
 ### W9 — Director workspace UI
 
+**Done 2026-10-09** (docs/54; contract director-workspace.md; migration 0042
+applied live): the three-column workspace (bible · scenes & shots · Director)
+with a timeline strip (production timeline, or the plan) and a decision log
+whose rows carry the why (`ai_decisions.summary`); plain-language
+instructions read as one canon change and filed as edit requests; the Voice
+Lab became the Voice Studio (consent, quality report, no model names);
+Storyboard Studio links into the workspace; the chat is offered only when a
+planning model is configured. Carried forward: tone/cinematography/timing
+instructions applied (Editor Agent), editable bible in the workspace.
+
 - BUILD the 3-column workspace (bible/assets · scenes/shots · director chat),
   timeline strip bound to `production_timelines`, decision log panel with
   "why" from `ai_decisions`, NL editing → edit API.
@@ -711,4 +721,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 186 built, 134 shallow, 0 poorly built, 62 not built, 72 n/a. Of the 382 IDs that are requirements, 186 (49%) are built; 134 exist but need upgrading or changing; 62 must be built. (Updated after W8b, 2026-10-09.)
+454 IDs: 190 built, 136 shallow, 0 poorly built, 56 not built, 72 n/a. Of the 382 IDs that are requirements, 190 (50%) are built; 136 exist but need upgrading or changing; 56 must be built. (Updated after W9, 2026-10-09.)

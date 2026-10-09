@@ -18,6 +18,10 @@ import { prisma } from "@cineforge/db";
 import { enqueueSceneFlow } from "./film-flow";
 import { advancePasses } from "./passes";
 import { processEditRequest } from "../canon/edits";
+import { processDirectorMessage } from "../canon/conversation";
+import { loadFilmPackage } from "../canon/revision";
+import { interpretInstruction } from "@cineforge/movie";
+import { intelligence } from "../intelligence";
 import { applyCanonRevision, type CanonDb } from "../canon/revision";
 import { notifyFinish } from "../notify";
 
@@ -107,6 +111,25 @@ async function claimStoryboardWork(): Promise<void> {
     }
     await renderQueue.add("final", { projectId: p.id, kind: "final" }, { jobId: `storyboard-render-${p.id}-${Date.now()}`, attempts: 2, removeOnComplete: 100 });
     console.log(`[poller] enqueued storyboard assembly for project ${p.id}`);
+  }
+}
+
+async function answerDirectorMessages(): Promise<void> {
+  const pending = await prisma.directorMessage.findMany({ where: { status: "pending", author: "owner" }, orderBy: { createdAt: "asc" }, take: 5 })
+    .catch(() => []); // before migration 0042
+  for (const msg of pending) {
+    const outcome = await processDirectorMessage(msg, {
+      claim: async (id) => (await prisma.directorMessage.updateMany({ where: { id, status: "pending" }, data: { status: "answered" } })).count === 1,
+      loadPackage: (projectId) => loadFilmPackage(prisma as unknown as CanonDb, projectId).catch(() => null),
+      available: () => intelligence().available("edit_interpret"),
+      interpret: (pkg, text, projectId) => interpretInstruction(intelligence(), pkg, text, { projectId }),
+      fileEdit: async (projectId, requestedBy, change) =>
+        (await prisma.editRequest.create({ data: { projectId, requestedBy, change: change as object }, select: { id: true } })).id,
+      reply: async (projectId, replyTo, body, editRequestId) => {
+        await prisma.directorMessage.create({ data: { projectId, author: "director", body, status: "answered", replyTo, editRequestId }, select: { id: true } });
+      },
+    });
+    console.log(`[poller] director message ${msg.id} ${outcome}`);
   }
 }
 
@@ -233,6 +256,8 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
       await claimStoryboardWork();
       // Production passes (W8b): previs, approved scenes, final render of three-pass films.
       await advancePasses();
+      // Director chat (W9): plain-language instructions become edit requests.
+      await answerDirectorMessages();
       // Edit requests (W8b): an owner's canon change, applied; only affected shots regenerate.
       await claimEditRequests();
 

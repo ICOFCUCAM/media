@@ -126,7 +126,7 @@ export const SUBSYSTEMS: Subsystem[] = [
   { name: "Visual & sync quality gate", maturity: "INTEGRATED", capability: "visual_qc", blurb: "Every shot is measured before it is ready (picture, length, black, frozen) and a frame is checked against canon; the finished film is measured before delivery (length, sound, loudness). Defects are recorded and shown; blocking them is switched on after calibration. The editorial pass is W8.", doc: "docs/49-directoros-quality-gates.md" },
 ];
 
-/** Languages for multilingual export + Voice Lab (mirror of shared/i18n). */
+/** Languages for multilingual export + Voice Studio (mirror of shared/i18n). */
 export const LANGUAGES = [
   { code: "en", name: "English" },
   { code: "es", name: "Spanish" },

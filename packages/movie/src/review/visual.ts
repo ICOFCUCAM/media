@@ -86,6 +86,11 @@ export async function reviewFrame(
     task: "visual_review", promptId: p.id, promptVersion: p.version, system: p.system,
     user: renderReviewRequest(ctx), images: frames, schema: schema(), schemaName: "VisualReview",
     maxTokens: 2000, effort: "medium",
+    summarize: (o) => {
+      const v = (o as { verdicts?: { check: string; status: string }[] } | null)?.verdicts ?? [];
+      const bad = v.filter((x) => x.status === "mismatch").map((x) => x.check);
+      return `Reviewed ${v.length} canon checks on the frame: ${bad.length ? `contradicts ${bad.join(", ")}` : "no contradiction found"}.`;
+    },
   }, { projectId: opts.projectId ?? null });
   return judgeReview(VisualReviewOutput.parse(res.output), res.provider, res.model);
 }

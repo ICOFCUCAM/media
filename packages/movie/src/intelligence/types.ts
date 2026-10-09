@@ -7,7 +7,7 @@
  */
 
 /** What a call is for — the unit of routing and of the decision log. */
-export type IntelligenceTask = "film_plan" | "film_plan_revision" | "translation" | "social_kit" | "visual_review";
+export type IntelligenceTask = "film_plan" | "film_plan_revision" | "translation" | "social_kit" | "visual_review" | "edit_interpret";
 
 /** An image shown to the model with the request (e.g. a generated frame to review). */
 export interface RequestImage {
@@ -31,6 +31,8 @@ export interface StructuredRequest {
   maxTokens: number;
   /** Reasoning depth where the provider supports it. */
   effort?: "low" | "medium" | "high" | "xhigh" | "max";
+  /** The "why" of the decision in a sentence, from its output (W9 decision log). */
+  summarize?: (output: unknown) => string | null;
 }
 
 export interface StructuredResult {
@@ -86,4 +88,6 @@ export interface DecisionRecord {
   projectId: string | null;
   /** Which route attempt this was (0 = first choice). */
   attempt: number;
+  /** The "why" in a sentence (≤ 500 chars), when the call could say it. */
+  summary?: string | null;
 }
