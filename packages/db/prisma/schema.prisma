@@ -119,6 +119,12 @@ model Project {
   lockedBy String?   @map("locked_by") @db.Uuid
 
   // W8b (0040): production passes — single (straight through) or three (STORY → PREVIS → FINAL).
+  // W11 (0045): what is being made — format, medium, animation style, episodes.
+  kind           String  @default("film")
+  medium         String  @default("live_action")
+  animationStyle String? @map("animation_style")
+  episodes       Int?
+
   passMode        String    @default("single") @map("pass_mode")
   storyApprovedAt DateTime? @map("story_approved_at") @db.Timestamptz(6)
   previsStartedAt DateTime? @map("previs_started_at") @db.Timestamptz(6)
@@ -558,12 +564,33 @@ model UsageRecord {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   projectId String?  @map("project_id") @db.Uuid
   gpuMs     Int      @default(0) @map("gpu_ms")
+  /// video | llm | tts | image | music | moderation (0044)
   kind      String
   costUsd   Float    @default(0) @map("cost_usd")
+  provider  String?
+  model     String?
+  /// gpu_ms | tokens | characters | images | audio_seconds | requests
+  unit      String?
+  units     Decimal  @default(0) @db.Decimal(16, 3)
+  /// Credits charged for this call (0 until a METER_RATES rate is set).
+  creditMs  BigInt   @default(0) @map("credit_ms")
+  meta      Json     @default("{}")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId, createdAt])
   @@map("usage_records")
+}
+
+/// Stripe events already applied (0044): a replayed webhook changes nothing.
+model StripeEvent {
+  id        String   @id
+  type      String
+  userId    String?  @map("user_id") @db.Uuid
+  creditMs  BigInt   @default(0) @map("credit_ms")
+  tier      String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("stripe_events")
 }
 
 // ── Voice Lab (docs/29 phase 2): cloned voices + long-form voiceovers ──────

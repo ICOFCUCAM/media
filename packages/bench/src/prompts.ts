@@ -34,11 +34,25 @@ export interface PromptLock {
   prompts: PromptLockEntry[];
 }
 
-const SAMPLE = { brief: "A courier crosses a harbour in a storm.", constraints: { sceneCount: 2, sceneSec: 10, sceneTolerance: 0.2, maxShotsPerScene: 3, maxShotSec: 5, targetSeconds: 20, filmTolerance: 0.2 } };
+const SAMPLE = {
+  brief: "A courier crosses a harbour in a storm.",
+  constraints: { sceneCount: 2, sceneSec: 10, sceneTolerance: 0.2, maxShotsPerScene: 3, maxShotSec: 5, targetSeconds: 20, filmTolerance: 0.2 },
+  // The production section's wording is part of the prompt (W11).
+  production: {
+    format: "Series", medium: "animation" as const, style: { label: "Anime-inspired", look: "anime look", motion: "held poses" },
+    narrated: true, episodes: 2, direction: ["Each act is one EPISODE."],
+  },
+};
 
 /** What each prompt sends besides its system text (rendered on a fixed sample). */
 function rendered(id: string): string {
-  if (id === PROMPTS.directorMaster.id) return renderPlanRequest(SAMPLE.brief, SAMPLE.constraints) + JSON.stringify(filmPackageJsonSchema());
+  if (id === PROMPTS.directorMaster.id) {
+    return [
+      renderPlanRequest(SAMPLE.brief, SAMPLE.constraints),
+      renderPlanRequest(SAMPLE.brief, SAMPLE.constraints, SAMPLE.production),
+      JSON.stringify(filmPackageJsonSchema()),
+    ].join("\n\u0000");
+  }
   if (id === PROMPTS.directorRevision.id) return renderRevisionRequest({ sample: true }, "- [story/X] path: message") + JSON.stringify(filmPackageJsonSchema());
   return "";
 }

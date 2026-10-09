@@ -32,6 +32,8 @@ import { buildClusterRegistry, MODEL_VERSIONS, type JobContext, type ShotRequest
 import { prisma } from "@cineforge/db";
 import { checkContinuity, compileFor, compileGeneration, FilmPackage, reviewFrame, type GenerationContext } from "@cineforge/movie";
 import { imageProvider } from "../images/providers";
+import { meter, meteredImages } from "../billing";
+import { productionOf, renderStyleFor } from "../director/production";
 import { pickCandidate, seedCandidates } from "../images/candidates";
 import { recordSeedCandidates, type MediaVersionDb } from "../images/record";
 import { assembleReferencePack, endFrameKey } from "../canon/reference-pack";
@@ -43,7 +45,6 @@ import { intelligence } from "../intelligence";
 import { ffmpeg, probeDuration } from "../ffmpeg/ffmpeg";
 import { shotReferences } from "../canon/references";
 import { wardrobeReferenceKeys, type ReferenceImageGenerator, type WardrobeRefDb } from "../canon/wardrobe-refs";
-import { realtime } from "../realtime";
 import { S3Storage } from "../storage/storage";
 import { enqueueLora } from "../orchestration/lora-queue";
 import { buildGatewayAuthority } from "../gateway";
@@ -205,7 +206,7 @@ async function resolveContinuity(
   const gaps: Degradation[] = [];
   let wardrobeKeys: string[] = [];
   if (pkg && refs.result) {
-    const pack = await wardrobeReferenceKeys(prisma as unknown as WardrobeRefDb, wardrobeImageGenerator(), shot.scene.projectId, shot.id,
+    const pack = await wardrobeReferenceKeys(prisma as unknown as WardrobeRefDb, wardrobeImageGenerator(shot.scene.projectId), shot.scene.projectId, shot.id,
       pkg, refs.result, refs.charIdByKey, wardrobeUnavailableReason());
     gaps.push(...pack.gaps);
     wardrobeKeys = pack.keys;
@@ -252,10 +253,11 @@ function wardrobeUnavailableReason(): string {
 }
 
 /** Reference stills via the image provider registry (W6); null when disabled or none is configured. */
-function wardrobeImageGenerator(): ReferenceImageGenerator | null {
+function wardrobeImageGenerator(projectId: string): ReferenceImageGenerator | null {
   if (process.env.WARDROBE_REFERENCES === "0") return null;
-  const { provider } = imageProvider((k, b, ct) => storage.putBytes(k, b, ct));
-  if (!provider) return null;
+  const found = imageProvider((k, b, ct) => storage.putBytes(k, b, ct)).provider;
+  if (!found) return null;
+  const provider = meteredImages(found, { projectId, purpose: "wardrobe_reference" }, meter);
   // Portrait: a full-body reference.
   return { id: provider.id, generate: (prompt, key) => provider.generate(prompt, key, { width: 1024, height: 1536 }) };
 }
@@ -315,8 +317,9 @@ const PREVIEW_SEED = /^(generated:|local:|ref:)/;
 async function resolveSeedKey(shot: ShotWithScene): Promise<string | undefined> {
   if (shot.source !== "image") return undefined;
   if (shot.seedImageKey && !PREVIEW_SEED.test(shot.seedImageKey)) return shot.seedImageKey; // uploaded
-  const { provider, reason } = imageProvider((k, b, ct) => storage.putBytes(k, b, ct));
-  if (!provider) throw new SeedUnavailable(reason ?? "no image provider configured");
+  const { provider: found, reason } = imageProvider((k, b, ct) => storage.putBytes(k, b, ct));
+  if (!found) throw new SeedUnavailable(reason ?? "no image provider configured");
+  const provider = meteredImages(found, { projectId: shot.scene.projectId, purpose: "seed_frame" }, meter);
 
   const [w, h] = outputDimensions(shot.scene.project.resolution, shot.scene.project.aspectRatio);
   const prompt = await seedPrompt(shot);
@@ -359,7 +362,9 @@ async function seedPrompt(shot: ShotWithScene): Promise<string> {
   const pkg = await filmPackageOf(shot.scene.projectId);
   const scene = pkg?.scenes.find((s) => s.index === shot.scene.index);
   if (!pkg || !scene?.shots.some((s) => s.index === shot.index)) return shot.prompt;
-  return compileFor("openai-image", compileGeneration(pkg, scene.id, shot.index)).prompt;
+  // The still is drawn in the production's animation style, if it has one (W11).
+  const render = renderStyleFor(productionOf(shot.scene.project));
+  return compileFor("openai-image", compileGeneration(pkg, scene.id, shot.index, undefined, { render })).prompt;
 }
 
 /**
@@ -411,7 +416,7 @@ async function findCacheHit(shot: ShotWithScene): Promise<{ videoKey: string; th
 export const videoWorker = new Worker<VideoJob>(
   QUEUES.video,
   async (job) => {
-    const { shotId, modelId, projectId, sceneId } = job.data;
+    const { shotId, modelId, projectId } = job.data;
     const shot = await loadShot(shotId);
 
     // ── PREVIS (W8b): the storyboard still only — no video ───────────────
@@ -419,7 +424,6 @@ export const videoWorker = new Worker<VideoJob>(
       if (shot.status === "READY" && shot.videoKey) return { shotId, previs: "already final" };
       try {
         const seedImageKey = await resolveSeedKey(shot);
-        await realtime.emit("shot.ready", { projectId, sceneId, shotId, thumbnailKey: seedImageKey });
         return { shotId, previs: seedImageKey ?? "text-led shot (no still)" };
       } catch (e) {
         if (!(e instanceof SeedUnavailable)) throw e;
@@ -430,7 +434,6 @@ export const videoWorker = new Worker<VideoJob>(
 
     // ── Idempotent resume (C8): a shot already generated is a no-op ──────
     if (shot.status === "READY" && shot.videoKey) {
-      await realtime.emit("shot.ready", { projectId, sceneId, shotId, thumbnailKey: shot.thumbnailKey ?? undefined });
       return { shotId, videoKey: shot.videoKey, gpuMs: 0, alreadyDone: true };
     }
 
@@ -456,7 +459,6 @@ export const videoWorker = new Worker<VideoJob>(
         projectId, assetType: "video", assetId: shotId, storageKey: cached.videoKey,
         derivation: { role: "clip", source: "cache", cacheKey: shot.cacheKey },
       });
-      await realtime.emit("shot.ready", { projectId, sceneId, shotId, thumbnailKey: cached.thumbnailKey ?? undefined });
       return { shotId, videoKey: cached.videoKey, gpuMs: 0, cached: true };
     }
 
@@ -615,7 +617,6 @@ export const videoWorker = new Worker<VideoJob>(
       }),
     ]);
 
-    await realtime.emit("shot.ready", { projectId, sceneId, shotId, thumbnailKey: result.thumbnailKey });
 
     // Pause the project if it blew past its budget ceiling. Already-queued
     // shots then fail-fast at the gate above; the GPU drains and shuts down.
@@ -623,12 +624,6 @@ export const videoWorker = new Worker<VideoJob>(
       await prisma.project.update({
         where: { id: projectId },
         data: { status: "PAUSED", errorMessage: "Budget ceiling reached" },
-      });
-      await realtime.emit("project.paused", {
-        projectId,
-        reason: "budget",
-        spentMs: updatedProject.spentMs,
-        estimatedMs: updatedProject.estimatedMs ?? undefined,
       });
     }
 
@@ -670,9 +665,6 @@ videoWorker.on("failed", (job, err) => {
       .catch(() => {});
     await prisma.project
       .updateMany({ where: { id: job.data.projectId, mode: "storyboard" }, data: { errorMessage: `shot: ${reason}`.slice(0, 500) } })
-      .catch(() => {});
-    await realtime
-      .emit("error", { projectId: job.data.projectId, scope: "video", id: job.data.shotId, message: reason })
       .catch(() => {});
   })();
 });

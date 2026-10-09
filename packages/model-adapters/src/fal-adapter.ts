@@ -13,6 +13,7 @@
  */
 import type { HealthStatus, ModelCapabilities, ShotRequest, ShotResult, VideoModelAdapter } from "./types";
 import { estimateShotMs } from "./cost";
+import { providerUrl } from "@cineforge/shared";
 
 export interface FalAdapterOptions {
   apiKey: string;
@@ -36,8 +37,9 @@ export interface FalAdapterOptions {
   fetchImpl?: typeof fetch;
 }
 
-const QUEUE = "https://queue.fal.run";
-const STORAGE_INITIATE = "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3";
+/** fal endpoints, from FAL_QUEUE_URL / FAL_STORAGE_URL (docs/38 §AF). */
+const queueBase = () => providerUrl("fal_queue");
+const storageInitiate = () => `${providerUrl("fal_storage")}/storage/upload/initiate?storage_type=fal-cdn-v3`;
 
 export class FalAdapter implements VideoModelAdapter {
   readonly id: string;
@@ -144,14 +146,14 @@ export class FalAdapter implements VideoModelAdapter {
     if (useI2v) input.image_url = imageUrl;
 
     // 1) Submit to the queue.
-    const submitted = (await this.api(`${QUEUE}/${model}`, { method: "POST", body: JSON.stringify(input) }, signal)) as {
+    const submitted = (await this.api(`${queueBase()}/${model}`, { method: "POST", body: JSON.stringify(input) }, signal)) as {
       request_id?: string;
       status_url?: string;
       response_url?: string;
     };
     if (!submitted.request_id) throw new Error(`fal submit returned no request_id (${JSON.stringify(submitted).slice(0, 200)})`);
-    const statusUrl = submitted.status_url ?? `${QUEUE}/${model}/requests/${submitted.request_id}/status`;
-    const responseUrl = submitted.response_url ?? `${QUEUE}/${model}/requests/${submitted.request_id}`;
+    const statusUrl = submitted.status_url ?? `${queueBase()}/${model}/requests/${submitted.request_id}/status`;
+    const responseUrl = submitted.response_url ?? `${queueBase()}/${model}/requests/${submitted.request_id}`;
 
     // 2) Poll until done.
     for (;;) {
@@ -190,7 +192,7 @@ export class FalAdapter implements VideoModelAdapter {
   private async uploadToFalCdn(bytes: Uint8Array, contentType: string, signal?: AbortSignal): Promise<string> {
     const ext = contentType.includes("jpeg") ? "jpg" : contentType.split("/")[1] ?? "png";
     const init = (await this.api(
-      STORAGE_INITIATE,
+      storageInitiate(),
       { method: "POST", body: JSON.stringify({ content_type: contentType, file_name: `seed.${ext}` }) },
       signal,
     )) as { upload_url?: string; file_url?: string };
@@ -245,7 +247,7 @@ async function falApi(apiKey: string, url: string, init: { method: string; body?
 export async function falUploadBytes(apiKey: string, bytes: Uint8Array, contentType: string, fileName = "upload.bin", signal?: AbortSignal): Promise<string> {
   const init = (await falApi(
     apiKey,
-    STORAGE_INITIATE,
+    storageInitiate(),
     { method: "POST", body: JSON.stringify({ content_type: contentType, file_name: fileName }) },
     signal,
   )) as { upload_url?: string; file_url?: string };
@@ -263,14 +265,14 @@ export async function falRunQueue(
   opts: { timeoutMs?: number; signal?: AbortSignal } = {},
 ): Promise<Record<string, unknown>> {
   const deadline = Date.now() + (opts.timeoutMs ?? 10 * 60_000);
-  const submitted = (await falApi(apiKey, `${QUEUE}/${model}`, { method: "POST", body: JSON.stringify(input) }, opts.signal)) as {
+  const submitted = (await falApi(apiKey, `${queueBase()}/${model}`, { method: "POST", body: JSON.stringify(input) }, opts.signal)) as {
     request_id?: string;
     status_url?: string;
     response_url?: string;
   };
   if (!submitted.request_id) throw new Error(`fal submit returned no request_id`);
-  const statusUrl = submitted.status_url ?? `${QUEUE}/${model}/requests/${submitted.request_id}/status`;
-  const responseUrl = submitted.response_url ?? `${QUEUE}/${model}/requests/${submitted.request_id}`;
+  const statusUrl = submitted.status_url ?? `${queueBase()}/${model}/requests/${submitted.request_id}/status`;
+  const responseUrl = submitted.response_url ?? `${queueBase()}/${model}/requests/${submitted.request_id}`;
   for (;;) {
     if (opts.signal?.aborted) throw new Error("fal aborted");
     if (Date.now() > deadline) throw new Error(`fal timed out (${model})`);

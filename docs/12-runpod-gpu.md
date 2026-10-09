@@ -43,7 +43,13 @@ straight to S3, and returns the S3 key + measured `gpuMs`.
 - One model per worker type (Wan pool, Hunyuan pool) so VRAM is predictable.
 - Batch shots per request where the model supports it to amortize overhead.
 
-## Autoscaling strategy (`apps/worker/src/gpu/autoscaler.ts`)
+## Autoscaling strategy (planned as `apps/worker/src/gpu/autoscaler.ts`)
+
+> **Status (2026-10-09):** there is no `apps/worker/src/gpu/autoscaler.ts`. The
+> GPU lifecycle is `packages/gpu` (`lifecycle-manager.ts`, `cluster.ts`,
+> `runpod-control.ts`), started from `apps/worker/src/main.ts`
+> (`createGpuManagers`), which runs each pool's reconcile loop and reconciles
+> immediately when a GPU queue drains. See [docs/23](23-gpu-lifecycle-manager.md).
 ```
 target_workers = clamp(ceil(pending_video_jobs / jobs_per_worker),
                        min=0, max=tier_cap)

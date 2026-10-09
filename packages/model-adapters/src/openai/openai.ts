@@ -8,6 +8,7 @@
  * the video models: a key in env, an optional storage `upload` hook, no callers
  * coupled to OpenAI. No Node types required (uses DOM `atob`/`fetch`).
  */
+import { providerUrl } from "@cineforge/shared";
 
 export interface ImageGenRequest {
   prompt: string;
@@ -71,7 +72,7 @@ export class OpenAIImageAdapter implements ImageModelAdapter {
   }
   async generate(req: ImageGenRequest, signal?: AbortSignal): Promise<ImageGenResult> {
     const { size, width, height } = pickSize(req.width, req.height);
-    const res = await this.fetch("https://api.openai.com/v1/images/generations", {
+    const res = await this.fetch(`${providerUrl("openai")}/images/generations`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${this.opts.apiKey}` },
       body: JSON.stringify({ model: this.opts.model ?? "gpt-image-1", prompt: req.prompt, size, n: 1 }),
@@ -146,7 +147,7 @@ export class OpenAITtsAdapter implements TtsAdapter {
     // Long narration is spoken in full, request by request; MP3 frames from the
     // same model and voice concatenate into one valid stream.
     for (const input of splitForTts(req.text)) {
-      const res = await this.fetch("https://api.openai.com/v1/audio/speech", {
+      const res = await this.fetch(`${providerUrl("openai")}/audio/speech`, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${this.opts.apiKey}` },
         body: JSON.stringify({

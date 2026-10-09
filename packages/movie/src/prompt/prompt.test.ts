@@ -64,3 +64,33 @@ describe("model-specific compilers (Part 1 §13)", () => {
     expect(x.hash).not.toBe(compileFor("wan-2.1", req).hash);
   });
 });
+
+describe("animation styles (W11; Part 5 §181)", () => {
+  const anime = { medium: "animation" as const, style: "anime", look: "anime-inspired 2D animation, cel shading", motion: "dynamic camera, held poses", avoid: "photorealistic, live action" };
+
+  it("an animation request carries the style; live action is unchanged (same hash as before)", async () => {
+    const { fixturePackage } = await import("../ir/fixture");
+    const { canonicalHash, compileGeneration } = await import("./canonical");
+    const pkg = fixturePackage();
+    const live = compileGeneration(pkg, "scene_01", 1);
+    expect(live.style.render).toBeUndefined();
+    expect(canonicalHash(compileGeneration(pkg, "scene_01", 1, undefined, { render: null }))).toBe(canonicalHash(live));
+    const drawn = compileGeneration(pkg, "scene_01", 1, undefined, { render: anime });
+    expect(drawn.style.render).toEqual(anime);
+    expect(canonicalHash(drawn)).not.toBe(canonicalHash(live));
+  });
+
+  it("video and still prompts use the style's look and motion, never 'photorealistic'", async () => {
+    const { fixturePackage } = await import("../ir/fixture");
+    const { compileGeneration } = await import("./canonical");
+    const { compileFor } = await import("./compilers");
+    const req = compileGeneration(fixturePackage(), "scene_01", 1, undefined, { render: anime });
+    const wan = compileFor("wan-2.1", req);
+    expect(wan.prompt).toContain("anime-inspired 2D animation, cel shading");
+    expect(wan.prompt).not.toContain("cinematic film.");
+    expect(wan.negativePrompt).toMatch(/photorealistic, live action$/);
+    const still = compileFor("openai-image", req);
+    expect(still.prompt).toContain("Style: anime-inspired 2D animation, cel shading");
+    expect(still.prompt).not.toMatch(/photorealistic/);
+  });
+});

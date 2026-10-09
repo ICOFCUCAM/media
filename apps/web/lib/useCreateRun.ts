@@ -2,10 +2,9 @@
 
 import { useRef, useState } from "react";
 import { DemoRun, type DemoState } from "./demo";
-import { LiveRun } from "./live";
 import { SupabaseRun } from "./supabase-run";
-import { IS_LIVE } from "./system";
 import { SUPABASE_ENABLED } from "./supabase";
+import type { ProductionSpec } from "./production-types";
 
 export interface RunConfig {
   prompt: string;
@@ -18,10 +17,12 @@ export interface RunConfig {
   aspectRatio?: string;
   /** "three": review the story and each storyboard before any video (W8b). */
   passMode?: "single" | "three";
+  /** What is being made (W11; Part 5): format, medium, animation style, episodes — data, not prompt words. */
+  production?: ProductionSpec;
 }
 
-/** Shared generation runner — drives the live API when configured, else the
- *  preview engine. Every create surface composes its own controls around it. */
+/** Shared generation runner — the real pipeline through Supabase when signed
+ *  in, else the preview engine. Every create surface composes its own controls around it. */
 export function useCreateRun() {
   const [state, setState] = useState<DemoState | null>(null);
   const [running, setRunning] = useState(false);
@@ -36,19 +37,9 @@ export function useCreateRun() {
       setState(s);
       if (s.status === "READY" || s.error) setRunning(false);
     };
-    if (IS_LIVE) {
-      const live = new LiveRun(cfg, onUpdate);
-      runRef.current = live;
-      try {
-        await live.start();
-        return;
-      } catch {
-        live.cancel();
-      }
-    }
-    // Real pipeline without an API server: insert the project in Supabase and
-    // let the deployed worker drive it (Realtime carries status back). Falls
-    // through to the preview engine when Supabase/auth isn't available.
+    // The real pipeline: insert the project in Supabase and let the deployed
+    // worker drive it (Supabase Realtime carries status back). Falls through
+    // to the preview engine when Supabase/auth isn't available.
     if (SUPABASE_ENABLED) {
       const sup = new SupabaseRun(cfg, onUpdate);
       runRef.current = sup;

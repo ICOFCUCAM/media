@@ -11,9 +11,9 @@
     },
     {
       "id": "director.master",
-      "version": 4,
+      "version": 5,
       "purpose": "One master call: brief → complete Film Production Package (Part 2 §85, §93).",
-      "sha256": "c8e3aa6f8f7602d30b1110171ca891387567bd357307088d47d3f78262c1de3e",
+      "sha256": "8ed238677b7d32f608991a9fe9204d5eeb468c60353db1533407d632356e43ea",
       "score": null,
       "scoredAt": null,
       "model": null

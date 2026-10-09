@@ -12,6 +12,7 @@
  * MODERATION_SKIPPED degradation — it is never silently treated as passed
  * (DirectorOS DOS-75).
  */
+import { providerUrl } from "@cineforge/shared";
 
 export interface ModerationVerdict {
   allowed: boolean;
@@ -40,7 +41,7 @@ export async function moderatePrompt(prompt: string): Promise<ModerationVerdict>
   if (process.env.PROMPT_MODERATION === "0") return { allowed: true, checked: false, unchecked: "disabled" };
   if (!key) return { allowed: true, checked: false, unchecked: "no-key" };
   try {
-    const res = await fetch("https://api.openai.com/v1/moderations", {
+    const res = await fetch(`${providerUrl("openai")}/moderations`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
       body: JSON.stringify({ model: "omni-moderation-latest", input: prompt }),

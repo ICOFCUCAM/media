@@ -5,6 +5,7 @@
  * reference video (video-to-video) or background plate. "Drop a key in":
  * PEXELS_API_KEY or PIXABAY_API_KEY enables it; unset → no stock source.
  */
+import { providerUrl } from "@cineforge/shared";
 export type StockProvider = "pexels" | "pixabay";
 
 export interface StockClientOptions {
@@ -39,7 +40,7 @@ export class StockClient {
   }
 
   private async pexels(query: string, perPage: number): Promise<StockVideo[]> {
-    const url = `https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=${perPage}`;
+    const url = `${providerUrl("pexels")}/videos/search?query=${encodeURIComponent(query)}&per_page=${perPage}`;
     const res = await this.fetch(url, { headers: { authorization: this.opts.apiKey } });
     if (!res.ok) throw new Error(`pexels ${res.status}: ${await res.text()}`);
     const data = (await res.json()) as { videos?: PexelsVideo[] };
@@ -59,7 +60,7 @@ export class StockClient {
   }
 
   private async pixabay(query: string, perPage: number): Promise<StockVideo[]> {
-    const url = `https://pixabay.com/api/videos/?key=${this.opts.apiKey}&q=${encodeURIComponent(query)}&per_page=${perPage}`;
+    const url = `${providerUrl("pixabay")}/videos/?key=${this.opts.apiKey}&q=${encodeURIComponent(query)}&per_page=${perPage}`;
     const res = await this.fetch(url);
     if (!res.ok) throw new Error(`pixabay ${res.status}: ${await res.text()}`);
     const data = (await res.json()) as { hits?: PixabayHit[] };

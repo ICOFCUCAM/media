@@ -60,6 +60,7 @@ and [01-architecture](01-architecture.md); this page is the map.
 - [53 — Passes, edits, dependency edges and plan history (W8b)](53-directoros-passes-and-edits.md) · STORY → PREVIS → FINAL with database-enforced approvals, the edit command, dependency edges, scene versions, restore a take (migrations 0039–0041, applied live)
 - [54 — Director workspace (W9)](54-directoros-director-workspace.md) · bible · scenes & shots · Director chat, timeline strip, decision log with the why; instructions become edit requests; Voice Studio (migration 0042, applied live)
 - [55 — Evaluation and acceptance (W10)](55-directoros-evaluation-and-acceptance.md) · real-provider probes on decoded artifacts, a 100-scene benchmark with labelled cases and prompt change control, sync instrument calibration, the sixteen-check 3-minute film acceptance (migration 0043, applied live)
+- [56 — Platform hygiene (W11)](56-directoros-platform-hygiene.md) · production types as data (film, short, series, trailer, social short, advert, story, motion comic; live action or an animation style), the public API on Supabase auth, dead paths removed, every paid call metered, atomic Stripe grants, /livez /readyz /metrics, provider hosts from env (migrations 0044–0045, applied live)
 
 ## Continuity & identity — the coherent-movie spine
 

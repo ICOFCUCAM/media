@@ -3,6 +3,7 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabase } from "./supabase";
 import type { Database, ProjectStatus } from "./database.types";
+import type { ProductionSpec } from "./production-types";
 
 export type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 export type FilmRow = Database["public"]["Tables"]["films"]["Row"];
@@ -17,6 +18,8 @@ export async function createProject(input: {
   resolution?: string;
   aspectRatio?: string;
   passMode?: "single" | "three";
+  /** What is being made (W11): format, medium, animation style, episodes. */
+  production?: ProductionSpec;
 }): Promise<ProjectRow> {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase not configured");
@@ -33,6 +36,9 @@ export async function createProject(input: {
       ...(input.resolution ? { resolution: input.resolution } : {}),
       ...(input.aspectRatio ? { aspect_ratio: input.aspectRatio } : {}),
       ...(input.passMode === "three" ? { pass_mode: "three" as const } : {}),
+      ...(input.production
+        ? { kind: input.production.kind, medium: input.production.medium, animation_style: input.production.animationStyle, episodes: input.production.episodes ?? null }
+        : {}),
       target_seconds: input.targetSeconds,
       model_id: input.modelId,
       estimated_ms: input.estimatedMs,

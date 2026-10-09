@@ -7,6 +7,7 @@
 import { prisma } from "@cineforge/db";
 import { AnthropicProvider, IntelligenceRouter, OpenAIProvider, type DecisionRecord } from "@cineforge/movie";
 import { isMissingTable } from "../timeline/store";
+import { meter } from "../billing";
 
 export interface DecisionDb {
   aiDecision: { create(args: { data: Record<string, unknown> }): Promise<unknown> };
@@ -51,7 +52,16 @@ export function intelligence(): IntelligenceRouter {
   router ??= new IntelligenceRouter(
     [new AnthropicProvider(process.env), new OpenAIProvider(process.env)],
     process.env,
-    (d) => recordDecision(prisma as unknown as DecisionDb, d).then(() => undefined),
+    async (d) => {
+      await recordDecision(prisma as unknown as DecisionDb, d);
+      // Tokens are paid work (W11): metered against the production's owner.
+      if (d.outcome === "ok" && d.provider && (d.inputTokens || d.outputTokens)) {
+        await meter({
+          kind: "llm", provider: d.provider, model: d.model, unit: "tokens", units: (d.inputTokens ?? 0) + (d.outputTokens ?? 0),
+          inputTokens: d.inputTokens ?? 0, outputTokens: d.outputTokens ?? 0, projectId: d.projectId, meta: { task: d.task, promptId: d.promptId },
+        });
+      }
+    },
   );
   return router;
 }

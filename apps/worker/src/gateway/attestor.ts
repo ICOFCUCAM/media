@@ -5,11 +5,12 @@
  * approved immutable reference `repo@sha256:<digest>` (docs/39).
  */
 import type { ImageAttestor, RuntimeDeployment } from "@cineforge/model-adapters";
+import { providerUrl } from "@cineforge/shared";
 
 export class RunpodImageAttestor implements ImageAttestor {
   constructor(
     private readonly apiKey: string,
-    private readonly apiBase = "https://api.runpod.io",
+    private readonly apiBase = providerUrl("runpod"),
     private readonly fetchImpl: typeof fetch = fetch,
   ) {}
 

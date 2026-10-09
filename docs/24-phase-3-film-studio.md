@@ -10,7 +10,7 @@ This document does two things:
 2. **Fills those gaps** with concrete systems that build on what already exists
    in this repo: the GPU Lifecycle Manager ([23](23-gpu-lifecycle-manager.md)),
    model-adapter layer ([22](22-video-models.md)), BullMQ flows
-   ([13](13-queues.md)), realtime events ([04](04-api-spec.md)), and the FFmpeg
+   ([13](13-queues.md)), realtime status (Supabase Realtime, [25](25-supabase.md)), and the FFmpeg
    engine ([10](10-ffmpeg-render.md)).
 
 ---
@@ -252,7 +252,8 @@ Generalizes the Phase 1 GPU Lifecycle Manager from one pool to a cluster.
 >   real generation (cache hits cost 0).
 > - **Live pause/resume:** `video.processor` tracks `Project.spentMs` and, once
 >   spend passes `estimate × 1.25` (`shouldPauseForBudget`, tested), sets the
->   project `PAUSED` and emits `project.paused`; queued shots then fail-fast at a
+>   project `PAUSED` (the UI sees it through Supabase Realtime on `projects`; the
+  `project.paused` WS event went with the deleted realtime gateway); queued shots then fail-fast at a
 >   pause gate so the GPU drains and shuts down. `POST /projects/:id/resume`
 >   (optionally `{ addBudgetMs }`) re-checks affordability, restarts the GPU, and
 >   re-enqueues the flow **without re-planning** — completed shots short-circuit,

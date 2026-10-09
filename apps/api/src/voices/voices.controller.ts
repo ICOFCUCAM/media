@@ -5,7 +5,7 @@ import { VoicesService } from "./voices.service";
 type Authed = { user: { id: string } };
 
 /** The frozen Voice API (Part 4 §173, docs/51). Every write returns 202 with a job. */
-@Controller("v1")
+@Controller() // the global prefix makes these /v1/voices, /v1/speech, /v1/jobs
 @UseGuards(JwtAuthGuard)
 export class VoicesController {
   constructor(private readonly voices: VoicesService) {}

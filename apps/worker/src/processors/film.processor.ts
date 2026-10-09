@@ -14,15 +14,14 @@ import { QUEUES, planCapSec, degradation, isProductionFailure, type FilmJob, typ
 import { prisma } from "@cineforge/db";
 import { DirectorService } from "../director/director.service";
 import { moderatePrompt } from "../director/moderation";
+import { meter } from "../billing";
 import { enqueueFilmFlow } from "../orchestration/film-flow";
-import { realtime } from "../realtime";
 import { recordDegradations, type DegradationDb } from "../truth/recorder";
 import { recordGates, type GateDb } from "../quality/recorder";
 
 /** Stop the project with a reason the user can read; never deliver a stand-in. */
 async function failProject(projectId: string, code: string, message: string) {
   await prisma.project.update({ where: { id: projectId }, data: { status: "FAILED", errorMessage: message.slice(0, 500) } });
-  await realtime.emit("error", { projectId, scope: "planning", message });
   console.warn(JSON.stringify({ event: "production.failed", projectId, code, message }));
 }
 
@@ -62,6 +61,7 @@ export const filmWorker = new Worker<FilmJob>(
 
       const gaps: Degradation[] = [];
       const verdict = await moderatePrompt(project.prompt);
+      if (verdict.checked) await meter({ kind: "moderation", provider: "openai", model: "omni-moderation-latest", unit: "requests", units: 1, projectId });
       if (!verdict.checked) {
         if (process.env.MODERATION_REQUIRED === "1") {
           await failProject(projectId, "MODERATION_UNAVAILABLE", FAILURE_MESSAGES.MODERATION_UNAVAILABLE!);
@@ -77,7 +77,6 @@ export const filmWorker = new Worker<FilmJob>(
           where: { id: projectId },
           data: { status: "FAILED", errorMessage: message },
         });
-        await realtime.emit("error", { projectId, scope: "moderation", message });
         console.log(`[film] blocked project ${projectId} by content policy (${verdict.reason})`);
         return { projectId, blocked: verdict.reason };
       }
@@ -106,14 +105,12 @@ export const filmWorker = new Worker<FilmJob>(
       const mode = await prisma.project.findUnique({ where: { id: projectId }, select: { passMode: true } });
       if (mode?.passMode === "three") {
         await prisma.project.update({ where: { id: projectId }, data: { status: "REVIEW" } });
-        await realtime.emit("project.progress", { projectId, progress: 0, status: "REVIEW" });
         return { projectId, pass: "story" };
       }
     }
     const sceneCount = await enqueueFilmFlow(projectId);
 
     await prisma.project.update({ where: { id: projectId }, data: { status: "GENERATING" } });
-    await realtime.emit("project.progress", { projectId, progress: 0, status: "GENERATING" });
     return { projectId, scenes: sceneCount, resumed: job.name === "resume" };
   },
   { connection, concurrency: 4 },

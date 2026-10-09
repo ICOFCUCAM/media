@@ -5,6 +5,7 @@
  * a live API. The Director content matches apps/worker/src/director/director.service.ts.
  */
 import { planScenes, planShotsPerScene, estimateMs, msToUsd } from "./system";
+import type { ProductionSpec } from "./production-types";
 
 export type ProjectStatus = "PLANNING" | "GENERATING" | "RENDERING" | "READY";
 
@@ -90,6 +91,8 @@ export interface DemoConfig {
   aspectRatio?: string;
   /** "three": review the story and each storyboard before any video (W8b). */
   passMode?: "single" | "three";
+  /** What is being made (W11): format, medium, animation style, episodes. */
+  production?: ProductionSpec;
   prompt: string;
   modelId: string;
   targetSeconds: number;

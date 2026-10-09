@@ -8,7 +8,7 @@
 import { filmPackageJsonSchema } from "../ir/json-schema";
 import type { FilmPackage } from "../ir/schema";
 import { formatIssues, validateFilmPackage, type Issue, type ProductionConstraints } from "../ir/validate";
-import { PROMPTS, renderPlanRequest, renderRevisionRequest } from "./prompts";
+import { PROMPTS, renderPlanRequest, renderRevisionRequest, type PlanProduction } from "./prompts";
 import type { IntelligenceRouter } from "./router";
 
 export class PlanInvalidError extends Error {
@@ -44,14 +44,14 @@ export async function planFilm(
   router: IntelligenceRouter,
   brief: string,
   constraints: ProductionConstraints,
-  ctx: { projectId?: string | null } = {},
+  ctx: { projectId?: string | null; production?: PlanProduction } = {},
 ): Promise<PlanResult> {
   const schema = filmPackageJsonSchema();
   const maxTokens = planMaxTokens(constraints.sceneCount);
   const first = await router.call(
     {
       task: "film_plan", promptId: PROMPTS.directorMaster.id, promptVersion: PROMPTS.directorMaster.version,
-      system: PROMPTS.directorMaster.system, user: renderPlanRequest(brief, constraints),
+      system: PROMPTS.directorMaster.system, user: renderPlanRequest(brief, constraints, ctx.production),
       schema, schemaName: "FilmPackage", maxTokens, effort: "high",
       summarize: summarizePlan,
     },

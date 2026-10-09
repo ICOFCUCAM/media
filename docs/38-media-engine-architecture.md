@@ -1,6 +1,6 @@
 # 38 — Cineforge Media Engine & DeployPro Infrastructure Architecture
 
-Status: **UNDER ARCHITECTURE REVIEW. Implementation: NOT APPROVED.** No implementation until the architecture is explicitly approved.
+Status: **Phases 1–5 (§AX.2) are implemented** — see §AY for what is operationally live. Phases 6–12 are not started and remain subject to architecture review.
 Version: **2.6** (2026-10-06) · Supersedes nothing; extends docs/12, 22, 23, 25, 28.
 
 | Version | Change |
@@ -4310,6 +4310,8 @@ Status: **architecture under review. Implementation: NOT APPROVED.** The PR
 stays unmerged until the architecture is explicitly approved. This section
 amends the document; it replaces nothing above except where it says
 "supersedes", and every superseded passage is kept for traceability.
+*(Status (2026-10-09): this status line is historical — Phases 1–5 have since
+been implemented; see §AY.)*
 
 ### AX.1 What this amendment is
 
@@ -4801,7 +4803,7 @@ This is a status log, not a design change. The design sections above remain auth
 | Phase (§AX.2) | Status | Delivered in | Operationally live? |
 |---|---|---|---|
 | 1 — GPU security | Implemented. **Not complete operationally.** | docs/39 (gateway, Ed25519 execution tokens, authz v2 with LoRA content hashes, one-time I/O, admin audit view, verified image chain) | Report mode only. Migration 0026 applied; 0027 not applied. No signing keys deployed, no deployment approved, enforcement off, S3 keys not rotated (docs/39 §10). |
-| 2 — Master Production Clock | Implemented | docs/40 (`@cineforge/shared/clock`) | Yes, as a library. The render's frame-rate conform now executes the clock's plan. |
+| 2 — Master Production Clock | Implemented | docs/40 (`@cineforge/shared/clock`) | Yes, as a library. The render executes the clock's frame-rate conform plan only with `RENDER_NORMALIZE=1`; the default light pass re-encodes every clip at `LIGHT_FPS` = 16 at its own size (`apps/worker/src/ffmpeg/render-engine.ts`, `masterFormat()`). |
 | 3 — Runtime contract | Implemented | docs/40 (timing reports, outcome classification, `WorkflowRuntime`, `DiffusersRuntime`) | Record mode (`RUNTIME_TIMING_POLICY=record`). The GPU image that reports timing must be verified and deployed first. |
 | 4 — Audio and timeline data model | Implemented | docs/41 (migrations 0028–0030, Prisma, timeline builder, ledger) | **Migrations not applied.** Code degrades with one log line until they are. |
 | 5 — A/V Sync Engine | Implemented (analysis) | docs/42 | Operator-run (`avsync:check`). Vision analysis for lip sync is not integrated; its licenses are not verified (§AU.10). |

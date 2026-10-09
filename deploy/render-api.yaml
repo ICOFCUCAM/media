@@ -1,0 +1,32 @@
+# The public API as a Render web service (docs/56 §2). NOT part of render.yaml:
+# deploying it is the owner's decision. To deploy, append this entry under
+# `services:` in render.yaml (it reuses the worker's Redis and database).
+- type: web
+  name: cineforge-api
+  runtime: docker
+  dockerfilePath: ./apps/api/Dockerfile
+  dockerContext: .
+  plan: starter
+  healthCheckPath: /readyz
+  envVars:
+    - key: REDIS_URL
+      fromService:
+        type: keyvalue
+        name: cineforge-redis
+        property: connectionString
+    - key: DATABASE_URL # Supabase pooled Postgres
+      sync: false
+    # Session tokens: the project's URL (JWKS, asymmetric keys) or, on the
+    # legacy shared secret, SUPABASE_JWT_SECRET (HS256). One is required.
+    - key: SUPABASE_URL
+      value: https://trazlydqhfvvawcvfhpw.supabase.co
+    - key: SUPABASE_JWT_SECRET
+      sync: false
+    - key: WEB_URL # CORS origin
+      sync: false
+    - key: RUNPOD_API_KEY # GPU start-on-demand for /v1/generate-film
+      sync: false
+    - key: WAN_GPU_URL
+      sync: false
+    - key: HUNYUAN_GPU_URL
+      sync: false

@@ -82,6 +82,10 @@ export interface Database {
           spent_ms: number;
           error_message: string | null;
           pass_mode: "single" | "three";
+          kind: string;
+          medium: "live_action" | "animation";
+          animation_style: string | null;
+          episodes: number | null;
           story_approved_at: string | null;
           created_at: string;
           updated_at: string;
@@ -100,6 +104,10 @@ export interface Database {
           progress?: number;
           estimated_ms?: number | null;
           pass_mode?: "single" | "three";
+          kind?: string;
+          medium?: "live_action" | "animation";
+          animation_style?: string | null;
+          episodes?: number | null;
         };
         Update: {
           status?: ProjectStatus;

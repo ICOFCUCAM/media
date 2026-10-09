@@ -39,7 +39,7 @@ User prompt
 | Concern | Choice | Reason |
 |---------|--------|--------|
 | Frontend | Next.js 14 + Tailwind | SSR, streaming UI, one app for user + admin |
-| API | NestJS (TypeScript) | Modular, DI, guards, WS gateway, scales cleanly |
+| API | NestJS (TypeScript) | Modular, DI, guards, scales cleanly (no WS gateway: live status is Supabase Realtime) |
 | DB | PostgreSQL + Prisma | Relational continuity data, migrations, typed access |
 | Queue | BullMQ + Redis | Mature, observable, supports priorities & flows |
 | Models | Adapter pattern | Swap/extend models without frontend changes |

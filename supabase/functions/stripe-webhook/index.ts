@@ -2,6 +2,12 @@
 // completion and on every subscription renewal; we set the user's tier and
 // grant credits (credits × CREDIT_MS onto users.credits_ms). Uses the
 // service role (RLS bypass) — Stripe's signature is the auth.
+//
+// Every balance change goes through public.apply_stripe_grant (migration
+// 0044): one transaction claims the event id and increments the balance, so
+// a retried or replayed event is applied once, and a worker debit landing at
+// the same moment is never overwritten. A failed grant returns 500 so Stripe
+// retries it.
 import Stripe from "npm:stripe@17";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -25,52 +31,59 @@ Deno.serve(async (req) => {
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-  /** Grant credits (and optionally a tier) to a user — additive, never resets. */
+  /** Apply this event once: credits (additive) and optionally tier / customer. */
   async function grant(userId: string, credits: number, tier?: string, stripeCustomer?: string) {
-    const { data: u } = await admin.from("users").select("credits_ms").eq("id", userId).single();
-    const next = (u?.credits_ms ?? 0) + credits * CREDIT_MS;
-    await admin
-      .from("users")
-      .update({ credits_ms: next, ...(tier ? { tier } : {}), ...(stripeCustomer ? { stripe_id: stripeCustomer } : {}) })
-      .eq("id", userId);
-    console.log(`[stripe] granted ${credits} credits to ${userId}${tier ? ` (tier ${tier})` : ""}`);
+    const { data: applied, error } = await admin.rpc("apply_stripe_grant", {
+      p_event_id: event.id,
+      p_type: event.type,
+      p_user: userId,
+      p_credit_ms: Math.round(credits * CREDIT_MS),
+      p_tier: tier ?? null,
+      p_stripe_id: stripeCustomer ?? null,
+    });
+    if (error) throw new Error(`grant failed for ${event.id}: ${error.message}`);
+    console.log(applied
+      ? `[stripe] ${event.id}: granted ${credits} credits to ${userId}${tier ? ` (tier ${tier})` : ""}`
+      : `[stripe] ${event.id}: already applied — skipped`);
   }
 
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const s = event.data.object as Stripe.Checkout.Session;
-      const userId = s.metadata?.user_id;
-      const credits = Number(s.metadata?.credits ?? 0);
-      if (userId && credits > 0) {
-        await grant(userId, credits, s.metadata?.plan, typeof s.customer === "string" ? s.customer : undefined);
-      }
-      break;
-    }
-    case "invoice.paid": {
-      // Subscription renewals (the FIRST invoice is covered by checkout.session.completed
-      // above — skip it to avoid double-granting).
-      const inv = event.data.object as Stripe.Invoice;
-      if (inv.billing_reason === "subscription_cycle") {
-        const subId = typeof inv.subscription === "string" ? inv.subscription : inv.subscription?.id;
-        if (subId) {
-          const sub = await stripe.subscriptions.retrieve(subId);
-          const userId = sub.metadata?.user_id;
-          const credits = Number(sub.metadata?.credits ?? 0);
-          if (userId && credits > 0) await grant(userId, credits, sub.metadata?.plan);
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const s = event.data.object as Stripe.Checkout.Session;
+        const userId = s.metadata?.user_id;
+        const credits = Number(s.metadata?.credits ?? 0);
+        if (userId && credits > 0) {
+          await grant(userId, credits, s.metadata?.plan, typeof s.customer === "string" ? s.customer : undefined);
         }
+        break;
       }
-      break;
-    }
-    case "customer.subscription.deleted": {
-      // Cancelled: drop to FREE (credits already granted stay until used).
-      const sub = event.data.object as Stripe.Subscription;
-      const userId = sub.metadata?.user_id;
-      if (userId) {
-        await admin.from("users").update({ tier: "FREE" }).eq("id", userId);
-        console.log(`[stripe] subscription cancelled -> ${userId} back to FREE`);
+      case "invoice.paid": {
+        // Subscription renewals (the FIRST invoice is covered by checkout.session.completed
+        // above — skip it to avoid double-granting).
+        const inv = event.data.object as Stripe.Invoice;
+        if (inv.billing_reason === "subscription_cycle") {
+          const subId = typeof inv.subscription === "string" ? inv.subscription : inv.subscription?.id;
+          if (subId) {
+            const sub = await stripe.subscriptions.retrieve(subId);
+            const userId = sub.metadata?.user_id;
+            const credits = Number(sub.metadata?.credits ?? 0);
+            if (userId && credits > 0) await grant(userId, credits, sub.metadata?.plan);
+          }
+        }
+        break;
       }
-      break;
+      case "customer.subscription.deleted": {
+        // Cancelled: drop to FREE (credits already granted stay until used).
+        const sub = event.data.object as Stripe.Subscription;
+        const userId = sub.metadata?.user_id;
+        if (userId) await grant(userId, 0, "FREE");
+        break;
+      }
     }
+  } catch (e) {
+    console.error(e instanceof Error ? e.message : e);
+    return new Response("fulfillment failed; Stripe will retry", { status: 500 });
   }
 
   return new Response(JSON.stringify({ received: true }), { headers: { "content-type": "application/json" } });

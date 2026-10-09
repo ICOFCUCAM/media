@@ -91,8 +91,11 @@ can only touch rows that belong to their own projects.
 The creator studio subscribes to **Postgres Changes** on `projects`, `scenes`,
 `shots`, `render_jobs` and `films` (added to the `supabase_realtime`
 publication, `replica identity full`). RLS applies to Realtime, so a user only
-receives changes for rows they own. This replaces the Redis→Socket.IO fan-out
-for *client-facing* updates; the worker still uses Redis/BullMQ internally.
+receives changes for rows they own. This is the **only** client-facing live
+channel: the Redis→Socket.IO fan-out (`packages/realtime`, the `apps/api`
+gateway) was deleted on 2026-10-09 because nothing consumed it. The worker
+still uses Redis/BullMQ internally. Today the web app subscribes to `projects`,
+`scenes` and `shots` (`apps/web/lib/projects.ts`, `apps/web/lib/supabase-run.ts`).
 
 Example subscription:
 
@@ -144,9 +147,11 @@ env vars are present (otherwise it falls back to the built-in preview engine):
 2. **Create** — inserts a `projects` row owned by `auth.uid()` (RLS-enforced).
 3. **Realtime** — the UI subscribes to Postgres Changes on that row and renders
    progress *only* from what comes back over Realtime.
-4. **Worker stand-in** — `FilmWorker` advances the row's status/progress and
-   writes a `films` row at the end. In production `apps/worker` does these same
-   writes (service-role key) after the Director, GPU jobs and FFmpeg.
+4. **Worker** — the row is inserted as `PLANNING`; `apps/worker`'s project
+   poller claims it and writes status/progress, scenes, shots and the `films`
+   row (service-role key) through the Director, GPU jobs and FFmpeg
+   (`apps/web/lib/supabase-run.ts`). *(Status (2026-10-09): the earlier
+   in-browser `FilmWorker` stand-in no longer exists.)*
 5. **Projects** — `/projects` reads the signed-in user's rows (RLS-scoped).
 
 To go live on Vercel, set `NEXT_PUBLIC_SUPABASE_URL` and

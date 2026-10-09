@@ -50,7 +50,13 @@ export function SeriesStudio() {
 
   function onCreate() {
     const outline = episodes.map((e, i) => `Ep${i + 1}: ${e.title} — ${e.logline}`).join("\n");
-    run({ prompt: `${premise}\n\nSeason outline:\n${outline}`, modelId: "wan-2.1", targetSeconds: totalMin * 60 });
+    // A real series (W11): one act per episode, persisted as series → season → episodes.
+    run({
+      prompt: `${premise}\n\nSeason outline:\n${outline}`,
+      modelId: "wan-2.1",
+      targetSeconds: totalMin * 60,
+      production: { kind: "series", medium: "live_action", animationStyle: null, episodes: Math.min(52, Math.max(1, episodes.length)) },
+    });
     if (window.innerWidth < 1024) document.getElementById("studio-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 

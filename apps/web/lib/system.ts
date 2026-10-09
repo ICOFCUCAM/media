@@ -4,11 +4,6 @@
  * server would compute. Single source for the UI.
  */
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
-export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "";
-export const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL ?? "";
-export const IS_LIVE = API_URL.length > 0;
-
 export const AVG_SCENE_SEC = 18;
 export const AVG_SHOT_SEC = 5;
 

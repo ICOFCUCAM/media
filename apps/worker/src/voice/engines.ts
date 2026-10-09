@@ -11,7 +11,7 @@
  */
 import { readFile, writeFile } from "node:fs/promises";
 import { falFindUrl, falRunQueue, falUploadBytes } from "@cineforge/model-adapters";
-import { languageName } from "@cineforge/shared";
+import { languageName, providerUrl } from "@cineforge/shared";
 import {
   ENGINE_REGISTRY,
   type EngineHealth,
@@ -116,7 +116,7 @@ export class OpenAiTtsEngine implements VoiceEngine {
     if (req.voice) throw new Error("openai-tts cannot speak in a cloned voice");
     const key = this.env.OPENAI_API_KEY;
     if (!key) throw new Error("OPENAI_API_KEY not configured");
-    const res = await this.f("https://api.openai.com/v1/audio/speech", {
+    const res = await this.f(`${providerUrl("openai", this.env)}/audio/speech`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
       body: JSON.stringify({

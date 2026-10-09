@@ -4,28 +4,25 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
-    "build": "nest build",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "start": "node start.cjs"
   },
   "dependencies": {
     "@cineforge/db": "workspace:*",
     "@cineforge/gpu": "workspace:*",
     "@cineforge/model-adapters": "workspace:*",
-    "@cineforge/realtime": "workspace:*",
     "@cineforge/shared": "workspace:*",
     "@cineforge/voice-contracts": "workspace:*",
     "@nestjs/common": "^10.3.0",
     "@nestjs/core": "^10.3.0",
     "@nestjs/platform-express": "^10.3.0",
-    "@nestjs/platform-socket.io": "^10.3.0",
-    "@nestjs/websockets": "^10.3.0",
     "bullmq": "^5.7.0",
     "jsonwebtoken": "^9.0.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.0",
-    "socket.io": "^4.7.0",
     "zod": "3.25.76"
   },
   "devDependencies": {

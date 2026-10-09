@@ -8,19 +8,18 @@
 import { QueueEvents } from "bullmq";
 import { QUEUES } from "@cineforge/shared";
 import { createGpuManagers } from "@cineforge/gpu";
-import "./processors/film.processor";
-import "./processors/scene.processor";
-import "./processors/video.processor";
-import "./processors/audio.processor";
-import "./processors/render.processor";
-import "./processors/lora.processor";
-import "./processors/localize.processor";
-import "./processors/voice-lab.processor";
-import "./processors/voice-engine.processor";
-import "./processors/social.processor";
-import "./processors/publish.processor";
+import { filmWorker } from "./processors/film.processor";
+import { sceneWorker } from "./processors/scene.processor";
+import { videoWorker } from "./processors/video.processor";
+import { audioWorker } from "./processors/audio.processor";
+import { renderWorker } from "./processors/render.processor";
+import { loraWorker } from "./processors/lora.processor";
+import { localizeWorker } from "./processors/localize.processor";
+import { voiceLabWorker } from "./processors/voice-lab.processor";
+import { voiceEngineWorker } from "./processors/voice-engine.processor";
+import { socialWorker } from "./processors/social.processor";
 import { startProjectPoller } from "./orchestration/project-poller";
-import { startHealthServer } from "./health";
+import { countJobs, startHealthServer } from "./health";
 import { prisma } from "@cineforge/db";
 import { currentRegistry, publishCapabilities, readGpuCaps } from "./truth/capabilities";
 import { intelligence } from "./intelligence";
@@ -82,8 +81,16 @@ const capsTimer = setInterval(
   Math.max(60, Number(process.env.CAPABILITY_PUBLISH_SEC ?? 300)) * 1000,
 );
 
-// HTTP health for platforms that need one (DeployPro sets PORT; Render does not).
-const health = process.env.PORT ? startHealthServer({ port: Number(process.env.PORT), ping: () => gpu.redis.ping() }) : null;
+// Job outcomes per queue for /metrics (docs/38 §AF).
+for (const w of [filmWorker, sceneWorker, videoWorker, audioWorker, renderWorker, loraWorker, localizeWorker, voiceLabWorker, voiceEngineWorker, socialWorker]) {
+  countJobs(w.name, w);
+}
+
+// HTTP probes + metrics for platforms that route to the worker (DeployPro and
+// Kubernetes set PORT; a Render background worker has none).
+const health = process.env.PORT
+  ? startHealthServer({ port: Number(process.env.PORT), checks: { redis: () => gpu.redis.ping(), database: () => prisma.$queryRaw`select 1` } })
+  : null;
 
 console.log("cineforge worker up: processors + project watcher + GPU lifecycle loops running");
 

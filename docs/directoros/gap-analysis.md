@@ -676,6 +676,19 @@ Expected first acceptance verdict: FAIL on audio (no SFX generator).
 
 ### W11 — Platform hygiene found during the trace
 
+**Done 2026-10-09** (docs/56; contract platform.md; migrations 0044–0045
+applied live): production types are project data (format, medium, animation
+style, episodes) that pace the plan, shape the plan request (`director.master`
+v5) and style every prompt; series → season → episodes persisted; the public
+API kept and made deployable on Supabase auth (roles from the database, Voice
+API at `/v1/voices`, compiled image booted in CI; Render entry left for the
+owner); `packages/realtime`, the Socket.IO gateway, `LiveRun`,
+`publish-queue` and render kinds `preview`/`scene` removed; every paid call
+metered (LLM, TTS, image, music, moderation, hosted video) with owner-set
+`METER_RATES`; Stripe grants atomic and idempotent (`apply_stripe_grant`,
+edge function redeploy pending); `/livez` `/readyz` `/metrics` on worker and
+API; provider hosts from env; §2.5 doc drift fixed.
+
 - Persist production kind and aspect ratio; series/trailer/shorts/advert
   become real production types, not prompt strings.
 - Decide `apps/api`: deploy it (fix the HS256 guard to Supabase JWT, add the
@@ -686,6 +699,24 @@ Expected first acceptance verdict: FAIL on audio (no SFX generator).
   grants atomic (`stripe-webhook/index.ts:29-34`).
 - Fix doc drift listed in §2.5; update docs/11 to point at the Voice Engine.
 - §AF portability: `/readyz`, `/metrics`, provider hosts from env.
+
+### W12 — Animation Studio (Part 5, DOS-177–186)
+
+- BUILD reusable Character Cards (user-owned: identity, height, proportions,
+  palette, wardrobe, voice, animation style, reference image) with "Use
+  character" importing them into a production's cast (§183).
+- BUILD the Show Bible (title, genre, audience, visual style, world rules,
+  characters, locations, voice cast, music identity, narrative rules, episode
+  format, continuity rules) and episode productions that plan against it and
+  against the canon of earlier episodes (§184).
+- BUILD the storybook and motion-comic pipelines: page/panel stills generated
+  first, then camera moves and light motion over them (§181.4–6).
+- BUILD the Create menu and animation workspace: Cartoon, Story, Motion
+  Comic, Character, Episode (§185).
+- UPGRADE character continuity for animation: proportions, colour palette and
+  movement style per character in the bible and the reviewer (§179.4).
+- All on the existing engines (§186); self-hosted animation models wait on
+  docs/39 Phase 1.
 
 ---
 
@@ -709,6 +740,7 @@ approved models wait for docs/38 gates.
 | **S9 Workspace** | W9 | S2–S6 APIs | S7, S8 |
 | **S10 Acceptance** | W10 real-provider tests and the 3-minute film | S8 | — |
 | **S11 Infrastructure** | docs/38 Phase 12 DeployPro GPU | DeployPro G1–G4 | any |
+| **S12 Animation** | W12 Animation Studio (Part 5) | W11 production types | S10, S11 |
 
 W11 hygiene items ride along with whichever stage touches the same files.
 
@@ -733,4 +765,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 203 built, 133 shallow, 0 poorly built, 46 not built, 72 n/a. Of the 382 IDs that are requirements, 203 (53%) are built; 133 exist but need upgrading or changing; 46 must be built. (Updated after W10, 2026-10-09.)
+487 IDs: 218 built, 146 shallow, 0 poorly built, 49 not built, 74 n/a. Of the 413 IDs that are requirements, 218 (53%) are built; 146 exist but need upgrading or changing; 49 must be built. (Updated after W11 and Part 5, 2026-10-09.)

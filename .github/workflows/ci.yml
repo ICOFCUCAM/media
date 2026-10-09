@@ -48,6 +48,19 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # The public API boots from its compiled output and serves its probes
+      # and its routes (docs/56 §2): /livez 200, /readyz 503 without a
+      # database, /v1/voices 401 without a session, /v1/v1/voices 404.
+      - name: API boots
+        run: |
+          (cd apps/api && PORT=4999 REDIS_URL=redis://127.0.0.1:6390 node start.cjs > /tmp/api.log 2>&1 &)
+          for i in $(seq 1 30); do curl -sf localhost:4999/livez >/dev/null && break; sleep 1; done
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:4999/livez)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:4999/readyz)" = 503
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:4999/v1/voices)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:4999/v1/v1/voices)" = 404
+          curl -s localhost:4999/metrics | grep -q 'cineforge_http_requests_total'
+
   gpu-worker:
     runs-on: ubuntu-latest
     steps:

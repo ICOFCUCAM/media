@@ -20,8 +20,8 @@ import { NarrationOverrunError } from "../ffmpeg/commands";
 import { nextVersion, recordVersion, type VersionDb } from "../versions/record";
 import { RenderEngine, type SceneAssets } from "../ffmpeg/render-engine";
 import { S3Storage } from "../storage/storage";
-import { realtime } from "../realtime";
 import { notifyFinish } from "../notify";
+import { meter } from "../billing";
 import { enqueueLocalize } from "../orchestration/localize-queue";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
@@ -59,6 +59,7 @@ async function upscaleFilm(projectId: string) {
     const model = process.env.FAL_UPSCALE_MODEL ?? "fal-ai/topaz/upscale/video";
     console.log(`[render] 4K upscale start project=${projectId} model=${model}`);
     const result = await falRunQueue(apiKey, model, { video_url: srcUrl, upscale_factor: 2 }, { timeoutMs: 30 * 60_000 });
+    await meter({ kind: "video", provider: "fal", model, unit: "requests", units: 1, projectId, meta: { purpose: "upscale_4k" } });
     const url = falFindUrl(result);
     if (!url) throw new Error(`upscaler returned no video (${JSON.stringify(result).slice(0, 200)})`);
     const res = await fetch(url);
@@ -66,7 +67,6 @@ async function upscaleFilm(projectId: string) {
     const key = `projects/${projectId}/film/final_4k.mp4`;
     await storage.putBytes(key, new Uint8Array(await res.arrayBuffer()), "video/mp4");
     await prisma.film.update({ where: { projectId }, data: { mp44kKey: key } });
-    await realtime.emit("film.ready", { projectId, upscaled: true } as never).catch(() => {});
     console.log(`[render] 4K master ready project=${projectId}`);
     return { projectId, mp44kKey: key };
   } catch (e) {
@@ -83,7 +83,7 @@ export const renderWorker = new Worker<RenderJob>(
   async (job) => {
     const { projectId, kind } = job.data;
     if (kind === "upscale") return upscaleFilm(projectId);
-    if (kind !== "final") return { skipped: kind };
+    if (kind !== "final") throw new UnrecoverableError(`unknown render kind ${JSON.stringify(kind)}`);
 
     // Loud, structured logging: this is the LAST step of the pipeline and the
     // one place a silent failure would leave a project stuck on GENERATING
@@ -127,7 +127,6 @@ export const renderWorker = new Worker<RenderJob>(
         const message = `${totalShots - totalClips} of ${totalShots} shots were not generated (scene.shot ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? ", …" : ""}) — the film was not assembled.`;
         console.error(`[render] project=${projectId} SHOTS_MISSING ${missing.length}`);
         await prisma.project.update({ where: { id: projectId }, data: { status: "FAILED", errorMessage: message } });
-        await realtime.emit("error", { projectId, scope: "render", message });
         await notifyFinish(projectId, "FAILED", message);
         return { projectId, failed: "SHOTS_MISSING", missing };
       }
@@ -158,7 +157,7 @@ export const renderWorker = new Worker<RenderJob>(
         const out = await engine.renderFinal(
           projectId,
           assets,
-          (p) => realtime.emit("render.progress", { projectId, renderJobId: job.id, progress: p }),
+          undefined,
           kit ? { logoKey: kit.logoKey, primaryColor: kit.primaryColor, outroText: kit.outroText } : undefined,
           { filmSec: durationSec, gate: masterGate(durationSec), version },
         );
@@ -188,18 +187,15 @@ export const renderWorker = new Worker<RenderJob>(
         const message = "No video was generated for this project's shots — nothing to assemble.";
         console.error(`[render] project=${projectId} has ${scenes.length} scenes but 0 clips — marking FAILED`);
         await prisma.project.update({ where: { id: projectId }, data: { status: "FAILED", errorMessage: message } });
-        await realtime.emit("error", { projectId, scope: "render", message });
         await notifyFinish(projectId, "FAILED", message);
         return { projectId, failed: "no clips" };
       } else if (process.env.ALLOW_PLACEHOLDER_MEDIA === "1") {
         // Local demo only (explicit): no storage, record metadata so the
         // lifecycle completes. Never in production — the key would be a phantom.
-        await realtime.emit("render.progress", { projectId, renderJobId: job.id, progress: 1 });
       } else {
         const message = "Storage is not configured, so the film cannot be assembled or delivered.";
         console.error(`[render] project=${projectId} STORAGE_UNCONFIGURED`);
         await prisma.project.update({ where: { id: projectId }, data: { status: "FAILED", errorMessage: message } });
-        await realtime.emit("error", { projectId, scope: "render", message });
         await notifyFinish(projectId, "FAILED", message);
         return { projectId, failed: "STORAGE_UNCONFIGURED" };
       }
@@ -215,7 +211,6 @@ export const renderWorker = new Worker<RenderJob>(
         data: { status: "READY", progress: 1 },
       });
 
-      await realtime.emit("film.ready", { projectId, filmId: film.id, mp4Key, hlsKey });
       console.log(`[render] READY project=${projectId} film=${film.id} duration=${durationSec}s`);
       await notifyFinish(projectId, "READY");
 
@@ -262,9 +257,6 @@ export const renderWorker = new Worker<RenderJob>(
       await prisma.project
         .update({ where: { id: projectId }, data: { status: "FAILED", errorMessage: `render: ${short}`.slice(0, 500) } })
         .catch((e) => console.error(`[render] could not mark FAILED:`, e));
-      await realtime
-        .emit("error", { projectId, scope: "render", message: err instanceof Error ? err.message : String(err) })
-        .catch(() => {});
       // A failed Final Quality Gate is recorded with its findings.
       const gateFailure = isProductionFailure(err) && err.code === "QUALITY_GATE_FAILED";
       if (gateFailure) await recordFilmGates(projectId, ((err.detail as { quality?: GateResult[] } | undefined)?.quality) ?? []).catch(() => {});
