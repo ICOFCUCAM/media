@@ -83,7 +83,7 @@ export function fmtDuration(sec: number): string {
  *  VALIDATED         an independent acceptance test verifies real artifacts
  *  PRODUCTION_READY  validated + operated in production
  * Nothing here is VALIDATED yet: the real-provider and 3-minute-film
- * acceptance tests are workstream W10 (docs/directoros/gap-analysis.md).
+ * acceptance tests exist (W10, docs/55) but have not been run on production.
  * Whether a capability is reachable RIGHT NOW comes from the live registry
  * (lib/truth.ts), not from this list.
  */
@@ -123,6 +123,7 @@ export const SUBSYSTEMS: Subsystem[] = [
   { name: "BullMQ Queues + Flow", maturity: "INTEGRATED", blurb: "film → scene → video/audio → render fan-out; a terminal shot failure fails the film with its reason.", doc: "docs/13-queues.md" },
   { name: "FFmpeg Render Engine", maturity: "INTEGRATED", capability: "technical_qc", blurb: "Concat → ducked mix → mux, with real-FFmpeg regression tests. Refuses films with missing shots, unmixable sound or no storage. HLS ladder optional (RENDER_HLS=1).", doc: "docs/10-ffmpeg-render.md" },
   { name: "Realtime (Supabase)", maturity: "INTEGRATED", blurb: "Postgres Changes to the browser. The Socket.IO gateway in apps/api is not deployed.", doc: "docs/04-api-spec.md" },
+  { name: "Evaluation & acceptance", maturity: "FUNCTIONAL", blurb: "Real-provider probes that decode and measure every artifact, a 100-scene benchmark with labelled continuity, dialogue, camera and voice cases that gates every change, prompt versions scored on live plans, and the 3-minute film checked sixteen ways. Built and tested; not yet run against production.", doc: "docs/55-directoros-evaluation-and-acceptance.md" },
   { name: "Visual & sync quality gate", maturity: "INTEGRATED", capability: "visual_qc", blurb: "Every shot is measured before it is ready (picture, length, black, frozen) and a frame is checked against canon; the finished film is measured before delivery (length, sound, loudness). Defects are recorded and shown; blocking them is switched on after calibration. The editorial pass is W8.", doc: "docs/49-directoros-quality-gates.md" },
 ];
 

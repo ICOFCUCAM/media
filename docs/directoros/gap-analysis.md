@@ -655,6 +655,18 @@ instructions applied (Editor Agent), editable bible in the workspace.
 
 ### W10 — Evaluation and acceptance
 
+**Done 2026-10-09** (docs/55; contract evaluation-and-acceptance.md; migration
+0043 applied live): real-provider probes that decode and measure every
+artifact (planning, image, Wan/Hunyuan/fal video, TTS, music; ComfyUI and
+self-hosted voices reported GATED); `@cineforge/bench` — 100 scenes, 50
+characters, 30 locations, 75 labelled cases (21 controls), score 1.0 as the CI
+baseline, prompt lock that fails an unversioned prompt edit, live planning
+benchmark that scores a prompt version; sync instrument calibration (all 60
+tolerances resolved; MP3 durations read up to 68 ms long); `film:accept` with
+the sixteen §81.2 checks proven on real masters. The Evaluation workflow runs
+them manually (nightly probes opt-in). Not yet run live — owner credentials.
+Expected first acceptance verdict: FAIL on audio (no SFX generator).
+
 - BUILD gated (secret-protected, nightly or manual) real-provider tests:
   Claude/OpenAI plan, Wan on RunPod, ComfyUI image, TTS; verify artifact bytes.
 - BUILD the benchmark harness (story, continuity, dialogue, cinematography,
@@ -721,4 +733,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 190 built, 136 shallow, 0 poorly built, 56 not built, 72 n/a. Of the 382 IDs that are requirements, 190 (50%) are built; 136 exist but need upgrading or changing; 56 must be built. (Updated after W9, 2026-10-09.)
+454 IDs: 203 built, 133 shallow, 0 poorly built, 46 not built, 72 n/a. Of the 382 IDs that are requirements, 203 (53%) are built; 133 exist but need upgrading or changing; 46 must be built. (Updated after W10, 2026-10-09.)

@@ -188,6 +188,8 @@ jobs:
 
   # docs/38 §AW.11 regression test 1 with real FFmpeg and real media: narration
   # is never cut to the picture, and a short narration never cuts the picture.
+  # W10: artifact verification, sync instrument calibration and the sixteen
+  # film-acceptance checks on real masters run here too.
   media-regression:
     runs-on: ubuntu-latest
     steps:
@@ -203,6 +205,6 @@ jobs:
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Media regression tests
-        run: pnpm --filter @cineforge/worker exec vitest run src/ffmpeg src/avsync src/voice
+        run: pnpm --filter @cineforge/worker exec vitest run src/ffmpeg src/avsync src/voice src/acceptance src/bench
         env:
           REQUIRE_FFMPEG: "1"

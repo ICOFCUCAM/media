@@ -1,0 +1,58 @@
+{
+  "prompts": [
+    {
+      "id": "director.edit",
+      "version": 1,
+      "purpose": "Director workspace (W9): read the owner's instruction as at most one canon change, and answer them.",
+      "sha256": "1e613201d53df2d9cae382681754424461ff1d2fe2213fc2b30ee70040371e81",
+      "score": null,
+      "scoredAt": null,
+      "model": null
+    },
+    {
+      "id": "director.master",
+      "version": 4,
+      "purpose": "One master call: brief → complete Film Production Package (Part 2 §85, §93).",
+      "sha256": "c8e3aa6f8f7602d30b1110171ca891387567bd357307088d47d3f78262c1de3e",
+      "score": null,
+      "scoredAt": null,
+      "model": null
+    },
+    {
+      "id": "director.revision",
+      "version": 4,
+      "purpose": "Surgical revision: fix exactly the validator's issues in a package (Part 2 §93).",
+      "sha256": "ba2926364657c0bf641318e47b94c47990319ce2c3c8dcb2b9a62f442dda9781",
+      "score": null,
+      "scoredAt": null,
+      "model": null
+    },
+    {
+      "id": "review.visual",
+      "version": 1,
+      "purpose": "Visual Reviewer: does a generated frame show what canon says the shot must show (Part 2 §62; W5)?",
+      "sha256": "d7ede091e8e03724aa5f1e81cd64365b3901e773f04e50de62bbdf763edc862a",
+      "score": null,
+      "scoredAt": null,
+      "model": null
+    },
+    {
+      "id": "social.kit",
+      "version": 1,
+      "purpose": "Write a per-platform launch kit (titles, captions, hashtags) for a finished film.",
+      "sha256": "6d88c084fd29ca577afc9b0bb3aeb758259aa44ca53a5f1f9dca88c6861b4142",
+      "score": null,
+      "scoredAt": null,
+      "model": null
+    },
+    {
+      "id": "translate.lines",
+      "version": 1,
+      "purpose": "Translate a film's spoken lines into one language, line for line (docs/29).",
+      "sha256": "58b90f86357a27a511d19964282de35b0d37332f1b667588edbd3034f658ff78",
+      "score": null,
+      "scoredAt": null,
+      "model": null
+    }
+  ]
+}

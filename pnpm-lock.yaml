@@ -148,6 +148,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.580.0
         version: 3.1066.0
+      '@cineforge/bench':
+        specifier: workspace:*
+        version: link:../../packages/bench
       '@cineforge/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -178,6 +181,28 @@ importers:
       zod:
         specifier: 3.25.76
         version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^20.12.0
+        version: 20.19.42
+      tsx:
+        specifier: ^4.10.0
+        version: 4.22.4
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@20.19.42)(terser@5.48.0)
+
+  packages/bench:
+    dependencies:
+      '@cineforge/movie':
+        specifier: workspace:*
+        version: link:../movie
+      '@cineforge/voice-contracts':
+        specifier: workspace:*
+        version: link:../voice-contracts
     devDependencies:
       '@types/node':
         specifier: ^20.12.0
