@@ -1169,6 +1169,71 @@ export type Database = {
           },
         ]
       }
+      image_generations: {
+        Row: {
+          candidate: number | null
+          canon_digest: string | null
+          chosen: boolean | null
+          created_at: string
+          height: number | null
+          id: string
+          model: string | null
+          project_id: string
+          prompt_sha256: string
+          provider: string
+          purpose: string
+          seed: number | null
+          sha256: string | null
+          storage_key: string
+          subject: string
+          width: number | null
+        }
+        Insert: {
+          candidate?: number | null
+          canon_digest?: string | null
+          chosen?: boolean | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          model?: string | null
+          project_id: string
+          prompt_sha256: string
+          provider: string
+          purpose: string
+          seed?: number | null
+          sha256?: string | null
+          storage_key: string
+          subject: string
+          width?: number | null
+        }
+        Update: {
+          candidate?: number | null
+          canon_digest?: string | null
+          chosen?: boolean | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          model?: string | null
+          project_id?: string
+          prompt_sha256?: string
+          provider?: string
+          purpose?: string
+          seed?: number | null
+          sha256?: string | null
+          storage_key?: string
+          subject?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_generations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locations: {
         Row: {
           created_at: string
@@ -3365,6 +3430,47 @@ export type Database = {
           },
         ]
       }
+      world_references: {
+        Row: {
+          created_at: string
+          digest: string
+          id: string
+          kind: string
+          project_id: string
+          provider: string
+          ref_key: string
+          storage_key: string
+        }
+        Insert: {
+          created_at?: string
+          digest: string
+          id?: string
+          kind: string
+          project_id: string
+          provider: string
+          ref_key: string
+          storage_key: string
+        }
+        Update: {
+          created_at?: string
+          digest?: string
+          id?: string
+          kind?: string
+          project_id?: string
+          provider?: string
+          ref_key?: string
+          storage_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_references_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -3394,6 +3500,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      choose_seed_candidate: { Args: { p_generation: string }; Returns: string }
       clock_frame_at: {
         Args: { fps_den: number; fps_num: number; us: number }
         Returns: number

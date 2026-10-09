@@ -223,7 +223,7 @@ Conflicts to settle (decisions in §10):
 | 12 Prompt Compiler | shallow | string concatenation (`director.service.ts:188`, `video.processor.ts:176`) | BUILD a pure, deterministic compiler for 6 prompt kinds |
 | 13 Model compilers | not built | adapters pass prompts verbatim (fal truncates at 2000) | BUILD per-model compilers keyed by registry id |
 | 14 Canonical media request | shallow | `ShotRequest` is the closest analogue | CHANGE: `CanonicalMediaRequest` in shared; persisted per shot for provenance |
-| 15 Image generation | shallow | one gpt-image-1 still per shot, `n:1` | UPGRADE to N candidates as image jobs, each a `MediaVersion` |
+| 15 Image generation | built (W6, W17) | `images/providers.ts`, `images/ledger.ts` | Done: N seeded candidates ranked against canon, each recorded; the owner can choose another take (docs/50, docs/62) |
 | 16 Visual Reviewer | not built | `Shot.qcScore` never set; QC statuses unused | BUILD multimodal reviewer → structured scores → PASS/REVISE loop (bounded) |
 | 17 Video review | shallow | timing gate + black/freeze validator; avsync CLI-only | BUILD frame extraction + visual/continuity/motion evaluators → PASS/REGENERATE via repair planner |
 | 18 Audio architecture | built (W16) | `movie/src/sound/plan.ts`, audio processor | Done: per-scene ambience beds and shot-anchored effects generated and placed beside dialogue and score (docs/61) |
@@ -241,8 +241,8 @@ Conflicts to settle (decisions in §10):
 | 31 Version everything | shallow | immutable timelines/media_versions exist, but processors overwrite shots/films in place | UPGRADE: append-only versions for canon, scenes, shots, films |
 | 32 Continuity Engine | shallow | presence heuristic + one regex (`continuity.ts:153-190`) | UPGRADE to typed rules for 5 categories + vision identity + 180°/eyeline (audio category built in W14, docs/59) |
 | 33 Temporal continuity | not built | `timeOfDay` string only | BUILD story-time model |
-| 34 Visual memory | shallow | only character refs + LoRA reach generation | UPGRADE typed reference assets for both image and video |
-| 35 Reference pack | not built | refs capped at 4 character frames | BUILD per-scene `ReferencePack` assembler |
+| 34 Visual memory | built (W6, W17) | `canon/reference-pack.ts`, `canon/world-refs.ts` | Done: identity, wardrobe, place and prop stills per canon digest and the previous end frame reach generation; style is the film look in every prompt (docs/62) |
+| 35 Reference pack | built (W6, W17) | `canon/reference-pack.ts` | Done: per-shot pack in priority order (seed, previous end, wardrobe, identity, location, props), overflow listed (docs/50, docs/62) |
 | 36 Shot-to-shot memory | not built | shots run in parallel, no last-frame conditioning | BUILD end-state records + optional sequential edges |
 | 37 Scene lock | not built | no APPROVED/LOCKED status | BUILD DB-enforced lock (0028 trigger pattern) |
 | 38 Film lock | shallow | timeline `frozen` status, no workflow | BUILD film-lock transaction; master renders from locked versions |
@@ -274,7 +274,7 @@ Conflicts to settle (decisions in §10):
 | 66 Scene Architect proof | shallow | no purpose/beats; duration = requested | UPGRADE; duration from measured media |
 | 67 Shot Architect proof | poorly built | `AVG_SHOT_SEC=5` formula; clock not tied to planning | BUILD ShotIR; assert Σshots = scene on the clock |
 | 68 Prompt Compiler protection | poorly built | the named anti-pattern (concatenation) | BUILD `compileGeneration(state, shot, refs, modelCaps)` + wardrobe test |
-| 69 Image Engine contract | shallow | no checksum/seed/revision; `data:` URL fallback | UPGRADE to `ImageGenerationResult` + artifact row |
+| 69 Image Engine contract | built (W17) | `images/providers.ts`, migration 0052 | Done: every still recorded with provider, model, seed, checksums and canon digest; real-provider probes (docs/62) |
 | 70 Never self-certify | poorly built | READY from adapter claim (`video.processor.ts:325-336`); GPU reports requested, not actual, size | CHANGE: HEAD + ffprobe + sha256 + QC before READY |
 | 71 Audio regression | **built** | `planNarrationFit`; `media-regression` CI | KEEP; make it a required check |
 | 72 Zero hidden TODOs | not built (gate) | no TODO markers, but stub fallbacks; no lint rule | BUILD CI stub-pattern gate |
@@ -824,6 +824,25 @@ existing engines, migrations 0046–0047 live.
 
 ---
 
+### W17 — The Image Engine (Part 1 §15, §34–35; Part 2 §69, §95, §106)
+
+**Done (docs/62, 2026-10-09; migrations 0052–0053 applied live).**
+
+- BUILT the image record: every still in image_generations with provider,
+  model, seed, prompt and object sha256, size, canon digest, candidate and
+  choice; empty or missing images fail (§69).
+- BUILT a second provider: a hosted fal model (Flux) with real seeds beside
+  OpenAI; metering and the capability name the provider actually used (§95,
+  §106).
+- BUILT place and prop reference stills per canon digest (world_references)
+  in the reference pack (§34–35).
+- BUILT stable seeds for seed candidates and the owner's choice of take in
+  the storyboard pass (§15).
+- OPEN: CineForge's own image system (ComfyUI) waits on Phase 1; style and
+  camera reference images; per-dimension frame scores.
+
+---
+
 ## 9. Sequenced roadmap
 
 DirectorOS work is placed **inside** the docs/38 §AX.2 order, not beside it.
@@ -849,6 +868,7 @@ approved models wait for docs/38 gates.
 | **S14 Voice operations** | W14 licence registry, speech cache, voice benchmark, audio continuity | W7 Voice Engine, W10 benchmark | S13 |
 | **S15 Voice Studio** | W15 readings on the Voice Engine, per-use licences, voice traits, speech ledger | W7, W14 | S14 |
 | **S16 Sound design** | W16 ambience, effects, profile-driven mix | W7, W10 | S15 |
+| **S17 Image Engine** | W17 image record, fal provider, place and prop references, takes | W6 | S16 |
 
 W11 hygiene items ride along with whichever stage touches the same files.
 
@@ -873,4 +893,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-487 IDs: 289 built, 103 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 289 (70%) are built; 103 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W16, 2026-10-09.)
+487 IDs: 295 built, 97 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 295 (71%) are built; 97 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W17, 2026-10-09.)
