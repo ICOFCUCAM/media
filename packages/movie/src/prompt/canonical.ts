@@ -12,6 +12,7 @@ import { createHash } from "node:crypto";
 import type { FilmPackage } from "../ir/schema";
 import { checkContinuity, type GenerationContext } from "../world/continuity";
 import { materializeWorld, type WorldTimeline } from "../world/state";
+import { previousEndState, type ShotEndState } from "../world/end-state";
 
 export interface CanonicalMediaRequest {
   /** scene id + "_shot" + index, e.g. scene_03_shot02 */
@@ -39,6 +40,10 @@ export interface CanonicalMediaRequest {
     side: "A" | "B" | "neutral" | null;
     screenDirection: "left" | "right" | null;
     transition: string;
+    /** The rest of the shot record (W20), present only when the plan gives them. */
+    composition?: string;
+    depthOfField?: "shallow" | "medium" | "deep";
+    focus?: string;
   };
   environment: {
     locationId: string;
@@ -48,6 +53,10 @@ export interface CanonicalMediaRequest {
     storyDay: number | null;
     flashback: boolean;
     lighting: string;
+    /** The story clock, the sun and the weather (W20), present only when known. */
+    clock?: string;
+    sun?: string;
+    weather?: string;
   };
   style: {
     palette: string;
@@ -61,6 +70,8 @@ export interface CanonicalMediaRequest {
     worldStateVersion: string;
     requiredReferences: { kind: string; id: string; characterId?: string }[];
     relationships: { a: string; b: string; state: string }[];
+    /** Where the shot before ended (W20), structured; not part of the canonical hash. */
+    continuesFrom?: ShotEndState | null;
   };
   audio: { ambience: string; music: string | null; sfx: string[] };
 }
@@ -120,11 +131,17 @@ export function compileGeneration(
     camera: {
       size: shot.size, angle: shot.angle, movement: shot.movement, lens: shot.lens, side: shot.side,
       screenDirection: shot.screenDirection, transition: shot.transition,
+      ...(shot.composition ? { composition: shot.composition } : {}),
+      ...(shot.depthOfField ? { depthOfField: shot.depthOfField } : {}),
+      ...(shot.focus ? { focus: shot.focus } : {}),
     },
     environment: {
       locationId: loc.id, location: loc.name, description: `${loc.description}; ${loc.architecture}; ${loc.era}`,
       timeOfDay: scene.timeOfDay, storyDay: scene.storyTime?.day ?? null, flashback: scene.storyTime?.flashback ?? false,
       lighting: shot.lighting ?? loc.lighting,
+      // Present only when the plan gives them, so requests planned before W20 (and their hashes) are unchanged.
+      ...(ctx.clock.clock ? { clock: ctx.clock.clock, sun: ctx.clock.sun } : {}),
+      ...(ctx.clock.weather ? { weather: ctx.clock.weather } : {}),
     },
     style: {
       palette: pkg.film.visualStyle.palette, texture: pkg.film.visualStyle.texture,
@@ -136,6 +153,7 @@ export function compileGeneration(
       worldStateVersion: r.worldStateVersion,
       requiredReferences: r.requiredReferences.map(({ kind, id, characterId }) => (characterId ? { kind, id, characterId } : { kind, id })),
       relationships: ctx.relationships.map(({ a, b, state }) => ({ a, b, state })),
+      continuesFrom: previousEndState(pkg, sceneId, shotIndex, world),
     },
     audio: { ambience: scene.audio.ambience, music: scene.audio.music, sfx: scene.audio.sfx },
   };
@@ -143,6 +161,8 @@ export function compileGeneration(
 
 /** Content hash of a canonical request (what the shot must show, model-independent). */
 export function canonicalHash(req: CanonicalMediaRequest): string {
-  const { worldStateVersion: _v, ...continuity } = req.continuity;
+  // Where the previous shot ended is context, not this shot's canon: a change to
+  // another shot must not invalidate this one (W3 dependency precision).
+  const { worldStateVersion: _v, continuesFrom: _c, ...continuity } = req.continuity;
   return createHash("sha256").update(JSON.stringify({ ...req, continuity })).digest("hex");
 }

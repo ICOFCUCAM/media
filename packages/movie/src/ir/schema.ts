@@ -36,6 +36,11 @@ export const Knower = z.union([CharacterId, z.literal(AUDIENCE)]);
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 const why = text(400).describe("one or two sentences: why this choice serves the film");
+/** Optional text added after the first plans (W20): absent in older packages, which stay valid. */
+const opt = (max: number, d?: string) => {
+  const s = z.string().trim().min(1).max(max).nullable().optional();
+  return d ? s.describe(d) : s;
+};
 
 export const FilmBible = z.object({
   title: text(120),
@@ -54,6 +59,13 @@ export const FilmBible = z.object({
     score: text(200),
     ambience: text(200),
   }),
+  // The rest of the Film Bible (Part 1 §3.3; W20).
+  premise: opt(600, "the dramatic premise: who wants what, against what"),
+  audience: opt(120, "who the film is for"),
+  rating: opt(40, "intended age rating, e.g. PG-13"),
+  era: opt(120, "when the story is set"),
+  geography: opt(200, "where the story is set, as a whole"),
+  narrativeStructure: opt(200, "e.g. three acts, linear; or non-linear with flashbacks"),
   rationale: why,
 });
 
@@ -185,6 +197,10 @@ export const Shot = z.object({
   action: text(400).describe("what visibly happens in this shot"),
   emotion: z.string().trim().max(80).nullable(),
   lighting: z.string().trim().max(200).nullable(),
+  // The rest of the shot record (Part 1 §10.2; W20).
+  composition: opt(160, "how the frame is arranged, e.g. subject on the left third, doorway framing"),
+  depthOfField: z.enum(["shallow", "medium", "deep"]).nullable().optional(),
+  focus: opt(120, "what is in focus, or a rack focus from what to what"),
   transition: z.enum(["cut", "dissolve", "match_cut", "fade_in", "fade_out", "smash_cut"]),
   side: z.enum(["A", "B", "neutral"]).nullable().default(null)
     .describe("camera side of the scene's action line (180° rule): A or B; neutral = on the line or a move that crosses it"),
@@ -212,6 +228,8 @@ export const StoryTime = z.object({
   day: z.number().int().min(1).max(3650).describe("story day, 1 = the first day of the story"),
   continuous: z.boolean().describe("true when this scene continues the previous scene's action with no time cut (same clothes, same injuries)"),
   flashback: z.boolean(),
+  clock: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "clock must be HH:MM (24h)").nullable().optional()
+    .describe("24h story clock when the scene starts, e.g. 14:00; null when it does not matter"),
 });
 
 export const Reveal = z.object({
@@ -229,6 +247,7 @@ export const Scene = z.object({
   locationId: LocationId,
   timeOfDay: TimeOfDay,
   storyTime: StoryTime.nullable().default(null),
+  weather: opt(80, "the weather the scene shows (heavy rain, clear, fog, snow); null indoors when it cannot be seen"),
   reveals: z.array(Reveal).max(8).default([]),
   relationshipChanges: z.array(RelationshipChange).max(6).default([]),
   deaths: z.array(CharacterId).max(8).default([]).describe("characters who die in this scene; they appear later only in flashbacks"),

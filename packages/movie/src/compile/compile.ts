@@ -62,6 +62,11 @@ export interface CompiledShot {
     lens: string | null;
     transition: FilmShot["transition"];
     subjectKeys: string[];
+    composition?: string;
+    depthOfField?: "shallow" | "medium" | "deep";
+    focus?: string;
+    emotion?: string;
+    lighting?: string;
   };
   cameraType: string;
   cameraMovement: string;
@@ -203,6 +208,12 @@ export function compileFilm(pkg: FilmPackage, opts: CompileOptions = {}): Compil
         })(),
         cameraPlan: {
           shotSize: sh.size, angle: sh.angle, movement: sh.movement, lens: sh.lens, transition: sh.transition, subjectKeys: sh.subjectIds,
+          // The rest of the shot record (W20; §10.2), when the plan gives it.
+          ...(sh.composition ? { composition: sh.composition } : {}),
+          ...(sh.depthOfField ? { depthOfField: sh.depthOfField } : {}),
+          ...(sh.focus ? { focus: sh.focus } : {}),
+          ...(sh.emotion ? { emotion: sh.emotion } : {}),
+          ...(sh.lighting ? { lighting: sh.lighting } : {}),
         },
         cameraType: sh.size,
         cameraMovement: sh.movement,

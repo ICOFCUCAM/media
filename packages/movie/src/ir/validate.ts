@@ -25,7 +25,7 @@
  * output is never padded with invented defaults (DOS-74).
  */
 import { AUDIENCE, FilmPackage } from "./schema";
-import { applyReveals, initialKnowledge, timeOfDayRank } from "../world/state";
+import { applyReveals, clockFitsTimeOfDay, clockMinutes, initialKnowledge, timeOfDayRank } from "../world/state";
 import { checkFilmContinuity } from "../world/continuity";
 import { cinemaIssues } from "../cinema/engine";
 
@@ -244,24 +244,38 @@ function canon(pkg: FilmPackage): Issue[] {
 
   // Story time (Part 1 §33): forward, except in flashbacks; continuous action
   // stays on the same day and never goes back in the day.
-  let last: { day: number; tod: number; id: string } | null = null;
+  // The story clock (W20; §33.1): it agrees with the time of day, never runs
+  // backwards within a day, and continuous action picks up within the hour.
+  let last: { day: number; tod: number; min: number | null; id: string } | null = null;
   pkg.scenes.forEach((sc, i) => {
     const t = sc.storyTime;
     if (!t) return;
     const p = `scenes[${i}].storyTime`;
+    const min = t.clock ? clockMinutes(t.clock) : null;
+    if (t.clock && !clockFitsTimeOfDay(t.clock, sc.timeOfDay)) {
+      C("CLOCK_OUTSIDE_TIME_OF_DAY", `${p}.clock`, `${sc.id} is set at ${t.clock}, which is not ${sc.timeOfDay}`);
+    }
     if (t.continuous) {
       const prev = pkg.scenes[i - 1];
       if (!prev) C("CONTINUOUS_FIRST_SCENE", p, `${sc.id} is the first scene; it cannot continue a previous one`);
       else if (prev.storyTime && (prev.storyTime.day !== t.day || timeOfDayRank(sc.timeOfDay) < timeOfDayRank(prev.timeOfDay))) {
         C("CONTINUOUS_TIME_JUMP", p, `${sc.id} continues ${prev.id} but is set at a different time`);
+      } else if (prev.storyTime?.clock && min !== null) {
+        const gap = min - clockMinutes(prev.storyTime.clock);
+        if (gap < 0 || gap > 60) C("CONTINUOUS_TIME_JUMP", `${p}.clock`, `${sc.id} continues ${prev.id} (${prev.storyTime.clock}) but is set at ${t.clock}`);
+      }
+      // Continuous action keeps its weather (W20; §33.2).
+      if (prev?.weather && sc.weather && prev.weather.trim().toLowerCase() !== sc.weather.trim().toLowerCase()) {
+        C("WEATHER_CHANGE_IN_CONTINUOUS_ACTION", `scenes[${i}].weather`, `${sc.id} continues ${prev.id} but its weather changes from "${prev.weather}" to "${sc.weather}"`);
       }
     }
     if (t.flashback) return;
     const tod = timeOfDayRank(sc.timeOfDay);
-    if (last && (t.day < last.day || (t.day === last.day && tod < last.tod))) {
-      C("TIME_REGRESSION", p, `${sc.id} is set before ${last.id} (day ${t.day} ${sc.timeOfDay}) but is not marked as a flashback`);
+    if (last && (t.day < last.day || (t.day === last.day && tod < last.tod)
+      || (t.day === last.day && min !== null && last.min !== null && min < last.min))) {
+      C("TIME_REGRESSION", p, `${sc.id} is set before ${last.id} (day ${t.day} ${t.clock ?? sc.timeOfDay}) but is not marked as a flashback`);
     }
-    last = { day: t.day, tod, id: sc.id };
+    last = { day: t.day, tod, min: min ?? (last && last.day === t.day ? last.min : null), id: sc.id };
   });
 
   pkg.scenes.forEach((sc, i) => {

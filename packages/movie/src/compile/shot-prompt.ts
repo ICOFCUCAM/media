@@ -50,9 +50,10 @@ export function shotPrompt(pkg: FilmPackage, scene: FilmScene, shot: FilmShot): 
     `Cinematic film still, ${framing}.`,
     shot.action,
     subjects.length ? `Featuring ${subjects.join("; ")}.` : null,
-    `Setting: ${loc.name}, ${loc.description}, ${loc.architecture}, ${loc.era}; ${scene.timeOfDay}.`,
+    `Setting: ${loc.name}, ${loc.description}, ${loc.architecture}, ${loc.era}; ${scene.timeOfDay}${scene.weather ? `, ${scene.weather}` : ""}${scene.storyTime?.clock ? ` (${scene.storyTime.clock})` : ""}.`,
     `Light: ${shot.lighting ?? loc.lighting}.`,
     shot.emotion ? `Mood: ${shot.emotion}.` : null,
+    shot.composition ? `Composition: ${shot.composition}.` : null,
     `Look: ${pkg.film.visualStyle.palette}; ${pkg.film.visualStyle.texture}.`,
   ].filter(Boolean);
   return clip(parts.join(" "), PROMPT_MAX);

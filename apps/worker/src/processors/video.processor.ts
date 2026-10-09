@@ -30,7 +30,7 @@ import {
 } from "@cineforge/shared";
 import { buildClusterRegistry, MODEL_VERSIONS, type JobContext, type ShotRequest, type VideoModelAdapter } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
-import { checkContinuity, compileFor, compileGeneration, FilmPackage, reviewFrame, type GenerationContext } from "@cineforge/movie";
+import { checkContinuity, compileFor, compileGeneration, endStateOf, FilmPackage, reviewFrame, type GenerationContext } from "@cineforge/movie";
 import { candidateSeed, imageProvider } from "../images/providers";
 import { meter, meteredImages } from "../billing";
 import { productionOf, renderStyleFor } from "../director/production";
@@ -256,6 +256,12 @@ async function previousEndFrame(shot: ShotWithScene, pkg: FilmPackage): Promise<
   if (!prev) return null;
   const key = endFrameKey(shot.scene.projectId, prev.id);
   return (await storage.size(key).catch(() => 0)) > 0 ? key : null;
+}
+
+/** The shot's planned camera as the end state records it (from camera_plan, else the shot columns). */
+function cameraOf(shot: { cameraType: string | null; cameraMovement: string | null; cameraPlan: unknown }) {
+  const p = (shot.cameraPlan ?? {}) as { shotSize?: string; angle?: string; movement?: string };
+  return { size: p.shotSize ?? shot.cameraType ?? "MS", angle: p.angle ?? "eye", movement: p.movement ?? shot.cameraMovement ?? "static" };
 }
 
 function visualGateDeps(projectId: string, camera: { cameraType?: string | null; cameraMovement?: string | null } = {}): VisualGateDeps {
@@ -651,6 +657,8 @@ export const videoWorker = new Worker<VideoJob>(
       derivation: {
         role: "clip", source: "generated", model: modelId, modelVersion: shot.modelVersion ?? MODEL_VERSIONS[modelId] ?? null,
         seed: String(result.seed), attempt: attempt.made + 1, qcScore, cacheKey: shot.cacheKey, gpuMs: result.gpuMs,
+        // Where this shot ended, structured (W20; §36.2), beside the end frame.
+        ...(canonContext ? { endState: endStateOf(canonContext, cameraOf(shot)) } : {}),
       },
     });
 

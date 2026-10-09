@@ -67,6 +67,17 @@ function who(req: CanonicalMediaRequest, motion = false): string[] {
       : `${s.name} (${s.look})`);
 }
 
+/** Weather and sun (W20), only when the plan gives them: "heavy rain, golden hour". */
+function sky(e: CanonicalMediaRequest["environment"]): string {
+  return [e.weather, e.sun && e.sun !== e.timeOfDay ? `${e.sun} light` : null].filter(Boolean).map((x) => `, ${x}`).join("");
+}
+
+/** Composition, depth of field and focus (W20), only when the plan gives them. */
+function lensCraft(c: CanonicalMediaRequest["camera"]): string {
+  return [c.composition, c.depthOfField ? `${c.depthOfField} depth of field` : null, c.focus ? `focus: ${c.focus}` : null]
+    .filter(Boolean).map((x) => `; ${x}`).join("");
+}
+
 function fit(parts: string[], max: number, dropped: string[]): string {
   // Parts are in priority order; drop from the end until it fits, then clip.
   const kept = [...parts];
@@ -87,8 +98,8 @@ function video(req: CanonicalMediaRequest, p: ModelProfile, flavour: "wan" | "hu
   const facing = c.screenDirection ? `, facing screen ${c.screenDirection}` : "";
   return fit([
     `${subjects.length ? subjects.join("; ") + ". " : ""}${req.visualIntent.action}${req.visualIntent.emotion ? `, ${req.visualIntent.emotion}` : ""}${facing}.`,
-    `${e.location}: ${e.description}, ${e.timeOfDay}${e.flashback ? ", remembered as a flashback" : ""}.`,
-    `${sizeWords(c.size)}, ${ANGLES[c.angle] ?? c.angle}${c.lens ? `, ${c.lens} lens` : ""}; ${move}.`,
+    `${e.location}: ${e.description}, ${e.timeOfDay}${sky(e)}${e.flashback ? ", remembered as a flashback" : ""}.`,
+    `${sizeWords(c.size)}, ${ANGLES[c.angle] ?? c.angle}${c.lens ? `, ${c.lens} lens` : ""}; ${move}${lensCraft(c)}.`,
     `Lighting: ${e.lighting}.`,
     req.style.render
       ? `Look: ${req.style.render.look}; ${req.style.palette}; ${req.style.render.motion}.`
@@ -101,10 +112,10 @@ function still(req: CanonicalMediaRequest, p: ModelProfile, dropped: string[]): 
   const c = req.camera;
   if (c.movement !== "static") dropped.push(`camera movement (${c.movement}) — a still has none`);
   return fit([
-    `Scene: ${e.location} — ${e.description}, ${e.timeOfDay}. Lighting: ${e.lighting}.`,
+    `Scene: ${e.location} — ${e.description}, ${e.timeOfDay}${sky(e)}. Lighting: ${e.lighting}.`,
     `Subject: ${who(req).join("; ") || "the setting itself"}.`,
     `Action and mood: ${req.visualIntent.action}${req.visualIntent.emotion ? `; ${req.visualIntent.emotion}` : ""}.`,
-    `Framing: ${sizeWords(c.size)}, ${ANGLES[c.angle] ?? c.angle}${c.lens ? `, ${c.lens} lens look` : ""}${c.screenDirection ? `, subject facing screen ${c.screenDirection}` : ""}.`,
+    `Framing: ${sizeWords(c.size)}, ${ANGLES[c.angle] ?? c.angle}${c.lens ? `, ${c.lens} lens look` : ""}${c.screenDirection ? `, subject facing screen ${c.screenDirection}` : ""}${lensCraft(c)}.`,
     req.style.render
       ? `Style: ${req.style.render.look}; ${req.style.palette}. Not a photograph.`
       : `Style: photorealistic cinematic film still; ${req.style.palette}; ${req.style.texture}.`,
