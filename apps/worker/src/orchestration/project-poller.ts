@@ -17,6 +17,7 @@ import { QUEUES, planCapSec, type FilmJob, type VoiceLabJob, type VoiceEngineJob
 import { prisma } from "@cineforge/db";
 import { enqueueSceneFlow } from "./film-flow";
 import { advancePasses } from "./passes";
+import { advanceLocks } from "./locks";
 import { processEditRequest } from "../canon/edits";
 import { processDirectorMessage } from "../canon/conversation";
 import { loadFilmPackage } from "../canon/revision";
@@ -316,6 +317,8 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
       await claimStoryboardWork();
       // Production passes (W8b): previs, approved scenes, final render of three-pass films.
       await advancePasses();
+      // Locked films (W19): render once more from an approved timeline.
+      await advanceLocks().catch((e) => console.error(`[poller] locks: ${e instanceof Error ? e.message : String(e)}`));
       // Director chat (W9): plain-language instructions become edit requests.
       await answerDirectorMessages();
       // Edit requests (W8b): an owner's canon change, applied; only affected shots regenerate.

@@ -10,7 +10,7 @@
  * phantom key. What the film ran without (outro, 4K) is recorded and shown.
  */
 import { UnrecoverableError, Worker } from "bullmq";
-import { QUEUES, type RenderJob, parseLanguages, degradation, isProductionFailure, mixSpec, syncPolicy, type Degradation } from "@cineforge/shared";
+import { QUEUES, type RenderJob, parseLanguages, degradation, isProductionFailure, type Degradation } from "@cineforge/shared";
 import { editorialGate, judgeMaster, qualityMode, type GateResult } from "../quality/gates";
 import { measureMedia } from "../quality/measure";
 import { recordGates, type GateDb } from "../quality/recorder";
@@ -25,6 +25,8 @@ import { meter } from "../billing";
 import { enqueueLocalize } from "../orchestration/localize-queue";
 import { voiceContinuity } from "../voice/continuity";
 import { syncAfterRender } from "../avsync/run";
+import { applyCut, cutFromTimeline } from "../timeline/lock";
+import { renderProfile } from "../render/profile";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
@@ -45,15 +47,7 @@ async function recordFilmGates(projectId: string, quality: GateResult[]) {
   await recordGates(prisma as unknown as GateDb, projectId, "film", "film", [...quality, editorial]);
 }
 
-/**
- * The production profile the master is mixed and judged by (W16): its sync
- * policy's delivery spec (loudness, true peak) and its mix spec (stem levels,
- * ducking). RENDER_SYNC_PROFILE, else RUNTIME_SYNC_PROFILE, else cinematic.
- */
-export function renderProfile(env: NodeJS.ProcessEnv = process.env) {
-  const policy = syncPolicy(env.RENDER_SYNC_PROFILE?.trim() || env.RUNTIME_SYNC_PROFILE?.trim() || "cinematic");
-  return { policy, mix: mixSpec(policy), delivery: { integratedLufs: policy.delivery.integratedLufs, truePeakDbtp: policy.delivery.truePeakDbtp } };
-}
+export { renderProfile };
 
 /** Final Quality Gate (W5): measure the local master with ffmpeg and judge it against the profile's delivery spec. */
 const masterGate = (filmSec: number, delivery: { integratedLufs: number; truePeakDbtp: number }) => async (path: string, ctx: { hasSound: boolean; filmSec: number | undefined }) =>
@@ -99,7 +93,7 @@ async function upscaleFilm(projectId: string) {
 export const renderWorker = new Worker<RenderJob>(
   QUEUES.render,
   async (job) => {
-    const { projectId, kind } = job.data;
+    const { projectId, kind, timelineId } = job.data;
     if (kind === "upscale") return upscaleFilm(projectId);
     if (kind !== "final") throw new UnrecoverableError(`unknown render kind ${JSON.stringify(kind)}`);
 
@@ -121,13 +115,13 @@ export const renderWorker = new Worker<RenderJob>(
         console.warn(`[render] project=${projectId} has no scenes — skipping (premature flow)`);
         return { projectId, skipped: "no scenes" };
       }
-      const durationSec = scenes.reduce((a, s) => a + s.durationSec, 0);
+      let durationSec = scenes.reduce((a, s) => a + s.durationSec, 0);
 
       // Build per-scene asset lists from generated clips/audio. Legacy "stub"
       // audio rows recorded a key without uploading a file — downloading one
       // kills the assembly ("Object not found"), so exclude them.
       const real = (t: { meta: unknown }) => (t.meta as { generated?: string } | null)?.generated !== "stub";
-      const assets: SceneAssets[] = scenes.map((s) => ({
+      let assets: SceneAssets[] = scenes.map((s) => ({
         sceneId: s.id,
         index: s.index,
         shotKeys: s.shots.map((sh) => sh.videoKey).filter((k): k is string => !!k),
@@ -141,6 +135,16 @@ export const renderWorker = new Worker<RenderJob>(
           plannedSceneMs: (t.meta as { plannedSceneMs?: number } | null)?.plannedSceneMs,
         })),
       }));
+
+      // A locked film (W19) renders from its approved timeline: the timeline
+      // decides the order of the shots and how long each one plays.
+      if (timelineId) {
+        const events = await prisma.timelineEvent.findMany({ where: { timelineVersionId: timelineId }, select: { kind: true, refId: true, startUs: true, endUs: true } });
+        const cut = cutFromTimeline(events, new Map(scenes.flatMap((s) => s.shots.map((sh) => [sh.id, s.id] as const))));
+        assets = applyCut(assets, cut, new Map(scenes.flatMap((s) => s.shots.map((sh) => [sh.id, sh.videoKey] as const))));
+        durationSec = cut.durationSec;
+        console.log(`[render] project=${projectId} from approved timeline ${timelineId} (${cut.scenes.length} scenes, ${durationSec.toFixed(2)}s)`);
+      }
 
       const totalClips = assets.reduce((a, s) => a + s.shotKeys.length, 0);
       const hasClips = totalClips > 0;
@@ -205,7 +209,7 @@ export const renderWorker = new Worker<RenderJob>(
         await recordVersion(prisma as unknown as VersionDb, {
           projectId, assetType: "master", assetId: projectId, storageKey: out.mp4Key, sha256: out.sha256, durationSec,
           derivation: {
-            role: "master", poster: out.posterKey, hls: out.hlsKey, renderJob: String(job.id),
+            role: "master", poster: out.posterKey, hls: out.hlsKey, renderJob: String(job.id), timeline: timelineId ?? null,
             shots: assets.flatMap((a) => a.shotKeys), voice: assets.map((a) => a.voiceKey ?? null), music: assets.find((a) => a.musicKey)?.musicKey ?? null,
           },
         });
@@ -250,6 +254,11 @@ export const renderWorker = new Worker<RenderJob>(
 
       console.log(`[render] READY project=${projectId} film=${film.id} duration=${durationSec}s`);
       await notifyFinish(projectId, "READY");
+      // The delivered timeline is frozen (W19): it is what this master is.
+      if (timelineId) {
+        await prisma.productionTimeline.updateMany({ where: { id: timelineId, status: "approved" }, data: { status: "frozen" } })
+          .catch((e) => console.warn(`[render] timeline ${timelineId} not frozen: ${e instanceof Error ? e.message : String(e)}`));
+      }
 
       // A/V sync on what was made (W18; §39–40): the production timeline is
       // built from the finished scenes and the sync engine checks every clip.
@@ -257,7 +266,7 @@ export const renderWorker = new Worker<RenderJob>(
       if (hasClips && process.env.RENDER_SYNC_CHECK !== "0") {
         try {
           const storage = new S3Storage();
-          const sync = await syncAfterRender(prisma as never, (k, d) => storage.download(k, d), projectId, renderProfile().policy.id as string);
+          const sync = await syncAfterRender(prisma as never, (k, d) => storage.download(k, d), projectId, renderProfile().policy.id as string, timelineId);
           console.log(`[render] sync ${JSON.stringify(sync)}`);
           if (sync.status === "checked" && !sync.passed) {
             await record(projectId, [degradation("QUALITY_FLAGGED", "film",

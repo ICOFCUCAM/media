@@ -15,7 +15,7 @@ import { policyRef, type SourceScene, type SyncPolicy, type TimelineDraft } from
 export interface TimelineDb {
   scene: { findMany(args: unknown): Promise<Array<{
     id: string; index: number;
-    shots: Array<{ id: string; index: number; durationSec: number }>;
+    shots: Array<{ id: string; index: number; durationSec: number; cutSec?: unknown }>;
     dialogue: Array<{ id: string; index: number; text: string; emotion: string | null; startMs: number | null; characterId: string | null }>;
     audioTracks: Array<{ id: string; kind: "VOICE" | "MUSIC" | "SFX" | "AMBIENCE"; startMs: number; durationMs: number | null; gainDb: number }>;
   }>> };
@@ -39,12 +39,17 @@ export async function loadProjectSource(db: Pick<TimelineDb, "scene">, projectId
     orderBy: { index: "asc" },
     select: {
       id: true, index: true,
-      shots: { select: { id: true, index: true, durationSec: true }, orderBy: { index: "asc" } },
+      shots: { select: { id: true, index: true, durationSec: true, cutSec: true }, orderBy: { index: "asc" } },
       dialogue: { select: { id: true, index: true, text: true, emotion: true, startMs: true, characterId: true }, orderBy: { index: "asc" } },
       audioTracks: { select: { id: true, kind: true, startMs: true, durationMs: true, gainDb: true } },
     },
   });
-  return rows.map((s) => ({ id: s.id, index: s.index, shots: s.shots, dialogue: s.dialogue, audioTracks: s.audioTracks }));
+  // A shot the editor cut (W13) occupies its cut length on the timeline.
+  return rows.map((s) => ({
+    id: s.id, index: s.index,
+    shots: s.shots.map((sh) => ({ id: sh.id, index: sh.index, durationSec: sh.cutSec != null && Number(sh.cutSec) > 0 ? Number(sh.cutSec) : sh.durationSec })),
+    dialogue: s.dialogue, audioTracks: s.audioTracks,
+  }));
 }
 
 export type SaveResult =

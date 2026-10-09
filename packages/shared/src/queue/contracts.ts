@@ -70,6 +70,8 @@ export interface SocialJob {
 export interface RenderJob {
   projectId: string;
   kind: "final" | "upscale";
+  /** Render from this approved timeline (W19: a locked film); absent = from the current scenes. */
+  timelineId?: string;
 }
 
 /** Train a per-character LoRA from the character's reference frames (docs/28). */

@@ -68,21 +68,30 @@ export type RenderSyncResult =
   | { status: "checked"; timelineId: string; passed: boolean; issues: number; errors: number; saved: SaveSyncResult }
   | { status: "skipped"; reason: string };
 
-/** After a final render: build this production's timeline from what was made, check it, save the report. */
+/**
+ * After a final render: check the timeline it was rendered from (a locked
+ * film's approved timeline, W19) or, otherwise, build this production's
+ * timeline from what was made; save the report.
+ */
 export async function syncAfterRender(
   db: TimelineDb & SyncDb & AvSyncDb,
   download: (key: string, dest: string) => Promise<void>,
   projectId: string,
   profile: string,
+  approvedTimelineId?: string,
 ): Promise<RenderSyncResult> {
-  const draft = buildTimelineDraft({ scenes: await loadProjectSource(db, projectId), clock: new MasterClock({ fps: "24" }) });
-  const saved = await saveTimelineDraft(db, projectId, draft, syncPolicy(profile));
-  if (!saved.saved) return { status: "skipped", reason: saved.reason };
-  const check = await checkTimeline(db, download, saved.timelineId);
-  if (!check) return { status: "skipped", reason: "timeline not found after saving" };
-  const stored = await saveSyncAnalysis(db, check.report, check.plan, { timelineStatus: "draft", trigger: "render" });
+  let timelineId = approvedTimelineId;
+  if (!timelineId) {
+    const draft = buildTimelineDraft({ scenes: await loadProjectSource(db, projectId), clock: new MasterClock({ fps: "24" }) });
+    const saved = await saveTimelineDraft(db, projectId, draft, syncPolicy(profile));
+    if (!saved.saved) return { status: "skipped", reason: saved.reason };
+    timelineId = saved.timelineId;
+  }
+  const check = await checkTimeline(db, download, timelineId);
+  if (!check) return { status: "skipped", reason: "timeline not found" };
+  const stored = await saveSyncAnalysis(db, check.report, check.plan, approvedTimelineId ? { timelineStatus: "frozen", trigger: "lock" } : { timelineStatus: "draft", trigger: "render" });
   return {
-    status: "checked", timelineId: saved.timelineId, passed: check.report.passed,
+    status: "checked", timelineId, passed: check.report.passed,
     issues: check.report.issues.length, errors: check.report.issues.filter((i) => i.severity === "error" || i.severity === "blocker").length, saved: stored,
   };
 }
