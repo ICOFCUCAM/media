@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { VoiceEngine, VoiceEngineArtifact } from "@cineforge/voice-contracts";
-import { chosenVoiceId, CUE_GAP_MS, NoVoiceEngineError, presetFor, renderSceneVoice, sceneCues, type ChosenVoice, type SceneSpeech, type SceneVoiceDeps } from "./film";
+import { chosenVoiceId, CUE_GAP_MS, NoVoiceEngineError, presetFor, renderSceneVoice, sceneCues, translateSpeech, type ChosenVoice, type SceneSpeech, type SceneVoiceDeps } from "./film";
 
 let dir = "";
 beforeAll(async () => { dir = await mkdtemp(join(tmpdir(), "cf-scene-voice-")); });
@@ -131,5 +131,37 @@ describe("scene voice track", () => {
   it("returns nothing for a silent scene and fails loudly with no engine at all", async () => {
     expect(await renderSceneVoice(input({ scene: scene({ narration: null, lines: [], summary: null }) }), deps().d)).toBeNull();
     await expect(renderSceneVoice(input(), deps({ env: {} }).d)).rejects.toBeInstanceOf(NoVoiceEngineError);
+  });
+
+  it("a dub stores no per-line files over the original language", async () => {
+    const { d, uploads } = deps();
+    const r = (await renderSceneVoice(input({ lineKeyPrefix: null, trackKey: "projects/p/film/dub/fr/sc-1.wav", language: "fr" }), d))!;
+    expect(uploads).toEqual(["projects/p/film/dub/fr/sc-1.wav"]);
+    expect(r.cues.every((c) => c.audioKey === null)).toBe(true);
+    expect(r.trackPath.endsWith("scene-voice.wav")).toBe(true);
+  });
+});
+
+describe("dubbing", () => {
+  it("translates every spoken part in one call and keeps who says what", async () => {
+    const calls: string[][] = [];
+    const out = await translateSpeech(
+      [scene(), scene({ id: "sc-2", narration: null, lines: [], summary: "Dawn." }), scene({ id: "sc-3", narration: null, lines: [], summary: null })],
+      async (texts) => { calls.push(texts); return texts.map((t) => `FR:${t}`); },
+    );
+    expect(calls).toEqual([["The city sleeps.", "Where were you?", "Out.", "Dawn."]]);
+    expect(out[0]).toEqual({
+      id: "sc-1", narration: "FR:The city sleeps.", dialogue: null, summary: null,
+      lines: [
+        { id: "l-1", characterId: "c-maya", text: "FR:Where were you?", emotion: "angry" },
+        { id: "l-2", characterId: "c-tom", text: "FR:Out.", emotion: null },
+      ],
+    });
+    expect(out[1]).toMatchObject({ narration: "FR:Dawn.", lines: [] });
+    expect(sceneCues(out[2]!)).toEqual([]);
+  });
+
+  it("refuses a translation that lost or added parts", async () => {
+    await expect(translateSpeech([scene()], async () => ["only one"])).rejects.toThrow(/returned 1 parts for 3/);
   });
 });

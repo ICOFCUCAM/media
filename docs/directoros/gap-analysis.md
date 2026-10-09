@@ -578,8 +578,9 @@ spoken on the Voice Engine — every character in the voice the owner chose
 mastered and timed (`dialogue_lines.audio_key`, `start_ms`), a chosen voice
 that cannot be used reported as `VOICE_SUBSTITUTED`; the plan validator
 checks that speech fits each scene (`SPEECH_TOO_LONG`); the render joins
-mixed-format voice tracks. **Next:** dubbing (localize) through the engine.
-Carried forward: content-hash cache,
+mixed-format voice tracks. **W7c done:** dubbing runs on the engine — every
+line translated and spoken by its own character's voice in the new language.
+Carried forward: the Voice Lab reader and avatars still call fal directly; content-hash cache,
 deleting recordings and provider clones with the voice, per-use licence for
 community voices.
 

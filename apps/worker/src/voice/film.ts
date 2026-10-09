@@ -101,6 +101,8 @@ export interface SceneVoiceInput {
   chosenVoices: Record<string, string | undefined>;
   /** Where the scene track goes (`…/voice/<job>.wav`). */
   trackKey: string;
+  /** Where each line's own audio goes (`<prefix>/<lineId>.wav`); null stores no per-line files (dubs). */
+  lineKeyPrefix?: string | null;
   dir: string;
 }
 
@@ -120,6 +122,8 @@ export interface Substitution {
 
 export interface SceneVoiceResult {
   trackKey: string;
+  /** The scene track on local disk (inside `dir`), for callers that join scenes. */
+  trackPath: string;
   durationSec: number;
   engine: string;
   cues: SpokenCue[];
@@ -204,8 +208,9 @@ export async function renderSceneVoice(input: SceneVoiceInput, deps: SceneVoiceD
     const { durationSec } = await deps.measure(s.file);
     const durationMs = Math.round(durationSec * 1000);
     let audioKey: string | null = null;
-    if (s.cue.lineId) {
-      audioKey = `scenes/${input.scene.id}/audio/lines/${s.cue.lineId}.wav`;
+    const prefix = input.lineKeyPrefix === undefined ? `scenes/${input.scene.id}/audio/lines` : input.lineKeyPrefix;
+    if (s.cue.lineId && prefix) {
+      audioKey = `${prefix}/${s.cue.lineId}.wav`;
       await deps.upload(s.file, audioKey, "audio/wav");
     }
     out.push({ lineId: s.cue.lineId, characterId: s.cue.characterId, voice: s.speaker.cloned ? "cloned" : "built-in", startMs: at, durationMs, audioKey });
@@ -218,10 +223,34 @@ export async function renderSceneVoice(input: SceneVoiceInput, deps: SceneVoiceD
   await deps.upload(track, input.trackKey, "audio/wav");
   return {
     trackKey: input.trackKey,
+    trackPath: track,
     durationSec: measured.durationSec,
     engine: stock.id,
     cues: out,
     substitutions,
     loudnessLufs: measured.integratedLufs,
   };
+}
+
+/**
+ * The same scenes in another language (dubbing, W7c): every spoken part —
+ * narration and each line — translated in one call, keeping who says what,
+ * so each character keeps their own voice in every language.
+ */
+export async function translateSpeech(scenes: SceneSpeech[], translate: (texts: string[]) => Promise<string[]>): Promise<SceneSpeech[]> {
+  const cues = scenes.map(sceneCues);
+  const flat = cues.flat();
+  const out = flat.length ? await translate(flat.map((c) => c.text)) : [];
+  if (out.length !== flat.length) throw new Error(`translation returned ${out.length} parts for ${flat.length}`);
+  let i = 0;
+  return scenes.map((s, k) => {
+    let narration: string | null = null;
+    const lines: SceneLine[] = [];
+    for (const c of cues[k]!) {
+      const text = out[i++]!;
+      if (c.lineId) lines.push({ id: c.lineId, characterId: c.characterId, text, emotion: c.emotion });
+      else narration = text;
+    }
+    return { id: s.id, narration, dialogue: null, summary: null, lines };
+  });
 }

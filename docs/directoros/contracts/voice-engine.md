@@ -1,4 +1,4 @@
-# Contract — Voice Engine (W7a, W7b)
+# Contract — Voice Engine (W7a–W7c)
 
 Requirements: DOS-145–148, 150–151, 158–170, 173 (Part 4 §157–176).
 Self-hosted engines, voice GPU worker, licence registry, benchmark: gated.
@@ -6,7 +6,7 @@ Code: `packages/voice-contracts/src/` (engine.ts, api.ts, segment.ts,
 quality.ts, router.ts), `apps/worker/src/voice/` (analyze.ts, mastering.ts,
 engines.ts, jobs.ts), `apps/worker/src/processors/voice-engine.processor.ts`,
 `apps/api/src/voices/`, migration `0036_voice_engine.sql`; film voices (W7b):
-`apps/worker/src/voice/film.ts`, `apps/worker/src/processors/audio.processor.ts`,
+`apps/worker/src/voice/film.ts`, `apps/worker/src/voice/deps.ts`, `apps/worker/src/processors/audio.processor.ts`, dubbing in `apps/worker/src/processors/localize.processor.ts`,
 `castVoices` in `apps/worker/src/director/director.service.ts`,
 `SPEECH_TOO_LONG` in `packages/movie/src/ir/validate.ts`.
 
@@ -15,8 +15,9 @@ engines.ts, jobs.ts), `apps/worker/src/processors/voice-engine.processor.ts`,
 Turn text into a voice's speech, and a consented recording into a voice,
 through one model-independent boundary. CineForge knows voices and jobs,
 never models. For films (W7b) it speaks each scene's voice-over and
-dialogue, each character in their own voice. Not responsible for dubbing
-(next) or self-hosted model runtimes (gated).
+dialogue, each character in their own voice, and dubs finished films per
+language with the same voices (W7c). Not responsible for self-hosted model
+runtimes (gated).
 
 ## 2. Inputs
 
@@ -104,6 +105,8 @@ duration and loudness); the voice's quality report; Capability Registry
   character inherits the owner's chosen voice.
 - `packages/movie/src/ir/validate.test.ts` — `SPEECH_TOO_LONG`.
 - `voice.media.test.ts` — WAV and MP3 scene tracks join into one voice bed.
+- `film.test.ts` (dubbing) — one translation call per language keeps who
+  says what; a lost or added part is refused; dubs store no per-line files.
 
 ## 11. Integration test
 
