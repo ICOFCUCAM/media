@@ -17,6 +17,7 @@ import { moderatePrompt } from "../director/moderation";
 import { enqueueFilmFlow } from "../orchestration/film-flow";
 import { realtime } from "../realtime";
 import { recordDegradations, type DegradationDb } from "../truth/recorder";
+import { recordGates, type GateDb } from "../quality/recorder";
 
 /** Stop the project with a reason the user can read; never deliver a stand-in. */
 async function failProject(projectId: string, code: string, message: string) {
@@ -90,6 +91,7 @@ export const filmWorker = new Worker<FilmJob>(
       try {
         const plan = await director.plan(projectId);
         gaps.push(...plan.degradations);
+        await recordGates(prisma as unknown as GateDb, projectId, "film", "plan", plan.gates);
       } catch (e) {
         if (!isProductionFailure(e)) throw e;
         await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);

@@ -513,6 +513,15 @@ compilers (W7), scene timing from measured media (W5 timeline).
 
 ### W5 — Review and quality gates
 
+**Done 2026-10-09** (docs/49; contract quality-gates.md; migration 0035,
+applied live). Every clip measured before READY (unusable clips never pass),
+bounded regenerate-with-new-seed on a blocking result, Final Quality Gate on
+the master before delivery, the gate chain recorded per project. Modes:
+`QUALITY_GATES=record` (default) / `enforce`; `VISUAL_REVIEW` as before.
+Moved to W8: the Editor Agent (it edits timeline versions; the editorial gate
+is recorded as skipped until then). Carried forward: hands/objects/motion
+judgement, codec and dropped-frame checks, calibration before enforce (W10).
+
 - CHANGE "never self-certify": HEAD + ffprobe + sha256 + technical QC before
   READY; timing policy `enforce` once calibrated.
 - UPGRADE `analyzeSync` and `ffmpeg/analysis.ts` into a blocking technical QC
@@ -653,4 +662,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 101 built, 123 shallow, 22 poorly built, 138 not built, 70 n/a. Of the 384 IDs that are requirements, 101 (26%) are built; 145 exist but need upgrading or changing; 138 must be built. (Updated after W4, 2026-10-09.)
+454 IDs: 105 built, 119 shallow, 22 poorly built, 136 not built, 72 n/a. Of the 382 IDs that are requirements, 105 (27%) are built; 141 exist but need upgrading or changing; 136 must be built. (Updated after W5, 2026-10-09.)

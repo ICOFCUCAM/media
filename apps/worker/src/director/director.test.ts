@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { IntelligenceError, PlanInvalidError, validateFilmPackage } from "@cineforge/movie";
 import { planShotCount } from "@cineforge/shared";
-import { planDegradations, planningConstraints, toProductionFailure } from "./director.service";
+import { planDegradations, planGates, planningConstraints, toProductionFailure } from "./director.service";
 import { mayaCoatFixture } from "@cineforge/movie";
 import { stubPackage } from "./stub";
 
@@ -43,5 +43,13 @@ describe("plan degradations (W4): grammar advisories and model limits are record
     expect(wan[0]).toMatchObject({ severity: "info", refId: "scene_10#0", detail: { code: "NO_ESTABLISHING_SHOT" } });
     const ext = planDegradations(pkg, "fal-kling");
     expect(ext.filter((d) => d.code === "PROMPT_LIMITED")).toHaveLength(12); // no negative prompt on that model
+  });
+});
+
+describe("plan gates (W5 gate chain: story, continuity)", () => {
+  it("a first-time valid plan passes; a revised plan is a story warning with the fixed issues", () => {
+    expect(planGates({ pkg: mayaCoatFixture(), revised: false, fixedIssues: [] }).map((g) => [g.gate, g.outcome])).toEqual([["story", "pass"], ["continuity", "pass"]]);
+    const revised = planGates({ pkg: mayaCoatFixture(), revised: true, fixedIssues: [{ stage: "cinema", code: "CROSSES_LINE", path: "x", message: "m" }] });
+    expect(revised[0]).toMatchObject({ outcome: "warn", findings: [{ code: "PLAN_REVISED", detail: { issues: ["cinema/CROSSES_LINE"] } }] });
   });
 });

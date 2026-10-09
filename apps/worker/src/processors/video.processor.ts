@@ -22,6 +22,7 @@ import {
   type StatePatch,
   type SceneBridge,
   outputDimensions,
+  deterministicSeed,
   judgeRun,
   degradation,
   type Degradation,
@@ -29,7 +30,10 @@ import {
 import { buildClusterRegistry, buildOpenAIProviders, MODEL_VERSIONS, type JobContext, type ShotRequest } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
 import { compileFor, compileGeneration, FilmPackage, reviewFrame, type GenerationContext } from "@cineforge/movie";
-import { gateVisual, visualReviewMode, frameGrabber, type VisualGateDeps } from "../review/visual-gate";
+import { gateVisual, visualGateResult, visualReviewMode, frameGrabber, type VisualGateDeps } from "../review/visual-gate";
+import { decideShot, judgeClip, qualityMode, type GateResult } from "../quality/gates";
+import { inspectClip } from "../quality/measure";
+import { recordGates, type GateDb } from "../quality/recorder";
 import { intelligence } from "../intelligence";
 import { ffmpeg, probeDuration } from "../ffmpeg/ffmpeg";
 import { shotReferences } from "../canon/references";
@@ -457,18 +461,39 @@ export const videoWorker = new Worker<VideoJob>(
     // The clip must exist before the shot is READY (DOS-70). Visual / sync QC
     // of the clip's content is W5; this is the storage + execution check.
     await verifyArtifact(result.videoKey);
-    // Visual quality gate (W5): a frame of the clip against canon. Record mode
-    // by default (VISUAL_REVIEW); enforce fails the shot on a contradiction.
+    // Quality gates (W5) before READY — never self-certify: the clip is
+    // measured (ffprobe, black, freeze, sha256) and, for Film IR shots, a
+    // frame is reviewed against canon. A blocking result regenerates the shot
+    // with a new seed while attempts remain, then fails it (QUALITY_GATES /
+    // VISUAL_REVIEW decide what blocks; unusable clips always block).
+    const vMode = visualReviewMode();
+    const inspection = await inspectClip((k, d) => storage.download(k, d), result.videoKey, { frame: Boolean(canonContext) && vMode !== "off" });
+    const tech = judgeClip(inspection.facts, { durationSec: request.durationSec, width: request.width, height: request.height }, qualityMode());
+    const gateResults: GateResult[] = [tech];
     let qcScore: number | null = null;
-    if (canonContext) {
-      const visual = await gateVisual(visualGateDeps(projectId), visualReviewMode(), canonContext, result.videoKey, shotId);
+    if (canonContext && !tech.findings.some((f) => f.severity === "fatal")) {
+      const deps = { ...visualGateDeps(projectId), grabFrame: async () => {
+        if (!inspection.frame) throw new Error(inspection.frameError ?? "no frame could be taken from the clip");
+        return inspection.frame;
+      } };
+      const visual = await gateVisual(deps, vMode, canonContext, result.videoKey, shotId);
       gaps.push(...visual.gaps);
       qcScore = visual.qcScore;
-      if (visual.failure) {
-        await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);
-        await prisma.shot.update({ where: { id: shotId }, data: { status: "QC_FAIL", qcScore, videoKey: result.videoKey } });
-        throw new UnrecoverableError(visual.failure);
-      }
+      gateResults.push(visualGateResult(visual, vMode));
+    }
+    for (const f of tech.findings.filter((x) => x.severity !== "fatal" && tech.outcome !== "fail")) {
+      gaps.push(degradation("QUALITY_FLAGGED", "shot", `Technical check: ${f.message}.`, { refId: shotId, severity: f.severity === "fail" ? "major" : "info", detail: { code: f.code, ...f.detail } }));
+    }
+    const attempt = { made: job.attemptsMade, max: job.opts.attempts ?? 1 };
+    await recordGates(prisma as unknown as GateDb, projectId, "shot", shotId, gateResults, attempt.made + 1);
+    const decision = decideShot(gateResults, attempt);
+    if (decision.action !== "accept") {
+      await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);
+      // A new seed for the next attempt — the same seed would reproduce the same defect.
+      const seed = deterministicSeed(projectId, shot.scene.index, shot.index, "qc", attempt.made + 1);
+      await prisma.shot.update({ where: { id: shotId }, data: { status: "QC_FAIL", qcScore, seed: BigInt(seed) } });
+      if (decision.action === "regenerate") throw new Error(`QC_REGENERATE: ${decision.reason}`);
+      throw new UnrecoverableError(`QUALITY_GATE_FAILED: ${decision.reason}`);
     }
     await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);
     if (adapter.runtimeCapabilities) await refreshGpuCaps(adapter.id, () => adapter.runtimeCapabilities!());

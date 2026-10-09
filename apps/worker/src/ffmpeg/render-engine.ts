@@ -1,3 +1,4 @@
+import type { GateResult } from "../quality/gates";
 import { mkdtemp, writeFile, mkdir, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -39,7 +40,12 @@ export interface RenderResult {
   posterKey: string;
   /** What this render ran without (recorded and shown, DOS-75). */
   degradations: Degradation[];
+  /** Final Quality Gate results on the master (W5), when a gate was given. */
+  quality: GateResult[];
 }
+
+/** Final Quality Gate: judges the local master before anything is uploaded. */
+export type MasterGate = (localMp4: string, ctx: { hasSound: boolean; filmSec: number | undefined }) => Promise<GateResult[]>;
 
 /**
  * Real FFmpeg assembly (docs/10): normalize every shot, concat into a body,
@@ -59,7 +65,7 @@ export class RenderEngine {
     scenes: SceneAssets[],
     onProgress?: (p: number) => void,
     brand?: { logoKey?: string | null; primaryColor?: string; outroText?: string | null },
-    opts: { filmSec?: number } = {},
+    opts: { filmSec?: number; gate?: MasterGate } = {},
   ): Promise<RenderResult> {
     const work = await mkdtemp(join(tmpdir(), `cineforge-${projectId}-`));
     const gaps: Degradation[] = [];
@@ -238,6 +244,17 @@ export class RenderEngine {
       const poster = join(work, "poster.jpg");
       await this.run(["-i", finalMp4, "-frames:v", "1", "-q:v", "2", poster]);
 
+      // 4b) Final Quality Gate (W5): the master is measured before it is
+      //     delivered; a blocking result stops the render here.
+      const hasSound = scenes.some((sc) => Boolean(sc.musicKey || sc.voiceKey || sc.sfxKey));
+      const quality = opts.gate ? await opts.gate(finalMp4, { hasSound, filmSec: opts.filmSec }) : [];
+      const blocking = quality.filter((r) => r.outcome === "fail");
+      if (blocking.length) {
+        throw new ProductionFailure("QUALITY_GATE_FAILED",
+          `the finished film failed its quality gate (${blocking.map((r) => `${r.gate}: ${r.findings.map((f) => f.code).join(", ")}`).join("; ")})`,
+          { quality });
+      }
+
       // 5) Upload the MP4 + poster (the deliverable).
       const mp4Key = `projects/${projectId}/film/final.mp4`;
       const posterKey = `projects/${projectId}/film/poster.jpg`;
@@ -258,7 +275,7 @@ export class RenderEngine {
       }
       onProgress?.(1);
 
-      return { mp4Key, posterKey, hlsKey, degradations: gaps };
+      return { mp4Key, posterKey, hlsKey, degradations: gaps, quality };
     } finally {
       await rm(work, { recursive: true, force: true });
     }

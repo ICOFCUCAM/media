@@ -122,7 +122,7 @@ export const SUBSYSTEMS: Subsystem[] = [
   { name: "BullMQ Queues + Flow", maturity: "INTEGRATED", blurb: "film → scene → video/audio → render fan-out; a terminal shot failure fails the film with its reason.", doc: "docs/13-queues.md" },
   { name: "FFmpeg Render Engine", maturity: "INTEGRATED", capability: "technical_qc", blurb: "Concat → ducked mix → mux, with real-FFmpeg regression tests. Refuses films with missing shots, unmixable sound or no storage. HLS ladder optional (RENDER_HLS=1).", doc: "docs/10-ffmpeg-render.md" },
   { name: "Realtime (Supabase)", maturity: "INTEGRATED", blurb: "Postgres Changes to the browser. The Socket.IO gateway in apps/api is not deployed.", doc: "docs/04-api-spec.md" },
-  { name: "Visual & sync quality gate", maturity: "INTEGRATED", capability: "visual_qc", blurb: "A frame of every planned shot is checked by a vision model against canon (people, faces, wardrobe, injuries, place, time). Records contradictions by default — it is not calibrated yet, so it does not block shots. The A/V sync analysis is an operator tool; the Final Quality Gate is W5.", doc: "docs/directoros/contracts/visual-review.md" },
+  { name: "Visual & sync quality gate", maturity: "INTEGRATED", capability: "visual_qc", blurb: "Every shot is measured before it is ready (picture, length, black, frozen) and a frame is checked against canon; the finished film is measured before delivery (length, sound, loudness). Defects are recorded and shown; blocking them is switched on after calibration. The editorial pass is W8.", doc: "docs/49-directoros-quality-gates.md" },
 ];
 
 /** Languages for multilingual export + Voice Lab (mirror of shared/i18n). */

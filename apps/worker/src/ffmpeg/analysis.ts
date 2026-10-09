@@ -95,3 +95,10 @@ export async function sha256File(path: string): Promise<string> {
   for await (const chunk of createReadStream(path)) h.update(chunk as Buffer);
   return h.digest("hex");
 }
+
+/** Picture size of the first video stream (ffprobe). */
+export async function probeSize(input: string): Promise<{ width: number; height: number } | null> {
+  const { stdout } = await run("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "json", input]);
+  const s = (JSON.parse(stdout) as { streams?: { width?: number; height?: number }[] }).streams?.[0];
+  return s?.width && s?.height ? { width: s.width, height: s.height } : null;
+}
