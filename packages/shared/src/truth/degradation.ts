@@ -46,6 +46,7 @@ export type DegradationCode =
   | "VISUAL_REVIEW_FLAGGED" // the Visual Reviewer found the frame contradicts canon (record mode)
   | "PROMPT_LIMITED" // the video model could not take part of the shot's canonical request (length, motion, negative prompt)
   | "CINEMA_ADVISORY" // a film-grammar advisory on the plan (establishing shot, size repeat/jump, screen direction)
+  | "AUDIO_CONTINUITY" // ambience / music / room tone breaks on the plan, or a voice that changes between scenes (§32.6)
   | "QUALITY_FLAGGED"; // a quality gate found a defect it does not block on (record mode) or a minor one
 
 export type DegradationSeverity = "info" | "warning" | "major";
@@ -84,6 +85,7 @@ const SEVERITY: Record<DegradationCode, DegradationSeverity> = {
   VISUAL_REVIEW_FLAGGED: "major",
   PROMPT_LIMITED: "info",
   CINEMA_ADVISORY: "info",
+  AUDIO_CONTINUITY: "info",
   QUALITY_FLAGGED: "warning",
 };
 
