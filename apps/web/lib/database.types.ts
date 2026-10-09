@@ -439,6 +439,44 @@ export interface Database {
         };
         Relationships: [];
       };
+      editorial_reviews: {
+        Row: {
+          id: string;
+          project_id: string;
+          requested_by: string | null;
+          instruction: string | null;
+          status: "pending" | "reviewing" | "ready" | "apply_requested" | "applying" | "applied" | "failed";
+          canon_version: string | null;
+          summary: string | null;
+          findings: Json;
+          dropped: Json;
+          applied_version: string | null;
+          error: string | null;
+          created_at: string;
+          reviewed_at: string | null;
+          applied_at: string | null;
+        };
+        Insert: { project_id: string; requested_by: string; instruction?: string | null };
+        Update: never;
+        Relationships: [];
+      };
+      edit_proposals: {
+        Row: {
+          id: string;
+          review_id: string;
+          project_id: string;
+          position: number;
+          op: Json;
+          description: string;
+          effect: Json;
+          status: "proposed" | "approved" | "rejected" | "applied" | "failed";
+          created_at: string;
+          decided_at: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       project_cast: {
         Row: { project_id: string; character_id: string; created_at: string };
         Insert: { project_id: string; character_id: string };
@@ -601,6 +639,14 @@ export interface Database {
     };
     Views: { [_ in never]: never };
     Functions: {
+      decide_edit_proposal: {
+        Args: { p_id: string; p_approve: boolean };
+        Returns: string;
+      };
+      request_editorial_apply: {
+        Args: { p_review: string };
+        Returns: string;
+      };
       grant_credits: {
         Args: { target_email: string; minutes: number };
         Returns: number;
