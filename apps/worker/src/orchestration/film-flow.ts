@@ -61,14 +61,14 @@ export async function enqueueFilmFlow(projectId: string): Promise<number> {
           opts: { attempts: 2, priority },
         },
         {
-          // Narration: OpenAI TTS reads the scene's dialogue (or summary) —
-          // the render engine stitches every scene's track into the film's
-          // voice bed. No-ops gracefully when TTS isn't configured.
+          // Narration and dialogue on the Voice Engine — the render engine
+          // stitches every scene's track into the film's voice bed.
           name: "voice",
           queueName: QUEUES.audio,
           data: { projectId, sceneId: scene.id, kind: "voice" },
           opts: { attempts: 2, priority },
         },
+        ...soundNodes(projectId, scene.id, priority),
       ],
     })),
   });
@@ -107,7 +107,22 @@ export async function enqueueSceneFlow(projectId: string, sceneId: string): Prom
       })),
       { name: "music", queueName: QUEUES.audio, data: { projectId, sceneId: scene.id, kind: "music" }, opts: { attempts: 2, priority } },
       { name: "voice", queueName: QUEUES.audio, data: { projectId, sceneId: scene.id, kind: "voice" }, opts: { attempts: 2, priority } },
+      ...soundNodes(projectId, scene.id, priority),
     ],
   });
   return scene.shots.length;
+}
+
+/**
+ * The scene's sound design (W16; Part 1 §18): its ambience bed and its planned
+ * sound effects. SOUND_DESIGN=0 leaves them out (the film keeps dialogue and score).
+ */
+export function soundNodes(projectId: string, sceneId: string, priority: number | undefined, env: NodeJS.ProcessEnv = process.env) {
+  if (env.SOUND_DESIGN === "0") return [];
+  return (["ambience", "sfx"] as const).map((kind) => ({
+    name: kind,
+    queueName: QUEUES.audio,
+    data: { projectId, sceneId, kind },
+    opts: { attempts: 2, priority },
+  }));
 }

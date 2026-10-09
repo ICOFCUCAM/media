@@ -4,7 +4,8 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { Storage } from "../storage/storage";
-import { degradation, ProductionFailure, type Degradation } from "@cineforge/shared";
+import { degradation, MIX_SPECS, ProductionFailure, type Degradation, type DeliverySpec, type MixSpec } from "@cineforge/shared";
+import { placeCue } from "@cineforge/movie";
 import { ffmpeg, probeDuration, type DurationProbe, type FfmpegRunner } from "./ffmpeg";
 import { sha256File } from "./analysis";
 import {
@@ -13,6 +14,8 @@ import {
   concatListContent,
   concatArgs,
   audioMixArgs,
+  soundStemArgs,
+  type PlacedSound,
   muxArgs,
   extendVideoArgs,
   planNarrationFit,
@@ -43,7 +46,17 @@ export interface SceneAssets {
   /** Optional S3 keys for this scene's audio. */
   musicKey?: string;
   voiceKey?: string;
-  sfxKey?: string;
+  /** The scene's sound design (W16): its ambience bed and placed effects. */
+  sounds?: SceneSound[];
+}
+
+export interface SceneSound {
+  kind: "AMBIENCE" | "SFX";
+  key: string;
+  /** Planned start within the scene (ms) and the scene's planned length it refers to. */
+  startMs: number;
+  durationMs: number;
+  plannedSceneMs?: number;
 }
 
 export interface RenderResult {
@@ -79,13 +92,18 @@ export class RenderEngine {
     scenes: SceneAssets[],
     onProgress?: (p: number) => void,
     brand?: { logoKey?: string | null; primaryColor?: string; outroText?: string | null },
-    opts: { filmSec?: number; gate?: MasterGate; version?: number } = {},
+    opts: { filmSec?: number; gate?: MasterGate; version?: number; mix?: MixSpec; delivery?: Pick<DeliverySpec, "integratedLufs" | "truePeakDbtp"> } = {},
   ): Promise<RenderResult> {
     const work = await mkdtemp(join(tmpdir(), `cineforge-${projectId}-`));
     const gaps: Degradation[] = [];
     try {
       const allShotKeys = scenes.flatMap((s) => s.shotKeys);
       const allCuts = scenes.flatMap((s) => s.shotKeys.map((_, i) => s.shotCutSec?.[i] ?? null));
+      // Which scene each clip belongs to, and each clip's length as cut — the
+      // scene spans the sound design is placed on (measured only when needed).
+      const clipScene = scenes.flatMap((s, si) => s.shotKeys.map(() => si));
+      const placeSounds = scenes.some((s) => s.sounds?.length);
+      const clipSec: number[] = [];
       if (allShotKeys.length === 0) throw new Error("no shot clips to render");
 
       // 1) Download + re-encode every shot to a byte-uniform stream so concat can
@@ -112,6 +130,7 @@ export class RenderEngine {
             ];
         await this.run(withCut(args, allCuts[done] ?? null));
         clips.push(norm);
+        if (placeSounds) clipSec.push(await this.probe(norm));
         done++;
         onProgress?.((done / allShotKeys.length) * 0.6);
       }
@@ -232,14 +251,46 @@ export class RenderEngine {
           outputSec = fit.outputSec;
         }
         const musicKey = scenes.find((s) => s.musicKey)?.musicKey;
-        const sfxKey = scenes.find((s) => s.sfxKey)?.sfxKey;
         const music = musicKey ? await dl(musicKey, "music.mp3") : undefined;
-        const sfx = sfxKey ? await dl(sfxKey, "sfx.wav") : undefined;
-        if (voice || music || sfx) {
+        const mixSpec = opts.mix ?? MIX_SPECS.cinematic;
+        // Sound design (W16): each scene's ambience under its own span, each
+        // effect where its shot lands in the cut — built as two placed stems.
+        let ambience: string | undefined;
+        let sfx: string | undefined;
+        if (placeSounds) {
+          const spans = sceneSpans(scenes.length, clipScene, clipSec);
+          const totalSec = Math.max(outputSec ?? 0, spans.reduce((a, sp) => Math.max(a, sp.startSec + sp.durSec), 0));
+          const files = new Map<string, string>();
+          const fetchSound = async (k: string) => {
+            if (!files.has(k)) files.set(k, await dl(k, `sound_${files.size}.audio`));
+            return files.get(k)!;
+          };
+          const beds: PlacedSound[] = [];
+          const cues: PlacedSound[] = [];
+          for (const [si, sc] of scenes.entries()) {
+            const span = spans[si]!;
+            if (span.durSec <= 0) continue;
+            for (const snd of sc.sounds ?? []) {
+              const path = await fetchSound(snd.key);
+              if (snd.kind === "AMBIENCE") beds.push({ path, startSec: span.startSec, loopSec: span.durSec, fadeSec: mixSpec.ambienceFadeSec });
+              else cues.push({ path, startSec: span.startSec + placeCue(snd.startMs / 1000, (snd.plannedSceneMs ?? span.durSec * 1000) / 1000, span.durSec, snd.durationMs / 1000) });
+            }
+          }
+          if (beds.length) {
+            ambience = join(work, "ambience_stem.wav");
+            await this.run(soundStemArgs(beds, mixSpec.ambienceDb, totalSec, ambience));
+          }
+          if (cues.length) {
+            sfx = join(work, "sfx_stem.wav");
+            await this.run(soundStemArgs(cues, mixSpec.sfxDb, totalSec, sfx));
+          }
+          console.log(`[render] sound design: ${beds.length} ambience bed(s), ${cues.length} effect(s)`);
+        }
+        if (voice || music || ambience || sfx) {
           const mix = join(work, "mix.m4a");
-          await this.run(audioMixArgs({ music, voice, sfx }, mix, { musicLoopSec: Math.max(opts.filmSec ?? 0, outputSec ?? 0) || undefined }));
+          await this.run(audioMixArgs({ music, voice, ambience, sfx }, mix, { musicLoopSec: Math.max(opts.filmSec ?? 0, outputSec ?? 0) || undefined, mix: mixSpec, delivery: opts.delivery }));
           const muxed = join(work, "muxed.mp4");
-          console.log(`[render] mux audio bed (voice=${!!voice} music=${!!music} sfx=${!!sfx})`);
+          console.log(`[render] mux audio (voice=${!!voice} music=${!!music} ambience=${!!ambience} sfx=${!!sfx})`);
           // Length = picture (or picture held to the narration's end): only a
           // music/SFX tail beyond it is trimmed, never narration.
           await this.run(muxArgs(videoForMux, mix, muxed, { durationSec: outputSec ?? (await this.probe(videoForMux)) }));
@@ -261,7 +312,7 @@ export class RenderEngine {
 
       // 4b) Final Quality Gate (W5): the master is measured before it is
       //     delivered; a blocking result stops the render here.
-      const hasSound = scenes.some((sc) => Boolean(sc.musicKey || sc.voiceKey || sc.sfxKey));
+      const hasSound = scenes.some((sc) => Boolean(sc.musicKey || sc.voiceKey || sc.sounds?.length));
       const quality = opts.gate ? await opts.gate(finalMp4, { hasSound, filmSec: opts.filmSec }) : [];
       const blocking = quality.filter((r) => r.outcome === "fail");
       if (blocking.length) {
@@ -307,4 +358,12 @@ export class RenderEngine {
 export function withCut(args: string[], cutSec: number | null): string[] {
   if (cutSec == null || !(cutSec > 0)) return args;
   return [...args.slice(0, -1), "-t", cutSec.toFixed(3), args[args.length - 1]!];
+}
+
+/** Each scene's span in the cut (seconds), from its clips' measured lengths. */
+export function sceneSpans(sceneCount: number, clipScene: number[], clipSec: number[]): { startSec: number; durSec: number }[] {
+  const dur = Array.from({ length: sceneCount }, () => 0);
+  clipScene.forEach((si, i) => { dur[si]! += clipSec[i] ?? 0; });
+  let t = 0;
+  return dur.map((d) => { const span = { startSec: t, durSec: d }; t += d; return span; });
 }

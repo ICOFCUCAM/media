@@ -1,4 +1,5 @@
 export * from "./policy";
+export * from "./mix";
 export * from "./types";
 export * from "./timeline-analyzer";
 export * from "./duration-validator";

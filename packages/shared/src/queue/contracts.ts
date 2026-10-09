@@ -36,7 +36,7 @@ export interface VideoJob {
   modelId: string; // resolved from project/tier; e.g. "wan-2.1" | "hunyuan"
 }
 
-export type AudioKindJob = "voice" | "music" | "sfx";
+export type AudioKindJob = "voice" | "music" | "sfx" | "ambience";
 
 export interface AudioJob {
   projectId: string;

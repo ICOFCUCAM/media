@@ -188,7 +188,8 @@ export async function gatherFilmEvidence(
     scenes: sceneFacts,
     shots: shotFacts,
     musicTrack: tracks.some((t) => t.kind === "MUSIC"),
-    sfxTracks: tracks.filter((t) => t.kind === "SFX").length,
+    // Sound design (W16): ambience beds and placed effects.
+    sfxTracks: tracks.filter((t) => t.kind === "SFX" || t.kind === "AMBIENCE").length,
     planViolations: pkg ? planViolations(pkg) : [{ code: "NO_FILM_IR_PLAN", kind: "other" }],
     planDecision: planDecisions > 0,
     degradations,

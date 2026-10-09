@@ -10,7 +10,7 @@
  * phantom key. What the film ran without (outro, 4K) is recorded and shown.
  */
 import { UnrecoverableError, Worker } from "bullmq";
-import { QUEUES, type RenderJob, parseLanguages, degradation, isProductionFailure, type Degradation } from "@cineforge/shared";
+import { QUEUES, type RenderJob, parseLanguages, degradation, isProductionFailure, mixSpec, syncPolicy, type Degradation } from "@cineforge/shared";
 import { judgeMaster, qualityMode, type GateResult } from "../quality/gates";
 import { measureMedia } from "../quality/measure";
 import { recordGates, type GateDb } from "../quality/recorder";
@@ -38,10 +38,20 @@ async function recordFilmGates(projectId: string, quality: GateResult[]) {
   await recordGates(prisma as unknown as GateDb, projectId, "film", "film", [...quality, editorial]);
 }
 
-/** Final Quality Gate (W5): measure the local master with ffmpeg and judge it. Delivery spec: -16 LUFS, true peak ≤ -1 dBTP. */
-const masterGate = (filmSec: number) => async (path: string, ctx: { hasSound: boolean; filmSec: number | undefined }) =>
+/**
+ * The production profile the master is mixed and judged by (W16): its sync
+ * policy's delivery spec (loudness, true peak) and its mix spec (stem levels,
+ * ducking). RENDER_SYNC_PROFILE, else RUNTIME_SYNC_PROFILE, else cinematic.
+ */
+export function renderProfile(env: NodeJS.ProcessEnv = process.env) {
+  const policy = syncPolicy(env.RENDER_SYNC_PROFILE?.trim() || env.RUNTIME_SYNC_PROFILE?.trim() || "cinematic");
+  return { policy, mix: mixSpec(policy), delivery: { integratedLufs: policy.delivery.integratedLufs, truePeakDbtp: policy.delivery.truePeakDbtp } };
+}
+
+/** Final Quality Gate (W5): measure the local master with ffmpeg and judge it against the profile's delivery spec. */
+const masterGate = (filmSec: number, delivery: { integratedLufs: number; truePeakDbtp: number }) => async (path: string, ctx: { hasSound: boolean; filmSec: number | undefined }) =>
   judgeMaster(await measureMedia(path, { loudness: true }),
-    { durationSec: ctx.filmSec ?? filmSec, hasSound: ctx.hasSound, integratedLufs: -16, truePeakMaxDbtp: -1 }, qualityMode());
+    { durationSec: ctx.filmSec ?? filmSec, hasSound: ctx.hasSound, integratedLufs: delivery.integratedLufs, truePeakMaxDbtp: delivery.truePeakDbtp }, qualityMode());
 
 async function upscaleFilm(projectId: string) {
   const apiKey = process.env.FAL_KEY;
@@ -118,7 +128,11 @@ export const renderWorker = new Worker<RenderJob>(
         shotCutSec: s.shots.filter((sh) => !!sh.videoKey).map((sh) => (sh.cutSec == null ? null : Number(sh.cutSec))),
         musicKey: s.audioTracks.filter(real).find((t) => t.kind === "MUSIC")?.key,
         voiceKey: s.audioTracks.filter(real).find((t) => t.kind === "VOICE")?.key,
-        sfxKey: s.audioTracks.filter(real).find((t) => t.kind === "SFX")?.key,
+        // Sound design (W16): the scene's ambience bed and placed effects.
+        sounds: s.audioTracks.filter(real).filter((t) => t.kind === "AMBIENCE" || t.kind === "SFX").map((t) => ({
+          kind: t.kind as "AMBIENCE" | "SFX", key: t.key, startMs: t.startMs, durationMs: t.durationMs ?? 0,
+          plannedSceneMs: (t.meta as { plannedSceneMs?: number } | null)?.plannedSceneMs,
+        })),
       }));
 
       const totalClips = assets.reduce((a, s) => a + s.shotKeys.length, 0);
@@ -169,12 +183,13 @@ export const renderWorker = new Worker<RenderJob>(
         const branded = owner && (owner.user.role === "ADMIN" || owner.user.tier === "AGENCY" || owner.user.tier === "ENTERPRISE");
         const kit = branded ? await prisma.brandKit.findUnique({ where: { userId: owner!.userId } }) : null;
         const version = await nextVersion(prisma as unknown as VersionDb, "master", projectId);
+        const profile = renderProfile();
         const out = await engine.renderFinal(
           projectId,
           assets,
           undefined,
           kit ? { logoKey: kit.logoKey, primaryColor: kit.primaryColor, outroText: kit.outroText } : undefined,
-          { filmSec: durationSec, gate: masterGate(durationSec), version },
+          { filmSec: durationSec, gate: masterGate(durationSec, profile.delivery), version, mix: profile.mix, delivery: profile.delivery },
         );
         mp4Key = out.mp4Key;
         hlsKey = out.hlsKey;

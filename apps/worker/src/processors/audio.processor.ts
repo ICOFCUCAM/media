@@ -7,7 +7,10 @@
  * Music: the film's score — composed once, on the opening scene, by a fal
  * text-to-music model (FAL_MUSIC_MODEL, default Stable Audio) from the brief
  * and every scene's style and mood; the render engine loops it under the cut.
- * SFX: no generator yet (not enqueued). Every path is resume-safe.
+ * Ambience + SFX (W16): the scene's planned soundscape and effects from a
+ * text-to-audio model (FAL_SOUND_MODEL, default the score model), stored
+ * content-addressed so the same sound is generated once; each effect anchored
+ * to its shot. Every path is resume-safe.
  *
  * No silent degradation (DirectorOS DOS-75): when a track the film should have
  * cannot be made — no provider configured, or the provider failed on the last
@@ -30,10 +33,12 @@ import { voiceTraits } from "@cineforge/voice-contracts";
 import { speechLedgerRows } from "../voice/ledger";
 import { sceneVoiceDeps } from "../voice/deps";
 import { meter } from "../billing";
+import { FilmPackage, sceneSoundPlan, type SceneSoundPlan } from "@cineforge/movie";
+import { ambienceRow, renderSound, sfxRow, SOUND_MODEL, type SoundDeps, type SoundTrackRow } from "../audio/sound";
 
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
-const KIND = { voice: "VOICE", music: "MUSIC", sfx: "SFX" } as const;
+const KIND = { voice: "VOICE", music: "MUSIC", sfx: "SFX", ambience: "AMBIENCE" } as const;
 const storage = new S3Storage();
 
 const trackMissing = (projectId: string, scope: "scene" | "film", message: string, detail: Record<string, unknown>, refId?: string) =>
@@ -177,9 +182,90 @@ export const audioWorker = new Worker<AudioJob>(
       }
     }
 
-    // ── SFX: no generator exists (capability `sfx_generation` is
-    // not_implemented, so the flow does not enqueue it). Never a phantom row.
-    return { sceneId, kind, skipped: "no generator" };
+    // ── Ambience + SFX: the scene's sound design (W16; Part 1 §18) ─────
+    const scene = await prisma.scene.findUnique({ where: { id: sceneId }, select: { index: true, projectId: true } });
+    if (!scene) return { sceneId, kind, skipped: "scene gone" };
+    const label = `Scene ${scene.index + 1}`;
+    const plan = await soundPlanFor(scene.projectId, scene.index);
+    if (!plan) return { sceneId, kind, skipped: "no film plan" };
+    const wanted = kind === "ambience" ? (plan.ambience ? 1 : 0) : plan.sfx.length;
+    if (!wanted) return { sceneId, kind, skipped: "nothing planned" };
+    if (!process.env.FAL_KEY || !process.env.S3_BUCKET) {
+      // One film-level note, from the opening scene, not one per scene.
+      if (scene.index === 0) await trackMissing(projectId, "film", "This film has no sound design (ambience and effects): no sound provider is configured.", { track: kind === "ambience" ? "ambience" : "sfx" });
+      return { sceneId, kind, skipped: "no provider configured" };
+    }
+    const model = SOUND_MODEL();
+    const deps = soundDeps(model, scene.projectId, kind);
+    const rows: SoundTrackRow[] = [];
+    const failed: { what: string; error: string }[] = [];
+    if (kind === "ambience") {
+      try {
+        rows.push(ambienceRow(plan, await renderSound(plan.ambience!.prompt, plan.ambience!.seconds, deps), model));
+      } catch (e) {
+        failed.push({ what: "ambience", error: (e instanceof Error ? e.message : String(e)).slice(0, 300) });
+      }
+    } else {
+      for (const cue of plan.sfx) {
+        try {
+          rows.push(sfxRow(plan, cue, await renderSound(cue.prompt, cue.seconds, deps), model));
+        } catch (e) {
+          failed.push({ what: cue.cue, error: (e instanceof Error ? e.message : String(e)).slice(0, 300) });
+        }
+      }
+    }
+    // Retry first (generated sounds are cached, so a retry costs only what failed).
+    if (failed.length && !lastAttempt) throw new Error(`${failed.length} sound(s) failed: ${failed.map((f) => `${f.what}: ${f.error}`).join("; ")}`);
+    if (rows.length) {
+      await prisma.audioTrack.createMany({ data: rows.map((r) => ({ sceneId, kind: r.kind, key: r.key, startMs: r.startMs, durationMs: r.durationMs, meta: r.meta as object })) });
+      // The ledger (§149): each sound on the Master Clock.
+      try {
+        const before = await prisma.scene.aggregate({ where: { projectId, index: { lt: scene.index } }, _sum: { durationSec: true } });
+        const sceneUs = BigInt(Math.round(Number(before._sum.durationSec ?? 0) * 1e6));
+        await prisma.audioGeneration.createMany({
+          data: rows.map((r) => ({
+            projectId, kind: r.kind === "AMBIENCE" ? "ambience" : "sfx", provider: "fal", modelId: model,
+            requestedStartUs: sceneUs + BigInt(r.startMs) * 1000n, requestedEndUs: sceneUs + BigInt(r.startMs + r.durationMs) * 1000n,
+            meta: { sceneId, key: r.key, ...(r.meta as object) }, outcome: "ACCEPTED", outcomeCode: "GENERATED", policy: "sound-design", classifiedAt: new Date(),
+          })),
+        });
+      } catch (e) {
+        console.warn(`[audio] sound ledger skipped for scene ${sceneId}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    for (const f of failed) {
+      await trackMissing(projectId, "scene", `${label} is missing ${kind === "ambience" ? "its ambience" : `the sound "${f.what}"`}: the sound provider failed.`, { track: kind, error: f.error }, sceneId);
+    }
+    return { sceneId, kind, tracks: rows.length, failed: failed.length, cached: rows.filter((r) => r.meta.cached).length };
   },
   { connection, concurrency: 8 },
 );
+
+/** The scene's sound plan, from the film plan the Director wrote (screenplays.raw.package). */
+async function soundPlanFor(projectId: string, sceneIndex: number): Promise<SceneSoundPlan | null> {
+  const sp = await prisma.screenplay.findUnique({ where: { projectId }, select: { raw: true } });
+  const parsed = FilmPackage.safeParse((sp?.raw as { package?: unknown } | null)?.package);
+  if (!parsed.success) return null;
+  return sceneSoundPlan(parsed.data, sceneIndex, {
+    maxSfxPerScene: Number(process.env.SFX_MAX_PER_SCENE ?? 4),
+    maxAmbienceSec: Number(process.env.AMBIENCE_MAX_SEC ?? 30),
+  });
+}
+
+/** Generation through fal, metered per generated second; storage holds the content-addressed sounds. */
+function soundDeps(model: string, projectId: string, kind: string): SoundDeps {
+  return {
+    model,
+    generate: async (prompt, seconds) => {
+      const result = await falRunQueue(process.env.FAL_KEY!, model, { prompt, seconds_total: seconds }, { timeoutMs: 5 * 60_000 });
+      await meter({ kind: "music", provider: "fal", model, unit: "audio_seconds", units: seconds, projectId, meta: { purpose: kind } });
+      const url = falFindUrl(result);
+      if (!url) throw new Error(`sound model returned no audio (${JSON.stringify(result).slice(0, 200)})`);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`sound download ${res.status}`);
+      return { bytes: new Uint8Array(await res.arrayBuffer()), contentType: res.headers.get("content-type") ?? "audio/wav" };
+    },
+    exists: async (key) => (await storage.size(key)) > 0,
+    put: async (key, bytes, type) => { await storage.putBytes(key, bytes, type); },
+  };
+}

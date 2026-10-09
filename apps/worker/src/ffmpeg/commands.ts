@@ -3,7 +3,7 @@
  * the global flags that the runner prepends (`-hide_banner -progress ...`), so
  * they're deterministic and unit-testable without spawning FFmpeg.
  */
-import { conformFilter, parseFrameRate } from "@cineforge/shared";
+import { conformFilter, MIX_SPECS, parseFrameRate, type DeliverySpec, type DuckSpec, type MixSpec } from "@cineforge/shared";
 
 export interface VideoFormat {
   width: number;
@@ -67,18 +67,40 @@ export function xfadeArgs(
 export interface AudioInputs {
   music?: string;
   voice?: string;
+  /** The ambience stem, placed on the film's timeline (soundStemArgs). */
+  ambience?: string;
+  /** The effects stem, placed on the film's timeline (soundStemArgs). */
   sfx?: string;
 }
 
+export interface MixOptions {
+  /** Loop the score under the whole cut, bounded to this length. */
+  musicLoopSec?: number;
+  /** Stem levels and ducking (the production profile's mix spec). */
+  mix?: MixSpec;
+  /** Where the master must land (the sync policy's delivery spec). */
+  delivery?: Pick<DeliverySpec, "integratedLufs" | "truePeakDbtp">;
+}
+
+/** loudnorm overshoots a little: aim this far under the delivery true-peak ceiling. */
+export const TRUE_PEAK_MARGIN_DB = 0.5;
+
+const duckFilter = (d: DuckSpec) => `sidechaincompress=threshold=${d.threshold}:ratio=${d.ratio}:attack=${d.attackMs}:release=${d.releaseMs}`;
+
 /**
- * Mix music + voice + sfx into one track, ducking music under dialogue with
- * sidechaincompress, then loudness-normalize (EBU R128).
+ * Mix the film's stems into one track (Part 1 §18, §20; W16). Dialogue is the
+ * anchor: music and ambience are ducked under it (sidechain keyed by the
+ * dialogue), placed effects are not; then the whole mix is loudness-normalised
+ * to the sync policy's delivery target (EBU R128). The ambience and sfx inputs
+ * are stems already placed on the film's timeline and levelled (soundStemArgs).
  */
-export function audioMixArgs(inputs: AudioInputs, output: string, opts: { musicLoopSec?: number } = {}): string[] {
+export function audioMixArgs(inputs: AudioInputs, output: string, opts: MixOptions = {}): string[] {
+  const mix = opts.mix ?? MIX_SPECS.cinematic;
+  const delivery = opts.delivery ?? { integratedLufs: -16, truePeakDbtp: -1 };
   const args: string[] = [];
-  const labels: Record<string, number> = {};
+  const labels: Partial<Record<keyof AudioInputs, number>> = {};
   let idx = 0;
-  for (const key of ["music", "voice", "sfx"] as const) {
+  for (const key of ["music", "voice", "ambience", "sfx"] as const) {
     if (inputs[key]) {
       // The film score is one clip; loop it under the whole cut, bounded to the
       // film's length so the mix (amix = longest input) always terminates.
@@ -91,24 +113,75 @@ export function audioMixArgs(inputs: AudioInputs, output: string, opts: { musicL
 
   const filters: string[] = [];
   const mixIns: string[] = [];
-
-  if (labels.music !== undefined) filters.push(`[${labels.music}:a]volume=0.6[m]`);
-  if (labels.sfx !== undefined) filters.push(`[${labels.sfx}:a]volume=0.8[s]`);
-
-  if (labels.music !== undefined && labels.voice !== undefined) {
-    filters.push(`[m][${labels.voice}:a]sidechaincompress=threshold=0.03:ratio=8:attack=5:release=300[mducked]`);
-    mixIns.push("[mducked]", `[${labels.voice}:a]`);
-  } else if (labels.music !== undefined) {
-    mixIns.push("[m]");
-  } else if (labels.voice !== undefined) {
-    mixIns.push(`[${labels.voice}:a]`);
+  const voice = labels.voice;
+  const ducked = [labels.music, labels.ambience].filter((l) => l !== undefined).length;
+  // The dialogue keys every ducked stem and is mixed itself: split it once per use.
+  let keys: string[] = [];
+  if (voice !== undefined) {
+    if (ducked) {
+      keys = Array.from({ length: ducked }, (_, i) => `[vk${i}]`);
+      filters.push(`[${voice}:a]asplit=${ducked + 1}${keys.join("")}[v]`);
+    } else {
+      filters.push(`[${voice}:a]anull[v]`);
+    }
   }
-  if (labels.sfx !== undefined) mixIns.push("[s]");
+  if (labels.music !== undefined) {
+    filters.push(`[${labels.music}:a]volume=${mix.musicDb}dB[m]`);
+    if (voice !== undefined) {
+      filters.push(`[m]${keys.shift()}${duckFilter(mix.musicDuck)}[mducked]`);
+      mixIns.push("[mducked]");
+    } else mixIns.push("[m]");
+  }
+  if (labels.ambience !== undefined) {
+    if (voice !== undefined) {
+      filters.push(`[${labels.ambience}:a]${keys.shift()}${duckFilter(mix.ambienceDuck)}[aducked]`);
+      mixIns.push("[aducked]");
+    } else mixIns.push(`[${labels.ambience}:a]`);
+  }
+  if (voice !== undefined) mixIns.push("[v]");
+  if (labels.sfx !== undefined) mixIns.push(`[${labels.sfx}:a]`);
 
   filters.push(`${mixIns.join("")}amix=inputs=${mixIns.length}:normalize=0[premix]`);
-  filters.push(`[premix]loudnorm=I=-16:TP=-1.5:LRA=11[aout]`);
+  filters.push(`[premix]loudnorm=I=${delivery.integratedLufs}:TP=${delivery.truePeakDbtp - TRUE_PEAK_MARGIN_DB}:LRA=${mix.loudnessRangeLu}[aout]`);
 
   return [...args, "-filter_complex", filters.join(";"), "-map", "[aout]", "-c:a", "aac", "-b:a", "192k", output];
+}
+
+/** One sound placed on the film's timeline. */
+export interface PlacedSound {
+  path: string;
+  /** Where it starts in the film (seconds). */
+  startSec: number;
+  /** Loop it to this length (ambience beds); absent = play once (effects). */
+  loopSec?: number;
+  /** Fade in/out at its edges (looped beds). */
+  fadeSec?: number;
+}
+
+/**
+ * Build one stem (ambience or effects) on the film's timeline: every sound
+ * resampled, levelled, faded, delayed to its start and summed, padded with
+ * silence and cut to the film's length.
+ */
+export function soundStemArgs(sounds: PlacedSound[], levelDb: number, filmSec: number, output: string): string[] {
+  if (!sounds.length) throw new Error("soundStemArgs: at least one sound required");
+  const args: string[] = [];
+  const filters: string[] = [];
+  const labels: string[] = [];
+  sounds.forEach((s, i) => {
+    if (s.loopSec && s.loopSec > 0) args.push("-stream_loop", "-1", "-t", s.loopSec.toFixed(3));
+    args.push("-i", s.path);
+    const ms = Math.max(0, Math.round(s.startSec * 1000));
+    const chain = [`aresample=48000`, `aformat=channel_layouts=stereo`, `volume=${levelDb}dB`];
+    if (s.loopSec && s.fadeSec && s.loopSec > 2 * s.fadeSec) {
+      chain.push(`afade=t=in:d=${s.fadeSec}`, `afade=t=out:st=${(s.loopSec - s.fadeSec).toFixed(3)}:d=${s.fadeSec}`);
+    }
+    if (ms > 0) chain.push(`adelay=${ms}|${ms}`);
+    filters.push(`[${i}:a]${chain.join(",")}[s${i}]`);
+    labels.push(`[s${i}]`);
+  });
+  filters.push(`${labels.join("")}amix=inputs=${labels.length}:normalize=0:duration=longest,apad[out]`);
+  return [...args, "-filter_complex", filters.join(";"), "-map", "[out]", "-t", filmSec.toFixed(3), "-ar", "48000", "-c:a", "pcm_s16le", output];
 }
 
 /**
