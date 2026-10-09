@@ -210,7 +210,7 @@ Conflicts to settle (decisions in §10):
 |---|---|---|---|
 | 0 Stance | built (W2–W19) | `packages/movie`, worker pipeline | Done: the AI decides (IR), CineForge converts it through canon, compilation, generation, gates and the timeline (W19 audit, docs/64) |
 | 1 Director, not engine | **built** | LLM only plans; FFmpeg/GPU/scheduling are code | KEEP; widen what the Director decides |
-| 2 Four layers | built except media gaps (W2–W19) | `packages/movie` (intelligence, world, compile), worker (orchestration, ffmpeg, adapters) | Done: separate intelligence / canon / production / media modules; lip sync and interpolation not built (DOS-2.4) |
+| 2 Four layers | built (W2–W21) | `packages/movie`, worker (orchestration, ffmpeg, adapters, lipsync) | Done: separate intelligence / canon / production / media modules; the media engine now lip-syncs and interpolates (docs/66) |
 | 3 Film Bible | built (W2, W20) | `ir/schema.ts` FilmBible | Done: typed, versioned Film Bible with the DOS-3.3 fields, the single source every stage reads (docs/65) |
 | 4 Character Bible | built (W2, W3, W12) | `ir/schema.ts` Character, Character Cards | Done: structured identity, wardrobe, voice, personality and design for the whole cast; every scene and shot references `char_` ids |
 | 5 Character state | poorly built | name-keyed `Record<string,string>`, regex-inferred (`shared/continuity.ts:29-350`); `ContinuityState` table unused | CHANGE to typed, ID-keyed, versioned state at story time T with event transitions, persisted |
@@ -894,6 +894,20 @@ existing engines, migrations 0046–0047 live.
 - All new fields are optional: earlier plans stay valid and compile exactly
   as before. Director prompts bumped (director.master v7, revision v6).
 
+### W21 — Lip sync, interpolation, Character Card portraits (Part 1 §2.4, Part 5 §183)
+
+**Done (docs/66, 2026-10-09; migration 0054 applied live).**
+
+- BUILT lip sync for dialogue shots: a framed speaker's lines cut to the
+  shot and passed through a hosted lip-sync model, content-keyed, used by the
+  render (LIP_SYNC=1); failures keep the clip and are recorded.
+- BUILT frame interpolation: motion-compensated frame-rate changes
+  (RENDER_INTERPOLATE=1), the light pass at 24 fps.
+- BUILT Character Card portraits drawn by the image engine from the card,
+  requested by the owner, written only by the server (0054).
+- OPEN: lip-synced dubs; live conversation through an avatar; character
+  animation beyond the mouth in storybook and motion comic.
+
 ---
 
 ## 9. Sequenced roadmap
@@ -925,6 +939,7 @@ approved models wait for docs/38 gates.
 | **S18 Quality depth** | W18 reviewer v2, technical QC depth, sync after render, editorial pass | W5, Phase 5 | S17 |
 | **S19 Previs and lock** | W19 rough voice + animatic previs, review-first default, lock → approved timeline → master | W8, W18 | S18 |
 | **S20 World and time state** | W20 film bible, story clock, weather and sun, shot record, structured end state | W2, W3 | S19 |
+| **S21 Lip sync and portraits** | W21 lip sync, frame interpolation, Character Card portraits | W7, W12, W17 | S20 |
 
 W11 hygiene items ride along with whichever stage touches the same files.
 
@@ -949,4 +964,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-487 IDs: 345 built, 47 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 345 (84%) are built; 47 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W20, 2026-10-09.)
+487 IDs: 347 built, 45 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 347 (84%) are built; 45 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W21, 2026-10-09.)

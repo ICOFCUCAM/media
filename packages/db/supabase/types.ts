@@ -686,6 +686,9 @@ export type Database = {
           lora_version: string | null
           name: string
           personality: string | null
+          portrait_error: string | null
+          portrait_key: string | null
+          portrait_status: string | null
           project_id: string
           reference_urls: string[]
           source_character_id: string | null
@@ -712,6 +715,9 @@ export type Database = {
           lora_version?: string | null
           name: string
           personality?: string | null
+          portrait_error?: string | null
+          portrait_key?: string | null
+          portrait_status?: string | null
           project_id: string
           reference_urls?: string[]
           source_character_id?: string | null
@@ -738,6 +744,9 @@ export type Database = {
           lora_version?: string | null
           name?: string
           personality?: string | null
+          portrait_error?: string | null
+          portrait_key?: string | null
+          portrait_status?: string | null
           project_id?: string
           reference_urls?: string[]
           source_character_id?: string | null
