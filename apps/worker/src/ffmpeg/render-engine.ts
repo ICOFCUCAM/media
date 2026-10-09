@@ -10,6 +10,8 @@ import { ffmpeg, probeDuration, type DurationProbe, type FfmpegRunner } from "./
 import { sha256File } from "./analysis";
 import {
   normalizeArgs,
+  interpolating,
+  interpolateFilter,
   concatAudioArgs,
   concatListContent,
   concatArgs,
@@ -31,9 +33,18 @@ import {
 /** Frame rate of the default (light) assembly pass; RENDER_NORMALIZE=1 conforms to DEFAULT_FORMAT instead. */
 export const LIGHT_FPS = 16;
 
+/** The light pass's frame rate: 16, or 24 when frames are interpolated (W21). */
+export function lightFps(env: Record<string, string | undefined> = process.env): number {
+  return interpolating(env) ? 24 : LIGHT_FPS;
+}
+/** The light pass's rate step: drop/repeat frames, or interpolate new ones (W21). */
+function lightRate(env: Record<string, string | undefined> = process.env): string {
+  return interpolating(env) ? interpolateFilter(lightFps(env)) : `fps=${LIGHT_FPS}`;
+}
+
 /** What a master is delivered as: the light pass keeps the clips' size at LIGHT_FPS; normalize conforms to DEFAULT_FORMAT. */
 export function masterFormat(env: Record<string, string | undefined>, clipSize: { width: number; height: number }): { width: number; height: number; fps: number } {
-  return env.RENDER_NORMALIZE === "1" ? { width: DEFAULT_FORMAT.width, height: DEFAULT_FORMAT.height, fps: Number(DEFAULT_FORMAT.fps) } : { ...clipSize, fps: LIGHT_FPS };
+  return env.RENDER_NORMALIZE === "1" ? { width: DEFAULT_FORMAT.width, height: DEFAULT_FORMAT.height, fps: Number(DEFAULT_FORMAT.fps) } : { ...clipSize, fps: lightFps(env) };
 }
 
 export interface SceneAssets {
@@ -124,7 +135,7 @@ export class RenderEngine {
           ? normalizeArgs(raw, norm, this.fmt)
           : [
               "-i", raw,
-              "-vf", `scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=${LIGHT_FPS},format=yuv420p`,
+              "-vf", `scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,${lightRate()},format=yuv420p`,
               "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an",
               norm,
             ];
@@ -181,7 +192,7 @@ export class RenderEngine {
           // Outro resolution may differ from body clips: re-encode pass keeps
           // concat valid (same vf chain as the light normalize above).
           const outroNorm = join(work, "outro_norm.mp4");
-          await this.run(["-i", card, "-vf", `scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=${LIGHT_FPS},format=yuv420p`, "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an", outroNorm]);
+          await this.run(["-i", card, "-vf", `scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=${lightFps()},format=yuv420p`, "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an", outroNorm]);
           clips.push(outroNorm);
           console.log(`[render] appended branded outro`);
         } catch (e) {

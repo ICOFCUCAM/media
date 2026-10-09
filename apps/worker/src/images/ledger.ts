@@ -8,7 +8,7 @@
 import type { GeneratedImage } from "./providers";
 import { isMissingTable } from "../timeline/store";
 
-export type ImagePurpose = "seed_frame" | "seed_candidate" | "wardrobe_reference" | "location_reference" | "prop_reference";
+export type ImagePurpose = "seed_frame" | "seed_candidate" | "wardrobe_reference" | "location_reference" | "prop_reference" | "portrait";
 
 export interface ImageLedgerDb {
   imageGeneration: { create(a: { data: Record<string, unknown>; select?: Record<string, unknown> }): Promise<unknown> };
