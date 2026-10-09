@@ -668,12 +668,18 @@ export type Database = {
       characters: {
         Row: {
           age: number | null
+          animation_style: string | null
           appearance: string
           arc: string | null
+          clothing: string | null
           created_at: string
+          design: Json | null
           embedding: string | null
           ethnicity: string | null
+          eyes: string | null
           gender: string | null
+          hair: string | null
+          height_cm: number | null
           id: string
           lora_key: string | null
           lora_sha256: string | null
@@ -682,17 +688,24 @@ export type Database = {
           personality: string | null
           project_id: string
           reference_urls: string[]
+          source_character_id: string | null
           updated_at: string
           voice_profile: Json | null
         }
         Insert: {
           age?: number | null
+          animation_style?: string | null
           appearance: string
           arc?: string | null
+          clothing?: string | null
           created_at?: string
+          design?: Json | null
           embedding?: string | null
           ethnicity?: string | null
+          eyes?: string | null
           gender?: string | null
+          hair?: string | null
+          height_cm?: number | null
           id?: string
           lora_key?: string | null
           lora_sha256?: string | null
@@ -701,17 +714,24 @@ export type Database = {
           personality?: string | null
           project_id: string
           reference_urls?: string[]
+          source_character_id?: string | null
           updated_at?: string
           voice_profile?: Json | null
         }
         Update: {
           age?: number | null
+          animation_style?: string | null
           appearance?: string
           arc?: string | null
+          clothing?: string | null
           created_at?: string
+          design?: Json | null
           embedding?: string | null
           ethnicity?: string | null
+          eyes?: string | null
           gender?: string | null
+          hair?: string | null
+          height_cm?: number | null
           id?: string
           lora_key?: string | null
           lora_sha256?: string | null
@@ -720,6 +740,7 @@ export type Database = {
           personality?: string | null
           project_id?: string
           reference_urls?: string[]
+          source_character_id?: string | null
           updated_at?: string
           voice_profile?: Json | null
         }
@@ -729,6 +750,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "characters_source_character_id_fkey"
+            columns: ["source_character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
             referencedColumns: ["id"]
           },
         ]
@@ -926,6 +954,7 @@ export type Database = {
           created_at: string
           id: string
           number: number
+          project_id: string | null
           season_id: string
           synopsis: string | null
           title: string
@@ -934,6 +963,7 @@ export type Database = {
           created_at?: string
           id?: string
           number: number
+          project_id?: string | null
           season_id: string
           synopsis?: string | null
           title: string
@@ -942,11 +972,19 @@ export type Database = {
           created_at?: string
           id?: string
           number?: number
+          project_id?: string | null
           season_id?: string
           synopsis?: string | null
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "episodes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "episodes_season_id_fkey"
             columns: ["season_id"]
@@ -1252,11 +1290,45 @@ export type Database = {
           },
         ]
       }
+      project_cast: {
+        Row: {
+          character_id: string
+          created_at: string
+          project_id: string
+        }
+        Insert: {
+          character_id: string
+          created_at?: string
+          project_id: string
+        }
+        Update: {
+          character_id?: string
+          created_at?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_cast_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_cast_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           animation_style: string | null
           aspect_ratio: string
           created_at: string
+          episode_number: number | null
           episodes: number | null
           error_message: string | null
           estimated_ms: number | null
@@ -1272,6 +1344,7 @@ export type Database = {
           progress: number
           prompt: string
           resolution: string
+          series_id: string | null
           spent_ms: number
           status: Database["public"]["Enums"]["project_status"]
           story_approved_at: string | null
@@ -1284,6 +1357,7 @@ export type Database = {
           animation_style?: string | null
           aspect_ratio?: string
           created_at?: string
+          episode_number?: number | null
           episodes?: number | null
           error_message?: string | null
           estimated_ms?: number | null
@@ -1299,6 +1373,7 @@ export type Database = {
           progress?: number
           prompt: string
           resolution?: string
+          series_id?: string | null
           spent_ms?: number
           status?: Database["public"]["Enums"]["project_status"]
           story_approved_at?: string | null
@@ -1311,6 +1386,7 @@ export type Database = {
           animation_style?: string | null
           aspect_ratio?: string
           created_at?: string
+          episode_number?: number | null
           episodes?: number | null
           error_message?: string | null
           estimated_ms?: number | null
@@ -1326,6 +1402,7 @@ export type Database = {
           progress?: number
           prompt?: string
           resolution?: string
+          series_id?: string | null
           spent_ms?: number
           status?: Database["public"]["Enums"]["project_status"]
           story_approved_at?: string | null
@@ -1335,6 +1412,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "series"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_user_id_fkey"
             columns: ["user_id"]
@@ -2108,6 +2192,53 @@ export type Database = {
             columns: ["scene_id"]
             isOneToOne: false
             referencedRelation: "scenes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      show_bibles: {
+        Row: {
+          audience: string | null
+          continuity_rules: string | null
+          episode_format: string | null
+          genre: string | null
+          locations: string | null
+          music_identity: string | null
+          narrative_rules: string | null
+          series_id: string
+          updated_at: string
+          world_rules: string | null
+        }
+        Insert: {
+          audience?: string | null
+          continuity_rules?: string | null
+          episode_format?: string | null
+          genre?: string | null
+          locations?: string | null
+          music_identity?: string | null
+          narrative_rules?: string | null
+          series_id: string
+          updated_at?: string
+          world_rules?: string | null
+        }
+        Update: {
+          audience?: string | null
+          continuity_rules?: string | null
+          episode_format?: string | null
+          genre?: string | null
+          locations?: string | null
+          music_identity?: string | null
+          narrative_rules?: string | null
+          series_id?: string
+          updated_at?: string
+          world_rules?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_bibles_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: true
+            referencedRelation: "series"
             referencedColumns: ["id"]
           },
         ]
