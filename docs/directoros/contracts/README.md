@@ -41,9 +41,9 @@ evidence files that exist (`scripts/check-truth.mjs`).
 | [images-and-references.md](images-and-references.md) | Image providers, seed candidates, reference pack, end-state memory (ComfyUI gated) | W6 | INTEGRATED |
 | [voice-engine.md](voice-engine.md) | Voice Engine: interface, consent, recording quality, router, jobs, mastering, /v1 API (self-hosted models gated) | W7 | INTEGRATED |
 | [versions-and-locks.md](versions-and-locks.md) | Append-only clip / voice / master versions; DB-enforced scene and film locks | W8 | INTEGRATED |
+| [passes-and-edits.md](passes-and-edits.md) | STORY → PREVIS → FINAL passes (DB-enforced), edit command, dependency edges, plan history | W8 | INTEGRATED |
 | [visual-review.md](visual-review.md) | Visual Reviewer and visual quality gate (record mode) | W5 (first slice) | INTEGRATED |
 
 Contracts to write before their workstream starts (from the gap analysis):
 Editor Agent (W8) · ComfyUI runtime (W6, with docs/38 §AT — gated on
-Phase 1) · Passes and the
-edit command API (W8b).
+Phase 1) · Editor Agent (W8+).

@@ -88,6 +88,8 @@ export interface LiveProduction {
 export interface DemoConfig {
   resolution?: string;
   aspectRatio?: string;
+  /** "three": review the story and each storyboard before any video (W8b). */
+  passMode?: "single" | "three";
   prompt: string;
   modelId: string;
   targetSeconds: number;

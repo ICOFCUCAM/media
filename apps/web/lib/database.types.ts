@@ -14,7 +14,8 @@ export type ProjectStatus =
   | "RENDERING"
   | "PAUSED"
   | "READY"
-  | "FAILED";
+  | "FAILED"
+  | "REVIEW";
 
 export type SceneStatus =
   | "PENDING"
@@ -80,6 +81,8 @@ export interface Database {
           estimated_ms: number | null;
           spent_ms: number;
           error_message: string | null;
+          pass_mode: "single" | "three";
+          story_approved_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -96,6 +99,7 @@ export interface Database {
           status?: ProjectStatus;
           progress?: number;
           estimated_ms?: number | null;
+          pass_mode?: "single" | "three";
         };
         Update: {
           status?: ProjectStatus;

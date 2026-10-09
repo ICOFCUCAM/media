@@ -20,8 +20,15 @@ const flow = new FlowProducer({ connection });
 export async function enqueueFilmFlow(projectId: string): Promise<number> {
   const project = await prisma.project.findUniqueOrThrow({
     where: { id: projectId },
-    select: { modelId: true, user: { select: { tier: true } } },
+    select: { modelId: true, passMode: true, user: { select: { tier: true } } },
   });
+  // Three-pass (W8b): only approved scenes may generate, one flow each; the
+  // film renders when every scene is approved and ready (orchestration/passes).
+  if (project.passMode === "three") {
+    const cleared = await prisma.scene.findMany({ where: { projectId, storyboardApprovedAt: { not: null } }, select: { id: true } });
+    for (const sc of cleared) await enqueueSceneFlow(projectId, sc.id);
+    return cleared.length;
+  }
   // Fair scheduling (docs/24 §C5): higher tiers get higher dispatch priority.
   const priority = tierPriority(project.user.tier as Tier);
   const scenes = await prisma.scene.findMany({

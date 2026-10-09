@@ -74,3 +74,8 @@ create table if not exists public.audio_tracks (
   key      text not null
 );
 grant select, insert, update, delete on public.scenes, public.dialogue_lines, public.audio_tracks to anon, authenticated;
+-- project_status enum + shot seed column for 0040 (real: 0001, 0002).
+do $$ begin
+  create type public.project_status as enum ('DRAFT', 'PLANNING', 'GENERATING', 'RENDERING', 'PAUSED', 'READY', 'FAILED');
+exception when duplicate_object then null; end $$;
+alter table public.shots add column if not exists seed_image_key text;

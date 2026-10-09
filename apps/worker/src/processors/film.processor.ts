@@ -101,6 +101,15 @@ export const filmWorker = new Worker<FilmJob>(
       await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);
     }
 
+    // Three-pass (W8b): a new plan stops at STORY for the owner's approval — no stills, no video yet.
+    if (job.name !== "resume") {
+      const mode = await prisma.project.findUnique({ where: { id: projectId }, select: { passMode: true } });
+      if (mode?.passMode === "three") {
+        await prisma.project.update({ where: { id: projectId }, data: { status: "REVIEW" } });
+        await realtime.emit("project.progress", { projectId, progress: 0, status: "REVIEW" });
+        return { projectId, pass: "story" };
+      }
+    }
     const sceneCount = await enqueueFilmFlow(projectId);
 
     await prisma.project.update({ where: { id: projectId }, data: { status: "GENERATING" } });

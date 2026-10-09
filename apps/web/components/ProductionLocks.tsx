@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { loadProductionLocks, setFilmLock, setSceneLock, type ProductionLocks as Locks } from "../lib/production";
+import { loadProductionLocks, loadTakes, restoreTake, setFilmLock, setSceneLock, type ProductionLocks as Locks, type ShotTakes } from "../lib/production";
+import { signedUrl } from "../lib/storyboard";
 import { Status } from "./cf/primitives";
 
 /**
@@ -14,11 +15,23 @@ export function ProductionLocks({ projectId, refreshKey }: { projectId: string; 
   const [data, setData] = useState<Locks | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [takes, setTakes] = useState<ShotTakes[]>([]);
 
   const refresh = useCallback(() => loadProductionLocks(projectId).then(setData), [projectId]);
   useEffect(() => {
     void refresh();
   }, [refresh, refreshKey]);
+
+  async function toggleTakes(sceneId: string) {
+    if (open === sceneId) return setOpen(null);
+    setOpen(sceneId);
+    setTakes(await loadTakes(sceneId, projectId));
+  }
+  async function play(key: string) {
+    const url = await signedUrl(key);
+    if (url) window.open(url, "_blank", "noopener");
+  }
 
   if (!data || !data.scenes.length) return null;
   const filmLocked = Boolean(data.filmLockedAt);
@@ -65,10 +78,40 @@ export function ProductionLocks({ projectId, refreshKey }: { projectId: string; 
               <Status tone={locked ? "ok" : finished ? "live" : "idle"}>{locked ? "Locked" : finished ? "Finished" : `${s.ready}/${s.shots} ready`}</Status>
               <p className="text-[13px] leading-relaxed">
                 <span className="font-mono text-[11px] text-cf-muted">{String(s.index + 1).padStart(2, "0")}</span> {s.heading}
-                <span className="ml-2 font-mono text-[11px] text-cf-muted">
-                  {s.versions} {s.versions === 1 ? "take" : "takes"}
-                </span>
+                <button type="button" onClick={() => void toggleTakes(s.id)} className="ml-2 font-mono text-[11px] text-cf-muted hover:text-cf-fg">
+                  {s.versions} {s.versions === 1 ? "take" : "takes"} {open === s.id ? "▴" : "▾"}
+                </button>
               </p>
+              {open === s.id && (
+                <ul className="md:col-span-3">
+                  {takes.map((t) => (
+                    <li key={t.shotId} className="flex flex-wrap items-center gap-2 py-1 text-[12px] text-cf-muted">
+                      <span className="font-mono">Shot {t.index + 1}</span>
+                      {t.takes.length === 0 && <span>no takes yet</span>}
+                      {t.takes.map((v) => (
+                        <span key={v.version} className="inline-flex items-center gap-1 rounded border border-cf-line px-1.5 py-0.5">
+                          <button type="button" onClick={() => void play(v.storageKey)} className="hover:text-cf-fg">v{v.version}</button>
+                          {v.current ? (
+                            <span className="text-cf-fg">current</span>
+                          ) : (
+                            !locked && (
+                              <button
+                                type="button"
+                                disabled={busy !== null}
+                                onClick={() => void run(`take-${t.shotId}`, async () => { await restoreTake(t.shotId, v.storageKey); setTakes(await loadTakes(s.id, projectId)); })}
+                                className="underline hover:text-cf-fg"
+                              >
+                                use
+                              </button>
+                            )
+                          )}
+                        </span>
+                      ))}
+                    </li>
+                  ))}
+                  <li className="py-1 text-[11px] text-cf-dim">Re-assemble the film to see a restored take in it.</li>
+                </ul>
+              )}
               {!filmLocked && (
                 <button
                   type="button"

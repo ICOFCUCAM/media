@@ -25,6 +25,7 @@ import {
 } from "@cineforge/movie";
 import { outputDimensions } from "@cineforge/shared";
 import { MODEL_VERSIONS } from "@cineforge/model-adapters";
+import { snapshotScenes, writeShotDependencies, type PlanHistoryDb } from "../versions/plan";
 import { isMissingTable } from "../timeline/store";
 import { shotGenerationFields, statePatchRow } from "../director/rows";
 
@@ -144,6 +145,11 @@ export async function applyCanonRevision(
   const affectedShots = new Set(rev.affectedShots.map((s) => `${s.sceneIndex}#${s.shotIndex}`));
   const invalidated: string[] = [];
 
+  const history = "sceneVersion" in db ? (db as unknown as PlanHistoryDb) : null;
+  if (history) {
+    const ids = compiled.scenes.filter((s) => rev.affectedScenes.includes(s.key)).map((s) => sceneRow.get(s.index)?.id).filter((x): x is string => !!x);
+    await snapshotScenes(history, projectId, { ids }, "canon_edit", rev.fromVersion);
+  }
   await db.$transaction(async (tx) => {
     for (const sc of compiled.scenes.filter((s) => rev.affectedScenes.includes(s.key))) {
       const row = sceneRow.get(sc.index);
@@ -170,6 +176,10 @@ export async function applyCanonRevision(
     const raw = { ...stored, irVersion: rev.pkg.irVersion, canonVersion: rev.toVersion, package: rev.pkg, revisedFrom: rev.fromVersion };
     await tx.screenplay.update({ where: { projectId }, data: { raw }, select: { id: true } });
   });
+  if (history && invalidated.length) {
+    const byIndex = new Map(rows.map((r) => [r.index, new Map(r.shots.map((sh) => [sh.index, sh.id]))]));
+    await writeShotDependencies(history, projectId, rev.pkg, (si, hi) => byIndex.get(si)?.get(hi), rev.toVersion, new Set(invalidated));
+  }
   await record(db, projectId, rev, "applied", invalidated.length, actor);
   return { outcome: "applied", affectedScenes: rev.affectedScenes, invalidatedShotIds: invalidated, ...base };
 }

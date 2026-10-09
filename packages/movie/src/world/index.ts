@@ -4,3 +4,4 @@ export * from "./revise";
 export * from "./continuity";
 export * from "./version";
 export * from "./wardrobe";
+export * from "./dependencies";
