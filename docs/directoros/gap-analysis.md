@@ -239,7 +239,7 @@ Conflicts to settle (decisions in §10):
 | 29 Interrupt anywhere | not built | re-plan deletes scenes; no edit API | BUILD edit command API → affected set → targeted regeneration |
 | 30 Dependency graph | shallow | `dependsOn [i-1]`; cacheKey only reuse primitive | BUILD entity→scene→shot→media edges + invalidation |
 | 31 Version everything | shallow | immutable timelines/media_versions exist, but processors overwrite shots/films in place | UPGRADE: append-only versions for canon, scenes, shots, films |
-| 32 Continuity Engine | shallow | presence heuristic + one regex (`continuity.ts:153-190`) | UPGRADE to typed rules for 5 categories + vision identity + 180°/eyeline |
+| 32 Continuity Engine | shallow | presence heuristic + one regex (`continuity.ts:153-190`) | UPGRADE to typed rules for 5 categories + vision identity + 180°/eyeline (audio category built in W14, docs/59) |
 | 33 Temporal continuity | not built | `timeOfDay` string only | BUILD story-time model |
 | 34 Visual memory | shallow | only character refs + LoRA reach generation | UPGRADE typed reference assets for both image and video |
 | 35 Reference pack | not built | refs capped at 4 character frames | BUILD per-scene `ReferencePack` assembler |
@@ -356,7 +356,7 @@ user's cloned voice.
 | 111, 117 Avatar, presenter, dubbing, conversation | shallow | fal avatars; dubbing = OpenAI TTS with 4000-char cap, no clone, no lip sync; conversation not built | UPGRADE: consume Voice Engine output; dubbing via `/v1/speech/batch`; lip-sync validator as QC |
 | 116, 176 Script controls | not built | language only; `speed: 1` hard-coded | BUILD style object in API and UI |
 | 119 Voice Studio | shallow | `VoiceLab.tsx` | UPGRADE: enrollment wizard, quality report, consent, modes, controls |
-| 114, 129, 136, 139, 141 Licensing + benchmark | not built | no licence field anywhere | BUILD model licence registry (router refuses uncleared engines) + benchmark harness (30 s / 2 min / 10 min; no/en/fr; similarity, WER, RTF, VRAM) |
+| 114, 129, 136, 139, 141 Licensing + benchmark | built (W14) | `voice-contracts/src/licences.ts`, `worker/src/bench/voice.ts` | Done: licence registry enforced by the router, `voice:bench` (WER, RTF, consistency, licensing); similarity, naturalness, VRAM not measured (docs/59) |
 | 124–125 Voice worker | not built | GPU worker has video endpoints only | BUILD voice GPU image reusing gateway, token, `/capabilities` |
 | 126, 145–146, 159, 162, 173 API | not built | web inserts rows directly | BUILD the frozen six endpoints of §173 |
 | 147, 158 `VoiceEngine` interface | not built | one-method `TtsAdapter` (`openai.ts:27`) | BUILD the interface |
@@ -366,7 +366,7 @@ user's cloned voice.
 | 150, 166 Mastering outside the model | shallow | mix-level only; AAC; no 48 kHz WAV, de-click, denoise | UPGRADE: per-clip mastering stage in the media engine |
 | 151, 167–168 Router, config, capabilities | not built | env vars pick models | BUILD config router + capability matching |
 | 152–153, 171–172 Workers, cloud/self-hosted | not built | lifecycle and gateway reusable | BUILD `voice-gpu-qwen` on the same lifecycle/gateway; compose services |
-| 154–155 Cache, batch | not built | cache is video-only | BUILD content-hash cache + batch endpoint |
+| 154–155 Cache, batch | built / shallow (W14) | `voice-contracts/src/cache.ts`, `worker/src/voice/cache.ts`, migration 0049 | Done: content-hash speech cache, hits never billed (docs/59); batch endpoint exists, GPU-side batching waits on Phase 1 |
 | 163–164 Jobs, states | shallow | PENDING/CLONING/SPEAKING/READY/FAILED | CHANGE to the spec's 8 states |
 | 169 Storage layout | shallow | `voiceovers/{user}/{id}.mp3` | CHANGE to `voices/<id>/…`, `audio/<job>/raw|processed|final.wav` |
 | 170 Security | poorly built | no owner or consent check at synthesis; any voice UUID usable; marketplace shares without per-use licence | BUILD server-side owner-or-licensed check + required consent |
@@ -460,7 +460,7 @@ applied live. Carried forward: the live GPU run of the revision flow
 review), reviewer calibration before enforce (W5/W10), the creator-facing canon
 editor with charged regeneration and locks (W8), merging the web storyboard's
 text continuity copy (W8), cinematography continuity — axis, eyeline, screen
-direction (W4), audio continuity (W7).
+direction (W4), audio continuity (built in W14: ambience, music, room tone, voice — docs/59).
 
 - UPGRADE existing tables rather than adding parallel ones: `Character`
   (structured identity, `voiceId`, cast of N), `Location` + `LocationState`,
@@ -762,6 +762,30 @@ existing engines, migrations 0046–0047 live.
 
 ---
 
+### W14 — Voice operations without a GPU (Part 3 §114, §129; Part 4 §136, §139, §141, §154; Part 1 §32.6)
+
+**Done (docs/59, 2026-10-09; migration 0049 applied live).**
+
+- BUILT the voice licence registry: code licence, commercial use, exact
+  checkpoint, training data, dependencies, source and date per model; an owner
+  approval names the checkpoint (`VOICE_MODEL_APPROVALS`); `routeVoice` never
+  uses an uncleared engine (§114, §129, §139, §141.1).
+- BUILT the speech cache: a content hash of engine version, voice, text,
+  language and style; clips in `audio_cache/`, rows in `speech_cache`; it wraps
+  the metered engine so hits are never billed; a deleted voice's clips are
+  never served and are purged (§154).
+- BUILT `voice:bench`: the same original scripts (30 s / 2 min / 10 min,
+  emotional, documentary, conversational; no/en/fr) in the owner's cloned
+  voice through every usable engine; WER, real-time factor, loudness and pace
+  consistency, licence status; recorded in `benchmark_runs` (§136).
+- BUILT audio continuity: ambience, music and room tone on the plan; a
+  character's voice and the built-in engine on the spoken film (§32.6).
+- OPEN: self-hosted models stay gated (Phase 1) and uncleared; voice
+  similarity, naturalness and VRAM are not measured; sound effects are not
+  compared.
+
+---
+
 ## 9. Sequenced roadmap
 
 DirectorOS work is placed **inside** the docs/38 §AX.2 order, not beside it.
@@ -784,6 +808,7 @@ approved models wait for docs/38 gates.
 | **S11 Infrastructure** | docs/38 Phase 12 DeployPro GPU | DeployPro G1–G4 | any |
 | **S12 Animation** | W12 Animation Studio (Part 5) | W11 production types | S10, S11 |
 | **S13 Editor** | W13 Editor Agent and directorial roles | W8 versions, W9 workspace | S12 |
+| **S14 Voice operations** | W14 licence registry, speech cache, voice benchmark, audio continuity | W7 Voice Engine, W10 benchmark | S13 |
 
 W11 hygiene items ride along with whichever stage touches the same files.
 
@@ -808,4 +833,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-487 IDs: 236 built, 140 shallow, 0 poorly built, 37 not built, 74 n/a. Of the 413 IDs that are requirements, 236 (57%) are built; 140 exist but need upgrading or changing; 37 must be built. (Updated after W13, 2026-10-09.)
+487 IDs: 249 built, 143 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 249 (60%) are built; 143 exist but need upgrading or changing; 21 must be built. (Updated after W14, 2026-10-09.)
