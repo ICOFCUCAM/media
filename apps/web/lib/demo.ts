@@ -93,6 +93,9 @@ export interface DemoConfig {
   passMode?: "single" | "three";
   /** What is being made (W11): format, medium, animation style, episodes. */
   production?: ProductionSpec;
+  /** Character Cards cast into the production (W12). */
+  castIds?: string[];
+  title?: string;
   prompt: string;
   modelId: string;
   targetSeconds: number;

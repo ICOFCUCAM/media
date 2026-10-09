@@ -139,7 +139,7 @@ export function SeriesStudio() {
               ) : (
                 <p className="mt-2.5 text-xs text-white/50">
                   A season made in one go has up to {SERIES_MAX_EPISODES} episodes. For a longer show,{" "}
-                  <a href="/studio/animation" className="underline">make it episode by episode</a> — each one reads the show bible and what came before.
+                  <a href="/create/animation?make=episode" className="underline">make it episode by episode</a> — each one reads the show bible and what came before.
                 </p>
               )}
             </Field>

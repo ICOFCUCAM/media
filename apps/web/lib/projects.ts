@@ -20,6 +20,8 @@ export async function createProject(input: {
   passMode?: "single" | "three";
   /** What is being made (W11): format, medium, animation style, episodes. */
   production?: ProductionSpec;
+  /** Character Cards to cast (W12): attached before the worker can claim the project. */
+  castIds?: string[];
 }): Promise<ProjectRow> {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase not configured");
@@ -37,18 +39,33 @@ export async function createProject(input: {
       ...(input.aspectRatio ? { aspect_ratio: input.aspectRatio } : {}),
       ...(input.passMode === "three" ? { pass_mode: "three" as const } : {}),
       ...(input.production
-        ? { kind: input.production.kind, medium: input.production.medium, animation_style: input.production.animationStyle, episodes: input.production.episodes ?? null }
+        ? {
+            kind: input.production.kind, medium: input.production.medium, animation_style: input.production.animationStyle,
+            episodes: input.production.episodes ?? null,
+            series_id: input.production.seriesId ?? null, episode_number: input.production.episodeNumber ?? null,
+          }
         : {}),
       target_seconds: input.targetSeconds,
       model_id: input.modelId,
       estimated_ms: input.estimatedMs,
-      status: "PLANNING",
+      // With a cast, the project waits as DRAFT until its cards are attached: the
+      // worker claims PLANNING projects and must never plan without the cast.
+      status: input.castIds?.length ? "DRAFT" : "PLANNING",
       progress: 0,
     })
     .select()
     .single();
   if (error) throw new Error(error.message);
-  return data;
+  if (!input.castIds?.length) return data;
+
+  const { error: castErr } = await sb.from("project_cast").insert(input.castIds.map((character_id) => ({ project_id: data.id, character_id })));
+  if (castErr) {
+    await sb.from("projects").update({ status: "FAILED", error_message: `Casting failed: ${castErr.message}` }).eq("id", data.id);
+    throw new Error(castErr.message);
+  }
+  const { data: queued, error: qErr } = await sb.from("projects").update({ status: "PLANNING" }).eq("id", data.id).select().single();
+  if (qErr) throw new Error(qErr.message);
+  return queued;
 }
 
 /** Worker-side write: advance a project's status/progress. */

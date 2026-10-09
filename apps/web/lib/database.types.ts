@@ -429,6 +429,7 @@ export interface Database {
           reference_urls?: string[];
           voice_profile?: Json | null;
           age?: number | null;
+          gender?: string | null;
           height_cm?: number | null;
           hair?: string | null;
           eyes?: string | null;

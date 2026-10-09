@@ -162,7 +162,7 @@ export class SupabaseRun {
     } else {
       mark("Project submitted to the production queue");
       const project = await createProject({
-        title: this.cfg.prompt.slice(0, 60),
+        title: this.cfg.title?.trim() || this.cfg.prompt.slice(0, 60),
         prompt: this.cfg.prompt,
         targetSeconds: this.cfg.targetSeconds,
         modelId: this.cfg.modelId,
@@ -171,6 +171,7 @@ export class SupabaseRun {
         aspectRatio: this.cfg.aspectRatio,
         passMode: this.cfg.passMode,
         production: this.cfg.production,
+        castIds: this.cfg.castIds,
       });
       if (this.cancelled) return;
       projectId = project.id;
