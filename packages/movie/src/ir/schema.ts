@@ -175,6 +175,10 @@ export const Shot = z.object({
   emotion: z.string().trim().max(80).nullable(),
   lighting: z.string().trim().max(200).nullable(),
   transition: z.enum(["cut", "dissolve", "match_cut", "fade_in", "fade_out", "smash_cut"]),
+  side: z.enum(["A", "B", "neutral"]).nullable().default(null)
+    .describe("camera side of the scene's action line (180° rule): A or B; neutral = on the line or a move that crosses it"),
+  screenDirection: z.enum(["left", "right"]).nullable().default(null)
+    .describe("which way the main subject looks or moves on screen"),
   rationale: why,
 });
 

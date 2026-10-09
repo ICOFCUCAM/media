@@ -5,11 +5,13 @@ import {
   planShotsPerScene,
   outputDimensions,
   ProductionFailure,
+  degradation,
   type Degradation,
 } from "@cineforge/shared";
 import { MODEL_VERSIONS } from "@cineforge/model-adapters";
 import {
   canonVersion,
+  cinemaAdvisories,
   compileFilm,
   IntelligenceError,
   PlanInvalidError,
@@ -114,8 +116,24 @@ export class DirectorService {
 
     // 3: compile + persist.
     const scenes = await persistPlan(projectId, project, plan);
-    return { projectId, modelId: project.modelId, scenes, degradations: [] };
+    return { projectId, modelId: project.modelId, scenes, degradations: planDegradations(plan.pkg, project.modelId) };
   }
+}
+
+/** What the plan records but does not fail on: film-grammar advisories and model prompt limits (W4). */
+export function planDegradations(pkg: PlanResult["pkg"], modelId: string): Degradation[] {
+  const out: Degradation[] = cinemaAdvisories(pkg).map((a) =>
+    degradation("CINEMA_ADVISORY", "shot", a.message, { refId: `${a.sceneId}#${a.shotIndex}`, detail: { code: a.code } }));
+  for (const sc of compileFilm(pkg, { modelId }).scenes) {
+    for (const sh of sc.shots) {
+      if (sh.promptDropped.length) {
+        out.push(degradation("PROMPT_LIMITED", "shot", `The ${modelId} prompt for ${sc.key} shot ${sh.index} leaves out part of the plan.`, {
+          refId: `${sc.key}#${sh.index}`, detail: { dropped: sh.promptDropped },
+        }));
+      }
+    }
+  }
+  return out;
 }
 
 /** Compile and persist a plan (exported for the database integration test). */
@@ -125,7 +143,7 @@ export async function persistPlan(
   plan: PlanResult,
 ): Promise<PlannedScene[]> {
   const pkg = plan.pkg;
-  const compiled = compileFilm(pkg);
+  const compiled = compileFilm(pkg, { modelId: project.modelId });
   const [width, height] = outputDimensions(project.resolution, project.aspectRatio);
   const modelVersion = MODEL_VERSIONS[project.modelId] ?? "unknown";
   // Scene stills: when OpenAI is configured, every shot starts as an image

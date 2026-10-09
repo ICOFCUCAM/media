@@ -39,6 +39,11 @@ const DIRECTOR_RULES = [
   "  must be in it); after that they appear only in flashbacks.",
   "- Shots: whole seconds, coverage chosen for the scene's purpose (establish, then move in for emotion,",
   "  reactions, inserts), never more shots or seconds than the constraints allow.",
+  "- Cinematography: each shot states its side of the scene's action line (A or B; neutral for a shot on the",
+  "  line or a move across it) and which way its main subject faces on screen. Never cut straight from side A",
+  "  to side B — cross on a neutral shot. In a reverse (consecutive singles of two people) their screen",
+  "  directions oppose so their eyelines meet. Open a scene in a new place on a wide unless it continues the",
+  "  previous action; avoid three identical sizes in a row and jumps from a wide straight to an extreme close-up.",
   "- Narration is spoken voice-over: write it as spoken language, or null when the scene plays without it.",
   "- rationale fields: one or two sentences on why the choice serves the film.",
   "- Keep the film within its runtime and scene count exactly; the budget was set for them.",
@@ -47,13 +52,13 @@ const DIRECTOR_RULES = [
 export const PROMPTS = {
   directorMaster: {
     id: "director.master",
-    version: 3,
+    version: 4,
     purpose: "One master call: brief → complete Film Production Package (Part 2 §85, §93).",
     system: DIRECTOR_RULES,
   },
   directorRevision: {
     id: "director.revision",
-    version: 3,
+    version: 4,
     purpose: "Surgical revision: fix exactly the validator's issues in a package (Part 2 §93).",
     system: [
       DIRECTOR_RULES,

@@ -54,7 +54,7 @@ export function stubPackage(brief: string, c: ProductionConstraints): FilmPackag
       shots: durations.map((d, j) => ({
         index: j, durationSec: d, size: "MS" as const, angle: "eye" as const, movement: "static" as const, lens: null,
         subjectIds: ["char_lead"], action: "The lead stands in the room.", emotion: null, lighting: null,
-        transition: "cut" as const, rationale: "Local stand-in.",
+        transition: "cut" as const, side: null, screenDirection: null, rationale: "Local stand-in.",
       })),
       rationale: "Local stand-in.",
     })),

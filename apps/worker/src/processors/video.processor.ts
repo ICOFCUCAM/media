@@ -28,7 +28,7 @@ import {
 } from "@cineforge/shared";
 import { buildClusterRegistry, buildOpenAIProviders, MODEL_VERSIONS, type JobContext, type ShotRequest } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
-import { FilmPackage, reviewFrame, type GenerationContext } from "@cineforge/movie";
+import { compileFor, compileGeneration, FilmPackage, reviewFrame, type GenerationContext } from "@cineforge/movie";
 import { gateVisual, visualReviewMode, frameGrabber, type VisualGateDeps } from "../review/visual-gate";
 import { intelligence } from "../intelligence";
 import { ffmpeg, probeDuration } from "../ffmpeg/ffmpeg";
@@ -147,13 +147,16 @@ async function resolveContinuity(
   const { perScene } = computeContinuity(inputs);
   const here = perScene.find((c) => c.index === shot.scene.index);
   const self = inputs.find((c) => c.index === shot.scene.index);
-  const preamble = here ? renderStatePreamble(here) : "";
+  // Film IR shots carry canon in their compiled prompt (W4); the text
+  // preamble is for projects planned before it.
+  const filmIr = await filmPackageOf(shot.scene.projectId);
+  const preamble = here && !filmIr ? renderStatePreamble(here) : "";
 
   // Which characters' assets this shot needs. Film IR projects: the
   // Continuity Engine checks the shot against the world state and names the
   // characters in frame (DirectorOS W3, §62.6) — a shot that contradicts canon
   // is not generated. Legacy projects: every character inherited so far.
-  const pkg = await filmPackageOf(shot.scene.projectId);
+  const pkg = filmIr;
   const refs = shotReferences(pkg, shot.scene.index, shot.index, self?.statePatch?.characters);
   if (refs.result && !refs.result.passed) {
     const v = refs.result.violations.filter((x) => x.severity === "blocking").map((x) => `${x.code} ${x.message}`).join("; ");
@@ -288,12 +291,20 @@ async function resolveSeedKey(shot: ShotWithScene): Promise<string | undefined> 
   const { image } = buildOpenAIProviders(process.env, (bytes, ct) => storage.putBytes(key, bytes, ct));
   if (!image) throw new SeedUnavailable("image provider unavailable");
   const [w, h] = outputDimensions(shot.scene.project.resolution, shot.scene.project.aspectRatio);
-  const { imageKey } = await image.generate({ prompt: shot.prompt, width: w, height: h });
+  const { imageKey } = await image.generate({ prompt: await seedPrompt(shot), width: w, height: h });
   await prisma.shot.update({ where: { id: shot.id }, data: { seedImageKey: imageKey } });
   return imageKey;
 }
 
 class SeedUnavailable extends Error {}
+
+/** The seed still's prompt: compiled for the image model from canon (W4) when the project has a Film IR. */
+async function seedPrompt(shot: ShotWithScene): Promise<string> {
+  const pkg = await filmPackageOf(shot.scene.projectId);
+  const scene = pkg?.scenes.find((s) => s.index === shot.scene.index);
+  if (!pkg || !scene?.shots.some((s) => s.index === shot.index)) return shot.prompt;
+  return compileFor("openai-image", compileGeneration(pkg, scene.id, shot.index)).prompt;
+}
 
 /**
  * Never self-certify (DOS-70): the clip the provider names must exist in our
