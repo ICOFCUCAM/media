@@ -60,10 +60,10 @@ const MOVES: Record<string, { wan: string; hunyuan: string }> = {
 };
 const ANGLES: Record<string, string> = { eye: "eye-level", low: "low angle", high: "high angle", dutch: "dutch angle", overhead: "overhead top-down" };
 
-function who(req: CanonicalMediaRequest): string[] {
+function who(req: CanonicalMediaRequest, motion = false): string[] {
   return req.visualIntent.subjects.map((s) =>
     s.kind === "character"
-      ? `${s.name}, ${s.look}${s.holding.length ? `, holding ${s.holding.join(" and ")}` : ""}`
+      ? `${s.name}, ${s.look}${s.holding.length ? `, holding ${s.holding.join(" and ")}` : ""}${motion && s.movement ? `, moving ${s.movement}` : ""}`
       : `${s.name} (${s.look})`);
 }
 
@@ -82,7 +82,7 @@ function fit(parts: string[], max: number, dropped: string[]): string {
 function video(req: CanonicalMediaRequest, p: ModelProfile, flavour: "wan" | "hunyuan", dropped: string[]): string {
   const e = req.environment;
   const c = req.camera;
-  const subjects = who(req);
+  const subjects = who(req, true);
   const move = MOVES[c.movement]?.[flavour] ?? c.movement;
   const facing = c.screenDirection ? `, facing screen ${c.screenDirection}` : "";
   return fit([

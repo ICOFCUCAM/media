@@ -79,6 +79,17 @@ export const Character = z.object({
   voice: z.object({
     description: text(200).describe("timbre, pitch, pace, accent"),
   }),
+  /**
+   * Animated character design (W12; Part 5 §179.4): what keeps a drawn
+   * character the same character — proportions, exact colours, how they move.
+   * Required for animation, null for live action (defaults to null so plans
+   * stored before W12 still parse).
+   */
+  design: z.object({
+    proportions: text(200).describe("head-to-body ratio, silhouette, size relative to others"),
+    palette: text(200).describe("the exact colours of skin, hair, eyes and outfit"),
+    movement: text(200).describe("how they move: gait, gestures, energy"),
+  }).nullable().default(null),
   arc: text(400),
   rationale: why,
 });

@@ -34,16 +34,16 @@ enum Role {
 }
 
 model User {
-  id          String   @id @default(uuid()) @db.Uuid
-  email       String   @unique
-  displayName String?  @map("display_name")
-  role        Role     @default(USER)
-  tier        Tier     @default(FREE)
-  creditsMs   Int      @default(0) @map("credits_ms") // remaining generation budget, in GPU-ms
-  stripeId    String?  @map("stripe_id")
-  notifyOnFinish Boolean @default(false) @map("notify_on_finish") // email when a production is READY/FAILED
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id             String   @id @default(uuid()) @db.Uuid
+  email          String   @unique
+  displayName    String?  @map("display_name")
+  role           Role     @default(USER)
+  tier           Tier     @default(FREE)
+  creditsMs      Int      @default(0) @map("credits_ms") // remaining generation budget, in GPU-ms
+  stripeId       String?  @map("stripe_id")
+  notifyOnFinish Boolean  @default(false) @map("notify_on_finish") // email when a production is READY/FAILED
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   projects Project[]
   apiKeys  ApiKey[]
@@ -91,7 +91,7 @@ model Project {
   prompt        String
   targetSeconds Int           @map("target_seconds")
   /// Output format chosen at create time ("480p"|"720p"|"1080p"|"4k") — docs/33.
-  resolution    String   @default("720p")
+  resolution    String        @default("720p")
   aspectRatio   String        @default("16:9") @map("aspect_ratio")
   modelId       String        @default("wan-2.1") @map("model_id")
   status        ProjectStatus @default(DRAFT)
@@ -111,7 +111,7 @@ model Project {
   continuity  ContinuityState[]
   film        Film?
   renderJobs  RenderJob[]
-  series      Series?
+  series      Series?           @relation("SeriesProject")
   storyEvents StoryEvent[]
 
   // W8 (0037): a locked film locks every scene in it.
@@ -120,10 +120,16 @@ model Project {
 
   // W8b (0040): production passes — single (straight through) or three (STORY → PREVIS → FINAL).
   // W11 (0045): what is being made — format, medium, animation style, episodes.
-  kind           String  @default("film")
-  medium         String  @default("live_action")
-  animationStyle String? @map("animation_style")
+  kind           String        @default("film")
+  medium         String        @default("live_action")
+  animationStyle String?       @map("animation_style")
   episodes       Int?
+  // W12 (0046): an episode production belongs to a show and has a number in it.
+  seriesId       String?       @map("series_id") @db.Uuid
+  showSeries     Series?       @relation("ShowEpisodes", fields: [seriesId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  episodeNumber  Int?          @map("episode_number")
+  cast           ProjectCast[]
+  madeEpisodes   Episode[]     @relation("EpisodeProduction")
 
   passMode        String    @default("single") @map("pass_mode")
   storyApprovedAt DateTime? @map("story_approved_at") @db.Timestamptz(6)
@@ -140,12 +146,14 @@ model Project {
 model Series {
   id        String   @id @default(uuid()) @db.Uuid
   projectId String   @unique @map("project_id") @db.Uuid
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project  @relation("SeriesProject", fields: [projectId], references: [id], onDelete: Cascade)
   title     String
   synopsis  String?
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  seasons Season[]
+  seasons            Season[]
+  bible              ShowBible?
+  episodeProductions Project[]  @relation("ShowEpisodes")
 
   @@map("series")
 }
@@ -172,10 +180,14 @@ model Episode {
   title     String
   synopsis  String?
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// W12 (0046): the production that made this episode.
+  projectId String?  @map("project_id") @db.Uuid
+  project   Project? @relation("EpisodeProduction", fields: [projectId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   scenes Scene[]
 
   @@unique([seasonId, number])
+  @@index([projectId])
   @@map("episodes")
 }
 
@@ -237,13 +249,56 @@ model Character {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  // W12 (0046): Character Card fields, and the card a production's character was cast from.
+  heightCm          Int?          @map("height_cm")
+  hair              String?
+  eyes              String?
+  clothing          String?
+  animationStyle    String?       @map("animation_style")
+  design            Json?
+  sourceCharacterId String?       @map("source_character_id") @db.Uuid
+  sourceCharacter   Character?    @relation("CastFromCard", fields: [sourceCharacterId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  castCopies        Character[]   @relation("CastFromCard")
+  castIn            ProjectCast[]
+
   wardrobes     Wardrobe[]
   relationships Relationship[]   @relation("fromChar")
   related       Relationship[]   @relation("toChar")
   sceneRoles    SceneCharacter[]
 
   @@index([projectId])
+  @@index([sourceCharacterId])
   @@map("characters")
+}
+
+/// W12 (0046): Character Cards cast into a production ("Use character").
+model ProjectCast {
+  projectId   String    @map("project_id") @db.Uuid
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  characterId String    @map("character_id") @db.Uuid
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([projectId, characterId])
+  @@index([characterId])
+  @@map("project_cast")
+}
+
+/// W12 (0046): a show's bible (Part 5 §184).
+model ShowBible {
+  seriesId        String   @id @map("series_id") @db.Uuid
+  series          Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  genre           String?
+  audience        String?
+  worldRules      String?  @map("world_rules")
+  locations       String?
+  musicIdentity   String?  @map("music_identity")
+  narrativeRules  String?  @map("narrative_rules")
+  episodeFormat   String?  @map("episode_format")
+  continuityRules String?  @map("continuity_rules")
+  updatedAt       DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("show_bibles")
 }
 
 model Wardrobe {
@@ -369,10 +424,10 @@ model Scene {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  shots       Shot[]
-  characters  SceneCharacter[]
+  shots         Shot[]
+  characters    SceneCharacter[]
   dialogueLines DialogueLine[]
-  audioTracks AudioTrack[]
+  audioTracks   AudioTrack[]
 
   // W8 (0037): a locked scene is frozen in the database until unlocked.
   lockedAt DateTime? @map("locked_at") @db.Timestamptz(6)
@@ -595,24 +650,24 @@ model StripeEvent {
 
 // ── Voice Lab (docs/29 phase 2): cloned voices + long-form voiceovers ──────
 model Voice {
-  id              String      @id @default(uuid()) @db.Uuid
-  userId          String      @map("user_id") @db.Uuid
-  name            String
-  sampleKey       String?     @map("sample_key")
-  provider        String?
-  providerVoiceId String?     @map("provider_voice_id")
-  status          String      @default("PENDING")
-  shareStatus     String      @default("PRIVATE") @map("share_status")
-  shareTerms      String?     @map("share_terms")
-  errorMessage    String?     @map("error_message")
+  id                 String      @id @default(uuid()) @db.Uuid
+  userId             String      @map("user_id") @db.Uuid
+  name               String
+  sampleKey          String?     @map("sample_key")
+  provider           String?
+  providerVoiceId    String?     @map("provider_voice_id")
+  status             String      @default("PENDING")
+  shareStatus        String      @default("PRIVATE") @map("share_status")
+  shareTerms         String?     @map("share_terms")
+  errorMessage       String?     @map("error_message")
   // W7 (0036): consent is recorded with every voice; enrollment refuses none.
-  consentType        String?   @map("consent_type")
-  consentConfirmedAt DateTime? @map("consent_confirmed_at") @db.Timestamptz(6)
+  consentType        String?     @map("consent_type")
+  consentConfirmedAt DateTime?   @map("consent_confirmed_at") @db.Timestamptz(6)
   language           String?
   quality            Json?
-  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  voiceovers      Voiceover[]
+  createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  voiceovers         Voiceover[]
 
   @@map("voices")
 }
@@ -1051,7 +1106,7 @@ model AiDecision {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // W9 (0042): the "why" of the decision, in a sentence.
-  summary       String?
+  summary String?
 
   @@index([projectId, createdAt], map: "ai_decisions_project_idx")
   @@index([task, createdAt], map: "ai_decisions_task_idx")

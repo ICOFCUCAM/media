@@ -16,14 +16,27 @@ import {
   type ProductionKind,
   type ProductionSpec,
 } from "@cineforge/shared";
-import type { PlanProduction, ProductionConstraints, RenderStyle } from "@cineforge/movie";
+import type { PlanCastMember, PlanEpisodeRecap, PlanProduction, PlanShowBible, ProductionConstraints, RenderStyle } from "@cineforge/movie";
 
 export interface ProductionRow {
   kind?: string | null;
   medium?: string | null;
   animationStyle?: string | null;
   episodes?: number | null;
+  seriesId?: string | null;
+  episodeNumber?: number | null;
 }
+
+/** What the production is made with beyond its brief (W12): cast cards, the show bible, earlier episodes. */
+export interface ProductionCanon {
+  cast: PlanCastMember[];
+  bible: PlanShowBible | null;
+  episode: { number: number; previously: PlanEpisodeRecap[] } | null;
+  /** Characters who died in earlier episodes. */
+  deceased: { id: string; name: string }[];
+}
+
+export const NO_CANON: ProductionCanon = { cast: [], bible: null, episode: null, deceased: [] };
 
 /** The project's spec; an invalid one (should be impossible past the DB checks) is refused, not guessed. */
 export function productionOf(p: ProductionRow): ProductionSpec {
@@ -32,6 +45,8 @@ export function productionOf(p: ProductionRow): ProductionSpec {
     medium: (p.medium ?? DEFAULT_PRODUCTION.medium) as Medium,
     animationStyle: (p.animationStyle ?? null) as AnimationStyle | null,
     episodes: p.episodes ?? null,
+    seriesId: p.seriesId ?? null,
+    episodeNumber: p.episodeNumber ?? null,
   };
   const issues = productionIssues(spec);
   if (issues.length) throw new Error(`invalid production: ${issues.join("; ")}`);
@@ -43,7 +58,7 @@ export function productionOf(p: ProductionRow): ProductionSpec {
  * format's scene length (a trailer cuts fast, a story breathes); a series has
  * at least one scene per episode.
  */
-export function constraintsFor(targetSeconds: number, spec: ProductionSpec): ProductionConstraints {
+export function constraintsFor(targetSeconds: number, spec: ProductionSpec, canon: ProductionCanon = NO_CANON): ProductionConstraints {
   const k = KIND_PROFILES[spec.kind];
   let sceneCount = Math.min(MAX_SCENES, Math.max(1, Math.round(targetSeconds / k.sceneSec)));
   if (spec.kind === "series" && spec.episodes) sceneCount = Math.max(sceneCount, spec.episodes);
@@ -59,12 +74,17 @@ export function constraintsFor(targetSeconds: number, spec: ProductionSpec): Pro
     filmTolerance: 0.15,
     ...(spec.kind === "series" && spec.episodes ? { episodes: spec.episodes } : {}),
     ...(k.narrated ? { narrated: true } : {}),
+    // W12: animated characters carry a design; cast cards must appear; the dead stay dead.
+    ...(spec.medium === "animation" ? { animation: true } : {}),
+    ...(canon.cast.some((c) => c.source === "card") ? { cast: canon.cast.filter((c) => c.source === "card").map((c) => ({ id: c.id, name: c.name })) } : {}),
+    ...(canon.deceased.length ? { deceased: canon.deceased } : {}),
   };
 }
 
-/** The PRODUCTION section of the plan request (none for a plain live-action film: v4 behaviour). */
-export function planProductionFor(spec: ProductionSpec): PlanProduction | undefined {
-  if (spec.kind === "film" && spec.medium === "live_action") return undefined;
+/** The PRODUCTION section of the plan request (none for a plain live-action film with nothing cast: v4 behaviour). */
+export function planProductionFor(spec: ProductionSpec, canon: ProductionCanon = NO_CANON): PlanProduction | undefined {
+  const hasCanon = canon.cast.length > 0 || canon.bible !== null || canon.episode !== null;
+  if (spec.kind === "film" && spec.medium === "live_action" && !hasCanon) return undefined;
   const k = KIND_PROFILES[spec.kind];
   const look = renderLook(spec);
   return {
@@ -74,6 +94,9 @@ export function planProductionFor(spec: ProductionSpec): PlanProduction | undefi
     narrated: k.narrated,
     episodes: spec.kind === "series" ? spec.episodes ?? null : null,
     direction: k.direction,
+    ...(canon.cast.length ? { cast: canon.cast } : {}),
+    ...(canon.bible ? { bible: canon.bible } : {}),
+    ...(canon.episode ? { episode: canon.episode } : {}),
   };
 }
 

@@ -66,6 +66,8 @@ export interface GenerationContext {
     name: string;
     age: number | null;
     identity: FilmCharacter["identity"];
+    /** Animated design (W12), only when the character has one — live-action contexts are unchanged. */
+    design?: NonNullable<FilmCharacter["design"]>;
     wardrobeId: string;
     wardrobe: string;
     physical: string | null;
@@ -227,7 +229,7 @@ export function checkContinuity(pkg: FilmPackage, req: GenerationRequest, world:
       const c = cast.get(id)!;
       const st = w.characters[id]!;
       return {
-        characterId: id, name: c.name, age: c.age, identity: c.identity, wardrobeId: st.wardrobeId!,
+        characterId: id, name: c.name, age: c.age, identity: c.identity, ...(c.design ? { design: c.design } : {}), wardrobeId: st.wardrobeId!,
         wardrobe: c.wardrobe.find((x) => x.id === st.wardrobeId)!.description, physical: st.physical, emotion: st.emotion!,
         holding: st.holding.map((p) => ({ id: p, name: props.get(p)?.name ?? p })),
       };

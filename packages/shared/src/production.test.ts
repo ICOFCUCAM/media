@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANIMATION_STYLES, KIND_PROFILES, PRODUCTION_KINDS, STYLE_PROFILES, productionIssues, renderLook } from "./production";
+import { ANIMATION_STYLES, KIND_PROFILES, PRODUCTION_KINDS, STYLE_PROFILES, productionIssues, renderLook, isStillMotion } from "./production";
 
 describe("production profiles (W11; Part 5)", () => {
   it("every format and style has a profile", () => {
@@ -12,7 +12,12 @@ describe("production profiles (W11; Part 5)", () => {
     expect(productionIssues({ kind: "film", medium: "live_action", animationStyle: null })).toEqual([]);
     expect(productionIssues({ kind: "film", medium: "animation", animationStyle: null })).toEqual(["animation needs a style"]);
     expect(productionIssues({ kind: "film", medium: "live_action", animationStyle: "anime" })).toEqual(["live action has no animation style"]);
-    expect(productionIssues({ kind: "series", medium: "animation", animationStyle: "2d_tv" })).toEqual(["a series needs 1–52 episodes"]);
+    expect(productionIssues({ kind: "series", medium: "animation", animationStyle: "2d_tv" })).toEqual(["a series made in one pass has 1–5 episodes; make longer shows episode by episode"]);
+    expect(productionIssues({ kind: "series", medium: "animation", animationStyle: "2d_tv", episodes: 6 })).toHaveLength(1);
+    expect(productionIssues({ kind: "episode", medium: "animation", animationStyle: "2d_tv" })).toEqual(["an episode names its show and its number"]);
+    expect(productionIssues({ kind: "episode", medium: "animation", animationStyle: "2d_tv", seriesId: "s1", episodeNumber: 7 })).toEqual([]);
+    expect(productionIssues({ kind: "episode", medium: "animation", animationStyle: "2d_tv", seriesId: "s1", episodeNumber: 0 })).toEqual(["an episode number is 1–500"]);
+    expect(productionIssues({ kind: "film", medium: "live_action", animationStyle: null, seriesId: "s1" })).toEqual(["only an episode belongs to a show"]);
     expect(productionIssues({ kind: "film", medium: "live_action", animationStyle: null, episodes: 3 })).toEqual(["only a series has episodes"]);
     expect(productionIssues({ kind: "motion_comic", medium: "live_action", animationStyle: null })).toEqual(expect.arrayContaining(["a motion comic is animation"]));
   });
@@ -25,6 +30,11 @@ describe("production profiles (W11; Part 5)", () => {
   it("live action keeps the photographic default; animation gets its look", () => {
     expect(renderLook({ medium: "live_action", animationStyle: null })).toBeNull();
     expect(renderLook({ medium: "animation", animationStyle: "storybook" })?.family).toBe("storybook");
+  });
+
+  it("storybook and motion comic are drawn stills moved by the camera; every other look runs the video model", () => {
+    expect(ANIMATION_STYLES.filter((s) => isStillMotion({ medium: "animation", animationStyle: s }))).toEqual(["storybook", "motion_comic"]);
+    expect(isStillMotion({ medium: "live_action", animationStyle: null })).toBe(false);
   });
 });
 

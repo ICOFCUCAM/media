@@ -20,7 +20,7 @@ end $$;
 
 -- Valid productions.
 insert into public.projects (user_id, kind, medium, animation_style) values ('00000000-0000-0000-0000-0000000045aa', 'short_film', 'animation', 'anime');
-insert into public.projects (user_id, kind, medium, animation_style, episodes) values ('00000000-0000-0000-0000-0000000045aa', 'series', 'animation', '2d_tv', 8);
+insert into public.projects (user_id, kind, medium, animation_style, episodes) values ('00000000-0000-0000-0000-0000000045aa', 'series', 'animation', '2d_tv', 3);
 insert into public.projects (user_id, kind, medium, animation_style) values ('00000000-0000-0000-0000-0000000045aa', 'motion_comic', 'animation', 'motion_comic');
 insert into public.projects (user_id, kind) values ('00000000-0000-0000-0000-0000000045aa', 'advert');
 

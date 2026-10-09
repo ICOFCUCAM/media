@@ -33,7 +33,7 @@ export function stubPackage(brief: string, c: ProductionConstraints): FilmPackag
       id: "char_lead", name: "Lead", role: "protagonist", age: null, gender: null,
       identity: { face: "neutral features", hair: "short dark hair", body: "average build", marks: [] },
       wardrobe: [{ id: "wardrobe_default", description: "plain dark clothes" }],
-      personality: "determined", voice: { description: "even, calm" }, arc: "stand-in arc", rationale: "Local stand-in.",
+      personality: "determined", voice: { description: "even, calm" }, design: null, arc: "stand-in arc", rationale: "Local stand-in.",
     }],
     locations: [{ id: "loc_set", name: "The Set", kind: "INTERIOR", description: "a plain room", architecture: "simple", era: "present day", lighting: "soft", rationale: "Local stand-in." }],
     props: [],
