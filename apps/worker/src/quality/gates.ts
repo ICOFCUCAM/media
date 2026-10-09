@@ -10,6 +10,7 @@
  *          film has sound): recorded in `record` mode, regenerated / failed in
  *          `enforce` mode (QUALITY_GATES)
  *   warn   worth knowing (slightly short, loudness off target, a long black run)
+ *   info   a measurement on record, not a defect (the Visual Reviewer's scores)
  *
  * The gate chain of a film (§39): story → visual → continuity → audio →
  * technical → editorial. Every result is recorded (quality_gate_results).
@@ -17,7 +18,7 @@
 
 export type GateName = "story" | "visual" | "continuity" | "audio" | "technical" | "editorial";
 export type GateOutcome = "pass" | "warn" | "fail" | "skipped";
-export type FindingSeverity = "fatal" | "fail" | "warn";
+export type FindingSeverity = "fatal" | "fail" | "warn" | "info";
 
 export interface GateFinding {
   code: string;
@@ -79,7 +80,7 @@ const longest = (iv: [number, number][]) => iv.reduce((a, [s, e]) => Math.max(a,
 export function outcomeOf(findings: GateFinding[], mode: QualityMode): GateOutcome {
   if (findings.some((f) => f.severity === "fatal")) return "fail";
   if (findings.some((f) => f.severity === "fail")) return mode === "enforce" ? "fail" : "warn";
-  return findings.length ? "warn" : "pass";
+  return findings.some((f) => f.severity === "warn") ? "warn" : "pass";
 }
 
 /** Technical QC of one generated clip against what was requested. */

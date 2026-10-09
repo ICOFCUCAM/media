@@ -258,12 +258,12 @@ async function previousEndFrame(shot: ShotWithScene, pkg: FilmPackage): Promise<
   return (await storage.size(key).catch(() => 0)) > 0 ? key : null;
 }
 
-function visualGateDeps(projectId: string): VisualGateDeps {
+function visualGateDeps(projectId: string, camera: { cameraType?: string | null; cameraMovement?: string | null } = {}): VisualGateDeps {
   const router = intelligence();
   return {
     available: () => router.available("visual_review"),
-    grabFrame: frameGrabber((key, dest) => storage.download(key, dest), (args) => ffmpeg(args), probeDuration),
-    review: (ctx, frames) => reviewFrame(router, ctx, frames, { projectId }),
+    grabFrames: frameGrabber((key, dest) => storage.download(key, dest), (args) => ffmpeg(args), probeDuration),
+    review: (ctx, frames) => reviewFrame(router, ctx, frames, { projectId, media: { kind: frames.length > 1 ? "clip" : "still", ...camera } }),
   };
 }
 
@@ -600,9 +600,9 @@ export const videoWorker = new Worker<VideoJob>(
     const gateResults: GateResult[] = [tech];
     let qcScore: number | null = null;
     if (canonContext && !tech.findings.some((f) => f.severity === "fatal")) {
-      const deps = { ...visualGateDeps(projectId), grabFrame: async () => {
-        if (!inspection.frame) throw new Error(inspection.frameError ?? "no frame could be taken from the clip");
-        return inspection.frame;
+      const deps = { ...visualGateDeps(projectId, { cameraType: shot.cameraType, cameraMovement: shot.cameraMovement }), grabFrames: async () => {
+        if (!inspection.frames.length) throw new Error(inspection.frameError ?? "no frame could be taken from the clip");
+        return inspection.frames;
       } };
       const visual = await gateVisual(deps, vMode, canonContext, result.videoKey, shotId);
       gaps.push(...visual.gaps);

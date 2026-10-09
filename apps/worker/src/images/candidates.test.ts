@@ -21,6 +21,10 @@ describe("seed candidates (W6)", () => {
     const best = review([{ check: "wardrobe", status: "match" }, { check: "identity", status: "match" }]);
     expect(pickCandidate([{ key: "a", review: wrongCoat }, { key: "b", review: unsure }, { key: "c", review: best }])).toMatchObject({ index: 2, chosen: { key: "c" } });
     expect(pickCandidate([{ key: "a", review: wrongCoat }, { key: "b", review: unsure }]).index).toBe(1);
+    // Equal on canon: the higher reviewer score wins (W18).
+    const plain = { ...best, scores: { identity: 70, composition: 60, continuity: 80, lighting: 60, promptAdherence: 60 } };
+    const fine = { ...best, scores: { identity: 90, composition: 80, continuity: 90, lighting: null, promptAdherence: 85 } };
+    expect(pickCandidate([{ key: "a", review: plain }, { key: "b", review: fine }]).index).toBe(1);
     // Without reviews the first is kept.
     expect(pickCandidate([{ key: "a", review: null }, { key: "b", review: null }]).index).toBe(0);
   });
