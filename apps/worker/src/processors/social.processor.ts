@@ -57,6 +57,7 @@ async function generateKit(brief: string): Promise<Record<string, PlatformKit>> 
     task: "social_kit", promptId: p.id, promptVersion: p.version, system: p.system,
     user: brief || "A short AI-generated film.",
     schema: KIT_SCHEMA as unknown as Record<string, unknown>, schemaName: "LaunchKit", maxTokens: 8000, effort: "medium",
+    summarize: (o) => `Wrote launch copy for ${Object.keys((o as Record<string, unknown>) ?? {}).join(", ")}.`,
   });
   const kit = res.output as Record<string, PlatformKit>;
   const missing = PLATFORMS.filter((pl) => !kit?.[pl]?.title || !kit[pl]!.description);

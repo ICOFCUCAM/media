@@ -195,7 +195,7 @@ export const NAV: NavSection[] = [
       { label: "Characters", href: "/library/characters" },
       { label: "Worlds", href: "/library/worlds" },
       { label: "Assets", href: "/library/assets" },
-      { label: "Voices", href: "/library/voices" },
+      { label: "Voice Studio", href: "/library/voices" },
       { label: "Music", href: "/library/music" },
     ],
   },

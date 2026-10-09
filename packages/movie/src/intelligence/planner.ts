@@ -33,6 +33,13 @@ export function planMaxTokens(sceneCount: number): number {
   return Math.min(128_000, 12_000 + sceneCount * 2_500);
 }
 
+/** "Planned 6 scenes with 3 characters: <logline>" — the decision log's why. */
+export function summarizePlan(o: unknown): string | null {
+  const p = o as { film?: { title?: string; logline?: string }; cast?: unknown[]; scenes?: unknown[] } | null;
+  if (!p?.scenes) return null;
+  return `Planned "${p.film?.title ?? "untitled"}" in ${p.scenes.length} scenes with ${p.cast?.length ?? 0} characters: ${p.film?.logline ?? ""}`;
+}
+
 export async function planFilm(
   router: IntelligenceRouter,
   brief: string,
@@ -46,6 +53,7 @@ export async function planFilm(
       task: "film_plan", promptId: PROMPTS.directorMaster.id, promptVersion: PROMPTS.directorMaster.version,
       system: PROMPTS.directorMaster.system, user: renderPlanRequest(brief, constraints),
       schema, schemaName: "FilmPackage", maxTokens, effort: "high",
+      summarize: summarizePlan,
     },
     ctx,
   );
@@ -57,6 +65,7 @@ export async function planFilm(
       task: "film_plan_revision", promptId: PROMPTS.directorRevision.id, promptVersion: PROMPTS.directorRevision.version,
       system: PROMPTS.directorRevision.system, user: renderRevisionRequest(first.output, formatIssues(v1.issues)),
       schema, schemaName: "FilmPackage", maxTokens, effort: "high",
+      summarize: (o) => `Revised the plan to fix ${v1.issues.length} issue(s) (${[...new Set(v1.issues.map((i) => i.code))].slice(0, 6).join(", ")}). ${summarizePlan(o) ?? ""}`,
     },
     ctx,
   );

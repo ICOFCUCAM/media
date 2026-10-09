@@ -347,6 +347,16 @@ export function StoryboardStudio({ initialBrief, initialScenes, defaultSource = 
               <button type="button" onClick={onAddScene} disabled={busy} className="cf-btn-line">
                 Add scene
               </button>
+              {projectId && (
+                <>
+                  <Link href={`/projects/${projectId}/director`} className="cf-btn-line" title="Bible, scenes and shots, the Director chat and every AI decision in one place">
+                    Director workspace →
+                  </Link>
+                  <Link href={`/projects/${projectId}`} className="cf-btn-line" title="Locks, takes, edits and what this production ran without">
+                    Production file →
+                  </Link>
+                </>
+              )}
               {scenes.length > 0 && (
                 <button
                   type="button"

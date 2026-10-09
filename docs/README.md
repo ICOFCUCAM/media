@@ -58,6 +58,7 @@ and [01-architecture](01-architecture.md); this page is the map.
 - [51 — Voice Engine (W7a–W7c)](51-directoros-voice-engine.md) · model-independent voice service: consent, recording quality check, engine router, eight-state jobs, mastering, the `/v1` API (migration 0036, applied live; self-hosted models gated on Phase 1); film narration, each character's dialogue in their own voice, and dubs in the same voices
 - [52 — Versions and locks (W8a)](52-directoros-versions-and-locks.md) · every clip, voice track and master kept as a version; scene and film locks enforced by the database (migrations 0037–0038, applied live)
 - [53 — Passes, edits, dependency edges and plan history (W8b)](53-directoros-passes-and-edits.md) · STORY → PREVIS → FINAL with database-enforced approvals, the edit command, dependency edges, scene versions, restore a take (migrations 0039–0041, applied live)
+- [54 — Director workspace (W9)](54-directoros-director-workspace.md) · bible · scenes & shots · Director chat, timeline strip, decision log with the why; instructions become edit requests; Voice Studio (migration 0042, applied live)
 
 ## Continuity & identity — the coherent-movie spine
 

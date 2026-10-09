@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { StudioGate } from "./cf/StudioGate";
@@ -10,7 +11,7 @@ import { signedUrl } from "../lib/storyboard";
 import { LANGUAGES } from "../lib/system";
 
 /**
- * Voice Lab — clone your voice from a short sample, then have it read
+ * Voice Studio (W9; was the Voice Lab) — clone your voice from a short sample, then have it read
  * anything (speeches, news, narration) in any supported language. Rows are
  * written PENDING; the worker clones/speaks and flips them READY (docs/29).
  */
@@ -23,6 +24,8 @@ interface VoiceRow {
   share_status?: string;
   share_terms?: string | null;
   error_message: string | null;
+  consent_type?: "self" | "authorised" | null;
+  quality?: { quality?: "good" | "fair" | "poor"; issues?: string[]; duration_seconds?: number; speech_ratio?: number; noise_floor_dbfs?: number | null } | null;
 }
 interface AvatarRow {
   id: string;
@@ -82,7 +85,7 @@ export function VoiceLab() {
     const [v, vo] = await Promise.all([
       sb
         .from("voices")
-        .select("id,user_id,name,status,share_status,share_terms,error_message")
+        .select("id,user_id,name,status,share_status,share_terms,error_message,consent_type,quality")
         .order("created_at", { ascending: false }),
       sb
         .from("voiceovers")
@@ -233,7 +236,7 @@ export function VoiceLab() {
     <div className="mx-auto w-full max-w-[1500px] px-5 py-10 sm:px-[6vw] sm:py-14">
       <PageHeader
         art={false}
-        eyebrow="Production / The voice room"
+        eyebrow="Production / Voice Studio"
         title={<>Give the story<br />a <em>voice.</em></>}
         copy={
           <>
@@ -291,6 +294,7 @@ export function VoiceLab() {
                         <span className="truncate font-display font-semibold text-[17px]">{v.name}</span>
                         <StatusChip status={v.status} error={v.error_message} />
                       </div>
+                      <VoiceFacts v={v} />
                       {v.status === "READY" && (
                         <div className="mt-2 text-[11px] text-cf-muted">
                           {v.share_status === "APPROVED" ? (
@@ -378,7 +382,7 @@ export function VoiceLab() {
                   <div className="grid grid-cols-2 gap-1.5">
                     {(["standard", "premium"] as const).map((q) => (
                       <button key={q} type="button" onClick={() => setAvatarQuality(q)} aria-pressed={avatarQuality === q} className="cf-option">
-                        {q === "premium" ? "Premium · Kling · ~$2–4" : "Standard · ~$0.15"}
+                        {q === "premium" ? "Premium · ~$2–4" : "Standard · ~$0.15"}
                       </button>
                     ))}
                   </div>
@@ -457,6 +461,30 @@ export function VoiceLab() {
           </Section>
         </StudioGate>
       </div>
+    </div>
+  );
+}
+
+/**
+ * What the Voice Engine knows about a voice (W7/W9): whose it is (consent),
+ * how good the recording was and why, and where it can be used. Engine and
+ * model names are never shown (Part 4 §174).
+ */
+function VoiceFacts({ v }: { v: VoiceRow }) {
+  const q = v.quality;
+  const tone = q?.quality === "good" ? "text-cf-ok" : q?.quality === "fair" ? "text-cf-warn" : "text-cf-danger";
+  return (
+    <div className="mt-1.5 space-y-0.5 text-[11px] leading-relaxed text-cf-muted">
+      {v.consent_type && <p>{v.consent_type === "self" ? "Your own voice" : "Used with the speaker's permission"} · consent recorded</p>}
+      {q?.quality && (
+        <p>
+          Recording: <span className={tone}>{q.quality}</span>
+          {q.duration_seconds ? ` · ${Math.round(q.duration_seconds)}s` : ""}
+          {q.speech_ratio !== undefined ? ` · ${Math.round(q.speech_ratio * 100)}% speech` : ""}
+          {q.issues?.length ? ` — ${q.issues.slice(0, 2).join(" ")}` : ""}
+        </p>
+      )}
+      {v.status === "READY" && <p>Give it to a character in the <Link href="/library/characters" className="underline hover:text-cf-fg">Casting Room</Link> to hear it in your films.</p>}
     </div>
   );
 }

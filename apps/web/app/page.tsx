@@ -414,7 +414,7 @@ const CAPABILITIES: { title: string; body: string; href: string; go: string }[] 
     title: "Perform",
     body: "Voices, narration, multilingual dialogue and presenters become part of the production rather than separate tools.",
     href: "/library/voices",
-    go: "Voice Lab",
+    go: "Voice Studio",
   },
   {
     title: "Finish",
@@ -532,7 +532,7 @@ function Publish() {
 
 /* ── 06 · Voice ────────────────────────────────────────────────────── */
 const VOICE_FEATURES: [string, string][] = [
-  ["Clone your voice", "Voice Lab"],
+  ["Clone your voice", "Voice Studio"],
   ["Speak 20 languages", "Dubbing"],
   ["Put yourself on camera", "Avatars"],
   ["Offer your voice", "Marketplace"],
@@ -571,7 +571,7 @@ function Voice() {
             ))}
           </div>
 
-          <Link href="/library/voices" className="text-link">Open the Voice Lab →</Link>
+          <Link href="/library/voices" className="text-link">Open the Voice Studio →</Link>
         </div>
       </div>
     </section>

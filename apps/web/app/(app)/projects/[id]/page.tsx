@@ -91,6 +91,9 @@ export default function ProjectCommandCenter({ params }: { params: { id: string 
                   Publish →
                 </Link>
               )}
+              <Link href={`/projects/${project.id}/director`} className="cf-btn-ink">
+                Director workspace →
+              </Link>
               <Link href="/create" className="cf-btn-line">
                 New production
               </Link>

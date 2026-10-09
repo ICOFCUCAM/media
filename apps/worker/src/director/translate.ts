@@ -45,6 +45,7 @@ export async function translateLines(
         task: "translation", promptId: p.id, promptVersion: p.version, system: p.system,
         user: JSON.stringify({ targetLanguage: `${languageName(lang)} (${lang})`, lines: src }),
         schema: SCHEMA, schemaName: "Translation", maxTokens: 16000, effort: "medium",
+        summarize: (o) => `Translated ${src.length} line(s) into ${languageName(lang)}; ${((o as { lines?: unknown[] }).lines ?? []).length} came back.`,
       },
       { projectId: opts.projectId },
     );

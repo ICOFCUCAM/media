@@ -1023,6 +1023,9 @@ model AiDecision {
   latencyMs     Int?     @map("latency_ms")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
+  // W9 (0042): the "why" of the decision, in a sentence.
+  summary       String?
+
   @@index([projectId, createdAt], map: "ai_decisions_project_idx")
   @@index([task, createdAt], map: "ai_decisions_task_idx")
   @@map("ai_decisions")
@@ -1129,4 +1132,20 @@ model SceneVersion {
 
   @@index([projectId, sceneIndex, createdAt])
   @@map("scene_versions")
+}
+
+// ── Director workspace chat (W9, 0042) ──────────────────────────────────────
+model DirectorMessage {
+  id            String   @id @default(uuid()) @db.Uuid
+  projectId     String   @map("project_id") @db.Uuid
+  author        String
+  userId        String?  @map("user_id") @db.Uuid
+  body          String
+  status        String   @default("pending")
+  replyTo       String?  @map("reply_to") @db.Uuid
+  editRequestId String?  @map("edit_request_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([projectId, createdAt])
+  @@map("director_messages")
 }
