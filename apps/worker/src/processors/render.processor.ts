@@ -52,7 +52,7 @@ export function renderProfile(env: NodeJS.ProcessEnv = process.env) {
 /** Final Quality Gate (W5): measure the local master with ffmpeg and judge it against the profile's delivery spec. */
 const masterGate = (filmSec: number, delivery: { integratedLufs: number; truePeakDbtp: number }) => async (path: string, ctx: { hasSound: boolean; filmSec: number | undefined }) =>
   judgeMaster(await measureMedia(path, { loudness: true }),
-    { durationSec: ctx.filmSec ?? filmSec, hasSound: ctx.hasSound, integratedLufs: delivery.integratedLufs, truePeakMaxDbtp: delivery.truePeakDbtp }, qualityMode());
+    { durationSec: ctx.filmSec ?? filmSec, hasSound: ctx.hasSound, integratedLufs: delivery.integratedLufs, truePeakMaxDbtp: delivery.truePeakDbtp, sampleRate: 48_000 }, qualityMode());
 
 async function upscaleFilm(projectId: string) {
   const apiKey = process.env.FAL_KEY;

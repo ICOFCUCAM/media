@@ -7,7 +7,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RequestImage } from "@cineforge/movie";
-import { measureBlack, measureFreezes, measureLoudness, probeSize, probeStreams, sha256File } from "../ffmpeg/analysis";
+import { measureBlack, measureFreezes, measureLoudness, probeFormat, probeSize, probeStreams, sha256File } from "../ffmpeg/analysis";
 import { ffmpeg } from "../ffmpeg/ffmpeg";
 import type { MediaFacts } from "./gates";
 
@@ -23,12 +23,13 @@ export async function measureMedia(path: string, opts: { loudness?: boolean } = 
   }
   const durationSec = sec(streams.durationUs);
   const total = streams.durationUs ?? undefined;
-  const [size, black, frozen, sha256, loud] = await Promise.all([
+  const [size, black, frozen, sha256, loud, format] = await Promise.all([
     streams.hasVideo ? probeSize(path).catch(() => null) : Promise.resolve(null),
     streams.hasVideo ? measureBlack(path).catch(() => []) : Promise.resolve([]),
     streams.hasVideo ? measureFreezes(path, total).catch(() => []) : Promise.resolve([]),
     sha256File(path),
     opts.loudness && streams.hasAudio ? measureLoudness(path).catch(() => null) : Promise.resolve(null),
+    probeFormat(path).catch(() => null),
   ]);
   return {
     readable: true,
@@ -41,6 +42,7 @@ export async function measureMedia(path: string, opts: { loudness?: boolean } = 
     frozen: frozen.map((i) => [sec(i.startUs)!, sec(i.endUs)!] as [number, number]),
     loudness: loud ? { integratedLufs: loud.integratedLufs, truePeakDbtp: loud.truePeakDbtp } : null,
     sha256,
+    format,
   };
 }
 

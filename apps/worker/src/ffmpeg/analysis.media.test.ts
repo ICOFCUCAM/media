@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { measureBlack, measureFreezes, measureLoudness, measureSilences, probeStreams, sha256File } from "./analysis";
+import { measureBlack, measureFreezes, measureLoudness, measureSilences, probeFormat, probeStreams, sha256File } from "./analysis";
 
 const HAVE_FFMPEG = spawnSync("ffmpeg", ["-version"]).status === 0 && spawnSync("ffprobe", ["-version"]).status === 0;
 if (process.env.REQUIRE_FFMPEG === "1" && !HAVE_FFMPEG) throw new Error("ffmpeg/ffprobe required for the media regression tests");
@@ -33,6 +33,11 @@ describe.runIf(HAVE_FFMPEG)("FFmpeg measurements with real media", () => {
     const a = await probeStreams(join(dir, "line.wav"));
     expect(a).toMatchObject({ hasAudio: true, sampleRate: 48000 });
     expect(Number(a.durationUs)).toBeCloseTo(3_000_000, -3);
+  });
+
+  it("probes the delivery format (W18)", async () => {
+    expect(await probeFormat(join(dir, "clip.mp4"))).toMatchObject({ videoCodec: "h264", pixFmt: "yuv420p", avgFps: 25, rFps: 25, audioCodec: null });
+    expect(await probeFormat(join(dir, "line.wav"))).toMatchObject({ videoCodec: null, audioCodec: "pcm_s16le", channels: 1, sampleRate: 48000 });
   });
 
   it("measures loudness, silences, black and freezes onto the clock", async () => {
