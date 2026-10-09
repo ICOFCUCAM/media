@@ -10,6 +10,7 @@
  */
 import { Worker, UnrecoverableError } from "bullmq";
 import IORedis from "ioredis";
+import { recordVersion, type VersionDb } from "../versions/record";
 import { recordDegradations, type DegradationDb } from "../truth/recorder";
 import { rememberGpuCaps } from "../truth/capabilities";
 import {
@@ -437,6 +438,10 @@ export const videoWorker = new Worker<VideoJob>(
           attempts: { increment: 1 },
         },
       });
+      await recordVersion(prisma as unknown as VersionDb, {
+        projectId, assetType: "video", assetId: shotId, storageKey: cached.videoKey,
+        derivation: { role: "clip", source: "cache", cacheKey: shot.cacheKey },
+      });
       await realtime.emit("shot.ready", { projectId, sceneId, shotId, thumbnailKey: cached.thumbnailKey ?? undefined });
       return { shotId, videoKey: cached.videoKey, gpuMs: 0, cached: true };
     }
@@ -567,6 +572,15 @@ export const videoWorker = new Worker<VideoJob>(
         gpuMs: result.gpuMs,
         modelVersion: shot.modelVersion ?? MODEL_VERSIONS[modelId],
         attempts: { increment: 1 },
+      },
+    });
+    // The shot points at its newest clip; every accepted clip stays a version (W8).
+    await recordVersion(prisma as unknown as VersionDb, {
+      projectId, assetType: "video", assetId: shotId, storageKey: result.videoKey,
+      sha256: inspection.facts.sha256, durationSec: inspection.facts.durationSec,
+      derivation: {
+        role: "clip", source: "generated", model: modelId, modelVersion: shot.modelVersion ?? MODEL_VERSIONS[modelId] ?? null,
+        seed: String(result.seed), attempt: attempt.made + 1, qcScore, cacheKey: shot.cacheKey, gpuMs: result.gpuMs,
       },
     });
 

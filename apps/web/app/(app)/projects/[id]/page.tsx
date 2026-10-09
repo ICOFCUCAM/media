@@ -12,6 +12,7 @@ import type { DemoState, ProjectStatus } from "../../../../lib/demo";
 import type { ProjectRow } from "../../../../lib/projects";
 import { EmptyState, SpecList } from "../../../../components/cf/primitives";
 import { DegradationList } from "../../../../components/DegradationList";
+import { ProductionLocks } from "../../../../components/ProductionLocks";
 
 const STAGE_LABELS: Record<ProjectStatus, string> = {
   PLANNING: "Writing",
@@ -110,6 +111,7 @@ export default function ProjectCommandCenter({ params }: { params: { id: string 
         ) : (
           <>
             {project && <DegradationList projectId={project.id} refreshKey={state?.status} />}
+            {project && <ProductionLocks projectId={project.id} refreshKey={state?.status} />}
             <div className="mb-6 flex items-center justify-between border-b border-t border-b-cf-line border-t-cf-fg py-4">
               <span className="cf-label text-cf-fg">Production console</span>
               <span className="cf-label">{state ? STAGE_LABELS[state.status] : "Connecting"}</span>

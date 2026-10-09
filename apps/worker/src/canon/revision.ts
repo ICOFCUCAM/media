@@ -34,10 +34,10 @@ export interface CanonDb {
     findUnique(a: unknown): Promise<{ raw: unknown } | null>;
     update(a: unknown): Promise<unknown>;
   };
-  project: { findUniqueOrThrow(a: unknown): Promise<{ modelId: string; resolution: string; aspectRatio: string }> };
+  project: { findUniqueOrThrow(a: unknown): Promise<{ modelId: string; resolution: string; aspectRatio: string; lockedAt?: Date | null }> };
   character: { findMany(a: unknown): Promise<{ id: string; name: string }[]> };
   scene: {
-    findMany(a: unknown): Promise<{ id: string; index: number; shots: { id: string; index: number; seedImageKey: string | null }[] }[]>;
+    findMany(a: unknown): Promise<{ id: string; index: number; lockedAt?: Date | null; shots: { id: string; index: number; seedImageKey: string | null }[] }[]>;
     update(a: unknown): Promise<unknown>;
   };
   shot: { update(a: unknown): Promise<unknown> };
@@ -118,7 +118,7 @@ export async function applyCanonRevision(
     return { outcome: "rejected", affectedScenes: [], invalidatedShotIds: [], ...base };
   }
 
-  const project0 = await db.project.findUniqueOrThrow({ where: { id: projectId }, select: { modelId: true, resolution: true, aspectRatio: true } });
+  const project0 = await db.project.findUniqueOrThrow({ where: { id: projectId }, select: { modelId: true, resolution: true, aspectRatio: true, lockedAt: true } });
   const compiled = compileFilm(rev.pkg, { modelId: project0.modelId });
   const project = project0;
   const [width, height] = outputDimensions(project.resolution, project.aspectRatio);
@@ -127,9 +127,20 @@ export async function applyCanonRevision(
   const charId = new Map(compiled.characters.filter((c) => byName.has(c.name)).map((c) => [c.key, byName.get(c.name)!]));
   const rows = await db.scene.findMany({
     where: { projectId },
-    select: { id: true, index: true, shots: { select: { id: true, index: true, seedImageKey: true } } },
+    select: { id: true, index: true, lockedAt: true, shots: { select: { id: true, index: true, seedImageKey: true } } },
   });
   const sceneRow = new Map(rows.map((r) => [r.index, r]));
+  // Locks (W8, 0037): a change that would touch a locked scene or a locked film is refused, not half-applied.
+  const lockIssues: Issue[] = project0.lockedAt
+    ? [{ stage: "production", code: "FILM_LOCKED", path: "project", message: "the film is locked: unlock it to change its canon" }]
+    : compiled.scenes
+        .filter((sc) => rev.affectedScenes.includes(sc.key) && sceneRow.get(sc.index)?.lockedAt)
+        .map((sc) => ({ stage: "production" as const, code: "SCENE_LOCKED", path: sc.key, message: `${sc.key} is locked: unlock it to change it` }));
+  if (lockIssues.length) {
+    const blocked = { ...rev, issues: [...rev.issues, ...lockIssues] };
+    await record(db, projectId, blocked, "rejected", 0, actor);
+    return { outcome: "rejected", affectedScenes: [], invalidatedShotIds: [], ...base, issues: blocked.issues };
+  }
   const affectedShots = new Set(rev.affectedShots.map((s) => `${s.sceneIndex}#${s.shotIndex}`));
   const invalidated: string[] = [];
 

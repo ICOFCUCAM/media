@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import type { Storage } from "../storage/storage";
 import { degradation, ProductionFailure, type Degradation } from "@cineforge/shared";
 import { ffmpeg, probeDuration, type DurationProbe, type FfmpegRunner } from "./ffmpeg";
+import { sha256File } from "./analysis";
 import {
   normalizeArgs,
   concatAudioArgs,
@@ -39,6 +40,8 @@ export interface RenderResult {
   mp4Key: string;
   hlsKey: string;
   posterKey: string;
+  /** SHA-256 of the delivered MP4 (its media version). */
+  sha256: string;
   /** What this render ran without (recorded and shown, DOS-75). */
   degradations: Degradation[];
   /** Final Quality Gate results on the master (W5), when a gate was given. */
@@ -66,7 +69,7 @@ export class RenderEngine {
     scenes: SceneAssets[],
     onProgress?: (p: number) => void,
     brand?: { logoKey?: string | null; primaryColor?: string; outroText?: string | null },
-    opts: { filmSec?: number; gate?: MasterGate } = {},
+    opts: { filmSec?: number; gate?: MasterGate; version?: number } = {},
   ): Promise<RenderResult> {
     const work = await mkdtemp(join(tmpdir(), `cineforge-${projectId}-`));
     const gaps: Degradation[] = [];
@@ -257,9 +260,12 @@ export class RenderEngine {
           { quality });
       }
 
-      // 5) Upload the MP4 + poster (the deliverable).
-      const mp4Key = `projects/${projectId}/film/final.mp4`;
-      const posterKey = `projects/${projectId}/film/poster.jpg`;
+      // 5) Upload the MP4 + poster (the deliverable). A versioned master gets
+      //    its own prefix, so a re-render never overwrites an earlier film (W8).
+      const filmDir = opts.version ? `projects/${projectId}/film/v${opts.version}` : `projects/${projectId}/film`;
+      const mp4Key = `${filmDir}/final.mp4`;
+      const posterKey = `${filmDir}/poster.jpg`;
+      const sha256 = await sha256File(finalMp4);
       console.log(`[render] upload final.mp4 + poster key=${mp4Key}`);
       await this.storage.upload(finalMp4, mp4Key, "video/mp4");
       await this.storage.upload(poster, posterKey, "image/jpeg");
@@ -271,13 +277,13 @@ export class RenderEngine {
         const hlsDir = join(work, "hls");
         await mkdir(hlsDir, { recursive: true });
         await this.run(hlsArgs(finalMp4, hlsDir), (p) => onProgress?.(0.8 + p * 0.15));
-        const hlsPrefix = `projects/${projectId}/film/hls`;
+        const hlsPrefix = `${filmDir}/hls`;
         await this.storage.uploadDir(hlsDir, hlsPrefix);
         hlsKey = `${hlsPrefix}/master.m3u8`;
       }
       onProgress?.(1);
 
-      return { mp4Key, posterKey, hlsKey, degradations: gaps, quality };
+      return { mp4Key, posterKey, hlsKey, sha256, degradations: gaps, quality };
     } finally {
       await rm(work, { recursive: true, force: true });
     }

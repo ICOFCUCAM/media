@@ -113,6 +113,10 @@ model Project {
   series      Series?
   storyEvents StoryEvent[]
 
+  // W8 (0037): a locked film locks every scene in it.
+  lockedAt DateTime? @map("locked_at") @db.Timestamptz(6)
+  lockedBy String?   @map("locked_by") @db.Uuid
+
   @@index([userId, status])
   @@map("projects")
 }
@@ -357,6 +361,10 @@ model Scene {
   characters  SceneCharacter[]
   dialogueLines DialogueLine[]
   audioTracks AudioTrack[]
+
+  // W8 (0037): a locked scene is frozen in the database until unlocked.
+  lockedAt DateTime? @map("locked_at") @db.Timestamptz(6)
+  lockedBy String?   @map("locked_by") @db.Uuid
 
   @@unique([projectId, index])
   @@index([projectId, status])

@@ -119,4 +119,20 @@ describe.runIf(RUN)("canon revision on a real database (§62.9)", () => {
     expect(await prisma.wardrobeReference.count({ where: { projectId } })).toBe(1);
     expect(generated).toBeGreaterThanOrEqual(1);
   });
+
+  it("a locked scene refuses a canon change that would touch it; nothing is half-applied (W8)", async () => {
+    const scene12 = await prisma.scene.findFirstOrThrow({ where: { projectId, index: 1 }, select: { id: true } });
+    await prisma.scene.update({ where: { id: scene12.id }, data: { lockedAt: new Date() } });
+    const before = await prisma.shot.findMany({ where: { scene: { projectId } }, select: { id: true, status: true, videoKey: true } });
+    const r = await applyCanonRevision(prisma as unknown as CanonDb, projectId, {
+      kind: "scene_wardrobe", sceneId: "scene_12", characterId: "char_maya",
+      wardrobe: { id: "wardrobe_red_coat", description: "short red coat" },
+    }, { actor: "test:db" });
+    expect(r.outcome).toBe("rejected");
+    expect(r.issues.map((i) => i.code)).toEqual(["SCENE_LOCKED"]);
+    expect(await prisma.shot.findMany({ where: { scene: { projectId } }, select: { id: true, status: true, videoKey: true } })).toEqual(before);
+    const last = await prisma.canonRevision.findFirstOrThrow({ where: { projectId }, orderBy: { createdAt: "desc" } });
+    expect(last).toMatchObject({ outcome: "rejected", invalidated: 0 });
+    await prisma.scene.update({ where: { id: scene12.id }, data: { lockedAt: null } });
+  });
 });

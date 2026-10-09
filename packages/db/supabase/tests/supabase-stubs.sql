@@ -50,3 +50,27 @@ create table if not exists public.voices (
   status  text not null default 'PENDING'
 );
 grant select, insert, update, delete on public.users, public.voices to anon, authenticated;
+-- Minimal scenes / shot media / dialogue / audio for 0037 (real: 0002).
+create table if not exists public.scenes (
+  id         uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects (id) on delete cascade,
+  index      int not null,
+  summary    text not null default '',
+  status     text not null default 'PENDING',
+  updated_at timestamptz not null default now()
+);
+alter table public.shots add column if not exists scene_id uuid references public.scenes (id) on delete cascade;
+alter table public.shots add column if not exists status text not null default 'PENDING';
+alter table public.shots add column if not exists video_key text;
+create table if not exists public.dialogue_lines (
+  id       uuid primary key default gen_random_uuid(),
+  scene_id uuid not null references public.scenes (id) on delete cascade,
+  index    int not null,
+  text     text not null
+);
+create table if not exists public.audio_tracks (
+  id       uuid primary key default gen_random_uuid(),
+  scene_id uuid not null references public.scenes (id) on delete cascade,
+  key      text not null
+);
+grant select, insert, update, delete on public.scenes, public.dialogue_lines, public.audio_tracks to anon, authenticated;

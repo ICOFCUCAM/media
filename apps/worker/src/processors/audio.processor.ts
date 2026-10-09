@@ -16,6 +16,7 @@
  */
 import { Worker } from "bullmq";
 import { QUEUES, degradation, type AudioJob } from "@cineforge/shared";
+import { recordVersion, type VersionDb } from "../versions/record";
 import { recordDegradations, type DegradationDb } from "../truth/recorder";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -91,6 +92,10 @@ export const audioWorker = new Worker<AudioJob>(
             sceneId, kind: "VOICE", key: out.trackKey, durationMs: Math.round(out.durationSec * 1000),
             meta: { provider: "voice-engine", engine: out.engine, loudnessLufs: out.loudnessLufs, cues: out.cues.map((c) => ({ lineId: c.lineId, characterId: c.characterId, voice: c.voice, startMs: c.startMs, durationMs: c.durationMs })) },
           },
+        });
+        await recordVersion(prisma as unknown as VersionDb, {
+          projectId, assetType: "audio", assetId: sceneId, storageKey: out.trackKey, durationSec: out.durationSec,
+          derivation: { role: "scene_voice", engine: out.engine, loudnessLufs: out.loudnessLufs, cues: out.cues.length, substituted: out.substitutions.length },
         });
         if (out.substitutions.length) {
           const names = new Map((await prisma.character.findMany({ where: { id: { in: out.substitutions.map((x) => x.characterId) } }, select: { id: true, name: true } })).map((c) => [c.id, c.name]));

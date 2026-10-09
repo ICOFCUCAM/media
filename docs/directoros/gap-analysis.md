@@ -607,6 +607,16 @@ consent-required test; cache hit test.
 
 ### W8 — Versioning, dependencies, locks and passes
 
+**W8a done 2026-10-09** (docs/52; contract versions-and-locks.md; migrations
+0037–0038 applied live). Built: every accepted clip, scene voice track and
+master is an append-only `media_versions` row (masters under `film/v<N>/`);
+scene and film locks enforced by database triggers (only finished scenes and
+films lock; a locked scene's shots, lines and audio are frozen); canon edits
+touching a locked scene are refused; a Locks and versions panel on the
+production page. **Next (W8b):** the STORY → PREVIS → FINAL pass machine,
+the edit command API, re-plan without deleting scenes, play/restore earlier
+versions.
+
 - BUILD entity → scene → shot → media dependency edges at compile time;
   invalidation re-queues only affected shots.
 - CHANGE in-place overwrites (`Shot.videoKey`, `films` upsert, re-plan
@@ -697,4 +707,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 173 built, 136 shallow, 1 poorly built, 72 not built, 72 n/a. Of the 382 IDs that are requirements, 173 (45%) are built; 137 exist but need upgrading or changing; 72 must be built. (Updated after W7b, 2026-10-09.)
+454 IDs: 177 built, 135 shallow, 0 poorly built, 70 not built, 72 n/a. Of the 382 IDs that are requirements, 177 (46%) are built; 135 exist but need upgrading or changing; 70 must be built. (Updated after W8a, 2026-10-09.)
