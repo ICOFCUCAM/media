@@ -10,8 +10,11 @@ import { FlowProducer } from "bullmq";
 import { QUEUES } from "@cineforge/shared";
 import { tierPriority, type Tier } from "@cineforge/gpu";
 import { prisma } from "@cineforge/db";
+import { shotNodes } from "./shot-nodes";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
+
+
 const flow = new FlowProducer({ connection });
 
 export async function enqueueFilmFlow(projectId: string): Promise<number> {
@@ -38,10 +41,10 @@ export async function enqueueFilmFlow(projectId: string): Promise<number> {
       data: { projectId, sceneId: scene.id, index: scene.index },
       opts: { attempts: 2 },
       children: [
-        ...scene.shots.map((shot) => ({
+        ...shotNodes(scene.shots.map((sh) => sh.id), (shotId) => ({
           name: "shot",
           queueName: QUEUES.video,
-          data: { projectId, sceneId: scene.id, shotId: shot.id, modelId: project.modelId },
+          data: { projectId, sceneId: scene.id, shotId, modelId: project.modelId },
           opts: { attempts: 3, backoff: { type: "exponential", delay: 5000 }, priority },
         })),
         {
@@ -89,10 +92,10 @@ export async function enqueueSceneFlow(projectId: string, sceneId: string): Prom
     data: { projectId, sceneId: scene.id, index: scene.index },
     opts: { attempts: 2, removeOnComplete: 100 },
     children: [
-      ...scene.shots.map((shot) => ({
+      ...shotNodes(scene.shots.map((sh) => sh.id), (shotId) => ({
         name: "shot",
         queueName: QUEUES.video,
-        data: { projectId, sceneId: scene.id, shotId: shot.id, modelId: scene.project.modelId },
+        data: { projectId, sceneId: scene.id, shotId, modelId: scene.project.modelId },
         opts: { attempts: 3, backoff: { type: "exponential", delay: 5000 }, priority },
       })),
       { name: "music", queueName: QUEUES.audio, data: { projectId, sceneId: scene.id, kind: "music" }, opts: { attempts: 2, priority } },

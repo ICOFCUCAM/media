@@ -113,12 +113,19 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
       status: has(env, "OPENAI_API_KEY") ? "experimental" : "unavailable",
       realExecution: has(env, "OPENAI_API_KEY"),
     }),
-    cap({
-      capability: "seed_image_generation",
-      provider: has(env, "OPENAI_API_KEY") ? "openai" : null,
-      status: has(env, "OPENAI_API_KEY") ? "experimental" : "unavailable",
-      realExecution: has(env, "OPENAI_API_KEY"),
-    }),
+    (() => {
+      // Image provider registry (W6): IMAGE_PROVIDERS, default "openai"; ComfyUI is gated on Phase 1.
+      const listed = (env.IMAGE_PROVIDERS ?? "openai").split(",").map((x) => x.trim());
+      const openai = listed.includes("openai") && has(env, "OPENAI_API_KEY");
+      const gated = listed.includes("comfyui") ? "ComfyUI waits on Phase 1 (docs/39)" : null;
+      return cap({
+        capability: "seed_image_generation",
+        provider: openai ? "openai" : null,
+        status: openai ? "experimental" : listed.includes("none") ? "disabled" : "unavailable",
+        realExecution: openai,
+        note: [gated, openai ? null : "no image provider configured (IMAGE_PROVIDERS / OPENAI_API_KEY)"].filter(Boolean).join("; ") || undefined,
+      });
+    })(),
     cap({
       capability: "video_generation",
       provider: wan ? "wan-2.1" : null,

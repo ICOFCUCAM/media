@@ -538,6 +538,18 @@ judgement, codec and dropped-frame checks, calibration before enforce (W10).
 
 ### W6 — Image engine and visual memory
 
+**Partly done 2026-10-09** (docs/50; contract images-and-references.md).
+Built: the ImageProvider registry (`IMAGE_PROVIDERS`, seed frames and
+wardrobe stills through it, Capability Registry follows it), N seed
+candidates picked by the Visual Reviewer and kept as media versions, the
+Reference Pack assembler, shot-to-shot end-frame memory with optional
+sequential edges (`SEQUENTIAL_SHOTS=1`). **Blocked by the owner's rule:** the
+ComfyUI runtime, Workflow Registry and approved image models wait on Phase 1
+being operationally complete (the registry lists `comfyui` as gated);
+OpenAI stays the default image provider until then. Carried forward:
+location/prop reference generation, video candidates (cost), the
+real-provider ComfyUI test (W10).
+
 - UPGRADE `ImageModelAdapter` to an `ImageProvider` registry routed by the
   docs/38 router; OpenAI image becomes optional, off by default (Part 2 §106).
 - BUILD ComfyUI runtime, Workflow Registry and approved image models **per
@@ -662,4 +674,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-454 IDs: 105 built, 119 shallow, 22 poorly built, 136 not built, 72 n/a. Of the 382 IDs that are requirements, 105 (27%) are built; 141 exist but need upgrading or changing; 136 must be built. (Updated after W5, 2026-10-09.)
+454 IDs: 113 built, 118 shallow, 19 poorly built, 132 not built, 72 n/a. Of the 382 IDs that are requirements, 113 (30%) are built; 137 exist but need upgrading or changing; 132 must be built. (Updated after W6, 2026-10-09.)

@@ -142,7 +142,7 @@ export async function applyCanonRevision(
         const shotRow = row.shots.find((s) => s.index === sh.index);
         if (!shotRow) throw new CanonUnavailableError(`shot ${sc.key}#${sh.index} has no row`);
         // A seed frame generated from the old prompt is stale; one a creator uploaded is theirs and stays.
-        const generatedSeed = shotRow.seedImageKey === `projects/${projectId}/seeds/${shotRow.id}.png`;
+        const generatedSeed = Boolean(shotRow.seedImageKey?.startsWith(`projects/${projectId}/seeds/${shotRow.id}`));
         await tx.shot.update({
           where: { id: shotRow.id },
           data: {

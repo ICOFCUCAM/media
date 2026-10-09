@@ -38,9 +38,10 @@ evidence files that exist (`scripts/check-truth.mjs`).
 | [continuity-engine.md](continuity-engine.md) | Character Continuity Engine (Part 2 §62) | W3 | INTEGRATED |
 | [cinematography-and-prompts.md](cinematography-and-prompts.md) | Cinematography Engine, canonical media request, model prompt compilers | W4 | INTEGRATED |
 | [quality-gates.md](quality-gates.md) | Technical QC, regenerate loop, Final Quality Gate, gate chain | W5 | INTEGRATED |
+| [images-and-references.md](images-and-references.md) | Image providers, seed candidates, reference pack, end-state memory (ComfyUI gated) | W6 | INTEGRATED |
 | [visual-review.md](visual-review.md) | Visual Reviewer and visual quality gate (record mode) | W5 (first slice) | INTEGRATED |
 
 Contracts to write before their workstream starts (from the gap analysis):
-Editor Agent (W8) · ImageProvider and ComfyUI runtime (W6,
-with docs/38 §AT) · Voice Engine (W7, with Part 4 §157–175) · Versioning, locks
+Editor Agent (W8) · ComfyUI runtime (W6, with docs/38 §AT — gated on
+Phase 1) · Voice Engine (W7, with Part 4 §157–175) · Versioning, locks
 and passes (W8).
