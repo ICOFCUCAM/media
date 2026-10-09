@@ -377,6 +377,7 @@ export interface Database {
           personality: string | null;
           arc: string | null;
           reference_urls: string[];
+          voice_profile: Json | null;
           created_at: string;
           updated_at: string;
         };
@@ -397,6 +398,7 @@ export interface Database {
           personality?: string | null;
           arc?: string | null;
           reference_urls?: string[];
+          voice_profile?: Json | null;
         };
         Relationships: [];
       };

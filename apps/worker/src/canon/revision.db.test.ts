@@ -20,6 +20,8 @@ import { checkContinuity } from "@cineforge/movie";
 
 const RUN = process.env.DB_INTEGRATION === "1";
 let projectId = "";
+let libraryId = "";
+const MAYA_VOICE = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 describe.runIf(RUN)("canon revision on a real database (§62.9)", () => {
   beforeAll(async () => {
@@ -29,6 +31,10 @@ describe.runIf(RUN)("canon revision on a real database (§62.9)", () => {
       select: { id: true, modelId: true, resolution: true, aspectRatio: true },
     });
     projectId = project.id;
+    // The owner gave a "Maya" in their Casting Room one of their voices (W7b).
+    const library = await prisma.project.create({ data: { userId: user.id, title: "Library", prompt: "(reusable assets)", targetSeconds: 0 }, select: { id: true } });
+    libraryId = library.id;
+    await prisma.character.create({ data: { projectId: libraryId, name: "Maya", appearance: "a courier", voiceProfile: { voiceId: MAYA_VOICE } }, select: { id: true } });
     await persistPlan(projectId, project, { pkg: mayaCoatFixture(), revised: false, fixedIssues: [], provider: "test", model: "test" });
     const shots = await prisma.shot.findMany({ where: { scene: { projectId } }, select: { id: true } });
     for (const s of shots) {
@@ -38,7 +44,16 @@ describe.runIf(RUN)("canon revision on a real database (§62.9)", () => {
 
   afterAll(async () => {
     if (projectId) await prisma.project.delete({ where: { id: projectId } }).catch(() => {});
+    if (libraryId) await prisma.project.delete({ where: { id: libraryId } }).catch(() => {});
     await prisma.$disconnect();
+  });
+
+  it("a planned character inherits the voice the owner chose for them; others keep a built-in voice", async () => {
+    const cast = await prisma.character.findMany({ where: { projectId }, select: { name: true, voiceProfile: true } });
+    const maya = cast.find((c) => c.name === "Maya")!;
+    expect(maya.voiceProfile).toMatchObject({ voiceId: MAYA_VOICE });
+    expect((maya.voiceProfile as { description?: string }).description).toBeTruthy();
+    for (const c of cast.filter((x) => x.name !== "Maya")) expect((c.voiceProfile as { voiceId?: string }).voiceId).toBeUndefined();
   });
 
   it("re-keys and resets exactly the affected shots; everything else keeps its media", async () => {

@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { judgeVoiceSample } from "@cineforge/voice-contracts";
 import { analyzeVoiceSample } from "./analyze";
 import { joinSegments, masterSegment, measureSpeech, SEGMENT_GAP_MS } from "./mastering";
+import { concatAudioArgs } from "../ffmpeg/commands";
 
 const HAVE_FFMPEG = spawnSync("ffmpeg", ["-version"]).status === 0 && spawnSync("ffprobe", ["-version"]).status === 0;
 if (process.env.REQUIRE_FFMPEG === "1" && !HAVE_FFMPEG) throw new Error("ffmpeg/ffprobe required for the media regression tests");
@@ -68,5 +69,15 @@ describe.runIf(HAVE_FFMPEG)("voice recordings and mastering on real media", () =
     const one = (await measureSpeech(a)).durationSec;
     const all = (await measureSpeech(out)).durationSec;
     expect(all).toBeCloseTo(one * 3 + (2 * SEGMENT_GAP_MS) / 1000, 1);
+  }, 30_000);
+
+  it("the film's voice bed joins Voice Engine WAV and older MP3 scene tracks", async () => {
+    const wav = join(dir, "mastered.wav");
+    const mp3 = join(dir, "raw.mp3");
+    const out = join(dir, "bed.m4a");
+    ff(concatAudioArgs([wav, mp3, wav], out));
+    const total = (await measureSpeech(out)).durationSec;
+    const expected = 2 * (await measureSpeech(wav)).durationSec + (await measureSpeech(mp3)).durationSec;
+    expect(total).toBeCloseTo(expected, 0);
   }, 30_000);
 });

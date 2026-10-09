@@ -7,9 +7,10 @@ import { StudioGate } from "./cf/StudioGate";
 import { Composer } from "./cf/Composer";
 import { CinemaArt } from "./cf/CinemaArt";
 import { Cell, EmptyState, PageHeader, Section, SpecList, Split } from "./cf/primitives";
-import { createCharacter, listCharacters, type CharacterWithOrigin } from "../lib/library";
+import { createCharacter, listCharacters, listUsableVoices, setCharacterVoice, type CharacterWithOrigin } from "../lib/library";
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
+import type { Json } from "../lib/database.types";
 
 /** The Casting Room (docs/design/casting-room-characters.html, dark room).
  *  Create and browse reusable characters — locked identity, reusable anywhere. */
@@ -23,6 +24,25 @@ export function CharacterLibrary() {
   const [error, setError] = useState<string | null>(null);
 
   const [portraits, setPortraits] = useState<Record<string, string>>({});
+  // Your cloned voices, to give a character (W7b): the film speaks them in it.
+  const [voices, setVoices] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (user) void listUsableVoices().then(setVoices);
+  }, [user]);
+
+  async function chooseVoice(c: CharacterWithOrigin, voiceId: string) {
+    setError(null);
+    try {
+      await setCharacterVoice(c, voiceId || null);
+      const profile = { ...((c.voice_profile as Record<string, unknown> | null) ?? {}) };
+      if (voiceId) profile.voiceId = voiceId;
+      else delete profile.voiceId;
+      setItems((rows) => rows?.map((r) => (r.id === c.id ? { ...r, voice_profile: profile as Json } : r)) ?? rows);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not set the voice");
+    }
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -143,6 +163,23 @@ export function CharacterLibrary() {
                       <h3 className="font-display text-[24px] font-semibold leading-tight tracking-[-0.03em]">{c.name}</h3>
                       <span className="mt-1 truncate text-[12px] text-cf-dim">{c.projects?.title === "Library" || !c.projects ? "Library" : c.projects.title}</span>
                       <p className="mt-3 line-clamp-3 text-[13px] leading-relaxed text-cf-muted">{c.appearance}</p>
+                      <label htmlFor={`voice-${c.id}`} className="mt-4 block font-sans text-[11px] font-medium uppercase tracking-[0.06em] text-cf-dim">
+                        Voice
+                      </label>
+                      <select
+                        id={`voice-${c.id}`}
+                        value={((c.voice_profile as { voiceId?: string } | null)?.voiceId) ?? ""}
+                        onChange={(e) => void chooseVoice(c, e.target.value)}
+                        className="cf-input mt-1.5 py-1.5 text-[13px]"
+                      >
+                        <option value="">Built-in voice</option>
+                        {voices.map((v) => (
+                          <option key={v.id} value={v.id}>{v.name}</option>
+                        ))}
+                      </select>
+                      {voices.length === 0 && (
+                        <Link href="/library/voices" className="mt-1.5 text-[11px] text-cf-dim hover:text-cf-fg">Clone a voice to give it to a character →</Link>
+                      )}
                       <Link href="/create/film?mode=storyboard" className="cf-link mt-auto pt-5 text-cf-muted hover:text-cf-fg">
                         Cast in a film →
                       </Link>

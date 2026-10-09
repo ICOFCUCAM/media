@@ -1,18 +1,22 @@
-# Contract — Voice Engine (W7a)
+# Contract — Voice Engine (W7a, W7b)
 
 Requirements: DOS-145–148, 150–151, 158–170, 173 (Part 4 §157–176).
 Self-hosted engines, voice GPU worker, licence registry, benchmark: gated.
 Code: `packages/voice-contracts/src/` (engine.ts, api.ts, segment.ts,
 quality.ts, router.ts), `apps/worker/src/voice/` (analyze.ts, mastering.ts,
 engines.ts, jobs.ts), `apps/worker/src/processors/voice-engine.processor.ts`,
-`apps/api/src/voices/`, migration `0036_voice_engine.sql`.
+`apps/api/src/voices/`, migration `0036_voice_engine.sql`; film voices (W7b):
+`apps/worker/src/voice/film.ts`, `apps/worker/src/processors/audio.processor.ts`,
+`castVoices` in `apps/worker/src/director/director.service.ts`,
+`SPEECH_TOO_LONG` in `packages/movie/src/ir/validate.ts`.
 
 ## 1. Purpose
 
 Turn text into a voice's speech, and a consented recording into a voice,
 through one model-independent boundary. CineForge knows voices and jobs,
-never models. Not responsible for film dialogue placement (W7b) or for
-self-hosted model runtimes (gated).
+never models. For films (W7b) it speaks each scene's voice-over and
+dialogue, each character in their own voice. Not responsible for dubbing
+(next) or self-hosted model runtimes (gated).
 
 ## 2. Inputs
 
@@ -43,6 +47,9 @@ ffmpeg/ffprobe, BullMQ (`voice-engine-queue`), Postgres.
 - Calling a gated engine, or skipping it without saying why.
 - Letting the model own mastering; delivering unmeasured audio.
 - Changing a job after it reached completed, failed or cancelled.
+- In a film: speaking a character in a voice that is not the film owner's,
+  lacks consent or is not ready; substituting a voice without reporting it;
+  giving a character the narrator's voice.
 
 ## 6. Runtime behavior
 
@@ -90,6 +97,13 @@ duration and loudness); the voice's quality report; Capability Registry
   404 to non-owners, no engine internals, stock and batch requests.
 - `packages/db/supabase/tests/0036_voice_engine.test.sql` — shapes, artifact
   uniqueness, terminal states, RLS, cascades.
+- `apps/worker/src/voice/film.test.ts` — cue order, stable built-in voice per
+  character, cloned voice via artifact, stranger's / unconsented / unready
+  voice substituted and reported once, no engine → fails loudly.
+- `apps/worker/src/canon/revision.db.test.ts` (real Postgres) — a planned
+  character inherits the owner's chosen voice.
+- `packages/movie/src/ir/validate.test.ts` — `SPEECH_TOO_LONG`.
+- `voice.media.test.ts` — WAV and MP3 scene tracks join into one voice bed.
 
 ## 11. Integration test
 

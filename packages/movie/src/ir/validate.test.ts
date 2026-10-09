@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixturePackage, FIXTURE_CONSTRAINTS as C } from "./fixture";
 import { filmPackageJsonSchema } from "./json-schema";
-import { formatIssues, packageSeconds, validateFilmPackage } from "./validate";
+import { formatIssues, packageSeconds, speechSeconds, validateFilmPackage } from "./validate";
 
 const codes = (raw: unknown, c = C) => {
   const r = validateFilmPackage(raw, c);
@@ -64,6 +64,14 @@ describe("Film IR validator chain (DOS-24, DOS-94)", () => {
     expect(codes(p, { ...C, sceneCount: 3 })).toEqual(
       expect.arrayContaining(["production/SCENE_COUNT", "production/TOO_MANY_SHOTS", "production/SHOT_TOO_LONG", "production/SCENE_LENGTH"]),
     );
+  });
+
+  it("production: a scene must be long enough to speak its narration and dialogue", () => {
+    expect(speechSeconds(["", "One two three four five six seven eight nine ten eleven twelve thirteen.", "  "])).toBeCloseTo(5);
+    expect(speechSeconds(["a b", "c d"])).toBeCloseTo(4 / 2.6 + 0.35);
+    const p = fixturePackage();
+    p.scenes[0]!.narration = Array.from({ length: 60 }, () => "word").join(" ");
+    expect(codes(p)).toContain("production/SPEECH_TOO_LONG");
   });
 
   it("budget: the film must run what was requested", () => {

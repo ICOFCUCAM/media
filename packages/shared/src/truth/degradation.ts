@@ -35,6 +35,7 @@ export type DegradationCode =
   | "OUTPUT_CLAMPED" // the runtime produced less resolution / fewer frames than requested
   | "MODEL_SUBSTITUTED"
   | "TRACK_MISSING" // a voice / music / SFX track the film should have
+  | "VOICE_SUBSTITUTED" // a character's chosen voice could not be used; a built-in voice spoke instead
   | "UPSCALE_UNAVAILABLE"
   | "UPSCALE_FAILED"
   | "TRANSLATION_FAILED"
@@ -72,6 +73,7 @@ const SEVERITY: Record<DegradationCode, DegradationSeverity> = {
   OUTPUT_CLAMPED: "major",
   MODEL_SUBSTITUTED: "warning",
   TRACK_MISSING: "major",
+  VOICE_SUBSTITUTED: "warning",
   UPSCALE_UNAVAILABLE: "major",
   UPSCALE_FAILED: "major",
   TRANSLATION_FAILED: "major",
