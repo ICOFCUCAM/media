@@ -1,4 +1,8 @@
-# Contract — Visual Reviewer and visual quality gate (W5, first slice)
+# Contract — Visual Reviewer and visual quality gate (W5; v2 in W18)
+
+W18 extends this contract: three frames per clip, emotion, hands, objects and
+camera verdicts, five 0–100 scores. See [quality-depth.md](quality-depth.md);
+where they differ, quality-depth.md wins.
 
 Requirements: DOS-62 at the pixel level; DOS-32.1–32.2 (character
 continuity in the generated picture); the W5 quality gate.
@@ -28,7 +32,7 @@ match), a degradation, or a failure.
 
 ## 4. Dependencies
 
-ffmpeg (one mid-clip frame, 768 px wide), storage download, the intelligence
+ffmpeg (start, middle and end frames since W18, 768 px wide), storage download, the intelligence
 router (task `visual_review`, any vision-capable route; recorded in
 `ai_decisions`).
 

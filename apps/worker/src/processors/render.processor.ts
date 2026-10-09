@@ -11,7 +11,7 @@
  */
 import { UnrecoverableError, Worker } from "bullmq";
 import { QUEUES, type RenderJob, parseLanguages, degradation, isProductionFailure, mixSpec, syncPolicy, type Degradation } from "@cineforge/shared";
-import { judgeMaster, qualityMode, type GateResult } from "../quality/gates";
+import { editorialGate, judgeMaster, qualityMode, type GateResult } from "../quality/gates";
 import { measureMedia } from "../quality/measure";
 import { recordGates, type GateDb } from "../quality/recorder";
 import { recordDegradations, type DegradationDb } from "../truth/recorder";
@@ -32,10 +32,16 @@ const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const record = (projectId: string, ds: Degradation[]) =>
   recordDegradations(prisma as unknown as DegradationDb, projectId, ds);
 
-/** The film-level gate chain rows (W5): the master's technical + audio results, editorial pending (W8). */
+/** The film-level gate chain rows (W5): the master's technical + audio results and the editorial pass (W18). */
 async function recordFilmGates(projectId: string, quality: GateResult[]) {
   if (!quality.length) return;
-  const editorial: GateResult = { gate: "editorial", outcome: "skipped", findings: [] }; // Editor Agent: W8
+  const latest = await prisma.editorialReview.findFirst({
+    where: { projectId, status: { in: ["ready", "applied"] } }, orderBy: { createdAt: "desc" },
+    select: { status: true, summary: true, findings: true, _count: { select: { proposals: { where: { status: "proposed" } } } } },
+  }).catch(() => null); // before migration 0048
+  const editorial = editorialGate(latest && {
+    status: latest.status, summary: latest.summary, findings: Array.isArray(latest.findings) ? latest.findings : [], openProposals: latest._count.proposals,
+  });
   await recordGates(prisma as unknown as GateDb, projectId, "film", "film", [...quality, editorial]);
 }
 
@@ -206,7 +212,7 @@ export const renderWorker = new Worker<RenderJob>(
         await record(projectId, out.degradations);
         await recordFilmGates(projectId, out.quality);
         // What the gate noted without blocking is shown on the project.
-        await record(projectId, out.quality.filter((r) => r.outcome === "warn").flatMap((r) => r.findings.map((f) =>
+        await record(projectId, out.quality.filter((r) => r.outcome === "warn").flatMap((r) => r.findings.filter((f) => f.severity !== "info").map((f) =>
           degradation("QUALITY_FLAGGED", "film", `Final check (${r.gate}): ${f.message}.`, { severity: f.severity === "fail" ? "major" : "info", detail: { code: f.code, ...f.detail } }))));
         console.log(`[render] assembly done project=${projectId} mp4=${mp4Key}`);
       } else if (process.env.S3_ENDPOINT) {

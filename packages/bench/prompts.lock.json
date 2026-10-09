@@ -40,7 +40,7 @@
       "id": "review.visual",
       "version": 2,
       "purpose": "Visual Reviewer: does a generated shot show what canon and the shot plan say it must show, and how well (Part 1 §16–17, Part 2 §62; W5, W18)?",
-      "sha256": "162d5bf875058ede96dbc3a627596ee2bf7f3e7fedfaa8c3c714f4aa06c3cc27",
+      "sha256": "f786eedd4882b6bf38ab011fe17445269f09cf1f1ff5d22e8d22e88956f0eebf",
       "score": null,
       "scoredAt": null,
       "model": null

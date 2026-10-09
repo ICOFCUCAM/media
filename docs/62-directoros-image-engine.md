@@ -88,7 +88,8 @@ props in frame.
 - **Style and camera references:** they are not separate images. The film's
   look is written into every prompt.
 - **Per-dimension frame scores** (identity, composition, lighting): not
-  produced. The reviewer judges canon facts, match or mismatch.
+  produced. The reviewer judges canon facts, match or mismatch. (Since W18,
+  docs/63: produced, and they break ties between candidates.)
 - **Seed candidates are off by default** (`SEED_CANDIDATES=1`), because each
   candidate is a paid image.
 

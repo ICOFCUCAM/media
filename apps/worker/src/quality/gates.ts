@@ -159,6 +159,30 @@ export function judgeMaster(
   ];
 }
 
+/** The latest finished editorial review of a project, as the editorial gate reads it (W13 reviews; W18). */
+export interface EditorialSnapshot {
+  status: string;
+  summary: string | null;
+  findings: unknown[];
+  /** Proposals the owner has not yet approved or rejected. */
+  openProposals: number;
+}
+
+/**
+ * The editorial pass of the film's gate chain (§39; W18). Editorial review is
+ * advisory and asked for by the owner, so it never blocks: no review → skipped;
+ * an applied review → pass; a review whose notes or proposals are still open
+ * → warn, with them on record.
+ */
+export function editorialGate(r: EditorialSnapshot | null): GateResult {
+  if (!r || (r.status !== "ready" && r.status !== "applied")) return { gate: "editorial", outcome: "skipped", findings: [] };
+  if (r.status === "applied") return { gate: "editorial", outcome: "pass", findings: [] };
+  const out: GateFinding[] = [];
+  if (r.openProposals) out.push({ code: "EDITORIAL_PROPOSALS_OPEN", severity: "warn", message: `${r.openProposals} edit proposal(s) not yet decided`, detail: { open: r.openProposals } });
+  if (r.findings.length) out.push({ code: "EDITORIAL_NOTES", severity: "warn", message: (r.summary ?? `${r.findings.length} editorial note(s)`).slice(0, 300), detail: { notes: r.findings.length } });
+  return { gate: "editorial", outcome: out.length ? "warn" : "pass", findings: out };
+}
+
 /** True when a result must stop the shot / film (fatal always; fail in enforce mode). */
 export function blocks(r: GateResult): boolean {
   return r.outcome === "fail";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideShot, judgeClip, judgeMaster, qualityMode, type MediaFacts } from "./gates";
+import { decideShot, editorialGate, judgeClip, judgeMaster, qualityMode, type MediaFacts } from "./gates";
 import { _resetGateRecorder, recordGates, type GateDb } from "./recorder";
 
 const ok: MediaFacts = { readable: true, hasVideo: true, hasAudio: false, durationSec: 5, width: 1280, height: 720, black: [], frozen: [] };
@@ -95,6 +95,18 @@ describe("frame-level checks (W18)", () => {
   it("the master gets the same checks under its own prefix", () => {
     const master: MediaFacts = { ...ok, durationSec: 30, format: { ...good, avgFps: 20, containerSec: 30 } };
     expect(codes(judgeMaster(master, { durationSec: 30, hasSound: false, integratedLufs: -16, truePeakMaxDbtp: -1 }, "record")[0]!)).toEqual(["MASTER_VARIABLE_FRAME_RATE"]);
+  });
+});
+
+describe("editorial pass (W18)", () => {
+  it("skipped without a finished review; pass once applied; open notes and proposals warn, never block", () => {
+    expect(editorialGate(null).outcome).toBe("skipped");
+    expect(editorialGate({ status: "failed", summary: null, findings: [], openProposals: 0 }).outcome).toBe("skipped");
+    expect(editorialGate({ status: "applied", summary: "tightened", findings: [{}], openProposals: 0 }).outcome).toBe("pass");
+    expect(editorialGate({ status: "ready", summary: "fine", findings: [], openProposals: 0 }).outcome).toBe("pass");
+    const open = editorialGate({ status: "ready", summary: "scene 3 drags", findings: [{}, {}], openProposals: 2 });
+    expect([open.outcome, codes(open)]).toEqual(["warn", ["EDITORIAL_PROPOSALS_OPEN", "EDITORIAL_NOTES"]]);
+    expect(open.findings.every((f) => f.severity === "warn")).toBe(true);
   });
 });
 

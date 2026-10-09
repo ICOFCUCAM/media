@@ -10,7 +10,8 @@
  *
  * v2 (W18; Part 1 §16–17): a clip is reviewed on its start, middle and end
  * frames; generation defects (hands, objects) and the planned camera movement
- * are checked; and the shot gets five 0–100 scores (identity, composition,
+ * are checked (and, advisory, whether a readable face shows the stated
+ * feeling); and the shot gets five 0–100 scores (identity, composition,
  * continuity, lighting, prompt adherence). Defects, camera and scores are
  * advisory: only the defining canon checks can block a shot.
  */
@@ -21,7 +22,7 @@ import type { IntelligenceRouter } from "../intelligence/router";
 import type { RequestImage } from "../intelligence/types";
 import type { GenerationContext } from "../world/continuity";
 
-export const VisualCheck = z.enum(["presence", "identity", "wardrobe", "injuries", "location", "time", "props", "hands", "objects", "camera"]);
+export const VisualCheck = z.enum(["presence", "identity", "wardrobe", "injuries", "location", "time", "props", "emotion", "hands", "objects", "camera"]);
 
 const score = z.number().int().min(0).max(100).nullable();
 export const VisualScores = z.object({
@@ -98,11 +99,12 @@ export function renderReviewRequest(ctx: GenerationContext, media: ReviewMedia =
     ...ctx.characters.map((c) =>
       `- ${c.name} (${c.characterId})${c.age !== null ? `, age ${c.age}` : ""}: face ${c.identity.face}; hair ${c.identity.hair}; body ${c.identity.body}` +
       `${c.identity.marks.length ? `; marks ${c.identity.marks.join(", ")}` : ""}; wearing ${c.wardrobe}` +
-      `${c.physical ? `; visibly ${c.physical}` : ""}${c.holding.length ? `; holding ${c.holding.map((h) => h.name).join(", ")}` : ""}`),
+      `${c.physical ? `; visibly ${c.physical}` : ""}${c.emotion ? `; feeling ${c.emotion}` : ""}${c.holding.length ? `; holding ${c.holding.map((h) => h.name).join(", ")}` : ""}`),
     ...(ctx.props.length ? ["Props in play:", ...ctx.props.map((p) => `- ${p.name} (${p.id}): ${p.description}`)] : []),
     "",
     "Give one verdict per character for presence, identity, wardrobe and (if a physical state is listed) injuries;",
     "one for the location; one for time (subjectId \"scene\"); one per prop in play;",
+    "one emotion verdict per character whose face is readable (does the expression fit?);",
     "hands and objects verdicts for any defect you see; then the five scores.",
     ...(clip ? [`Planned camera: ${[media.cameraType, media.cameraMovement].filter(Boolean).join(", ") || "not specified (judge only that the view is stable and intentional)"} — give one camera verdict (subjectId "shot").`] : []),
   ];

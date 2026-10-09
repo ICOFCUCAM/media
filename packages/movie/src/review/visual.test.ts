@@ -33,6 +33,7 @@ describe("Visual Reviewer", () => {
     expect(clip).toContain("Frames: start, middle and end of the generated clip, in order.");
     expect(clip).toContain("Planned camera: medium, slow push-in");
     expect(clip).toContain("Shot prompt: ");
+    expect(clip).toMatch(/; feeling \S/);
     const still = renderReviewRequest(ctx());
     expect(still).toContain("Frame: one generated still.");
     expect(still).not.toContain("Planned camera");
