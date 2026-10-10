@@ -51,6 +51,7 @@ evidence files that exist (`scripts/check-truth.mjs`).
 | [voice-studio.md](voice-studio.md) | Voice Studio readings on the Voice Engine (modes, delivery, conversations), per-use licences to community voices, character voice traits, speech ledger | W15 | FUNCTIONAL |
 | [sound-design.md](sound-design.md) | Sound design: per-scene ambience beds and shot-anchored effects (generated, content-addressed), placed stems, mix and master by the production profile | W16 | FUNCTIONAL |
 | [image-engine.md](image-engine.md) | Image Engine: a record for every still (provider, model, seed, checksums), OpenAI and fal providers, place and prop reference stills, choosing a take | W17 | FUNCTIONAL |
+| [dubs.md](dubs.md) | Dubbed films as real masters: full mix, lip-synced, gated, locked cut | W22 | FUNCTIONAL |
 | [lip-sync-and-portraits.md](lip-sync-and-portraits.md) | Lip sync for dialogue shots, frame interpolation, Character Card portraits | W21 | FUNCTIONAL |
 | [world-and-time.md](world-and-time.md) | Film Bible fields, story clock, weather and sun, the full shot record, structured shot end states | W20 | FUNCTIONAL |
 | [previs-and-lock.md](previs-and-lock.md) | Previs with rough voice, animatic and timing; review-first default; film lock → approved timeline → master | W19 | FUNCTIONAL |

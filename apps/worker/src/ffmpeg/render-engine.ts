@@ -103,7 +103,11 @@ export class RenderEngine {
     scenes: SceneAssets[],
     onProgress?: (p: number) => void,
     brand?: { logoKey?: string | null; primaryColor?: string; outroText?: string | null },
-    opts: { filmSec?: number; gate?: MasterGate; version?: number; mix?: MixSpec; delivery?: Pick<DeliverySpec, "integratedLufs" | "truePeakDbtp"> } = {},
+    opts: {
+      filmSec?: number; gate?: MasterGate; version?: number; mix?: MixSpec; delivery?: Pick<DeliverySpec, "integratedLufs" | "truePeakDbtp">;
+      /** Where the master goes instead of projects/<id>/film[/v<n>] — a dubbed language's own master (W22). */
+      dir?: string;
+    } = {},
   ): Promise<RenderResult> {
     const work = await mkdtemp(join(tmpdir(), `cineforge-${projectId}-`));
     const gaps: Degradation[] = [];
@@ -334,7 +338,7 @@ export class RenderEngine {
 
       // 5) Upload the MP4 + poster (the deliverable). A versioned master gets
       //    its own prefix, so a re-render never overwrites an earlier film (W8).
-      const filmDir = opts.version ? `projects/${projectId}/film/v${opts.version}` : `projects/${projectId}/film`;
+      const filmDir = opts.dir ?? (opts.version ? `projects/${projectId}/film/v${opts.version}` : `projects/${projectId}/film`);
       const mp4Key = `${filmDir}/final.mp4`;
       const posterKey = `${filmDir}/poster.jpg`;
       const sha256 = await sha256File(finalMp4);

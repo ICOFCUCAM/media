@@ -33,6 +33,8 @@ export interface LipSyncLine {
   /** Where the line starts in its scene, and how long it is (seconds). */
   startSec: number;
   durSec: number;
+  /** Where the line starts inside its audio file: 0 for a line's own file, its start for a slice of a scene track (W22 dubs). */
+  audioOffsetSec?: number;
 }
 
 export interface LipSyncSegment {
@@ -66,7 +68,7 @@ export function lipSyncTargets(shots: LipSyncShot[], lines: LipSyncLine[]): LipS
       const a = Math.max(sh.startSec, l.startSec);
       const b = Math.min(end, l.startSec + l.durSec);
       if (b - a <= 0.05) continue;
-      segments.push({ lineId: l.lineId, audioKey: l.audioKey, atSec: r3(a - sh.startSec), fromSec: r3(a - l.startSec), durSec: r3(b - a) });
+      segments.push({ lineId: l.lineId, audioKey: l.audioKey, atSec: r3(a - sh.startSec), fromSec: r3(a - l.startSec + (l.audioOffsetSec ?? 0)), durSec: r3(b - a) });
     }
     const speechSec = r3(segments.reduce((s, x) => s + x.durSec, 0));
     if (speechSec >= MIN_SPEECH_SEC) out.push({ shotId: sh.shotId, videoKey: sh.videoKey, durSec: sh.durSec, segments, speechSec });
