@@ -12,6 +12,14 @@ container via `MODEL_NAME`. Every route except `GET /livez` is behind the
 - `GET /health` · `GET /capabilities` (scope `status`; capabilities include
   the deployment id and the resolved model manifest) · `POST /warm` (scope
   `warm`). `POST /generate` needs scope `video:run`.
+- **Async generate:** `POST /generate` with header `x-cineforge-async: 1`
+  returns `202 {"taskId"}` at once and runs the shot in the background;
+  `GET /generate/jobs/{taskId}` (scope `status`) answers `running`,
+  `done` + the result, or `error` + the same status/code the direct call
+  would have returned. Cineforge always asks for it, so a long shot (e.g.
+  `WAN_MAX_FRAMES=81`, several minutes) is not cut off by the ~100 s an edge
+  proxy keeps a request open (RunPod's proxy answers `524`). Tasks live in
+  memory: a restarted pod forgets them (`404 UNKNOWN_TASK`, the shot fails).
 - `POST /train` + `GET /tasks/{id}` — **disabled** (`503 TRAINER_DISABLED`)
   until a real trainer exists (docs/39 decision 3).
 

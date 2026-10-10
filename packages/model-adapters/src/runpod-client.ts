@@ -27,6 +27,8 @@ export interface RunpodClientOptions {
   /** Media Runtime Gateway authority (apps/worker wires it). */
   authorizer?: GpuCallAuthorizer;
   timeoutMs?: number;
+  /** Longest wait between polls of an async generate (default 5 s; the first polls come sooner). */
+  pollMaxMs?: number;
 }
 
 export interface GpuGenerateInput {
@@ -94,9 +96,13 @@ export class RunpodClient {
         auth = prepared.headers;
         grant = prepared.grant;
       }
+      // Async: a shot can outlive the ~100 s an edge proxy keeps one request
+      // open (RunPod's proxy answers 524). A worker that supports it returns
+      // 202 + a task id at once; an older image ignores the header and answers
+      // the request itself, as before.
       const res = await fetch(`${base}/generate`, {
         method: "POST",
-        headers: { "content-type": "application/json", ...auth },
+        headers: { "content-type": "application/json", "x-cineforge-async": "1", ...auth },
         body,
         signal: ctrl.signal,
       });
@@ -105,7 +111,9 @@ export class RunpodClient {
         await grant?.fail(`HTTP_${res.status}`);
         throw new Error(`gpu-worker /generate ${res.status}: ${text}`);
       }
-      const out = (await res.json()) as GpuGenerateOutput;
+      const out = res.status === 202
+        ? await this.awaitTask(base, ((await res.json()) as { taskId: string }).taskId, ctrl.signal, grant)
+        : ((await res.json()) as GpuGenerateOutput);
       if (!grant) return out;
       const verified = await grant.complete(out);
       return { ...out, videoKey: verified.videoKey, thumbnailKey: verified.thumbnailKey ?? undefined };
@@ -114,6 +122,42 @@ export class RunpodClient {
       throw e;
     } finally {
       clearTimeout(t);
+    }
+  }
+
+  /**
+   * Poll an async generate until it finishes. Each poll carries a fresh
+   * status-scope token. A proxy hiccup while polling (network error, 5xx/524)
+   * is retried until the call's own timeout; an unknown task (the worker
+   * restarted) or a refused poll fails the shot.
+   */
+  private async awaitTask(base: string, taskId: string, signal: AbortSignal, grant: GrantHandle | null): Promise<GpuGenerateOutput> {
+    const path = `/generate/jobs/${encodeURIComponent(taskId)}`;
+    const max = this.opts.pollMaxMs ?? 5_000;
+    for (let wait = Math.min(500, max); ; wait = Math.min(wait * 2, max)) {
+      await sleep(wait, signal);
+      let res: Response;
+      try {
+        res = await fetch(`${base}${path}`, { headers: await this.authHeaders(base, path, "status"), signal });
+      } catch (e) {
+        if ((e as Error)?.name === "AbortError") throw e;
+        continue;
+      }
+      if (res.status >= 500) continue;
+      if (!res.ok) {
+        const text = await res.text();
+        await grant?.fail(`HTTP_${res.status}`);
+        throw new Error(`gpu-worker /generate ${res.status}: ${text}`);
+      }
+      const state = (await res.json()) as
+        | { status: "running" }
+        | { status: "done"; result: GpuGenerateOutput }
+        | { status: "error"; httpStatus: number; detail: unknown };
+      if (state.status === "done") return state.result;
+      if (state.status === "error") {
+        await grant?.fail(`HTTP_${state.httpStatus}`);
+        throw new Error(`gpu-worker /generate ${state.httpStatus}: ${JSON.stringify({ detail: state.detail })}`);
+      }
     }
   }
 
@@ -148,4 +192,16 @@ export class RunpodClient {
     const base = this.url();
     await fetch(`${base}/warm`, { method: "POST", headers: await this.authHeaders(base, "/warm", "warm") });
   }
+}
+
+/** Resolves after `ms`, or rejects with an AbortError when the signal fires. */
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+    const t = setTimeout(resolve, ms);
+    signal.addEventListener("abort", () => {
+      clearTimeout(t);
+      reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+    }, { once: true });
+  });
 }

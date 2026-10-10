@@ -411,3 +411,61 @@ def test_unmeasurable_output_returns_no_timing_report(signing_key, mint):
         r = post(client, body, mint.token(body, authz=cineforge_authz()))
     # Never echo the request as if it were a measurement.
     assert r.status_code == 200 and r.json()["timing"] is None
+
+
+# ── Async generate: a shot may outlive the edge proxy's request timeout ───────
+
+def _poll(client, mint, task_id, *, timeout=5.0):
+    import time as _t
+    deadline = _t.time() + timeout
+    while True:
+        r = client.get(f"/generate/jobs/{task_id}", headers={"authorization": f"Bearer {mint.token(b'', scope='status')}"})
+        if r.status_code != 200 or r.json()["status"] != "running" or _t.time() > deadline:
+            return r
+        _t.sleep(0.02)
+
+
+def test_async_generate_returns_a_task_and_the_same_result(signing_key, mint):
+    client, pipeline, app = build_client(signing_key)
+    body = gen_body()
+    with client:
+        r = client.post("/generate", content=body, headers={
+            "content-type": "application/json", "x-cineforge-async": "1",
+            "authorization": f"Bearer {mint.token(body, authz=cineforge_authz())}"})
+        assert r.status_code == 202, r.text
+        done = _poll(client, mint, r.json()["taskId"])
+    assert done.status_code == 200 and done.json()["status"] == "done", done.text
+    assert done.json()["result"]["videoKey"] == OUTPUT["videoKey"] and done.json()["result"]["videoBytes"] == 4321
+    assert len(pipeline.calls) == 1 and app.state.fake_store.puts == [(OUTPUT["videoUploadUrl"], "video/mp4")]
+    assert client.get("/capabilities", headers={"authorization": f"Bearer {mint.token(b'', scope='status')}"}).json()["asyncGenerate"] is True
+
+
+def test_async_generate_reports_failures_with_the_sync_codes(signing_key, mint):
+    from app.pipeline import GpuUnavailableError
+
+    client, pipeline, _ = build_client(signing_key)
+
+    def boom(**kw):
+        raise GpuUnavailableError("MODEL_NOT_LOADED")
+    pipeline.generate = boom
+    body = gen_body()
+    with client:
+        r = client.post("/generate", content=body, headers={
+            "content-type": "application/json", "x-cineforge-async": "1",
+            "authorization": f"Bearer {mint.token(body, authz=cineforge_authz())}"})
+        done = _poll(client, mint, r.json()["taskId"])
+    assert done.json() == {"status": "error", "httpStatus": 503, "detail": {"error": "MODEL_NOT_LOADED"}}
+
+
+def test_async_generate_is_still_gated_and_polls_need_a_token(signing_key, mint):
+    client, pipeline, _ = build_client(signing_key)
+    body = gen_body()
+    with client:
+        # The submit is checked like any generate: a status token cannot start one.
+        r = client.post("/generate", content=body, headers={
+            "content-type": "application/json", "x-cineforge-async": "1",
+            "authorization": f"Bearer {mint.token(body, scope='status', authz=cineforge_authz())}"})
+        assert r.status_code == 403 and pipeline.calls == []
+        assert client.get("/generate/jobs/abc").status_code == 401
+        missing = client.get("/generate/jobs/abc", headers={"authorization": f"Bearer {mint.token(b'', scope='status')}"})
+    assert missing.status_code == 404 and missing.json()["detail"]["error"] == "UNKNOWN_TASK"
