@@ -46,6 +46,7 @@ describe("routing (DOS-51/52/88)", () => {
     expect(decisions.map((d) => [d.attempt, d.provider, d.outcome, d.errorCode])).toEqual([[0, "anthropic", "error", "REFUSED"], [1, "openai", "ok", null]]);
     expect(decisions[1]!.inputSha256).toMatch(/^[0-9a-f]{64}$/);
     expect(decisions[1]!.projectId).toBe("p1");
+    expect(decisions[0]!.summary).toBe("REFUSED: no"); // the provider's reason is kept on a failed attempt
   });
 
   it("with no fallback configured, an unavailable provider is reported, never substituted", async () => {

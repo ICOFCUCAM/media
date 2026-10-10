@@ -88,6 +88,6 @@ export interface DecisionRecord {
   projectId: string | null;
   /** Which route attempt this was (0 = first choice). */
   attempt: number;
-  /** The "why" in a sentence (≤ 500 chars), when the call could say it. */
+  /** The "why" in a sentence (≤ 500 chars), when the call could say it; on an error, the provider's message. */
   summary?: string | null;
 }
