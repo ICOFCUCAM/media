@@ -29,6 +29,7 @@ export const SetupId = id("setup");
 export const WardrobeId = id("wardrobe");
 export const FactId = id("fact");
 export const RelationshipId = id("rel");
+export const GoalId = id("goal");
 
 /** Who can know a fact: a character, or the audience (DirectorOS Part 1 §56–57). */
 export const AUDIENCE = "audience" as const;
@@ -157,6 +158,33 @@ export const RelationshipChange = z.object({
   becomes: text(120).describe("how they stand after this scene"),
 });
 
+/** What a character wants, and what it costs if they fail (Part 1 §92: film state holds goals). */
+export const Goal = z.object({
+  id: GoalId,
+  characterId: CharacterId,
+  want: text(200).describe("what the character is trying to get or do"),
+  stakes: text(200).describe("what they lose if they fail"),
+});
+
+export const GoalStatus = z.enum(["advanced", "blocked", "achieved", "abandoned"]);
+export const GoalChange = z.object({
+  goalId: GoalId,
+  status: GoalStatus.describe("achieved and abandoned end the goal; it cannot move after that"),
+});
+
+/**
+ * A deliberate audience-knowledge device (Part 1 §57): checked against who
+ * knows the fact at that scene.
+ *   dramatic_irony  the audience knows the fact; a character in the scene does not
+ *   misdirection    the audience is led away from a fact it learns in a later scene
+ *   surprise        the audience learns the fact in this scene, unprepared
+ */
+export const Device = z.object({
+  kind: z.enum(["dramatic_irony", "misdirection", "surprise"]),
+  factId: FactId,
+  note: text(200).describe("how the scene plays it"),
+});
+
 export const Thread = z.object({
   id: ThreadId,
   kind: z.enum(["plot", "subplot", "character_arc", "mystery", "relationship"]),
@@ -250,6 +278,8 @@ export const Scene = z.object({
   weather: opt(80, "the weather the scene shows (heavy rain, clear, fog, snow); null indoors when it cannot be seen"),
   reveals: z.array(Reveal).max(8).default([]),
   relationshipChanges: z.array(RelationshipChange).max(6).default([]),
+  goalChanges: z.array(GoalChange).max(6).default([]).describe("goals this scene moves forward, blocks, achieves or abandons"),
+  devices: z.array(Device).max(4).default([]).describe("dramatic irony, misdirection or surprise this scene plays on purpose"),
   deaths: z.array(CharacterId).max(8).default([]).describe("characters who die in this scene; they appear later only in flashbacks"),
   purpose: text(300).describe("what this scene does for the story"),
   summary: text(600).describe("what the audience sees"),
@@ -276,6 +306,7 @@ export const FilmPackage = z.object({
   props: z.array(Prop).max(20),
   facts: z.array(Fact).max(24).default([]),
   relationships: z.array(Relationship).max(24).default([]),
+  goals: z.array(Goal).max(16).default([]),
   acts: z.array(Act).min(1).max(5),
   threads: z.array(Thread).max(10),
   setups: z.array(Setup).max(12),
@@ -290,6 +321,8 @@ export type FilmLocation = z.infer<typeof Location>;
 export type FilmProp = z.infer<typeof Prop>;
 export type FilmFact = z.infer<typeof Fact>;
 export type FilmRelationship = z.infer<typeof Relationship>;
+export type FilmGoal = z.infer<typeof Goal>;
+export type FilmDevice = z.infer<typeof Device>;
 export type FilmSetup = z.infer<typeof Setup>;
 export type FilmThread = z.infer<typeof Thread>;
 export type SceneCharacterState = z.infer<typeof SceneState>;

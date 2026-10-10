@@ -20,7 +20,7 @@ const DIRECTOR_RULES = [
   "",
   "Rules:",
   "- Ids are stable and lowercase: char_<name>, loc_<name>, prop_<name>, scene_01, scene_02 …, wardrobe_<name>,",
-  "  thread_<name>, setup_<name>, fact_<name>, rel_<name>. Every reference must point at an id defined in the package.",
+  "  thread_<name>, setup_<name>, fact_<name>, rel_<name>, goal_<name>. Every reference must point at an id defined in the package.",
   "- Characters: canonical identity (face, hair, body, marks) that never drifts; wardrobe entries with ids;",
   "  each scene lists who is present, which wardrobe they wear, their emotion, visible physical state and",
   "  props they hold. Anyone who speaks in a scene must be listed in that scene.",
@@ -42,6 +42,11 @@ const DIRECTOR_RULES = [
   "- Story state: relationships between characters (how they stand at the start); a scene's relationshipChanges",
   "  say how a pair stands after it (one of them must be in the scene). deaths lists who dies in a scene (they",
   "  must be in it); after that they appear only in flashbacks.",
+  "- Goals: what each principal character wants and what failing costs them (goals); a scene's goalChanges",
+  "  say which goals it advances, blocks, achieves or abandons. Once achieved or abandoned a goal never moves again.",
+  "- Audience devices: when a scene plays dramatic irony (the audience knows a fact a character in the scene",
+  "  does not), misdirection (it leads the audience away from a fact revealed to them in a later scene) or a",
+  "  surprise (the audience learns a fact in this very scene, unprepared), list it in devices with that fact.",
   "- Shots: whole seconds, coverage chosen for the scene's purpose (establish, then move in for emotion,",
   "  reactions, inserts), never more shots or seconds than the constraints allow. Each shot may state its",
   "  composition, depthOfField (shallow, medium, deep) and focus (or a rack focus) when they matter.",
@@ -65,7 +70,8 @@ export const PROMPTS = {
     // v5 (W11): the plan request carries the production type, medium and animation style.
     // v6 (W12): character design for animation; CAST, SHOW BIBLE and PREVIOUSLY sections.
     // v7 (W20): story clock, weather, the full film bible, composition / depth of field / focus.
-    version: 7,
+    // v8 (W24): character goals and goal changes; deliberate audience devices.
+    version: 8,
     purpose: "One master call: brief → complete Film Production Package (Part 2 §85, §93).",
     system: DIRECTOR_RULES,
   },
@@ -155,6 +161,26 @@ export const PROMPTS = {
       "something outside these kinds) or it is ambiguous, set action to \"none\" and say in the reply what you can do",
       "instead or what you need to know. Never invent ids. Reply in one or two plain sentences, in the owner's",
       "language: what will change and where, or why nothing will.",
+    ].join("\n"),
+  },
+  cinemaDesign: {
+    id: "cinema.design",
+    version: 1,
+    purpose: "The Cinematographer (Part 1 §11, §26): redesign one scene's coverage to film grammar, from that scene's state only.",
+    system: [
+      "You are the Cinematographer of a film studio. You receive ONE scene of a planned film as data: its place, purpose,",
+      "beats, emotional arc and who is in it with their visible state, the world state that matters there (relationships,",
+      "goals, what the audience knows), the film's look, how the previous scene ended, its current shots and the grammar",
+      "problems found in them. Return the scene's shots again, redesigned so the problems are gone.",
+      "",
+      "Visual grammar: a scene in a new place opens on an establishing wide (EWS or WS) unless it continues the previous",
+      "action; then medium, close-up, reaction, insert, reverse and a wide release as the scene needs. Never three",
+      "identical sizes in a row; no jump from a wide straight to an extreme close-up (unless a smash cut). Keep one side",
+      "of the action line (A or B), cross only on a neutral shot; in a reverse the two screen directions oppose.",
+      "",
+      "Keep the story: the same action, subjects and emotional beats, in order. Keep the scene's length exactly: the",
+      "shots' durationSec must add up to the total you are given, each between 2 and the per-shot maximum, whole seconds,",
+      "and no more shots than allowed. Index shots from 0. Subjects are only the ids you are given.",
     ].join("\n"),
   },
   editorReview: {

@@ -34,6 +34,10 @@ export interface GeneratedImage {
   promptSha256: string;
   width: number;
   height: number;
+  /** Reference images the still was conditioned on (W24); 0 or absent = text only. */
+  referencesUsed?: number;
+  /** Why references that were asked for were not used. */
+  referenceGap?: string;
 }
 
 export interface ImageProvider {
@@ -41,9 +45,28 @@ export interface ImageProvider {
   readonly model: string | null;
   /** Whether a seed reproduces a still. */
   readonly seeds: boolean;
-  /** Generate a still from `prompt` and store it at `key`. */
-  generate(prompt: string, key: string, size: { width: number; height: number }, opts?: { seed?: number }): Promise<GeneratedImage>;
+  /** Whether it can condition a still on reference images (W24). */
+  readonly references?: boolean;
+  /** Generate a still from `prompt` and store it at `key` (conditioned on `referenceUrls` when it can). */
+  generate(prompt: string, key: string, size: { width: number; height: number }, opts?: ImageOptions): Promise<GeneratedImage>;
 }
+
+export interface ImageOptions {
+  seed?: number;
+  /** Readable URLs of reference images (identity, wardrobe, set, look), most important first. */
+  referenceUrls?: string[];
+}
+
+/** The aspect ratios multi-reference models take; the nearest to a size (pure). */
+const ASPECTS = ["21:9", "16:9", "4:3", "3:2", "1:1", "2:3", "3:4", "9:16", "9:21"] as const;
+export function nearestAspect(width: number, height: number): (typeof ASPECTS)[number] {
+  const r = width / height;
+  const ratio = (a: string) => { const [x, y] = a.split(":").map(Number); return x! / y!; };
+  return ASPECTS.reduce((best, a) => (Math.abs(Math.log(ratio(a) / r)) < Math.abs(Math.log(ratio(best) / r)) ? a : best), ASPECTS[0]);
+}
+
+/** Most reference images one still is conditioned on. */
+export const MAX_REFERENCE_IMAGES = 4;
 
 export interface ImageProviderStatus {
   id: string;
@@ -84,13 +107,16 @@ const KNOWN: Record<string, (env: Env, put: Put, fal?: FalImageDeps) => { status
       status: { id: "openai", configured, gated: null },
       provider: configured
         ? {
-            id: "openai-image", model, seeds: false,
-            async generate(prompt, key, size) {
+            id: "openai-image", model, seeds: false, references: false,
+            async generate(prompt, key, size, opts) {
               const { put, sha } = hashingPut(rawPut);
               const { image } = buildOpenAIProviders(env as never, (bytes, ct) => put(key, bytes, ct));
               if (!image) throw new Error("image provider unavailable");
               const out = await image.generate({ prompt, width: size.width, height: size.height });
-              return { key: out.imageKey, provider: "openai-image", model, seed: null, sha256: sha.get(key) ?? null, promptSha256: sha256Hex(prompt), width: out.width, height: out.height };
+              return {
+                key: out.imageKey, provider: "openai-image", model, seed: null, sha256: sha.get(key) ?? null, promptSha256: sha256Hex(prompt), width: out.width, height: out.height,
+                ...(opts?.referenceUrls?.length ? { referencesUsed: 0, referenceGap: "openai-image draws from text only" } : {}),
+              };
             },
           }
         : null,
@@ -103,18 +129,33 @@ const KNOWN: Record<string, (env: Env, put: Put, fal?: FalImageDeps) => { status
       status: { id: "fal", configured, gated: null },
       provider: configured
         ? {
-            id: "fal-image", model, seeds: true,
+            id: "fal-image", model, seeds: true, references: true,
             async generate(prompt, key, size, opts) {
               const d = deps ?? defaultFalDeps(env.FAL_KEY!);
               const seed = opts?.seed ?? Math.floor(Math.random() * 2 ** 31);
+              const refs = (opts?.referenceUrls ?? []).slice(0, MAX_REFERENCE_IMAGES);
+              const store = async (result: Record<string, unknown>, used: string, extra: Partial<GeneratedImage>) => {
+                const url = falFindUrl(result);
+                if (!url) throw new Error(`image model returned no image (${JSON.stringify(result).slice(0, 200)})`);
+                const res = await d.fetch(url);
+                if (!res.ok) throw new Error(`image download ${res.status}`);
+                if (!res.bytes.length) throw new Error("image model returned an empty image");
+                const stored = await rawPut(key, res.bytes, res.contentType);
+                return { key: stored, provider: "fal-image", model: used, seed, sha256: sha256Hex(res.bytes), promptSha256: sha256Hex(prompt), width: size.width, height: size.height, ...extra };
+              };
+              // Conditioned on the reference images (W24): who they are, what they wear, the set, the look.
+              let gap: string | undefined;
+              if (refs.length) {
+                const refModel = env.FAL_REFERENCE_IMAGE_MODEL ?? "fal-ai/flux-pro/kontext/multi";
+                try {
+                  const result = await d.run(refModel, { prompt, image_urls: refs, seed, num_images: 1, aspect_ratio: nearestAspect(size.width, size.height), output_format: "png" });
+                  return await store(result, refModel, { referencesUsed: refs.length });
+                } catch (e) {
+                  gap = `${refModel}: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300);
+                }
+              }
               const result = await d.run(model, { prompt, image_size: { width: size.width, height: size.height }, seed, num_images: 1, enable_safety_checker: true });
-              const url = falFindUrl(result);
-              if (!url) throw new Error(`image model returned no image (${JSON.stringify(result).slice(0, 200)})`);
-              const res = await d.fetch(url);
-              if (!res.ok) throw new Error(`image download ${res.status}`);
-              if (!res.bytes.length) throw new Error("image model returned an empty image");
-              const stored = await rawPut(key, res.bytes, res.contentType);
-              return { key: stored, provider: "fal-image", model, seed, sha256: sha256Hex(res.bytes), promptSha256: sha256Hex(prompt), width: size.width, height: size.height };
+              return store(result, model, refs.length ? { referencesUsed: 0, referenceGap: gap } : {});
             },
           }
         : null,
@@ -160,9 +201,12 @@ export function withFallback(providers: ImageProvider[]): ImageProvider {
     id: first!.id,
     model: first!.model,
     seeds: first!.seeds,
+    references: providers.some((p) => p.references),
     async generate(prompt, key, size, opts) {
       const failures: string[] = [];
-      for (const p of providers) {
+      // With reference images, the providers that can use them go first (W24).
+      const order = opts?.referenceUrls?.length ? [...providers.filter((p) => p.references), ...providers.filter((p) => !p.references)] : providers;
+      for (const p of order) {
         try {
           return await p.generate(prompt, key, size, opts);
         } catch (e) {

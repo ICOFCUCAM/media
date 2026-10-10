@@ -95,6 +95,15 @@ export interface RelationshipWorldState {
   changedIn: string | null;
 }
 
+export interface GoalWorldState {
+  goalId: string;
+  characterId: string;
+  want: string;
+  /** open until a scene moves it; achieved and abandoned are final. */
+  status: "open" | "advanced" | "blocked" | "achieved" | "abandoned";
+  changedIn: string | null;
+}
+
 export interface PropWorldState {
   propId: string;
   holderId: string | null;
@@ -110,6 +119,7 @@ export interface SceneWorld {
   characters: Record<string, CharacterWorldState>;
   props: Record<string, PropWorldState>;
   relationships: Record<string, RelationshipWorldState>;
+  goals: Record<string, GoalWorldState>;
   audienceKnows: string[];
 }
 
@@ -169,6 +179,9 @@ export function materializeWorld(pkg: FilmPackage): WorldTimeline {
   const rels = new Map<string, RelationshipWorldState>(
     pkg.relationships.map((r) => [r.id, { relationshipId: r.id, a: r.a, b: r.b, state: r.initial, changedIn: null }]),
   );
+  const goals = new Map<string, GoalWorldState>(
+    pkg.goals.map((g) => [g.id, { goalId: g.id, characterId: g.characterId, want: g.want, status: "open", changedIn: null }]),
+  );
   const died = new Map<string, string>();
   const props = new Map<string, PropWorldState>(pkg.props.map((p) => [p.id, { propId: p.id, holderId: null, locationId: null }]));
   // Weather carries forward through the same story day of the present-time story (W20).
@@ -204,6 +217,10 @@ export function materializeWorld(pkg: FilmPackage): WorldTimeline {
       const r = rels.get(ch.relationshipId);
       if (r) rels.set(ch.relationshipId, { ...r, state: ch.becomes, changedIn: sc.id });
     }
+    for (const ch of sc.goalChanges) {
+      const g = goals.get(ch.goalId);
+      if (g && g.status !== "achieved" && g.status !== "abandoned") goals.set(ch.goalId, { ...g, status: ch.status, changedIn: sc.id });
+    }
     const flashback = sc.storyTime?.flashback ?? false;
     // Alive during this scene: not dead from an earlier present-time scene (a flashback shows the past).
     const characters = Object.fromEntries(
@@ -228,6 +245,7 @@ export function materializeWorld(pkg: FilmPackage): WorldTimeline {
       characters,
       props: Object.fromEntries([...props].map(([id, st]) => [id, { ...st }])),
       relationships: Object.fromEntries([...rels].map(([id, r]) => [id, { ...r }])),
+      goals: Object.fromEntries([...goals].map(([id, g]) => [id, { ...g }])),
       audienceKnows: sorted(knowledge.get(AUDIENCE) ?? new Set()),
     };
   });

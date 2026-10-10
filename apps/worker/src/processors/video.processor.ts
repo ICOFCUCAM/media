@@ -31,7 +31,7 @@ import {
 import { buildClusterRegistry, MODEL_VERSIONS, type JobContext, type ShotRequest, type VideoModelAdapter } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
 import { checkContinuity, compileFor, compileGeneration, endStateOf, FilmPackage, reviewFrame, type GenerationContext } from "@cineforge/movie";
-import { candidateSeed, imageProvider } from "../images/providers";
+import { candidateSeed, imageProvider, MAX_REFERENCE_IMAGES } from "../images/providers";
 import { meter, meteredImages } from "../billing";
 import { productionOf, renderStyleFor } from "../director/production";
 import { isStillMotion } from "@cineforge/shared";
@@ -145,6 +145,8 @@ async function resolveContinuity(
   shot: ShotWithScene,
 ): Promise<{
   preamble: string; wardrobeKeys: string[]; identityKeys: string[]; locationKeys: string[]; propKeys: string[]; previousEndFrame: string | null;
+  /** The film's look and the scene's establishing frame (W24). */
+  styleKeys: string[]; cameraKeys: string[];
   loraKeys: string[]; loraSha256: Record<string, string>; gaps: Degradation[];
   /** What canon says this shot shows (Film IR projects) — the Visual Reviewer checks the clip against it. */
   canonContext: GenerationContext | null;
@@ -223,6 +225,7 @@ async function resolveContinuity(
   // Location and prop reference stills (W17; §34–35, migration 0052).
   let locationKeys: string[] = [];
   let propKeys: string[] = [];
+  let styleKeys: string[] = [];
   if (pkg && refs.result && process.env.WORLD_REFERENCES !== "0") {
     const [w, h] = outputDimensions(shot.scene.project.resolution, shot.scene.project.aspectRatio);
     const world = await worldReferenceKeys(prisma as unknown as WorldRefDb, worldImageGenerator(shot.scene.projectId, { width: w, height: h }), shot.scene.projectId, shot.id,
@@ -230,11 +233,24 @@ async function resolveContinuity(
     gaps.push(...world.gaps);
     locationKeys = world.location;
     propKeys = world.props;
+    styleKeys = world.style;
   }
   return {
-    preamble, wardrobeKeys, identityKeys: referenceImageKeys, locationKeys, propKeys, previousEndFrame: pkg ? await previousEndFrame(shot, pkg) : null,
+    preamble, wardrobeKeys, identityKeys: referenceImageKeys, locationKeys, propKeys, styleKeys, cameraKeys: await establishingFrame(shot),
+    previousEndFrame: pkg ? await previousEndFrame(shot, pkg) : null,
     loraKeys, loraSha256, gaps, canonContext: refs.result?.correctedGenerationContext ?? null,
   };
+}
+
+/**
+ * Camera reference (W24; Part 1 §35): the scene's establishing frame — the
+ * still its first shot was drawn from — so later angles in the scene keep the
+ * set's geography. None for the first shot itself or before it is drawn.
+ */
+async function establishingFrame(shot: ShotWithScene): Promise<string[]> {
+  if (shot.index === 0) return [];
+  const first = await prisma.shot.findFirst({ where: { sceneId: shot.sceneId, index: 0 }, select: { seedImageKey: true } });
+  return first?.seedImageKey && !PREVIEW_SEED.test(first.seedImageKey) ? [first.seedImageKey] : [];
 }
 
 /**
@@ -357,7 +373,12 @@ const PREVIEW_SEED = /^(generated:|local:|ref:)/;
  *     shot prompt, upload it, and persist the key;
  *  3. otherwise fall back to text-to-video (no seed).
  */
-async function resolveSeedKey(shot: ShotWithScene): Promise<string | undefined> {
+/** What a seed still is conditioned on (W24): who is in it, what they wear, the set, the look — most important first. */
+function seedReferences(c: { identityKeys: string[]; wardrobeKeys: string[]; cameraKeys: string[]; locationKeys: string[]; styleKeys: string[] }): string[] {
+  return [...new Set([...c.wardrobeKeys, ...c.identityKeys, ...c.cameraKeys, ...c.locationKeys, ...c.styleKeys])].slice(0, MAX_REFERENCE_IMAGES);
+}
+
+async function resolveSeedKey(shot: ShotWithScene, references: string[] = [], gaps: Degradation[] = []): Promise<string | undefined> {
   if (shot.source !== "image") return undefined;
   if (shot.seedImageKey && !PREVIEW_SEED.test(shot.seedImageKey)) return shot.seedImageKey; // uploaded
   const { provider: found, reason } = imageProvider((k, b, ct) => storage.putBytes(k, b, ct));
@@ -369,8 +390,15 @@ async function resolveSeedKey(shot: ShotWithScene): Promise<string | undefined> 
   const n = seedCandidates();
   const base = `projects/${shot.scene.projectId}/seeds/${shot.id}`;
   const keys = n === 1 ? [`${base}.png`] : Array.from({ length: n }, (_, i) => `${base}-c${i + 1}.png`);
+  // Reference images as readable URLs (W24): the still is drawn from them, not from text alone.
+  const referenceUrls = await Promise.all(references.map((k) => storage.signedGetUrl(k, 3600))).catch(() => [] as string[]);
   // Each candidate has its own stable seed (W17): with a seeded provider the same shot draws the same candidates again.
-  const images = await Promise.all(keys.map((k, i) => provider.generate(prompt, k, { width: w, height: h }, { seed: candidateSeed(shot.id, i) })));
+  const images = await Promise.all(keys.map((k, i) => provider.generate(prompt, k, { width: w, height: h }, { seed: candidateSeed(shot.id, i), referenceUrls })));
+  if (referenceUrls.length && !images.some((im) => im.referencesUsed)) {
+    gaps.push(degradation("REFERENCE_STILL_UNCONDITIONED", "shot", "The seed still was drawn from text only; its reference images could not be used.", {
+      refId: shot.id, detail: { references: referenceUrls.length, reason: images[0]?.referenceGap ?? null },
+    }));
+  }
   const stored = images.map((im) => im.key);
   let chosen = stored[0]!;
   let chosenIndex = 0;
@@ -540,9 +568,14 @@ export const videoWorker = new Worker<VideoJob>(
     // Without a still the shot runs text-to-video — recorded as a degradation
     // the user sees (DOS-75), never a silent switch.
     const gaps: Degradation[] = [];
+    // Continuity: inherit prior scenes into the prompt + reuse the same character
+    // reference frames so identity is locked pixel-level (docs/28). Resolved
+    // before the seed still, which is drawn from these references (W24).
+    const continuity = await resolveContinuity(shot);
+    const { preamble, wardrobeKeys, identityKeys, locationKeys, propKeys, styleKeys, cameraKeys, previousEndFrame: endFrame, loraKeys, loraSha256, gaps: refGaps, canonContext } = continuity;
     let seedKey: string | undefined;
     try {
-      seedKey = await resolveSeedKey(shot);
+      seedKey = await resolveSeedKey(shot, seedReferences(continuity), gaps);
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
       // A storybook page or comic panel IS the shot: without it there is nothing to move across.
@@ -551,12 +584,9 @@ export const videoWorker = new Worker<VideoJob>(
         refId: shotId, detail: { reason },
       }));
     }
-    // Continuity: inherit prior scenes into the prompt + reuse the same character
-    // reference frames so identity is locked pixel-level (docs/28).
-    const { preamble, wardrobeKeys, identityKeys, locationKeys, propKeys, previousEndFrame: endFrame, loraKeys, loraSha256, gaps: refGaps, canonContext } = await resolveContinuity(shot);
     gaps.push(...refGaps);
-    // Reference pack (W6): seed → previous end frame → wardrobe → identity, capped.
-    const pack = assembleReferencePack({ seed: seedKey, previousEndFrame: endFrame, wardrobe: wardrobeKeys, identity: identityKeys, location: locationKeys, props: propKeys });
+    // Reference pack (W6, W24): seed → previous end frame → wardrobe → identity → camera → location → style → props, capped.
+    const pack = assembleReferencePack({ seed: seedKey, previousEndFrame: endFrame, wardrobe: wardrobeKeys, identity: identityKeys, camera: cameraKeys, location: locationKeys, style: styleKeys, props: propKeys });
     const request = buildShotRequest(shot, seedKey, preamble, pack.keys, loraKeys, loraSha256);
     // Job authorization reads the job's state fresh, immediately before dispatch.
     if (drawn) {

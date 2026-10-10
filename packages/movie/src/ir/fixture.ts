@@ -70,6 +70,7 @@ export function fixturePackage(): FilmPackage {
     ],
     props: [{ id: "prop_key", name: "Sealed key", description: "brass key in a wax-sealed pouch", ownerId: "char_maya" }],
     relationships: [{ id: "rel_maya_ewan", a: "char_maya", b: "char_harbourmaster", initial: "wary strangers" }],
+    goals: [{ id: "goal_deliver_key", characterId: "char_maya", want: "deliver the key before the bridge swings", stakes: "the vault stays shut and her brother is lost" }],
     facts: [
       { id: "fact_bridge_swings", statement: "the swing bridge opens at high tide", knownAtStart: ["char_harbourmaster"] },
       { id: "fact_key_opens_vault", statement: "the key opens the harbour vault", knownAtStart: ["char_maya", "audience"] },
@@ -94,6 +95,8 @@ export function fixturePackage(): FilmPackage {
       // Ewan tells Maya (and the audience) about the bridge in scene one.
       reveals: i ? [] : [{ factId: "fact_bridge_swings", to: ["char_maya", "audience"] }],
       relationshipChanges: i ? [{ relationshipId: "rel_maya_ewan", becomes: "trust" }] : [],
+      goalChanges: [{ goalId: "goal_deliver_key", status: i ? ("achieved" as const) : ("advanced" as const) }],
+      devices: [],
       deaths: [],
       purpose: i ? "Maya crosses as the bridge swings" : "Maya receives the key and the deadline",
       summary: "Rain sheets across the quay as Maya runs.",

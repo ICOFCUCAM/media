@@ -7,13 +7,15 @@
  *
  *   schema      — shape, types, ids, lengths (zod)
  *   references  — every id points at something defined in the package
- *   story       — scene order, acts, threads, setups planted before payoff
+ *   story       — scene order, acts, threads, setups planted before payoff,
+ *                 a goal moves no more once achieved or abandoned (W24)
  *   canon       — the world holds together (W3): story time only runs backwards
  *                 in flashbacks, continuous action keeps clothes and injuries,
  *                 one holder per prop, the dead stay dead (outside flashbacks),
  *                 nobody says what they cannot know,
  *                 setups are established before they pay off, mysteries are
- *                 answered for the audience
+ *                 answered for the audience, and every declared dramatic
+ *                 irony, misdirection or surprise holds (W24)
  *   cinema      — film grammar the plan must keep: no jump across the
  *                 180° line, reverses whose eyelines meet (W4)
  *   production  — scene count, shots per scene, shot length vs the runtime's
@@ -117,6 +119,7 @@ function references(pkg: FilmPackage): Issue[] {
   out.push(...dupes(pkg.setups, (x) => x.id, "references", "setups"));
   out.push(...dupes(pkg.facts, (x) => x.id, "references", "facts"));
   out.push(...dupes(pkg.relationships, (x) => x.id, "references", "relationships"));
+  out.push(...dupes(pkg.goals, (x) => x.id, "references", "goals"));
 
   const chars = new Map(pkg.cast.map((c) => [c.id, c]));
   const locs = new Set(pkg.locations.map((l) => l.id));
@@ -132,6 +135,8 @@ function references(pkg: FilmPackage): Issue[] {
     if (!chars.has(r.b)) R(`relationships[${i}].b`, `${r.b} is not in the cast`);
     if (r.a === r.b) out.push({ stage: "references", code: "RELATIONSHIP_WITH_SELF", path: `relationships[${i}]`, message: `${r.id} relates ${r.a} to themself` });
   });
+  const goalIds = new Set(pkg.goals.map((g) => g.id));
+  pkg.goals.forEach((g, i) => !chars.has(g.characterId) && R(`goals[${i}].characterId`, `${g.characterId} is not in the cast`));
   pkg.facts.forEach((f, i) => f.knownAtStart.forEach((w, j) => !knower(w) && R(`facts[${i}].knownAtStart[${j}]`, `${w} is not in the cast`)));
   pkg.threads.forEach((t, i) => t.answerFactId && fact(t.answerFactId, `threads[${i}].answerFactId`));
   pkg.setups.forEach((s, i) => {
@@ -185,6 +190,8 @@ function references(pkg: FilmPackage): Issue[] {
           message: `${c.relationshipId} changes in ${sc.id} but neither ${r.a} nor ${r.b} is in the scene` });
       }
     });
+    sc.goalChanges.forEach((g, j) => !goalIds.has(g.goalId) && R(`${p}.goalChanges[${j}].goalId`, `goal ${g.goalId} does not exist`));
+    sc.devices.forEach((d, j) => fact(d.factId, `${p}.devices[${j}].factId`));
     sc.dialogue.forEach((d, j) => {
       d.references.forEach((f, k) => fact(f, `${p}.dialogue[${j}].references[${k}]`));
       if (!chars.has(d.characterId)) R(`${p}.dialogue[${j}].characterId`, `character ${d.characterId} is not in the cast`);
@@ -227,6 +234,13 @@ function story(pkg: FilmPackage): Issue[] {
     if (sc.act < lastAct) S("ACT_REGRESSION", `scenes[${i}].act`, `${sc.id} returns to act ${sc.act} after act ${lastAct}`);
     lastAct = Math.max(lastAct, sc.act);
   });
+  // A goal ends once (Part 1 §92): after it is achieved or abandoned, no scene moves it.
+  const ended = new Map<string, string>();
+  pkg.scenes.forEach((sc, i) => sc.goalChanges.forEach((g, j) => {
+    const at = ended.get(g.goalId);
+    if (at) S("GOAL_AFTER_END", `scenes[${i}].goalChanges[${j}]`, `${g.goalId} ended in ${at} but ${sc.id} marks it ${g.status}`);
+    else if (g.status === "achieved" || g.status === "abandoned") ended.set(g.goalId, sc.id);
+  }));
   pkg.setups.forEach((s, i) => {
     const a = order.get(s.plantedIn);
     const b = order.get(s.paidOffIn);
@@ -333,6 +347,31 @@ function canon(pkg: FilmPackage): Issue[] {
           `${d.characterId} relies on ${f} but has not learned it by ${sc.id}`);
       }
     }));
+  });
+
+  // Audience devices (Part 1 §57): each declared device must hold for who knows the fact.
+  const audienceBefore = new Map<string, Set<string>>();
+  pkg.scenes.forEach((sc, i) => audienceBefore.set(sc.id, i ? audienceBy.get(pkg.scenes[i - 1]!.id)! : initialKnowledge(pkg).get(AUDIENCE)!));
+  const kd = initialKnowledge(pkg);
+  pkg.scenes.forEach((sc, i) => {
+    applyReveals(kd, sc);
+    sc.devices.forEach((d, j) => {
+      const path = `scenes[${i}].devices[${j}]`;
+      const audienceNow = audienceBy.get(sc.id)!;
+      if (d.kind === "dramatic_irony") {
+        const unaware = sc.characters.filter((st) => !kd.get(st.characterId)?.has(d.factId));
+        if (!audienceNow.has(d.factId) || !unaware.length) {
+          C("DEVICE_NO_IRONY", path, `dramatic irony on ${d.factId} in ${sc.id} needs the audience to know it and a character in the scene not to`);
+        }
+      } else if (d.kind === "misdirection") {
+        const laterReveal = pkg.scenes.slice(i + 1).some((x) => audienceBy.get(x.id)!.has(d.factId));
+        if (audienceNow.has(d.factId) || !laterReveal) {
+          C("DEVICE_MISDIRECTION_UNPAID", path, `misdirection on ${d.factId} in ${sc.id} needs the audience not to know it yet and to learn it later`);
+        }
+      } else if (audienceBefore.get(sc.id)!.has(d.factId) || !audienceNow.has(d.factId)) {
+        C("DEVICE_SURPRISE_NOT_REVEALED", path, `a surprise on ${d.factId} in ${sc.id} needs the audience to learn it here, not before`);
+      }
+    });
   });
 
   // Foreshadowing (Part 1 §58): plant → development → payoff, established for the audience.
