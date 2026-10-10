@@ -179,6 +179,53 @@ class RuntimeIdentity:
         }
 
 
+class GenerateJobs:
+    """Background /generate runs for async callers (in memory; lost on restart).
+
+    Each run executes on its own thread; the pipeline's inference lock still
+    serializes the GPU. Finished runs are kept for an hour so a poll that
+    arrives late still gets the result.
+    """
+
+    TTL_SEC = 3600
+
+    def __init__(self, run: Callable[["GenerateInput"], "GenerateOutput"]):
+        self._run = run
+        self._lock = threading.Lock()
+        self._jobs: dict[str, dict] = {}
+
+    def submit(self, inp: "GenerateInput") -> str:
+        task_id = uuid.uuid4().hex
+        with self._lock:
+            self._prune()
+            self._jobs[task_id] = {"status": "running", "started": time.time()}
+        threading.Thread(target=self._work, args=(task_id, inp), name=f"generate-{task_id[:8]}", daemon=True).start()
+        return task_id
+
+    def get(self, task_id: str) -> dict | None:
+        with self._lock:
+            job = self._jobs.get(task_id)
+            return None if job is None else {k: v for k, v in job.items() if k not in ("started", "finished")}
+
+    def _work(self, task_id: str, inp: "GenerateInput") -> None:
+        try:
+            out = self._run(inp)
+            done = {"status": "done", "result": out.model_dump(mode="json")}
+        except HTTPException as e:
+            done = {"status": "error", "httpStatus": e.status_code, "detail": e.detail}
+        except Exception as e:  # noqa: BLE001 — reported to the caller, never swallowed
+            log.exception('{"event":"generate.async_failed","sub":%r}', inp.jobId)
+            done = {"status": "error", "httpStatus": 500, "detail": {"error": "GENERATION_FAILED", "type": type(e).__name__}}
+        with self._lock:
+            if task_id in self._jobs:
+                self._jobs[task_id] = {**done, "started": self._jobs[task_id]["started"], "finished": time.time()}
+
+    def _prune(self) -> None:
+        cutoff = time.time() - self.TTL_SEC
+        for k in [k for k, j in self._jobs.items() if j.get("finished", time.time()) < cutoff]:
+            del self._jobs[k]
+
+
 def create_app(
     *,
     config: GatewayConfig | None = None,
@@ -260,6 +307,8 @@ def create_app(
             **pipeline.capabilities(),
             "deploymentId": config.deployment_id or None,
             "gatewayMode": config.mode,
+            # POST /generate with `x-cineforge-async: 1` returns a task id; poll GET /generate/jobs/{id}.
+            "asyncGenerate": True,
             "manifest": identity.manifest(),
             # Status information only. The authoritative running-image digest
             # comes from the provider's control plane, never from the pod.
@@ -303,8 +352,17 @@ def create_app(
                 ],
             ),
         )
+        # A shot can take longer than the edge proxy in front of the pod allows
+        # one request to stay open (~100 s behind RunPod's proxy → HTTP 524).
+        # An async caller gets a task id at once and polls for the result.
+        if request.headers.get("x-cineforge-async") == "1":
+            return JSONResponse(status_code=202, content={"taskId": jobs.submit(inp)})
+        return await run_in_threadpool(_generate_checked, inp)
+
+    def _generate_checked(inp: GenerateInput) -> GenerateOutput:
+        """_generate with its known failures as the HTTP errors Cineforge reads."""
         try:
-            return await run_in_threadpool(_generate, inp)
+            return _generate(inp)
         except GpuUnavailableError as e:
             log.warning('{"event":"gpu.unavailable","code":%r,"sub":%r}', e.code, inp.jobId)
             raise HTTPException(status_code=503, detail={"error": e.code}) from None
@@ -313,6 +371,20 @@ def create_app(
         except LoraIntegrityError as e:
             log.warning('{"event":"gateway.lora_integrity","decision":"reject","code":%r,"sub":%r}', e.code, inp.jobId)
             raise HTTPException(status_code=409, detail={"error": e.code}) from None
+
+    jobs = GenerateJobs(_generate_checked)
+    app.state.generate_jobs = jobs
+
+    @app.get("/generate/jobs/{task_id}")
+    async def generate_job(task_id: str, request: Request) -> JSONResponse:
+        # Every poll carries its own status-scope token; the one-time
+        # video:run grant was spent on the submit.
+        await guard(request, RequestBinding(scope="status"))
+        state = jobs.get(task_id)
+        if state is None:
+            # Unknown, expired, or lost to a restart: the caller fails the shot.
+            raise HTTPException(status_code=404, detail={"error": "UNKNOWN_TASK"})
+        return JSONResponse(status_code=200, content=state)
 
     def _generate(inp: GenerateInput) -> GenerateOutput:
         seed = inp.seed if inp.seed is not None else uuid.uuid4().int % (2**31)
@@ -423,3 +495,4 @@ def create_app(
 
 
 app = create_app()
+
