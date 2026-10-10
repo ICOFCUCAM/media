@@ -13,6 +13,7 @@ import { NotifyToggle } from "./cf/NotifyToggle";
 import { ClockIcon, ConfigCard, EngineIcon, FormatIcon } from "./cf/ConfigCard";
 import { offeredFormats, useCapabilities, videoAvailable } from "../lib/truth";
 import { ANIMATION_STYLES, SERIES_MAX_EPISODES, STYLE_PROFILES, type AnimationStyle, type ProductionKind, type ProductionSpec } from "../lib/production-types";
+import { takeHandoff, type AdsHandoff } from "../lib/ads-live";
 
 const STAGE_LABEL: Record<ProjectStatus, string> = {
   PLANNING: "Writing",
@@ -79,8 +80,10 @@ export function CreateStudio(props: CreateStudioProps) {
   // What is being made (W11; Part 5): live action, or an animation style.
   const [look, setLook] = useState<AnimationStyle | "live_action">("live_action");
   const { state, running, run, reset } = useCreateRun();
+  // From the Ads Studio (docs/47): the page's source facts and the brand files, recorded on the advert.
+  const [ads, setAds] = useState<AdsHandoff | null>(null);
 
-  // Hand-off from another studio (Ads Studio → /create/advert?brief=&seconds=&aspect=):
+  // Hand-off from another studio (Ads Studio → /create/advert?brief=&seconds=&aspect=&handoff=):
   // start from that brief, length and format instead of the defaults.
   const handoffRead = useRef(false);
   useEffect(() => {
@@ -94,7 +97,8 @@ export function CreateStudio(props: CreateStudioProps) {
     const a = q.get("aspect");
     const p = a ? props.platforms?.find((x) => x.aspect === a) : undefined;
     if (p) setPlatform(p.id);
-  }, [props.durations, props.platforms]);
+    if (props.kind === "advert") setAds(takeHandoff(q.get("handoff")));
+  }, [props.durations, props.platforms, props.kind]);
   const { profile } = useAuth();
 
   // Admins may pick any model; otherwise the user's tier decides. Profile loads
@@ -145,7 +149,7 @@ export function CreateStudio(props: CreateStudioProps) {
       // One pass plans at most SERIES_MAX_EPISODES (one act each); longer shows go episode by episode.
       episodes: kind === "series" ? Math.min(SERIES_MAX_EPISODES, Math.max(1, Math.round(effSeconds / 600))) : null,
     };
-    void run({ prompt, modelId, targetSeconds: effSeconds, resolution: effectiveRes, aspectRatio: aspect, passMode: review ? "three" : "single", production });
+    void run({ prompt, modelId, targetSeconds: effSeconds, resolution: effectiveRes, aspectRatio: aspect, passMode: review ? "three" : "single", production, ads: kind === "advert" ? ads : null });
     // Phones: the preview sits under the options — bring it into view.
     if (window.innerWidth < 1024) document.getElementById("studio-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -180,6 +184,21 @@ export function CreateStudio(props: CreateStudioProps) {
           className="cf-input min-h-[92px] resize-y leading-[1.6]"
         />
       </Field>
+
+      {ads && (ads.source || ads.brandFiles.length > 0) && (
+        <Field label="From the Ads Studio">
+          <p className="text-[12px] leading-relaxed text-cf-muted">
+            {ads.source
+              ? `${ads.source.facts.length} source fact${ads.source.facts.length === 1 ? "" : "s"} quoted from ${ads.source.url} — the Director plans from them and flags any line that claims more.`
+              : "No website was analysed — the Director is told to make no specific claims."}
+            {ads.brandFiles.length > 0 &&
+              ` ${[
+                ads.brandFiles.some((f) => f.role === "logo") ? "your logo (on the closing card, as supplied)" : null,
+                ads.brandFiles.some((f) => f.role === "product") ? `${ads.brandFiles.filter((f) => f.role === "product").length} product photo(s) (references for the shots that show the product)` : null,
+              ].filter(Boolean).join(" and ")} go with it.`}
+          </p>
+        </Field>
+      )}
 
       {props.platforms && (
         <Field label="Placement" value={props.platforms.find((p) => p.id === platform)?.aspect}>

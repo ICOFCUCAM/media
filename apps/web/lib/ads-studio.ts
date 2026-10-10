@@ -5,8 +5,40 @@
  *
  * The page can hand its brief to the real advert pipeline (/create/advert):
  * `handoffHref` turns the studio state into a Director-ready brief plus the
- * duration and format, which the Advert studio picks up from the URL.
+ * duration and format, which the Advert studio picks up from the URL. The
+ * website's source facts (A2) and the uploaded brand files (A3) travel with it
+ * as an `AdsHandoff` in this tab's session storage (lib/ads-live.ts) and are
+ * recorded on the advert project (projects.ad_source, brand_assets; 0060).
  */
+
+/** One fact read from the advertiser's page, with the passage that supports it (A2). Mirrors @cineforge/movie SourceFact. */
+export interface SiteFact {
+  kind: "product" | "benefit" | "audience" | "call_to_action";
+  statement: string;
+  quote: string;
+}
+
+/** What "Analyse" returned (app/api/ads/analyse). */
+export interface SiteAnalysis {
+  url: string;
+  title: string | null;
+  brand: string | null;
+  facts: SiteFact[];
+  /** Facts the model proposed whose quote was not on the page. */
+  dropped: number;
+  fetchedAt: string;
+}
+
+export const FACT_LABEL: Record<SiteFact["kind"], string> = { product: "Product", benefit: "Benefit", audience: "Audience", call_to_action: "Call to action" };
+
+/** How an uploaded file is used: logo → the closing card as supplied; product → references for product shots; other → this browser only. */
+export type BrandRole = "logo" | "product" | "other";
+export const BRAND_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+/** The role a file gets when it is added (the owner can change it). */
+export function defaultBrandRole(f: { name: string; type: string }, hasLogo: boolean): BrandRole {
+  if (!BRAND_IMAGE_TYPES.includes(f.type)) return "other";
+  return !hasLogo && /logo|brand|mark/i.test(f.name) ? "logo" : "product";
+}
 
 export interface AdScene {
   title: string;
@@ -44,8 +76,10 @@ export interface AdStudioState {
   assets: string;
   voice: string;
   formats: string[];
-  uploaded: { name: string; size: number; type: string }[];
+  uploaded: { name: string; size: number; type: string; role?: BrandRole }[];
   scenes: AdScene[];
+  /** The analysed page (A2), when "Analyse" ran. */
+  analysis?: SiteAnalysis | null;
 }
 
 /** The production brief the design exports (same shape as the original getPlan()). */
@@ -59,11 +93,12 @@ export function productionPlan(s: AdStudioState) {
     assetStrategy: s.assets,
     voice: s.voice,
     formats: s.formats,
-    uploadedAssets: s.uploaded.map((a) => ({ name: a.name, type: a.type, sizeBytes: a.size })),
+    uploadedAssets: s.uploaded.map((a) => ({ name: a.name, type: a.type, sizeBytes: a.size, use: a.role ?? "other" })),
+    sourceFacts: s.analysis ? { url: s.analysis.url, facts: s.analysis.facts } : null,
     scenes: s.scenes.map((sc, i) => ({
       scene: i + 1, title: sc.title, targetDuration: sc.duration, visualDirection: sc.visual, onScreenMessage: sc.message, userAsset: sc.asset ?? null,
     })),
-    status: "FRONTEND_CONCEPT_ONLY — website analysis, AI generation, and rendering are not connected.",
+    status: "PLAN_PREVIEW — this brief is planned and generated only after \"Produce this ad in CineForge\".",
   };
 }
 
@@ -74,6 +109,9 @@ export function directorBrief(s: AdStudioState): string {
   const lines = [
     `A ${parseInt(s.duration, 10) || 30}-second advertisement. ${s.brief.trim() || "Create a persuasive, source-grounded advertisement."}`,
     s.url.trim() ? `Product / website: ${s.url.trim()} (use only claims the brand can support).` : null,
+    ...(s.analysis?.facts.length
+      ? ["Source facts from the page (claim nothing beyond them):", ...s.analysis.facts.map((f) => `- ${FACT_LABEL[f.kind]}: ${f.statement} (page: "${f.quote}")`)]
+      : []),
     `Creative direction: ${s.style}. Production approach: ${s.assets}. Voice-over: ${s.voice}.`,
     "Scene plan:",
     ...s.scenes.map((sc, i) => `${i + 1}. ${sc.title} (${sc.duration}) — ${sc.visual} On screen: "${sc.message}"`),
@@ -82,12 +120,48 @@ export function directorBrief(s: AdStudioState): string {
   return lines.join("\n").slice(0, 4000);
 }
 
-/** Link into the real Advert studio with this brief, length and first selected format. */
-export function handoffHref(s: AdStudioState): string {
+/** Link into the real Advert studio with this brief, length and first selected format (and the stashed facts and files, by id). */
+export function handoffHref(s: AdStudioState, handoffId?: string): string {
   const seconds = parseInt(s.duration, 10) || 30;
   const aspect = ASPECT[s.formats[0] ?? ""] ?? "16:9";
-  const q = new URLSearchParams({ brief: directorBrief(s), seconds: String(seconds), aspect });
+  const q = new URLSearchParams({ brief: directorBrief(s), seconds: String(seconds), aspect, ...(handoffId ? { handoff: handoffId } : {}) });
   return `/create/advert?${q.toString()}`;
+}
+
+/* ── A5: a scene edit on the live advert, as Director instructions ─────── */
+
+export interface SceneDraft {
+  visual: string;
+  line: string;
+  seconds: number;
+}
+
+/**
+ * The owner's scene edit as Director instructions (pure). The Director makes at
+ * most one change per instruction, so the look and words of the scene go in one
+ * (a scene revision) and its length in another (the Editor proposes the cut).
+ * Unchanged fields are not sent.
+ */
+export function sceneInstructions(scene: { index: number; heading: string; summary: string; durationSec: number; firstLine: string | null; narration: string | null }, draft: SceneDraft): string[] {
+  const n = scene.index + 1;
+  const out: string[] = [];
+  const visual = draft.visual.trim();
+  const line = draft.line.trim();
+  const lineBefore = (scene.firstLine ?? scene.narration ?? "").trim();
+  const visualChanged = visual && visual !== scene.summary.trim();
+  const lineChanged = line && line !== lineBefore;
+  if (visualChanged || lineChanged) {
+    out.push([
+      `Revise scene ${n} ("${scene.heading}")${visualChanged ? `: ${visual}` : "."}`,
+      lineChanged ? ` Its spoken line should become: "${line}"${/[.!?]$/.test(line) ? "" : "."}` : "",
+      " Keep who is in it and what happens; keep every claim to the source facts.",
+    ].join("").slice(0, 2000));
+  }
+  const sec = Math.round(draft.seconds);
+  if (Number.isFinite(sec) && sec >= 2 && sec !== Math.round(scene.durationSec)) {
+    out.push(`Make scene ${n} ("${scene.heading}") ${sec} seconds long (it runs ${Math.round(scene.durationSec)} s now).`);
+  }
+  return out;
 }
 
 /**

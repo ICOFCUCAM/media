@@ -47,8 +47,40 @@ export function summarizePlan(o: unknown): string | null {
  * trimmed, and a one-scene production keeps no setups (a payoff needs a later
  * scene, so any setup would fail PAYOFF_BEFORE_SETUP; nothing references setups).
  */
+/**
+ * Camera words a model uses for the angle that mean one of ours (pure). A
+ * "drone" or "aerial" angle looks down from above; a "worm's-eye" angle is low.
+ * Anything not listed is left for the validator.
+ */
+const ANGLE_ALIASES: Record<string, string> = {
+  drone: "overhead", aerial: "overhead", birds_eye: "overhead", "bird's_eye": "overhead", top_down: "overhead", top: "overhead",
+  worms_eye: "low", "worm's_eye": "low", low_angle: "low", high_angle: "high", eye_level: "eye", eyelevel: "eye", dutch_angle: "dutch", canted: "dutch",
+};
+const SIZE_ALIASES: Record<string, string> = {
+  ELS: "EWS", XWS: "EWS", EXTREME_WIDE: "EWS", LS: "WS", WIDE: "WS", FS: "WS", MEDIUM: "MS", MWS: "MS", MCS: "MCU", CLOSE: "CU", CLOSEUP: "CU", XCU: "ECU", ECS: "ECU",
+};
+const key = (v: string) => v.trim().toLowerCase().replace(/[\s-]+/g, "_");
+
+function normalizeShots(out: Record<string, unknown>): void {
+  for (const sc of Array.isArray(out.scenes) ? (out.scenes as Record<string, unknown>[]) : []) {
+    for (const sh of Array.isArray(sc?.shots) ? (sc.shots as Record<string, unknown>[]) : []) {
+      if (!sh || typeof sh !== "object") continue;
+      if (typeof sh.angle === "string") {
+        const a = ANGLE_ALIASES[key(sh.angle)];
+        if (a) {
+          // A "drone" angle names a movement too: keep it as the move when the shot gave none.
+          if (key(sh.angle) === "drone" && (sh.movement == null || sh.movement === "static")) sh.movement = "drone";
+          sh.angle = a;
+        } else sh.angle = key(sh.angle);
+      }
+      if (typeof sh.size === "string") sh.size = SIZE_ALIASES[key(sh.size).toUpperCase()] ?? sh.size.trim().toUpperCase();
+    }
+  }
+}
+
 export function normalizePlan(output: unknown, schema: Record<string, unknown>, constraints: ProductionConstraints): unknown {
   const out = clampStrings(output, schema);
+  if (out && typeof out === "object") normalizeShots(out as Record<string, unknown>);
   if (constraints.sceneCount === 1 && out && typeof out === "object" && Array.isArray((out as { setups?: unknown }).setups)) {
     return { ...(out as Record<string, unknown>), setups: [] };
   }

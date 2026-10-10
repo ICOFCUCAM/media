@@ -139,6 +139,9 @@ model Project {
   storyApprovedAt DateTime? @map("story_approved_at") @db.Timestamptz(6)
   previsStartedAt DateTime? @map("previs_started_at") @db.Timestamptz(6)
 
+  /// Ads Studio (0060; docs/47): the advertiser's page and its source facts (url, title, brand, fetchedAt, facts[]).
+  adSource Json? @map("ad_source")
+
   @@index([userId, status])
   @@map("projects")
 }
@@ -822,6 +825,23 @@ model AvatarConversation {
 
   @@index([userId, createdAt(sort: Desc)], map: "avatar_conversations_user_idx")
   @@map("avatar_conversations")
+}
+
+/// Ads Studio (0060; docs/47 A3): the advertiser's own files for one advert — a logo, product photographs.
+model BrandAsset {
+  id         String   @id @default(uuid()) @db.Uuid
+  projectId  String   @map("project_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  role       String
+  storageKey String   @map("storage_key")
+  name       String   @default("")
+  mime       String
+  bytes      Int
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([projectId, storageKey], map: "brand_assets_project_key")
+  @@index([projectId, createdAt], map: "brand_assets_project_idx")
+  @@map("brand_assets")
 }
 
 /// W26 (0059): one line of an avatar conversation; the worker writes the avatar's.

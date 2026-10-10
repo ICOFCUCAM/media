@@ -172,6 +172,7 @@ export class SupabaseRun {
         passMode: this.cfg.passMode,
         production: this.cfg.production,
         castIds: this.cfg.castIds,
+        ads: this.cfg.ads,
       });
       if (this.cancelled) return;
       projectId = project.id;

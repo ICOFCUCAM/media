@@ -9,6 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@cineforge/movie": "workspace:*",
     "@supabase/supabase-js": "^2.108.0",
     "hls.js": "^1.5.13",
     "next": "14.2.5",

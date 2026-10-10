@@ -285,7 +285,7 @@ const BLOCK = /<\/?(p|div|li|ul|ol|dl|dt|dd|h[1-6]|section|article|header|footer
 
 /** What a visitor reads on the page: its title, its description and the body text, one block per line (pure). */
 export function htmlToText(html: string): { title: string | null; description: string | null; text: string } {
-  const clean = (s: string) => decodeEntities(s).replace(/[ \t\f\v\r ]+/g, " ").trim();
+  const clean = (s: string) => decodeEntities(s).replace(/[ \t\f\v\r\u00A0]+/g, " ").trim();
   const title = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1];
   let description: string | null = null;
   for (const tag of html.match(/<meta\b[^>]*>/gi) ?? []) {

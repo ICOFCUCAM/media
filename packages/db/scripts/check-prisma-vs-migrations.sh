@@ -8,7 +8,7 @@
 # scalar foreign keys (no @relation) and generate uuids client-side.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-TABLES='production_timelines|timeline_events|media_versions|video_generations|audio_generations|audio_events|sync_policies|av_sync_reports|av_sync_issues|repair_jobs|production_degradations|system_capabilities|ai_decisions|canon_revisions|wardrobe_references|quality_gate_results|voice_engine_artifacts|voice_jobs|edit_requests|shot_dependencies|scene_versions|director_messages|benchmark_runs|acceptance_runs|stripe_events|project_cast|show_bibles|editorial_reviews|edit_proposals|speech_cache|voice_licences|image_generations|world_references|avatar_conversations|avatar_turns|voice_erasures'
+TABLES='production_timelines|timeline_events|media_versions|video_generations|audio_generations|audio_events|sync_policies|av_sync_reports|av_sync_issues|repair_jobs|production_degradations|system_capabilities|ai_decisions|canon_revisions|wardrobe_references|quality_gate_results|voice_engine_artifacts|voice_jobs|edit_requests|shot_dependencies|scene_versions|director_messages|benchmark_runs|acceptance_runs|stripe_events|project_cast|show_bibles|editorial_reviews|edit_proposals|speech_cache|voice_licences|image_generations|world_references|avatar_conversations|avatar_turns|brand_assets|voice_erasures'
 diff_sql="$(pnpm exec prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script)"
 # Parse whole statements (Prisma splits one ALTER TABLE over several lines) and
 # drop only the accepted clauses; anything left on a Phase 4 table is drift.

@@ -265,7 +265,7 @@ export const SceneState = z.object({
 
 /** Story time (Part 1 §33): which story day, and whether the scene picks up the previous one with no time cut. */
 export const StoryTime = z.object({
-  day: z.number().int().min(1).max(3650).describe("story day, 1 = the first day of the story"),
+  day: z.number().int().min(1).max(36500).describe("story day, 1 = the first day of the story (a story across generations can span decades)"),
   continuous: z.boolean().describe("true when this scene continues the previous scene's action with no time cut (same clothes, same injuries)"),
   flashback: z.boolean(),
   clock: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "clock must be HH:MM (24h)").nullable().optional()

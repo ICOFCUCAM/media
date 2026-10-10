@@ -1,9 +1,10 @@
 "use client";
 
-import type { RealtimeChannel } from "@supabase/supabase-js";
+import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { getSupabase } from "./supabase";
-import type { Database, ProjectStatus } from "./database.types";
+import type { Database, Json, ProjectStatus } from "./database.types";
 import type { ProductionSpec } from "./production-types";
+import type { AdsHandoff } from "./ads-live";
 
 export type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 export type FilmRow = Database["public"]["Tables"]["films"]["Row"];
@@ -22,12 +23,16 @@ export async function createProject(input: {
   production?: ProductionSpec;
   /** Character Cards to cast (W12): attached before the worker can claim the project. */
   castIds?: string[];
+  /** From the Ads Studio (docs/47): the page's source facts and the brand files, attached before the worker can claim it. */
+  ads?: AdsHandoff | null;
 }): Promise<ProjectRow> {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase not configured");
   const { data: auth } = await sb.auth.getUser();
   const userId = auth.user?.id;
   if (!userId) throw new Error("Not signed in");
+  // Brand files belong to adverts only (the database refuses them elsewhere).
+  const brandFiles = input.production?.kind === "advert" ? input.ads?.brandFiles ?? [] : [];
 
   const { data, error } = await sb
     .from("projects")
@@ -46,23 +51,36 @@ export async function createProject(input: {
             ...(input.production.seasonNumber && input.production.seasonNumber > 1 ? { season_number: input.production.seasonNumber } : {}),
           }
         : {}),
+      ...(input.production?.kind === "advert" && input.ads?.source ? { ad_source: input.ads.source as unknown as Json } : {}),
       target_seconds: input.targetSeconds,
       model_id: input.modelId,
       estimated_ms: input.estimatedMs,
-      // With a cast, the project waits as DRAFT until its cards are attached: the
-      // worker claims PLANNING projects and must never plan without the cast.
-      status: input.castIds?.length ? "DRAFT" : "PLANNING",
+      // With a cast or brand files, the project waits as DRAFT until they are attached:
+      // the worker claims PLANNING projects and must never plan without them.
+      status: input.castIds?.length || brandFiles.length ? "DRAFT" : "PLANNING",
       progress: 0,
     })
     .select()
     .single();
   if (error) throw new Error(error.message);
-  if (!input.castIds?.length) return data;
+  if (!input.castIds?.length && !brandFiles.length) return data;
 
-  const { error: castErr } = await sb.from("project_cast").insert(input.castIds.map((character_id) => ({ project_id: data.id, character_id })));
-  if (castErr) {
-    await sb.from("projects").update({ status: "FAILED", error_message: `Casting failed: ${castErr.message}` }).eq("id", data.id);
-    throw new Error(castErr.message);
+  if (input.castIds?.length) {
+    const { error: castErr } = await sb.from("project_cast").insert(input.castIds.map((character_id) => ({ project_id: data.id, character_id })));
+    if (castErr) {
+      await sb.from("projects").update({ status: "FAILED", error_message: `Casting failed: ${castErr.message}` }).eq("id", data.id);
+      throw new Error(castErr.message);
+    }
+  }
+  if (brandFiles.length) {
+    // Untyped: brand_assets (0060) is not in the generated types; the database checks owner, folder and kind.
+    const { error: brandErr } = await (sb as unknown as SupabaseClient).from("brand_assets").insert(brandFiles.map((f) => ({
+      project_id: data.id, user_id: userId, role: f.role, storage_key: f.storageKey, name: f.name, mime: f.mime, bytes: f.bytes,
+    })));
+    if (brandErr) {
+      await sb.from("projects").update({ status: "FAILED", error_message: `Brand files could not be attached: ${brandErr.message}` }).eq("id", data.id);
+      throw new Error(brandErr.message);
+    }
   }
   const { data: queued, error: qErr } = await sb.from("projects").update({ status: "PLANNING" }).eq("id", data.id).select().single();
   if (qErr) throw new Error(qErr.message);
