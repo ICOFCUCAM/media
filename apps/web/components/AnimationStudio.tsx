@@ -14,6 +14,7 @@ import { listUsableVoices } from "../lib/library";
 import {
   ANIMATION_STYLES,
   KIND_PROFILES,
+  SEASON_MAX_NUMBER,
   STYLE_PROFILES,
   isStillMotion,
   type AnimationStyle,
@@ -24,11 +25,13 @@ import {
   cardIssues,
   createCard,
   createShow,
+  currentSeason,
   listCards,
   listShows,
   nextEpisodeNumber,
   requestPortrait,
   saveBible,
+  seasonsOf,
   setShowCast,
   type BibleInput,
   type CardInput,
@@ -573,10 +576,16 @@ function ShowRoom({ show, cards, onChanged }: { show: Show; cards: CardRow[]; on
   const { state, running, run, reset } = useCreateRun();
   const plan = usePlan();
   const number = nextEpisodeNumber(show);
+  // Further seasons (W26): the next episode continues the current season, or opens the next one.
+  const latestSeason = currentSeason(show);
+  const [newSeason, setNewSeason] = useState(false);
+  const season = Math.min(SEASON_MAX_NUMBER, newSeason && show.episodes.length ? latestSeason + 1 : latestSeason);
   const style = (show.animationStyle ?? null) as AnimationStyle | null;
   const production: ProductionSpec = {
     kind: "episode", medium: style ? "animation" : "live_action", animationStyle: style, seriesId: show.seriesId, episodeNumber: number,
+    seasonNumber: season,
   };
+  const label = season > 1 || show.episodes.some((e) => e.season > 1) ? `Season ${season} · Episode ${number}` : `Episode ${number}`;
   const effSeconds = Math.min(seconds, plan.maxSec);
   const est = estimateMs("wan-2.1", effSeconds, { stillMotion: isStillMotion(production) });
   const dirty = useMemo(() => JSON.stringify(bible) !== JSON.stringify(bibleOf(show)) || castIds.join() !== show.castIds.join(), [bible, castIds, show]);
@@ -594,19 +603,25 @@ function ShowRoom({ show, cards, onChanged }: { show: Show; cards: CardRow[]; on
   }
 
   function makeEpisode() {
-    void run({ prompt: brief, title: `${show.title} — Episode ${number}`, modelId: "wan-2.1", targetSeconds: effSeconds, production });
+    void run({ prompt: brief, title: `${show.title} — ${label}`, modelId: "wan-2.1", targetSeconds: effSeconds, production });
   }
 
   return (
     <StudioGrid
       controls={
         <>
-          <Field label={`Episode ${number}`} htmlFor="ep-brief">
+          {show.episodes.length > 0 && latestSeason < SEASON_MAX_NUMBER && (
+            <label className="flex items-center gap-2 text-[13px]">
+              <input type="checkbox" checked={newSeason} onChange={(e) => setNewSeason(e.target.checked)} />
+              Start season {latestSeason + 1} with this episode
+            </label>
+          )}
+          <Field label={label} htmlFor="ep-brief">
             <textarea id="ep-brief" className="cf-input min-h-[96px] resize-y" value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="What happens in this episode" />
           </Field>
           <p className="text-[12px] text-cf-muted">
             {show.episodes.length
-              ? `Knows what happened in episodes ${show.episodes.map((e) => e.number).join(", ")} — who met whom, who learned what, who is gone.`
+              ? `Knows what happened in ${seasonsOf(show).map((g) => `${seasonsOf(show).length > 1 ? `season ${g.season}: ` : ""}episodes ${g.episodes.map((e) => e.number).join(", ")}`).join("; ")} — who met whom, who learned what, who is gone.${newSeason ? ` Opens season ${season}: a new chapter, with everything before it still canon.` : ""}`
               : "The first episode: it sets up the show for every one after it."}
           </p>
           <Field label="Length" value={fmtDuration(effSeconds)}>

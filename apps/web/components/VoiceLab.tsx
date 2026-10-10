@@ -9,6 +9,8 @@ import { Control, EmptyState, PageHeader, Section, Status } from "./cf/primitive
 import { getSupabase } from "../lib/supabase";
 import { signedUrl } from "../lib/storyboard";
 import { LANGUAGES } from "../lib/system";
+import { QuickVoice } from "./QuickVoice";
+import { AvatarTalk } from "./AvatarTalk";
 import { DEFAULT_DELIVERY, EMOTIONS, MAX_SPEAKERS, READING_MODES, deliveryStyle, scriptSpeakers, type Delivery, type ReadingMode } from "../lib/readings";
 
 /**
@@ -292,6 +294,10 @@ export function VoiceLab() {
 
       <div className="pt-12">
         <StudioGate signIn="Sign in to clone voices" what="Voices">
+          {/* The one simple screen (W26; §176): the full departments are below it. */}
+          <QuickVoice voices={readyVoices.map((v) => ({ id: v.id, name: v.name }))} onQueued={refresh} />
+          {/* A live conversation with an avatar (W26; §111, §117). */}
+          <AvatarTalk voices={readyVoices.map((v) => ({ id: v.id, name: v.name }))} />
           <Section label="01 — Departments" title="Record, read, perform.">
             {error && (
               <p role="alert" className="mb-5 border-l-2 border-cf-danger pl-3 text-[12px] text-cf-danger">

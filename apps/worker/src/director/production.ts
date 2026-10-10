@@ -16,7 +16,7 @@ import {
   type ProductionKind,
   type ProductionSpec,
 } from "@cineforge/shared";
-import type { PlanCastMember, PlanEpisodeRecap, PlanProduction, PlanShowBible, ProductionConstraints, RenderStyle } from "@cineforge/movie";
+import type { PlanCastMember, PlanEpisode, PlanProduction, PlanShowBible, ProductionConstraints, RenderStyle } from "@cineforge/movie";
 
 export interface ProductionRow {
   kind?: string | null;
@@ -25,13 +25,14 @@ export interface ProductionRow {
   episodes?: number | null;
   seriesId?: string | null;
   episodeNumber?: number | null;
+  seasonNumber?: number | null;
 }
 
 /** What the production is made with beyond its brief (W12): cast cards, the show bible, earlier episodes. */
 export interface ProductionCanon {
   cast: PlanCastMember[];
   bible: PlanShowBible | null;
-  episode: { number: number; previously: PlanEpisodeRecap[] } | null;
+  episode: PlanEpisode | null;
   /** Characters who died in earlier episodes. */
   deceased: { id: string; name: string }[];
 }
@@ -47,6 +48,7 @@ export function productionOf(p: ProductionRow): ProductionSpec {
     episodes: p.episodes ?? null,
     seriesId: p.seriesId ?? null,
     episodeNumber: p.episodeNumber ?? null,
+    seasonNumber: p.seasonNumber ?? null,
   };
   const issues = productionIssues(spec);
   if (issues.length) throw new Error(`invalid production: ${issues.join("; ")}`);

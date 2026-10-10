@@ -191,6 +191,18 @@ export const PROMPTS = {
       "and no more shots than allowed. Index shots from 0. Subjects are only the ids you are given.",
     ].join("\n"),
   },
+  avatarTalk: {
+    id: "avatar.talk",
+    version: 1,
+    purpose: "Conversation (Part 3 §111, §117): the avatar's next spoken line, in its persona.",
+    system: [
+      "You are a talking avatar in a live conversation. You are given who you are (your persona), the language to",
+      "speak, and the conversation so far. Answer the last thing the person said, in character, as spoken words:",
+      "natural, warm, and short enough to say in under about forty seconds (at most four sentences). No stage",
+      "directions, no lists, no markdown, no emoji — only what you would say aloud. Never claim to be a real person;",
+      "if asked, you are a character. Refuse anything harmful politely and stay in character.",
+    ].join("\n"),
+  },
   editorReview: {
     id: "editor.review",
     version: 1,
@@ -239,7 +251,7 @@ export interface PlanProduction {
   /** The show this production belongs to (W12; Part 5 §184). */
   bible?: PlanShowBible | null;
   /** One episode of a show: its number and what earlier episodes established. */
-  episode?: { number: number; previously: PlanEpisodeRecap[] } | null;
+  episode?: PlanEpisode | null;
 }
 
 /** A character fixed before planning: id, name and identity are used exactly. */
@@ -273,6 +285,8 @@ export interface PlanShowBible {
 
 export interface PlanEpisodeRecap {
   number: number;
+  /** The season it belongs to (W26); absent = season 1. */
+  season?: number;
   title: string;
   synopsis: string;
   /** What the audience knows by the end of it. */
@@ -330,12 +344,25 @@ function bibleSection(b: PlanShowBible): string[] {
   return [`SHOW BIBLE: ${b.title} (hard)`, ...rows.filter(([, v]) => v?.trim()).map(([k, v]) => `- ${k}: ${v!.trim()}`), ""];
 }
 
-function episodeSection(e: { number: number; previously: PlanEpisodeRecap[] }): string[] {
+/** One episode of a show: its number, its season (W26) and what earlier episodes established. */
+export interface PlanEpisode {
+  number: number;
+  season?: number;
+  previously: PlanEpisodeRecap[];
+}
+
+function episodeSection(e: PlanEpisode): string[] {
+  const season = e.season ?? 1;
+  const before = e.previously.filter((r) => (r.season ?? 1) < season);
+  const premiere = season > 1 && !e.previously.some((r) => (r.season ?? 1) === season);
   return [
-    `EPISODE ${e.number} (this production is one episode; it continues the show)`,
+    `EPISODE ${e.number}${season > 1 || e.previously.some((r) => (r.season ?? 1) > 1) ? `, SEASON ${season}` : ""} (this production is one episode; it continues the show)`,
+    ...(premiere
+      ? [`- this episode opens season ${season}: it may begin a new chapter (time may have passed, the situation may have changed, new characters may arrive), but everything from ${before.length ? "earlier seasons" : "before"} stays canon`]
+      : []),
     ...(e.previously.length
       ? ["PREVIOUSLY (canon: never contradict it)", ...e.previously.flatMap((r) => [
-          `- Episode ${r.number} "${r.title}": ${r.synopsis}`,
+          `- ${(r.season ?? 1) > 1 || season > 1 ? `Season ${r.season ?? 1}, ` : ""}Episode ${r.number} "${r.title}": ${r.synopsis}`,
           ...r.facts.map((f) => `  known: ${f}`),
           ...r.deaths.map((d) => `  died: ${d}`),
           ...r.relationships.map((x) => `  stands: ${x}`),

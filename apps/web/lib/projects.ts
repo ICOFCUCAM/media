@@ -43,6 +43,7 @@ export async function createProject(input: {
             kind: input.production.kind, medium: input.production.medium, animation_style: input.production.animationStyle,
             episodes: input.production.episodes ?? null,
             series_id: input.production.seriesId ?? null, episode_number: input.production.episodeNumber ?? null,
+            ...(input.production.seasonNumber && input.production.seasonNumber > 1 ? { season_number: input.production.seasonNumber } : {}),
           }
         : {}),
       target_seconds: input.targetSeconds,

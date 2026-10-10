@@ -79,7 +79,7 @@ describe("Show Bible + episodes (W12; Part 5 §184)", () => {
     const canon = await loadProductionCanon(db, "ep1", episode(1));
     expect(db.calls).toEqual(["cast:ep1", "cast:show-project"]);
     expect(canon.bible).toMatchObject({ title: "Kito's Moon", genre: "adventure", episodeFormat: "cold open, two acts, tag", worldRules: null });
-    expect(canon.episode).toEqual({ number: 1, previously: [] });
+    expect(canon.episode).toEqual({ number: 1, season: 1, previously: [] });
     expect(canon.cast.map((c) => [c.id, c.source])).toEqual([["char_kito", "card"]]);
   });
 

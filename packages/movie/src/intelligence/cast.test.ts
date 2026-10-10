@@ -143,3 +143,22 @@ describe("fixed cast (W12; Part 5 §179, §183)", () => {
     expect(text.indexOf("CAST (hard")).toBeLessThan(text.indexOf("RETURNING CHARACTERS"));
   });
 });
+
+describe("further seasons in the plan request (W26; Part 5 §178)", () => {
+  const recap = (number: number, season: number) => ({ number, season, title: `Ep ${number}`, synopsis: "things happen", facts: [], deaths: [], relationships: [] });
+
+  it("a season premiere is told it opens the season, with every earlier season still canon", () => {
+    const r = renderPlanRequest("brief", C, { ...animated(), episode: { number: 4, season: 2, previously: [recap(1, 1), recap(2, 1), recap(3, 1)] } });
+    expect(r).toContain("EPISODE 4, SEASON 2");
+    expect(r).toContain("this episode opens season 2");
+    expect(r).toContain('- Season 1, Episode 3 "Ep 3"');
+  });
+  it("a later episode of the same season continues it; a one-season show stays unlabelled", () => {
+    const r = renderPlanRequest("brief", C, { ...animated(), episode: { number: 5, season: 2, previously: [recap(3, 1), recap(4, 2)] } });
+    expect(r).not.toContain("opens season");
+    expect(r).toContain('- Season 2, Episode 4 "Ep 4"');
+    const one = renderPlanRequest("brief", C, { ...animated(), episode: { number: 2, previously: [recap(1, 1)] } });
+    expect(one).toContain("EPISODE 2 (this production");
+    expect(one).toContain('- Episode 1 "Ep 1"');
+  });
+});

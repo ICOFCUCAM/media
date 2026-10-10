@@ -84,26 +84,26 @@ enum ProjectStatus {
 }
 
 model Project {
-  id            String        @id @default(uuid()) @db.Uuid
-  userId        String        @map("user_id") @db.Uuid
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title         String
-  prompt        String
-  targetSeconds Int           @map("target_seconds")
+  id                String        @id @default(uuid()) @db.Uuid
+  userId            String        @map("user_id") @db.Uuid
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title             String
+  prompt            String
+  targetSeconds     Int           @map("target_seconds")
   /// Output format chosen at create time ("480p"|"720p"|"1080p"|"4k") — docs/33.
-  resolution    String        @default("720p")
-  aspectRatio   String        @default("16:9") @map("aspect_ratio")
-  modelId       String        @default("wan-2.1") @map("model_id")
-  status        ProjectStatus @default(DRAFT)
-  mode          String        @default("auto") // auto | hybrid | storyboard | script | library …
-  progress      Float         @default(0)
-  estimatedMs   Int?          @map("estimated_ms")
-  spentMs       Int           @default(0) @map("spent_ms")
+  resolution        String        @default("720p")
+  aspectRatio       String        @default("16:9") @map("aspect_ratio")
+  modelId           String        @default("wan-2.1") @map("model_id")
+  status            ProjectStatus @default(DRAFT)
+  mode              String        @default("auto") // auto | hybrid | storyboard | script | library …
+  progress          Float         @default(0)
+  estimatedMs       Int?          @map("estimated_ms")
+  spentMs           Int           @default(0) @map("spent_ms")
   /// W23 (0055): the owner pressed Resume on a paused film; the worker claims it.
-  resumeRequestedAt DateTime? @map("resume_requested_at") @db.Timestamptz(6)
-  errorMessage  String?       @map("error_message")
-  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  resumeRequestedAt DateTime?     @map("resume_requested_at") @db.Timestamptz(6)
+  errorMessage      String?       @map("error_message")
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   screenplay  Screenplay?
   characters  Character[]
@@ -130,6 +130,8 @@ model Project {
   seriesId       String?       @map("series_id") @db.Uuid
   showSeries     Series?       @relation("ShowEpisodes", fields: [seriesId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   episodeNumber  Int?          @map("episode_number")
+  /// W26 (0058): the season this episode belongs to (null = season 1).
+  seasonNumber   Int?          @map("season_number")
   cast           ProjectCast[]
   madeEpisodes   Episode[]     @relation("EpisodeProduction")
 
@@ -232,28 +234,28 @@ model Screenplay {
 // ─────────────────────────────────────────────────────────────
 
 model Character {
-  id            String   @id @default(uuid()) @db.Uuid
-  projectId     String   @map("project_id") @db.Uuid
-  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  name          String
-  age           Int?
-  gender        String?
-  ethnicity     String?
-  appearance    String
-  personality   String?
-  voiceProfile  Json?    @map("voice_profile")
-  arc           String?
-  referenceUrls String[] @map("reference_urls")
-  loraKey       String?  @map("lora_key")
-  loraVersion   String?  @map("lora_version")
+  id             String   @id @default(uuid()) @db.Uuid
+  projectId      String   @map("project_id") @db.Uuid
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name           String
+  age            Int?
+  gender         String?
+  ethnicity      String?
+  appearance     String
+  personality    String?
+  voiceProfile   Json?    @map("voice_profile")
+  arc            String?
+  referenceUrls  String[] @map("reference_urls")
+  loraKey        String?  @map("lora_key")
+  loraVersion    String?  @map("lora_version")
   /// Content hash of the LoRA artifact (migration 0027; authz v2). Server-written only.
-  loraSha256    String?  @map("lora_sha256")
+  loraSha256     String?  @map("lora_sha256")
   /// Character Card portrait (migration 0054; W21). Owners request; the server draws and writes the key.
   portraitKey    String?  @map("portrait_key")
   portraitStatus String?  @map("portrait_status")
   portraitError  String?  @map("portrait_error")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // W12 (0046): Character Card fields, and the card a production's character was cast from.
   heightCm          Int?          @map("height_cm")
@@ -783,6 +785,40 @@ model AvatarVideo {
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("avatar_videos")
+}
+
+/// W26 (0059): a conversation with a talking avatar (Part 3 §111, §117).
+model AvatarConversation {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String   @default("")
+  persona   String
+  voiceId   String?  @map("voice_id") @db.Uuid
+  language  String   @default("en")
+  imageKey  String?  @map("image_key")
+  quality   String   @default("standard")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt(sort: Desc)], map: "avatar_conversations_user_idx")
+  @@map("avatar_conversations")
+}
+
+/// W26 (0059): one line of an avatar conversation; the worker writes the avatar's.
+model AvatarTurn {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  role           String
+  text           String?
+  audioKey       String?  @map("audio_key")
+  status         String   @default("pending")
+  voiceoverId    String?  @map("voiceover_id") @db.Uuid
+  avatarVideoId  String?  @map("avatar_video_id") @db.Uuid
+  error          String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([conversationId, createdAt], map: "avatar_turns_conversation_idx")
+  @@map("avatar_turns")
 }
 
 // ── Brand kits (docs/33 AGENCY+): applied as a branded outro at render ──────
@@ -1399,4 +1435,3 @@ model WorldReference {
   @@unique([projectId, kind, refKey, digest])
   @@map("world_references")
 }
-

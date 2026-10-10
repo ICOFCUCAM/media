@@ -46,8 +46,8 @@ export const DIRECTORIAL_ROLES: DirectorialRole[] = [
   },
   {
     id: "audio", label: "Audio",
-    owns: ["voices per character and narrator", "score and ambience", "the mix and loudness"],
-    prompts: [],
+    owns: ["voices per character and narrator", "score and ambience", "the mix and loudness", "the talking avatar's side of a conversation"],
+    prompts: [PROMPTS.avatarTalk.id],
     engines: ["apps/worker/src/voice/film.ts", "apps/worker/src/audio/score.ts", "apps/worker/src/ffmpeg/commands.ts"],
   },
   {

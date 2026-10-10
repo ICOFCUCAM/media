@@ -161,7 +161,7 @@ export interface Show {
   bible: BibleRow | null;
   castIds: string[];
   /** Episode productions made so far, by number. */
-  episodes: { projectId: string; number: number; title: string; status: string }[];
+  episodes: { projectId: string; number: number; season: number; title: string; status: string }[];
 }
 
 export interface BibleInput {
@@ -181,6 +181,18 @@ function bibleColumns(b: BibleInput) {
     music_identity: clean(b.musicIdentity), narrative_rules: clean(b.narrativeRules), episode_format: clean(b.episodeFormat),
     continuity_rules: clean(b.continuityRules),
   };
+}
+
+/** The season a show is in: that of its latest episode (W26). */
+export function currentSeason(show: Pick<Show, "episodes">): number {
+  return show.episodes.reduce((m, e) => (e.number >= m.number ? { number: e.number, season: e.season } : m), { number: 0, season: 1 }).season;
+}
+
+/** Episodes grouped by season, in order (W26). */
+export function seasonsOf(show: Pick<Show, "episodes">): { season: number; episodes: Show["episodes"] }[] {
+  const by = new Map<number, Show["episodes"]>();
+  for (const e of [...show.episodes].sort((a, b) => a.number - b.number)) by.set(e.season, [...(by.get(e.season) ?? []), e]);
+  return [...by.entries()].sort(([a], [b]) => a - b).map(([season, episodes]) => ({ season, episodes }));
 }
 
 /** The next episode a show makes: one after the highest made so far. */
@@ -206,8 +218,8 @@ export async function listShows(): Promise<Show[]> {
   const [{ data: bibles }, { data: episodes }] = await Promise.all([
     seriesIds.length ? sb.from("show_bibles").select().in("series_id", seriesIds) : Promise.resolve({ data: [] as BibleRow[] }),
     seriesIds.length
-      ? sb.from("projects").select("id, title, status, series_id, episode_number").in("series_id", seriesIds).order("episode_number", { ascending: true })
-      : Promise.resolve({ data: [] as { id: string; title: string; status: string; series_id: string | null; episode_number: number | null }[] }),
+      ? sb.from("projects").select("id, title, status, series_id, episode_number, season_number").in("series_id", seriesIds).order("episode_number", { ascending: true })
+      : Promise.resolve({ data: [] as { id: string; title: string; status: string; series_id: string | null; episode_number: number | null; season_number: number | null }[] }),
   ]);
   return shows.flatMap((p) => {
     const s = (series ?? []).find((x) => x.project_id === p.id);
@@ -223,7 +235,7 @@ export async function listShows(): Promise<Show[]> {
       castIds: (cast ?? []).filter((c) => c.project_id === p.id).map((c) => c.character_id),
       episodes: (episodes ?? [])
         .filter((e) => e.series_id === s.id && e.episode_number != null)
-        .map((e) => ({ projectId: e.id, number: e.episode_number!, title: e.title, status: e.status })),
+        .map((e) => ({ projectId: e.id, number: e.episode_number!, season: e.season_number ?? 1, title: e.title, status: e.status })),
     }];
   });
 }
