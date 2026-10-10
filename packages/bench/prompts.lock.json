@@ -11,9 +11,9 @@
     },
     {
       "id": "director.edit",
-      "version": 2,
+      "version": 3,
       "purpose": "Director workspace (W9): read the owner's instruction as at most one canon change, and answer them.",
-      "sha256": "19aa6cea56193d5148ee92f521354917845e439bb9e59cce30c61aaaa06b3226",
+      "sha256": "8d51af00e27934e48c7a86f4e0ed8886bc3776a81df4a2eabbfa012039ce7480",
       "score": null,
       "scoredAt": null,
       "model": null

@@ -12,7 +12,7 @@
  * is untouched.
  */
 import { compileFilm, type CompiledScene } from "../compile/compile";
-import type { FilmCharacter, FilmLocation, FilmPackage } from "../ir/schema";
+import type { FilmCharacter, FilmLocation, FilmPackage, FilmShot } from "../ir/schema";
 import { validateCanon, type Issue } from "../ir/validate";
 import { canonGraph, shotKey, type CanonRef, type ShotRef } from "./graph";
 import { runOf } from "./state";
@@ -28,7 +28,33 @@ export type CanonChange =
   /** Visible physical state from this scene on, across its continuity run. */
   | { kind: "physical"; sceneId: string; characterId: string; physical: string | null }
   | { kind: "location"; locationId: string; patch: Partial<Pick<FilmLocation, "description" | "architecture" | "era" | "lighting">> }
-  | { kind: "prop"; propId: string; patch: { name?: string; description?: string } };
+  | { kind: "prop"; propId: string; patch: { name?: string; description?: string } }
+  /**
+   * One scene revised across departments (W25; Part 1 §45): tone (its
+   * emotional arc), lighting and camera per shot, the music cue and ambience,
+   * and spoken lines. Only what it names changes; the scene's story — who is
+   * there, what happens, what anyone knows — stays.
+   */
+  | { kind: "scene_revision"; sceneId: string; revision: SceneRevision };
+
+export interface SceneRevision {
+  emotionalArc?: { start: string; middle: string; end: string };
+  /** Lighting for every shot of the scene (a shot's own entry below wins). */
+  lighting?: string;
+  shots?: ({ index: number } & Partial<Pick<FilmShot, "size" | "angle" | "movement" | "lens" | "lighting" | "composition" | "depthOfField" | "emotion">>)[];
+  /** The scene's music cue; null = no music under it. */
+  music?: string | null;
+  ambience?: string;
+  /** Lines by their position in the scene: new words and/or delivery. */
+  dialogue?: { index: number; line?: string; emotion?: string | null }[];
+}
+
+/** What a revision asks of the sound departments (W25): which scenes to voice again, the score, ambience beds. */
+export interface AudioRedo {
+  revoice: string[];
+  rescore: boolean;
+  ambience: string[];
+}
 
 export interface CanonRevision {
   pkg: FilmPackage;
@@ -39,6 +65,8 @@ export interface CanonRevision {
   affectedScenes: string[];
   /** Shots whose compiled generation changed — regenerate exactly these. */
   affectedShots: ShotRef[];
+  /** Sound to make again: changed lines, the score, ambience beds (W25). */
+  audio: AudioRedo;
   /** What the dependency graph predicted the change could touch. */
   predicted: { scenes: string[]; shots: ShotRef[] };
   /** Version of the canon before and after. */
@@ -113,6 +141,27 @@ function apply(pkg: FilmPackage, change: CanonChange): FilmPackage {
       Object.assign(p, change.patch);
       return next;
     }
+    case "scene_revision": {
+      const sc = next.scenes[sceneAt(change.sceneId)]!;
+      const r = change.revision;
+      if (r.emotionalArc) sc.emotionalArc = { ...r.emotionalArc };
+      if (r.lighting) for (const sh of sc.shots) sh.lighting = r.lighting;
+      for (const patch of r.shots ?? []) {
+        const sh = sc.shots.find((x) => x.index === patch.index);
+        if (!sh) throw new CanonChangeError(`${change.sceneId} has no shot ${patch.index}`);
+        const { index: _i, ...rest } = patch;
+        Object.assign(sh, Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined)));
+      }
+      if (r.music !== undefined) sc.audio.music = r.music;
+      if (r.ambience) sc.audio.ambience = r.ambience;
+      for (const d of r.dialogue ?? []) {
+        const line = sc.dialogue[d.index];
+        if (!line) throw new CanonChangeError(`${change.sceneId} has no line ${d.index}`);
+        if (d.line !== undefined) line.line = d.line;
+        if (d.emotion !== undefined) line.emotion = d.emotion;
+      }
+      return next;
+    }
   }
 }
 
@@ -133,6 +182,9 @@ function predictedRefs(pkg: FilmPackage, change: CanonChange): { refs: CanonRef[
       return { refs: [{ kind: "location", id: change.locationId }] };
     case "prop":
       return { refs: [{ kind: "prop", id: change.propId }] };
+    case "scene_revision":
+      // Every shot of the one scene (filled in by reviseCanon: a scene is not a canon node).
+      return { refs: [], within: new Set([change.sceneId]) };
   }
 }
 
@@ -159,6 +211,20 @@ export function reviseCanon(pkg: FilmPackage, change: CanonChange): CanonRevisio
     if (touched) affectedScenes.push(sc.key);
   });
 
+  // Sound (W25): changed lines are voiced again; a changed cue or mood recomposes the film's score; a changed bed is drawn again.
+  const audio: AudioRedo = { revoice: [], rescore: false, ambience: [] };
+  after.scenes.forEach((sc, i) => {
+    const old = before.scenes[i]!;
+    if (old.dialogueText !== sc.dialogueText || JSON.stringify(old.dialogue) !== JSON.stringify(sc.dialogue)) audio.revoice.push(sc.key);
+    if (old.music !== sc.music || old.mood !== sc.mood) audio.rescore = true;
+    if (pkg.scenes[i]!.audio.ambience !== next.scenes[i]!.audio.ambience) audio.ambience.push(sc.key);
+  });
+  for (const k of [...audio.revoice, ...audio.ambience]) if (!affectedScenes.includes(k)) affectedScenes.push(k);
+  if (audio.rescore) after.scenes.forEach((sc, i) => {
+    const old = before.scenes[i]!;
+    if ((old.music !== sc.music || old.mood !== sc.mood) && !affectedScenes.includes(sc.key)) affectedScenes.push(sc.key);
+  });
+
   const graph = canonGraph(pkg);
   const { refs, within } = predictedRefs(pkg, change);
   const inScope = (sceneId: string) => !within || within.has(sceneId);
@@ -166,12 +232,18 @@ export function reviseCanon(pkg: FilmPackage, change: CanonChange): CanonRevisio
   const predictedShots = new Map(deps.flatMap((d) => d.shots).filter((s) => inScope(s.sceneId)).map((s) => [shotKey(s), s]));
   const order = new Map(pkg.scenes.map((s) => [s.id, s.index]));
   const predictedScenes = [...new Set(deps.flatMap((d) => d.scenes))].filter(inScope).sort((a, b) => order.get(a)! - order.get(b)!);
+  if (change.kind === "scene_revision") {
+    const sc = pkg.scenes.find((s) => s.id === change.sceneId)!;
+    predictedScenes.push(sc.id);
+    for (const sh of sc.shots) predictedShots.set(shotKey({ sceneId: sc.id, sceneIndex: sc.index, shotIndex: sh.index }), { sceneId: sc.id, sceneIndex: sc.index, shotIndex: sh.index });
+  }
   return {
     pkg: next,
     change,
     issues,
     affectedScenes,
     affectedShots,
+    audio,
     predicted: { scenes: predictedScenes, shots: [...predictedShots.values()] },
     fromVersion: canonVersion(pkg),
     toVersion: canonVersion(next),

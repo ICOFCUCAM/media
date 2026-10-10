@@ -26,13 +26,40 @@ const SCHEMA = {
     change: {
       type: ["object", "null"],
       properties: {
-        kind: { type: "string", enum: ["scene_wardrobe", "wardrobe_description", "identity", "physical", "location", "prop"] },
+        kind: { type: "string", enum: ["scene_wardrobe", "wardrobe_description", "identity", "physical", "location", "prop", "scene_revision"] },
         sceneId: STR, characterId: STR, wardrobeId: STR, locationId: STR, propId: STR, description: STR,
         wardrobe: { type: "object", properties: { id: STR, description: STR }, required: ["id", "description"] },
         physical: { type: ["string", "null"] },
         identity: { type: "object", properties: { face: STR, hair: STR, body: STR, marks: { type: "array", items: STR } } },
         age: { type: ["integer", "null"] },
         patch: { type: "object", properties: { description: STR, architecture: STR, era: STR, lighting: STR, name: STR } },
+        // W25: one scene across departments — tone, lighting, camera, music, ambience, lines.
+        revision: {
+          type: "object",
+          properties: {
+            emotionalArc: { type: "object", properties: { start: STR, middle: STR, end: STR }, required: ["start", "middle", "end"] },
+            lighting: STR,
+            shots: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  index: { type: "integer" },
+                  size: { type: "string", enum: ["EWS", "WS", "MS", "MCU", "CU", "ECU", "INSERT"] },
+                  angle: { type: "string", enum: ["eye", "low", "high", "dutch", "overhead"] },
+                  movement: { type: "string", enum: ["static", "pan", "tilt", "dolly", "crane", "handheld", "drone", "tracking"] },
+                  lens: STR, lighting: STR, composition: STR,
+                  depthOfField: { type: "string", enum: ["shallow", "medium", "deep"] },
+                  emotion: STR,
+                },
+                required: ["index"],
+              },
+            },
+            music: { type: ["string", "null"] },
+            ambience: STR,
+            dialogue: { type: "array", items: { type: "object", properties: { index: { type: "integer" }, line: STR, emotion: STR }, required: ["index"] } },
+          },
+        },
       },
       required: ["kind"],
     },
@@ -47,6 +74,12 @@ export function canonDigest(pkg: FilmPackage): Record<string, unknown> {
     scenes: pkg.scenes.map((s, i) => ({
       id: s.id, number: i + 1, heading: s.heading, locationId: s.locationId,
       characters: s.characters.map((c) => ({ id: c.characterId, wardrobeId: c.wardrobeId, physical: c.physical })),
+      // What a scene revision can change (W25): tone, each shot's camera and light, the cue, the bed, the lines.
+      arc: s.emotionalArc,
+      shots: s.shots.map((h) => ({ index: h.index, size: h.size, angle: h.angle, movement: h.movement, lighting: h.lighting })),
+      music: s.audio.music,
+      ambience: s.audio.ambience,
+      lines: s.dialogue.map((d, j) => ({ index: j, speaker: d.characterId, line: d.line, emotion: d.emotion })),
     })),
     locations: pkg.locations.map((l) => ({ id: l.id, name: l.name })),
     props: pkg.props.map((p) => ({ id: p.id, name: p.name })),
@@ -58,7 +91,7 @@ export function pruneChange(c: unknown): Record<string, unknown> | null {
   if (!c || typeof c !== "object" || Array.isArray(c)) return null;
   const kind = (c as { kind?: unknown }).kind;
   // A null is meaningful only where it clears something: physical (an injury healed), identity age.
-  const keepNull = new Set(kind === "physical" ? ["physical"] : kind === "identity" ? ["age"] : []);
+  const keepNull = new Set(kind === "physical" ? ["physical"] : kind === "identity" ? ["age"] : kind === "scene_revision" ? ["music"] : []);
   const prune = (o: Record<string, unknown>, top: boolean): Record<string, unknown> => {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(o)) {
@@ -67,8 +100,13 @@ export function pruneChange(c: unknown): Record<string, unknown> | null {
         if (top && keepNull.has(k)) out[k] = null;
         continue;
       }
-      if (typeof v === "object" && !Array.isArray(v)) {
-        const inner = prune(v as Record<string, unknown>, false);
+      if (Array.isArray(v)) {
+        // Lists of shot or line changes: each entry pruned the same way; empty ones dropped.
+        const items = v.map((x) => (x && typeof x === "object" && !Array.isArray(x) ? prune(x as Record<string, unknown>, false) : x))
+          .filter((x) => !(x && typeof x === "object" && Object.keys(x).length <= 1 && "index" in x));
+        if (items.length) out[k] = items;
+      } else if (typeof v === "object") {
+        const inner = prune(v as Record<string, unknown>, k === "revision");
         if (Object.keys(inner).length) out[k] = inner;
       } else out[k] = v;
     }

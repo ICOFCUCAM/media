@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MIX_SPECS } from "@cineforge/shared";
-import { soundStemArgs } from "./commands";
+import { audioMixArgs, planVoicePlacement, soundStemArgs } from "./commands";
 import { RenderEngine, type SceneAssets } from "./render-engine";
 import type { Storage } from "../storage/storage";
 
@@ -76,4 +76,24 @@ describe.runIf(HAVE_FFMPEG)("sound design with real media (W16)", () => {
     // The effect sits where its shot lands: scene 2 starts at 5 s, the cue half-way in.
     expect(peakDb(film, 7.45, 0.3)).toBeGreaterThan(peakDb(film, 6.5, 0.3));
   }, 120_000);
+
+  it("speech is placed at its scene's start, and music dips exactly under it (W25; §40)", async () => {
+    // Scene one (0–4 s) has no narration; scene two (4–8 s) does.
+    const plan = planVoicePlacement([{ startSec: 0, durSec: 4 }, { startSec: 4, durSec: 4 }], [null, 2]);
+    expect(plan.voices).toEqual([{ sceneIndex: 1, startSec: 4, endSec: 6, delayedBySec: 0 }]);
+    make(["-f", "lavfi", "-i", "sine=frequency=300:duration=2", join(fx, "line.wav")]);
+    make(["-f", "lavfi", "-i", "anoisesrc=d=8:c=pink:a=0.3", join(fx, "score.wav")]);
+    const voice = join(fx, "voice_placed.wav");
+    await run(soundStemArgs([{ path: join(fx, "line.wav"), startSec: 4 }], 0, plan.endSec, voice));
+    expect(peakDb(voice, 0, 3.8)).toBeLessThan(-60); // nothing before its scene
+    expect(peakDb(voice, 4.1, 1.5)).toBeGreaterThan(-40);
+    const mixed = join(fx, "mixed.m4a");
+    await run(audioMixArgs({ music: join(fx, "score.wav"), voice }, mixed, { musicLoopSec: 8, mix: MIX_SPECS.cinematic, duckRegions: plan.duckRegions }));
+    // Music alone (around 2 s) vs the music under speech (around 5 s): measured without the voice by its own copy.
+    const musicOnly = join(fx, "music_only.m4a");
+    const silent = join(fx, "silent.wav");
+    make(["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", "8", silent]);
+    await run(audioMixArgs({ music: join(fx, "score.wav"), voice: silent }, musicOnly, { musicLoopSec: 8, mix: MIX_SPECS.cinematic, duckRegions: plan.duckRegions, delivery: { integratedLufs: -16, truePeakDbtp: -1 } }));
+    expect(peakDb(musicOnly, 1.5, 1.5) - peakDb(musicOnly, 4.5, 1.2)).toBeGreaterThan(8); // a −12 dB dip, before loudnorm's gain
+  }, 60_000);
 });

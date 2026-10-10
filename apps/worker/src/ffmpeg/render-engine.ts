@@ -17,6 +17,8 @@ import {
   concatArgs,
   audioMixArgs,
   loudnessCorrectionArgs,
+  planVoicePlacement,
+  type DuckRegion,
   soundStemArgs,
   type PlacedSound,
   muxArgs,
@@ -120,6 +122,8 @@ export class RenderEngine {
       // scene spans the sound design is placed on (measured only when needed).
       const clipScene = scenes.flatMap((s, si) => s.shotKeys.map(() => si));
       const placeSounds = scenes.some((s) => s.sounds?.length);
+      // Speech placed at its scene's start on the cut (W25), unless the old back-to-back bed is asked for.
+      const placeVoices = process.env.RENDER_VOICE_PLACEMENT !== "concat" && scenes.some((s) => s.voiceKey);
       const clipSec: number[] = [];
       if (allShotKeys.length === 0) throw new Error("no shot clips to render");
 
@@ -147,7 +151,8 @@ export class RenderEngine {
             ];
         await this.run(withCut(args, allCuts[done] ?? null));
         clips.push(norm);
-        if (placeSounds) clipSec.push(await this.probe(norm));
+        // Every clip's length as cut: the scene spans speech and sound are placed on (W16, W25).
+        if (placeSounds || placeVoices) clipSec.push(await this.probe(norm));
         done++;
         onProgress?.((done / allShotKeys.length) * 0.6);
       }
@@ -230,13 +235,31 @@ export class RenderEngine {
           await this.storage.download(k, p);
           return p;
         };
-        // Voice bed: ordered concat of per-scene narration.
+        // Voice bed. Each scene's speech starts where its scene starts on the
+        // cut (W25; Part 1 §40): a pause after short narration, the next line
+        // held back after a long one — never cut, never overlapping. Music and
+        // ambience dip exactly where speech is (duckRegions).
         let voice: string | undefined;
+        let duckRegions: DuckRegion[] | undefined;
         const voiceScenes = scenes.filter((s) => s.voiceKey);
         // Scene tracks may differ in format (Voice Engine WAV, older MP3), so
         // they are decoded and joined by the concat filter, not the demuxer.
         const ext = (k: string) => (/\.(wav|mp3|m4a|aac|ogg|flac)$/i.exec(k)?.[1] ?? "audio").toLowerCase();
-        if (voiceScenes.length === 1) {
+        if (placeVoices) {
+          const paths = new Map<number, string>();
+          const secs: (number | null)[] = scenes.map(() => null);
+          for (const [i, s] of scenes.entries()) {
+            if (!s.voiceKey) continue;
+            const p = await dl(s.voiceKey, `voice_${i}.${ext(s.voiceKey)}`);
+            paths.set(i, p);
+            secs[i] = await this.probe(p);
+          }
+          const plan = planVoicePlacement(sceneSpans(scenes.length, clipScene, clipSec), secs);
+          voice = join(work, "voice_placed.wav");
+          await this.run(soundStemArgs(plan.voices.map((v) => ({ path: paths.get(v.sceneIndex)!, startSec: v.startSec })), 0, plan.endSec, voice));
+          duckRegions = plan.duckRegions;
+          console.log(`[render] speech placed: ${plan.voices.map((v) => `scene ${v.sceneIndex} @${v.startSec.toFixed(2)}s${v.delayedBySec > 0.01 ? ` (+${v.delayedBySec.toFixed(2)}s)` : ""}`).join(", ")}; ${plan.duckRegions.length} dip(s)`);
+        } else if (voiceScenes.length === 1) {
           voice = await dl(voiceScenes[0]!.voiceKey!, `voice_0.${ext(voiceScenes[0]!.voiceKey!)}`);
         } else if (voiceScenes.length > 1) {
           const parts: string[] = [];
@@ -305,7 +328,7 @@ export class RenderEngine {
         }
         if (voice || music || ambience || sfx) {
           let mix = join(work, "mix.m4a");
-          await this.run(audioMixArgs({ music, voice, ambience, sfx }, mix, { musicLoopSec: Math.max(opts.filmSec ?? 0, outputSec ?? 0) || undefined, mix: mixSpec, delivery: opts.delivery }));
+          await this.run(audioMixArgs({ music, voice, ambience, sfx }, mix, { musicLoopSec: Math.max(opts.filmSec ?? 0, outputSec ?? 0) || undefined, mix: mixSpec, delivery: opts.delivery, duckRegions }));
           // Second loudness pass (W23): measured, then a fixed gain to the target.
           const delivery = opts.delivery ?? { integratedLufs: -16, truePeakDbtp: -1 };
           const measured = await this.loudness(mix).catch(() => null);

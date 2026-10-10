@@ -43,6 +43,9 @@ export interface CanonDb {
     update(a: unknown): Promise<unknown>;
   };
   shot: { update(a: unknown): Promise<unknown> };
+  /** Sound departments (W25): lines voiced again, the score and ambience beds made again. */
+  dialogueLine?: { deleteMany(a: unknown): Promise<unknown>; createMany(a: unknown): Promise<unknown> };
+  audioTrack?: { deleteMany(a: unknown): Promise<unknown> };
   canonRevision: { create(a: { data: Row; select?: Row }): Promise<unknown> };
   $transaction<T>(fn: (tx: CanonDb) => Promise<T>): Promise<T>;
 }
@@ -55,6 +58,8 @@ export interface AppliedRevision {
   affectedScenes: string[];
   /** Database ids of the shots that will regenerate. */
   invalidatedShotIds: string[];
+  /** True when sound (lines, the score or an ambience bed) will be made again (W25). */
+  audioRedo?: boolean;
   fromVersion: string;
   toVersion: string;
 }
@@ -183,6 +188,32 @@ export async function applyCanonRevision(
         invalidated.push(shotRow.id);
       }
     }
+    // Sound (W25): changed lines are voiced again, a changed cue or mood recomposes the score, a changed bed is drawn again.
+    const bySceneKey = new Map(compiled.scenes.map((sc) => [sc.key, sc]));
+    for (const key of rev.audio.revoice) {
+      const sc = bySceneKey.get(key)!;
+      const row = sceneRow.get(sc.index)!;
+      await tx.dialogueLine?.deleteMany({ where: { sceneId: row.id } });
+      if (sc.dialogue.length) {
+        await tx.dialogueLine?.createMany({
+          data: sc.dialogue.map((d) => ({ sceneId: row.id, index: d.index, characterId: charId.get(d.characterKey) ?? null, text: d.text, emotion: d.emotion })),
+        });
+      }
+      await tx.audioTrack?.deleteMany({ where: { sceneId: row.id, kind: "VOICE" } });
+      await tx.scene.update({ where: { id: row.id }, data: { dialogue: sc.dialogueText }, select: { id: true } });
+    }
+    if (rev.audio.rescore) {
+      for (const sc of compiled.scenes) {
+        const row = sceneRow.get(sc.index);
+        if (row) await tx.scene.update({ where: { id: row.id }, data: { mood: sc.mood, music: sc.music }, select: { id: true } });
+      }
+      // One score per film (composed on the opening scene): drop it so the resume composes it again.
+      await tx.audioTrack?.deleteMany({ where: { sceneId: { in: rows.map((r) => r.id) }, kind: "MUSIC" } });
+    }
+    for (const key of rev.audio.ambience) {
+      const row = sceneRow.get(bySceneKey.get(key)!.index)!;
+      await tx.audioTrack?.deleteMany({ where: { sceneId: row.id, kind: "AMBIENCE" } });
+    }
     const raw = { ...stored, irVersion: rev.pkg.irVersion, canonVersion: rev.toVersion, package: rev.pkg, revisedFrom: rev.fromVersion };
     await tx.screenplay.update({ where: { projectId }, data: { raw }, select: { id: true } });
   });
@@ -191,5 +222,6 @@ export async function applyCanonRevision(
     await writeShotDependencies(history, projectId, rev.pkg, (si, hi) => byIndex.get(si)?.get(hi), rev.toVersion, new Set(invalidated));
   }
   await record(db, projectId, rev, "applied", invalidated.length, actor);
-  return { outcome: "applied", affectedScenes: rev.affectedScenes, invalidatedShotIds: invalidated, ...base };
+  const audioRedo = rev.audio.revoice.length > 0 || rev.audio.rescore || rev.audio.ambience.length > 0;
+  return { outcome: "applied", affectedScenes: rev.affectedScenes, invalidatedShotIds: invalidated, audioRedo, ...base };
 }
