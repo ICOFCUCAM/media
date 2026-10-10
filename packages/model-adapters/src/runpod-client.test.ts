@@ -56,6 +56,17 @@ describe("RunpodClient.generate", () => {
     await expect(client().generate(INPUT)).rejects.toThrow(/gpu-worker \/generate 404: .*UNKNOWN_TASK/);
   });
 
+  it("a shot waiting behind others is not timed out; its own run time is", async () => {
+    // Queued for longer than the run budget, then runs and finishes: fine.
+    fakeFetch([
+      { status: 202, body: { taskId: "t5" } },
+      ...Array.from({ length: 40 }, () => ({ status: 200, body: { status: "queued" } })),
+      { status: 200, body: { status: "running" } },
+      { status: 200, body: { status: "done", result: OUT } },
+    ]);
+    expect(await new RunpodClient({ baseUrl: "https://pod.example", pollMaxMs: 2, timeoutMs: 40 }).generate(INPUT)).toEqual(OUT);
+  });
+
   it("gives up at its timeout while the shot is still running", async () => {
     fakeFetch([{ status: 202, body: { taskId: "t4" } }, ...Array.from({ length: 500 }, () => ({ status: 200, body: { status: "running" } }))]);
     await expect(new RunpodClient({ baseUrl: "https://pod.example", pollMaxMs: 5, timeoutMs: 60 }).generate(INPUT)).rejects.toMatchObject({ name: "AbortError" });

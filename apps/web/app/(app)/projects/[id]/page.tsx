@@ -15,6 +15,7 @@ import { DegradationList } from "../../../../components/DegradationList";
 import { ProductionLocks } from "../../../../components/ProductionLocks";
 import { DirectorPasses } from "../../../../components/DirectorPasses";
 import { EditRequests } from "../../../../components/EditRequests";
+import { ResumeProduction } from "../../../../components/ResumeProduction";
 
 const STAGE_LABELS: Record<ProjectStatus, string> = {
   PLANNING: "Writing",
@@ -115,6 +116,7 @@ export default function ProjectCommandCenter({ params }: { params: { id: string 
           <EmptyState title="Not in your archive." hint="This project does not exist, or it belongs to another account." action={{ label: "Back to the archive", href: "/projects" }} />
         ) : (
           <>
+            {project && <ResumeProduction projectId={project.id} refreshKey={`${state?.status}:${state?.error ?? ""}`} />}
             {project && <DegradationList projectId={project.id} refreshKey={state?.status} />}
             {project && <DirectorPasses projectId={project.id} refreshKey={state?.status} />}
             {project && <EditRequests projectId={project.id} />}

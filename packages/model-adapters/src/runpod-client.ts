@@ -26,7 +26,14 @@ export interface RunpodClientOptions {
   resolveBaseUrl?: () => string;
   /** Media Runtime Gateway authority (apps/worker wires it). */
   authorizer?: GpuCallAuthorizer;
+  /** Longest a shot may run once it has the GPU (default 15 min). */
   timeoutMs?: number;
+  /**
+   * Longest a call may take in all, waiting behind other shots on the GPU
+   * included (default 60 min). Several shots queue on one GPU; only the
+   * running time is the shot's own.
+   */
+  queueTimeoutMs?: number;
   /** Longest wait between polls of an async generate (default 5 s; the first polls come sooner). */
   pollMaxMs?: number;
 }
@@ -83,7 +90,7 @@ export class RunpodClient {
 
   async generate(input: GpuGenerateInput, signal?: AbortSignal, job?: JobContext): Promise<GpuGenerateOutput> {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), this.opts.timeoutMs ?? 15 * 60_000);
+    const t = setTimeout(() => ctrl.abort(), this.opts.queueTimeoutMs ?? 60 * 60_000);
     if (signal) signal.addEventListener("abort", () => ctrl.abort());
     const base = this.url();
     let grant: GrantHandle | null = null;
@@ -134,7 +141,12 @@ export class RunpodClient {
   private async awaitTask(base: string, taskId: string, signal: AbortSignal, grant: GrantHandle | null): Promise<GpuGenerateOutput> {
     const path = `/generate/jobs/${encodeURIComponent(taskId)}`;
     const max = this.opts.pollMaxMs ?? 5_000;
+    const runBudget = this.opts.timeoutMs ?? 15 * 60_000;
+    let runningSince: number | null = null;
     for (let wait = Math.min(500, max); ; wait = Math.min(wait * 2, max)) {
+      if (runningSince !== null && Date.now() - runningSince > runBudget) {
+        throw Object.assign(new Error(`gpu-worker /generate: the shot ran longer than ${Math.round(runBudget / 1000)}s`), { name: "AbortError" });
+      }
       await sleep(wait, signal);
       let res: Response;
       try {
@@ -150,9 +162,10 @@ export class RunpodClient {
         throw new Error(`gpu-worker /generate ${res.status}: ${text}`);
       }
       const state = (await res.json()) as
-        | { status: "running" }
+        | { status: "queued" | "running" }
         | { status: "done"; result: GpuGenerateOutput }
         | { status: "error"; httpStatus: number; detail: unknown };
+      if (state.status === "running") runningSince ??= Date.now();
       if (state.status === "done") return state.result;
       if (state.status === "error") {
         await grant?.fail(`HTTP_${state.httpStatus}`);

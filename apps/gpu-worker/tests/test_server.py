@@ -420,7 +420,7 @@ def _poll(client, mint, task_id, *, timeout=5.0):
     deadline = _t.time() + timeout
     while True:
         r = client.get(f"/generate/jobs/{task_id}", headers={"authorization": f"Bearer {mint.token(b'', scope='status')}"})
-        if r.status_code != 200 or r.json()["status"] != "running" or _t.time() > deadline:
+        if r.status_code != 200 or r.json()["status"] not in ("queued", "running") or _t.time() > deadline:
             return r
         _t.sleep(0.02)
 
@@ -495,3 +495,34 @@ def test_gpu_ms_counts_only_this_shots_turn_on_the_gpu(signing_key, mint):
         results = [_poll(client, mint, t, timeout=5).json() for t in tasks]
     assert all(x["status"] == "done" for x in results), results
     assert all(350 <= x["result"]["gpuMs"] < 700 for x in results), [x["result"]["gpuMs"] for x in results]
+
+
+def test_a_shot_waiting_for_the_gpu_reports_queued_then_running(signing_key, mint):
+    import threading as _th
+    import time as _t
+
+    client, pipeline, _ = build_client(signing_key)
+    release = _th.Event()
+    original = pipeline.generate
+
+    def held(**kw):
+        release.wait(5)
+        return original(**kw)
+    pipeline.generate = held
+    status = lambda t: client.get(f"/generate/jobs/{t}", headers={"authorization": f"Bearer {mint.token(b'', scope='status')}"}).json()["status"]
+    with client:
+        tasks = []
+        for job in ("grant-1", "grant-2"):
+            body = gen_body(jobId=job)
+            tasks.append(client.post("/generate", content=body, headers={
+                "content-type": "application/json", "x-cineforge-async": "1",
+                "authorization": f"Bearer {mint.token(body, sub=job, authz=cineforge_authz())}"}).json()["taskId"])
+        deadline = _t.time() + 3
+        while _t.time() < deadline and "running" not in {status(t) for t in tasks}:
+            _t.sleep(0.02)
+        seen = sorted(status(t) for t in tasks)
+        release.set()
+        done = [_poll(client, mint, t).json()["status"] for t in tasks]
+    # One shot holds the GPU; the other waits its turn and says so.
+    assert seen == ["queued", "running"], seen
+    assert done == ["done", "done"]

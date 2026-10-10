@@ -18,6 +18,7 @@ import { prisma } from "@cineforge/db";
 import { enqueueSceneFlow } from "./film-flow";
 import { advancePasses } from "./passes";
 import { advanceLocks } from "./locks";
+import { claimResumeRequests, resumeCeilingMs, type ResumeDb } from "./resume";
 import { drawPortraits, type PortraitDb } from "../images/portraits";
 import { imageProvider } from "../images/providers";
 import { meteredImages } from "../billing/meter";
@@ -317,6 +318,12 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
         await filmQueue.add("resume", { projectId: c.id }, { jobId: `film-resume-${c.id}-${windowId}`, attempts: 2, removeOnComplete: 100 });
         console.log(`[poller] resumed stalled project ${c.id} (no shot completed in ${STALL_MS / 60000} min)`);
       }
+      // Resume requests (W23; 0055): an owner pressed Resume on a paused film.
+      await claimResumeRequests(prisma as unknown as ResumeDb, async (projectId) => {
+        await filmQueue.add("resume", { projectId }, { jobId: `film-owner-resume-${projectId}-${Date.now()}`, attempts: 2, removeOnComplete: 100 });
+      })
+        .then((rs) => rs.forEach((r) => console.log(JSON.stringify({ event: "project.resume", ...r, ...(r.estimatedMs ? { ceilingMs: resumeCeilingMs(r.estimatedMs) } : {}) }))))
+        .catch(() => {}); // before migration 0055
       // ── Scene-by-scene: queued shots + assembly requests ───────────────
       await claimStoryboardWork();
       // Production passes (W8b): previs, approved scenes, final render of three-pass films.

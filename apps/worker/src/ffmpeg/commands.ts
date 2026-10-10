@@ -155,9 +155,34 @@ export function audioMixArgs(inputs: AudioInputs, output: string, opts: MixOptio
   if (labels.sfx !== undefined) mixIns.push(`[${labels.sfx}:a]`);
 
   filters.push(`${mixIns.join("")}amix=inputs=${mixIns.length}:normalize=0[premix]`);
-  filters.push(`[premix]loudnorm=I=${delivery.integratedLufs}:TP=${delivery.truePeakDbtp - TRUE_PEAK_MARGIN_DB}:LRA=${mix.loudnessRangeLu}[aout]`);
+  // loudnorm works (and outputs) at 192 kHz; bring the mix back to the
+  // delivery rate, or the encoder keeps its highest rate (a 96 kHz master).
+  filters.push(`[premix]loudnorm=I=${delivery.integratedLufs}:TP=${delivery.truePeakDbtp - TRUE_PEAK_MARGIN_DB}:LRA=${mix.loudnessRangeLu},aresample=48000[aout]`);
 
-  return [...args, "-filter_complex", filters.join(";"), "-map", "[aout]", "-c:a", "aac", "-b:a", "192k", output];
+  return [...args, "-filter_complex", filters.join(";"), "-map", "[aout]", "-ar", "48000", "-c:a", "aac", "-b:a", "192k", output];
+}
+
+/** How far a mix may sit from its loudness target before it is corrected (LU). */
+export const LOUDNESS_TOLERANCE_LU = 1;
+
+/**
+ * The second loudness pass (W23): one-pass loudnorm cannot lift a quiet mix
+ * with long pauses to its target (a live master came out at -30 LUFS for -16).
+ * The mix is measured, then corrected by a fixed gain to the target, with a
+ * limiter at the true-peak ceiling. Null when the mix is already in tolerance
+ * or could not be measured (pure).
+ */
+export function loudnessCorrectionArgs(
+  input: string, output: string,
+  measured: { integratedLufs: number } | null,
+  delivery: { integratedLufs: number; truePeakDbtp: number },
+): string[] | null {
+  if (!measured || !Number.isFinite(measured.integratedLufs) || measured.integratedLufs < -70) return null;
+  const gainDb = delivery.integratedLufs - measured.integratedLufs;
+  if (Math.abs(gainDb) <= LOUDNESS_TOLERANCE_LU) return null;
+  const ceiling = Math.pow(10, (delivery.truePeakDbtp - TRUE_PEAK_MARGIN_DB) / 20).toFixed(4);
+  return ["-i", input, "-af", `volume=${gainDb.toFixed(2)}dB,alimiter=limit=${ceiling}:attack=1:release=50:level=disabled,aresample=48000`,
+    "-ar", "48000", "-c:a", "aac", "-b:a", "192k", output];
 }
 
 /** One sound placed on the film's timeline. */

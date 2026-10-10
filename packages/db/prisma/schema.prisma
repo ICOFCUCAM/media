@@ -99,6 +99,8 @@ model Project {
   progress      Float         @default(0)
   estimatedMs   Int?          @map("estimated_ms")
   spentMs       Int           @default(0) @map("spent_ms")
+  /// W23 (0055): the owner pressed Resume on a paused film; the worker claims it.
+  resumeRequestedAt DateTime? @map("resume_requested_at") @db.Timestamptz(6)
   errorMessage  String?       @map("error_message")
   createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)

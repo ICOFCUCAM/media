@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { candidateSeed, imageProvider, imageProviderStatuses, sha256Hex, type FalImageDeps } from "./providers";
+import { candidateSeed, imageProvider, imageProviderStatuses, sha256Hex, withFallback, type FalImageDeps, type ImageProvider } from "./providers";
 import { imageGenerationRow } from "./ledger";
 
 const PNG = new Uint8Array([137, 80, 78, 71, 1, 2, 3]);
@@ -52,5 +52,31 @@ describe("the Image Engine's providers (Part 2 §69, §95)", () => {
     const img = { key: "k", provider: "fal-image", model: "fal-ai/flux/dev", seed: 7, sha256: "a".repeat(64), promptSha256: "b".repeat(64), width: 1280, height: 720 };
     expect(imageGenerationRow("p", "seed_candidate", "shot-1", img, { candidate: 2, chosen: true })).toMatchObject({ seed: 7n, candidate: 2, chosen: true, sha256: "a".repeat(64) });
     expect(imageGenerationRow("p", "location_reference", "loc_harbour", { ...img, seed: null }, { canonDigest: "c".repeat(64) })).toMatchObject({ seed: null, candidate: null, chosen: null, canonDigest: "c".repeat(64) });
+  });
+});
+
+describe("provider fallback (a revoked key must not cost every reference still)", () => {
+  const p = (id: string, fail?: string): ImageProvider => ({
+    id, model: `${id}-m`, seeds: false,
+    async generate(_prompt, key) {
+      if (fail) throw new Error(fail);
+      return { key, provider: id, model: `${id}-m`, seed: null, sha256: null, promptSha256: "x", width: 1, height: 1 };
+    },
+  });
+
+  it("the next provider draws the still when the first fails, and the record names it", async () => {
+    const out = await withFallback([p("openai-image", "OpenAI images 401: Incorrect API key"), p("fal-image")]).generate("a van", "k.png", { width: 1, height: 1 });
+    expect(out.provider).toBe("fal-image");
+  });
+
+  it("when every provider fails the error names each reason", async () => {
+    await expect(withFallback([p("openai-image", "401"), p("fal-image", "quota")]).generate("x", "k", { width: 1, height: 1 }))
+      .rejects.toThrow(/openai-image: 401 \| fal-image: quota/);
+  });
+
+  it("by default both OpenAI and fal are tried when both are configured", () => {
+    const { provider } = imageProvider(async (k) => k, { OPENAI_API_KEY: "k", FAL_KEY: "f", S3_BUCKET: "b" });
+    expect(provider?.id).toBe("openai-image");
+    expect(imageProviderStatuses({}).map((x) => x.id)).toEqual(["openai", "fal"]);
   });
 });
