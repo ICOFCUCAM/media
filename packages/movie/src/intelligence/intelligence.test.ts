@@ -3,7 +3,8 @@ import { jsonSchemaOutputFormat } from "@anthropic-ai/sdk/helpers/json-schema";
 import { fixturePackage, FIXTURE_CONSTRAINTS as C } from "../ir/fixture";
 import { filmPackageJsonSchema } from "../ir/json-schema";
 import { OpenAIProvider } from "./openai";
-import { PlanInvalidError, planFilm } from "./planner";
+import { normalizePlan, PlanInvalidError, planFilm } from "./planner";
+import { renderPlanRequest } from "./prompts";
 import { IntelligenceRouter, parseRoutes } from "./router";
 import { IntelligenceError, type DecisionRecord, type IntelligenceProvider, type StructuredRequest } from "./types";
 
@@ -143,5 +144,19 @@ describe("providers", () => {
       { type: "image_url", image_url: { url: "data:image/jpeg;base64,QUJD" } },
       { type: "text", text: "check" },
     ]);
+  });
+});
+
+describe("one-scene productions (shorts)", () => {
+  const one = { ...C, sceneCount: 1 };
+  it("the plan request says a one-scene film has no setups; longer films are unchanged", () => {
+    expect(renderPlanRequest("brief", one)).toContain("setups must be empty");
+    expect(renderPlanRequest("brief", C)).not.toContain("setups must be empty");
+  });
+
+  it("setups are cleared from a one-scene plan before validation (a payoff needs a later scene)", () => {
+    const plan = { scenes: [{ id: "scene_01" }], setups: [{ id: "setup_plate", plantedIn: "scene_01", paidOffIn: "scene_01" }] };
+    expect((normalizePlan(plan, filmPackageJsonSchema(), one) as { setups: unknown[] }).setups).toEqual([]);
+    expect((normalizePlan(plan, filmPackageJsonSchema(), C) as { setups: unknown[] }).setups).toHaveLength(1);
   });
 });

@@ -42,6 +42,19 @@ export function summarizePlan(o: unknown): string | null {
   return `Planned "${p.film?.title ?? "untitled"}" in ${p.scenes.length} scenes with ${p.cast?.length ?? 0} characters: ${p.film?.logline ?? ""}`;
 }
 
+/**
+ * What CineForge settles itself before validating a plan: over-long text is
+ * trimmed, and a one-scene production keeps no setups (a payoff needs a later
+ * scene, so any setup would fail PAYOFF_BEFORE_SETUP; nothing references setups).
+ */
+export function normalizePlan(output: unknown, schema: Record<string, unknown>, constraints: ProductionConstraints): unknown {
+  const out = clampStrings(output, schema);
+  if (constraints.sceneCount === 1 && out && typeof out === "object" && Array.isArray((out as { setups?: unknown }).setups)) {
+    return { ...(out as Record<string, unknown>), setups: [] };
+  }
+  return out;
+}
+
 export async function planFilm(
   router: IntelligenceRouter,
   brief: string,
@@ -60,7 +73,7 @@ export async function planFilm(
     ctx,
   );
   // Text a little over its length limit is trimmed, not failed (unconstrained output can overrun).
-  const draft = clampStrings(first.output, schema);
+  const draft = normalizePlan(first.output, schema, constraints);
   const v1 = validateFilmPackage(draft, constraints);
   // A cast character's identity is CineForge's, not the model's (W12): restored after validation.
   const cast = ctx.production?.cast ?? [];
@@ -75,7 +88,7 @@ export async function planFilm(
     },
     ctx,
   );
-  const v2 = validateFilmPackage(clampStrings(second.output, schema), constraints);
+  const v2 = validateFilmPackage(normalizePlan(second.output, schema, constraints), constraints);
   if (!v2.ok) throw new PlanInvalidError(v2.issues);
   return { pkg: applyCast(v2.pkg, cast), revised: true, fixedIssues: v1.issues, provider: second.provider, model: second.model };
 }
