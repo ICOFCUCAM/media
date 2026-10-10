@@ -72,6 +72,8 @@ export interface RenderJob {
   kind: "final" | "upscale";
   /** Render from this approved timeline (W19: a locked film); absent = from the current scenes. */
   timelineId?: string;
+  /** A render after sync repairs (W27): how many repair rounds came before it. */
+  repairRound?: number;
 }
 
 /** Train a per-character LoRA from the character's reference frames (docs/28). */

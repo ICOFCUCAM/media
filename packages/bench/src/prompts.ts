@@ -14,7 +14,7 @@
  * on every change regardless.
  */
 import { createHash } from "node:crypto";
-import { EDITOR_SCHEMA, filmPackageJsonSchema, PROMPTS, renderPlanRequest, renderRevisionRequest } from "@cineforge/movie";
+import { EDITOR_SCHEMA, filmPackageJsonSchema, PROMPTS, renderPlanRequest, renderRevisionRequest, renderSiteRequest, SITE_SCHEMA } from "@cineforge/movie";
 
 export interface PromptFingerprint {
   id: string;
@@ -42,6 +42,11 @@ const SAMPLE = {
     format: "Series", medium: "animation" as const, style: { label: "Anime-inspired", look: "anime look", motion: "held poses" },
     narrated: true, episodes: 2, direction: ["Each act is one EPISODE."],
   },
+  // An advert's source facts and brand assets are part of the plan request (A2/A3, docs/47).
+  advert: {
+    format: "Advert", medium: "live_action" as const, style: null, narrated: false, direction: ["The last scene is the call to action."],
+    advert: { sourceUrl: "https://example.com/", facts: [{ kind: "benefit" as const, statement: "Keeps coffee hot.", quote: "Keeps coffee hot for 12 hours" }], productPhotos: 1, logo: true },
+  },
 };
 
 /** What each prompt sends besides its system text (rendered on a fixed sample). */
@@ -50,11 +55,13 @@ function rendered(id: string): string {
     return [
       renderPlanRequest(SAMPLE.brief, SAMPLE.constraints),
       renderPlanRequest(SAMPLE.brief, SAMPLE.constraints, SAMPLE.production),
+      renderPlanRequest(SAMPLE.brief, SAMPLE.constraints, SAMPLE.advert),
       JSON.stringify(filmPackageJsonSchema()),
     ].join("\n\u0000");
   }
   // The Editor's answer shape (W13) is part of its prompt.
   if (id === PROMPTS.editorReview.id) return JSON.stringify(EDITOR_SCHEMA);
+  if (id === PROMPTS.siteAnalysis.id) return renderSiteRequest({ url: "https://example.com/", title: "Example", text: "Example page text." }) + JSON.stringify(SITE_SCHEMA);
   if (id === PROMPTS.directorRevision.id) return renderRevisionRequest({ sample: true }, "- [story/X] path: message") + JSON.stringify(filmPackageJsonSchema());
   return "";
 }

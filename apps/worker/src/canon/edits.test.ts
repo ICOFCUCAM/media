@@ -71,3 +71,13 @@ describe("scene revisions through the edit command (W25)", () => {
     expect(CanonChangeSchema.safeParse({ kind: "scene_revision", sceneId: "scene_07", revision: { shots: [{ index: 1, size: "HUGE" }] } }).success).toBe(false);
   });
 });
+
+describe("the Film Bible through the edit command (W27)", () => {
+  it("accepts story, look and sound fields; refuses an empty or unknown patch", () => {
+    expect(CanonChangeSchema.safeParse({ kind: "film_bible", patch: { logline: "A keeper hides a stranger.", visualStyle: { palette: "cold blues" }, premise: null } }).success).toBe(true);
+    expect(CanonChangeSchema.safeParse({ kind: "film_bible", patch: {} }).success).toBe(false);
+    expect(CanonChangeSchema.safeParse({ kind: "film_bible", patch: { title: "New title" } }).success).toBe(false);
+    expect(CanonChangeSchema.safeParse({ kind: "film_bible", patch: { themes: [] } }).success).toBe(false);
+    expect(CanonChangeSchema.safeParse({ kind: "film_bible", patch: { audioStyle: { tempo: "fast" } } }).success).toBe(false);
+  });
+});

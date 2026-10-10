@@ -63,7 +63,7 @@ const ANGLES: Record<string, string> = { eye: "eye-level", low: "low angle", hig
 function who(req: CanonicalMediaRequest, motion = false): string[] {
   return req.visualIntent.subjects.map((s) =>
     s.kind === "character"
-      ? `${s.name}, ${s.look}${s.holding.length ? `, holding ${s.holding.join(" and ")}` : ""}${motion && s.movement ? `, moving ${s.movement}` : ""}`
+      ? `${s.name}${s.position ? ` (${s.position})` : ""}, ${s.look}${s.holding.length ? `, holding ${s.holding.join(" and ")}` : ""}${motion && s.movement ? `, moving ${s.movement}` : ""}`
       : `${s.name} (${s.look})`);
 }
 

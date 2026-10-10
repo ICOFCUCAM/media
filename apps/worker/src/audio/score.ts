@@ -15,12 +15,14 @@ export const SCORE_MODEL = process.env.FAL_MUSIC_MODEL ?? "fal-ai/stable-audio";
 export const SCORE_MAX_SEC = Number(process.env.FAL_MUSIC_MAX_SEC ?? 47);
 
 /** A concise, instrument-forward prompt for a text-to-music model. */
-export function buildScorePrompt(brief: string, scenes: ScoreScene[]): string {
+export function buildScorePrompt(brief: string, scenes: ScoreScene[], filmScore?: string | null): string {
   const uniq = (xs: (string | null)[]) => [...new Set(xs.map((x) => x?.trim()).filter((x): x is string => !!x && x.toLowerCase() !== "none"))];
   const styles = uniq(scenes.map((s) => s.music));
   const moods = uniq(scenes.map((s) => s.mood));
   const parts = [
     "Cinematic film score, instrumental, no vocals",
+    // The Film Bible's score style (W27) leads; the scenes' cues refine it.
+    filmScore?.trim() ? `score: ${filmScore.trim().replace(/\s+/g, " ").slice(0, 200)}` : "",
     styles.length ? `style: ${styles.slice(0, 3).join(", ")}` : "",
     moods.length ? `mood: ${moods.slice(0, 3).join(", ")}` : "",
     brief.trim() ? `for a film about ${brief.trim().replace(/\s+/g, " ").slice(0, 160)}` : "",

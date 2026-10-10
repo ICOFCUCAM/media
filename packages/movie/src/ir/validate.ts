@@ -200,11 +200,21 @@ function references(pkg: FilmPackage): Issue[] {
           message: `${d.characterId} speaks but is not listed in the scene's characters` });
       }
     });
-    sc.shots.forEach((sh, j) =>
+    sc.shots.forEach((sh, j) => {
       sh.subjectIds.forEach((s, k) => {
         if (!chars.has(s) && !props.has(s) && !locs.has(s)) R(`${p}.shots[${j}].subjectIds[${k}]`, `subject ${s} does not exist`);
-      }),
-    );
+      });
+      // Blocking (W27) places framed characters only, each once.
+      const placed = new Set<string>();
+      (sh.blocking ?? []).forEach((b, k) => {
+        if (!sh.subjectIds.includes(b.characterId) || !chars.has(b.characterId)) {
+          out.push({ stage: "references", code: "BLOCKING_NOT_IN_FRAME", path: `${p}.shots[${j}].blocking[${k}]`, message: `${b.characterId} is placed in the frame but is not one of the shot's subjects` });
+        } else if (placed.has(b.characterId)) {
+          out.push({ stage: "references", code: "BLOCKING_DUPLICATE", path: `${p}.shots[${j}].blocking[${k}]`, message: `${b.characterId} is placed twice in the frame` });
+        }
+        placed.add(b.characterId);
+      });
+    });
   });
   return out;
 }

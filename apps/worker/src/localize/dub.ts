@@ -23,7 +23,7 @@ import { RenderEngine, type SceneAssets } from "../ffmpeg/render-engine";
 import { S3Storage } from "../storage/storage";
 import { applyCut, cutFromTimeline } from "../timeline/lock";
 import { brandOutro, masterGate, renderProfile } from "../render/profile";
-import { sceneAssetsOf, type DubbedScene, type RenderSceneRow } from "../render/inputs";
+import { sceneAssetsOf, transitionOf, type DubbedScene, type RenderSceneRow } from "../render/inputs";
 import { lipSyncPass } from "../render/lip-sync-pass";
 
 export function dubMixEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -72,7 +72,8 @@ export async function renderDubbedFilm(projectId: string, language: string, dubb
   if (frozen && locked?.lockedAt) {
     const events = await prisma.timelineEvent.findMany({ where: { timelineVersionId: frozen.id }, select: { kind: true, refId: true, startUs: true, endUs: true } });
     const cut = cutFromTimeline(events, new Map(scenes.flatMap((s) => s.shots.map((sh) => [sh.id, s.id] as const))));
-    assets = applyCut(assets, cut, new Map(scenes.flatMap((s) => s.shots.map((sh) => [sh.id, lip.clips.get(sh.id) ?? sh.videoKey] as const))));
+    assets = applyCut(assets, cut, new Map(scenes.flatMap((s) => s.shots.map((sh) => [sh.id, lip.clips.get(sh.id) ?? sh.videoKey] as const))),
+      new Map(scenes.flatMap((s) => s.shots.map((sh) => [sh.id, transitionOf(sh)] as const))));
     filmSec = cut.durationSec;
   }
   const profile = renderProfile();

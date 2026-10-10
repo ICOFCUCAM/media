@@ -234,8 +234,20 @@ export const Shot = z.object({
     .describe("camera side of the scene's action line (180° rule): A or B; neutral = on the line or a move that crosses it"),
   screenDirection: z.enum(["left", "right"]).nullable().default(null)
     .describe("which way the main subject looks or moves on screen"),
+  // Where each framed character stands in the frame (W27; Part 1 §10.2, §17).
+  blocking: z.array(z.object({
+    characterId: CharacterId,
+    x: z.enum(["left", "center", "right"]),
+    depth: z.enum(["foreground", "midground", "background"]),
+  }).strict()).max(6).nullable().optional()
+    .describe("where each framed character stands: left/center/right third and foreground/midground/background"),
   rationale: why,
 });
+
+/** "left third, foreground" — a framed character's place in the frame (W27). */
+export function blockingPhrase(b: { x: "left" | "center" | "right"; depth: "foreground" | "midground" | "background" }): string {
+  return `${b.x === "center" ? "center" : `${b.x} third`}, ${b.depth}`;
+}
 
 export const SceneAudio = z.object({
   music: z.string().trim().max(200).nullable().describe("cue for this scene, or null for silence/score bed"),

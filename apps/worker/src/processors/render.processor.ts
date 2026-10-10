@@ -24,9 +24,11 @@ import { meter } from "../billing";
 import { enqueueLocalize } from "../orchestration/localize-queue";
 import { voiceContinuity } from "../voice/continuity";
 import { syncAfterRender } from "../avsync/run";
+import { executeRepairs, repairMode, type RepairDb } from "../avsync/repair";
+import { ffmpeg, probeDuration } from "../ffmpeg/ffmpeg";
 import { applyCut, cutFromTimeline } from "../timeline/lock";
 import { brandOutro, masterGate, renderProfile } from "../render/profile";
-import { sceneAssetsOf, realTrack as real } from "../render/inputs";
+import { sceneAssetsOf, realTrack as real, transitionOf } from "../render/inputs";
 import { lipSyncPass } from "../render/lip-sync-pass";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
@@ -90,7 +92,7 @@ async function upscaleFilm(projectId: string) {
 export const renderWorker = new Worker<RenderJob>(
   QUEUES.render,
   async (job) => {
-    const { projectId, kind, timelineId } = job.data;
+    const { projectId, kind, timelineId, repairRound = 0 } = job.data;
     if (kind === "upscale") return upscaleFilm(projectId);
     if (kind !== "final") throw new UnrecoverableError(`unknown render kind ${JSON.stringify(kind)}`);
 
@@ -129,7 +131,8 @@ export const renderWorker = new Worker<RenderJob>(
       if (timelineId) {
         const events = await prisma.timelineEvent.findMany({ where: { timelineVersionId: timelineId }, select: { kind: true, refId: true, startUs: true, endUs: true } });
         const cut = cutFromTimeline(events, new Map(scenes.flatMap((s) => s.shots.map((sh) => [sh.id, s.id] as const))));
-        assets = applyCut(assets, cut, new Map(scenes.flatMap((s) => s.shots.map((sh) => [sh.id, clipOf(sh)] as const))));
+        assets = applyCut(assets, cut, new Map(scenes.flatMap((s) => s.shots.map((sh) => [sh.id, clipOf(sh)] as const))),
+          new Map(scenes.flatMap((s) => s.shots.map((sh) => [sh.id, transitionOf(sh)] as const))));
         durationSec = cut.durationSec;
         console.log(`[render] project=${projectId} from approved timeline ${timelineId} (${cut.scenes.length} scenes, ${durationSec.toFixed(2)}s)`);
       }
@@ -254,6 +257,33 @@ export const renderWorker = new Worker<RenderJob>(
             await record(projectId, [degradation("QUALITY_FLAGGED", "film",
               `The A/V sync check found ${sync.issues} issue(s) in the finished film${sync.errors ? `, ${sync.errors} of them errors` : ""}; see the sync report.`,
               { detail: { gate: "sync", timelineId: sync.timelineId, issues: sync.issues, errors: sync.errors } })]);
+          }
+          // The repair engine (W27): carry out what the check planned, then render once more.
+          const rounds = Math.max(0, Number(process.env.SYNC_REPAIR_ROUNDS ?? 1) || 0);
+          if (sync.status === "checked" && !sync.passed && sync.saved.saved && repairMode() !== "off" && repairRound < rounds) {
+            const fixed = await executeRepairs(prisma as unknown as RepairDb, {
+              download: (k, d) => storage.download(k, d),
+              upload: (src, key) => storage.upload(src, key, "video/mp4"),
+              ffmpeg: (args) => ffmpeg(args),
+              probe: probeDuration,
+              version: async (v) => (await recordVersion(prisma as unknown as VersionDb, {
+                projectId: v.projectId, assetType: "video", assetId: v.shotId, storageKey: v.storageKey, durationSec: v.durationSec,
+                derivedFrom: [v.derivedFrom], derivation: { role: "sync_repair", action: v.action as object },
+              }))?.id ?? null,
+            }, { projectId, reportId: sync.saved.reportId });
+            console.log(`[render] sync repairs ${JSON.stringify({ projectId, round: repairRound + 1, ...fixed })}`);
+            const { Queue } = await import("bullmq");
+            if (fixed.regenerating) {
+              // Regenerated shots generate; the resume renders the film again.
+              const fq = new Queue(QUEUES.film, { connection });
+              await fq.add("resume", { projectId }, { jobId: `film-sync-repair-${projectId}-${sync.saved.reportId}`, attempts: 2, removeOnComplete: 100 });
+              await fq.close();
+            } else if (fixed.clips) {
+              const rq = new Queue(QUEUES.render, { connection });
+              await rq.add("render", { projectId, kind: "final", ...(timelineId ? { timelineId } : {}), repairRound: repairRound + 1 },
+                { jobId: `render-sync-repair-${projectId}-${sync.saved.reportId}`, attempts: 2, removeOnComplete: 50 });
+              await rq.close();
+            }
           }
         } catch (e) {
           console.warn(`[render] sync check skipped: ${e instanceof Error ? e.message : String(e)}`);

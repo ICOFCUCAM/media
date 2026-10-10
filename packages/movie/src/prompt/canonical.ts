@@ -28,6 +28,8 @@ export interface CanonicalMediaRequest {
       /** Canonical look, for characters: identity, age, wardrobe, visible state. */
       look: string;
       holding: string[];
+      /** Where the plan places a character in the frame (W27), only when it does. */
+      position?: string;
       /** How an animated character moves (W12 design), for motion models. */
       movement?: string;
     }[];
@@ -117,7 +119,7 @@ export function compileGeneration(
     const c = ctx.characters.find((x) => x.characterId === id);
     if (c) {
       return { id, kind: "character" as const, name: c.name, look: look(c), holding: c.holding.map((h) => h.name),
-        ...(c.design ? { movement: c.design.movement } : {}) };
+        ...(c.design ? { movement: c.design.movement } : {}), ...(c.position ? { position: c.position } : {}) };
     }
     const p = props.get(id);
     if (p) return { id, kind: "prop" as const, name: p.name, look: p.description, holding: [] };

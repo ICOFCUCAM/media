@@ -152,13 +152,15 @@ export const audioWorker = new Worker<AudioJob>(
         return { sceneId, kind, skipped: "no provider configured" };
       }
       try {
-        const [project, scenes, planned] = await Promise.all([
+        const [project, scenes, planned, screenplay] = await Promise.all([
           prisma.project.findUnique({ where: { id: scene.projectId }, select: { prompt: true, targetSeconds: true } }),
           prisma.scene.findMany({ where: { projectId: scene.projectId }, select: { music: true, mood: true } }),
           prisma.shot.aggregate({ where: { scene: { projectId: scene.projectId } }, _sum: { durationSec: true } }),
+          prisma.screenplay.findUnique({ where: { projectId: scene.projectId }, select: { raw: true } }).catch(() => null),
         ]);
         const filmSec = planned._sum.durationSec || project?.targetSeconds || 30;
-        const prompt = buildScorePrompt(project?.prompt ?? "", scenes);
+        const filmScore = (screenplay?.raw as { package?: { film?: { audioStyle?: { score?: string } } } } | null)?.package?.film?.audioStyle?.score;
+        const prompt = buildScorePrompt(project?.prompt ?? "", scenes, filmScore);
         const seconds = scoreSeconds(filmSec);
         console.log(`[audio] composing score project=${scene.projectId} model=${SCORE_MODEL} ${seconds}s`);
         const result = await falRunQueue(process.env.FAL_KEY, SCORE_MODEL, { prompt, seconds_total: seconds }, { timeoutMs: 8 * 60_000 });

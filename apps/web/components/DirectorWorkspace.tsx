@@ -1,5 +1,6 @@
 "use client";
 
+import { BibleEditor } from "./BibleEditor";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   loadBible, loadConversation, loadDecisions, loadScenes, loadTimeline, sendInstruction,
@@ -28,6 +29,7 @@ const BAR_TONE: Record<string, string> = {
 export function DirectorWorkspace({ projectId }: { projectId: string }) {
   const caps = useCapabilities();
   const [bible, setBible] = useState<Bible | null>(null);
+  const [editingBible, setEditingBible] = useState(false);
   const [scenes, setScenes] = useState<WorkspaceScene[]>([]);
   const [timeline, setTimeline] = useState<Awaited<ReturnType<typeof loadTimeline>> | null>(null);
   const [decisions, setDecisions] = useState<Decision[]>([]);
@@ -112,8 +114,17 @@ export function DirectorWorkspace({ projectId }: { projectId: string }) {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)_minmax(0,1fr)]">
         {/* Bible & assets */}
         <section aria-label="Bible" className="min-w-0 border-t border-cf-fg pt-3">
-          <span className="cf-label text-cf-fg">Bible</span>
-          {!bible ? (
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="cf-label text-cf-fg">Bible</span>
+            {bible && (
+              <button type="button" onClick={() => setEditingBible((v) => !v)} className="cf-link text-[11px] text-cf-muted hover:text-cf-fg">
+                {editingBible ? "Close" : "Edit bible"}
+              </button>
+            )}
+          </div>
+          {bible && editingBible ? (
+            <div className="mt-3"><BibleEditor projectId={projectId} film={bible.film} onDone={() => { setEditingBible(false); void refresh(); }} /></div>
+          ) : !bible ? (
             <p className="mt-3 text-[12px] text-cf-muted">No Film IR for this production (planned before DirectorOS, or not planned yet).</p>
           ) : (
             <div className="mt-3 space-y-5">

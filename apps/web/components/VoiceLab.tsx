@@ -247,6 +247,16 @@ export function VoiceLab() {
     await refresh();
   }
 
+  /** Delete a voice (W27): the row goes now; the worker erases its recording, files and provider clone. */
+  async function deleteVoice(id: string, name: string) {
+    if (!window.confirm(`Delete the voice "${name}"? Its recording, its trained files and its cached speech are erased, and it can no longer speak. Readings you already made stay in your library.`)) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    const res = await sb.from("voices").delete().eq("id", id);
+    if (res.error) setError(res.error.message);
+    await refresh();
+  }
+
   async function reviewVoice(id: string, approve: boolean) {
     const sb = getSupabase();
     if (!sb) return;
@@ -344,6 +354,9 @@ export function VoiceLab() {
                         <StatusChip status={v.status} error={v.error_message} />
                       </div>
                       <VoiceFacts v={v} />
+                      <button type="button" onClick={() => void deleteVoice(v.id, v.name)} className="cf-link mt-1 text-[11px] text-cf-muted hover:text-cf-fg">
+                        Delete voice
+                      </button>
                       {v.status === "READY" && (
                         <div className="mt-2 text-[11px] text-cf-muted">
                           {v.share_status === "APPROVED" ? (

@@ -31,6 +31,8 @@ import { loadFilmPackage } from "../canon/revision";
 import { avatarReply, interpretInstruction } from "@cineforge/movie";
 import { applyEditorialReview, editorialReview, processEditorialReview } from "../editor/editorial";
 import { purgeOrphanedSpeech } from "../voice/cache";
+import { eraseDeletedVoices, type EraseDb } from "../voice/erase";
+import { voiceEngine } from "../voice/engines";
 import { S3Storage } from "../storage/storage";
 import { constraintsFor, productionOf } from "../director/production";
 import { intelligence } from "../intelligence";
@@ -350,6 +352,19 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
       await purgeOrphanedSpeech(prisma as never, (keys) => new S3Storage().deleteKeys(keys))
         .then((n) => n && console.log(JSON.stringify({ event: "speech_cache.purged", clips: n })))
         .catch(() => {}); // before migration 0049
+
+      // Deleted voices (W27; 0061): their recordings, artifacts and provider clones are erased.
+      await eraseDeletedVoices(prisma as unknown as EraseDb, {
+        deleteKeys: (keys) => new S3Storage().deleteKeys(keys),
+        deleteProviderVoice: async (engine, id) => {
+          const e = voiceEngine(engine, process.env);
+          if (!e?.deleteVoice) return "not_supported";
+          await e.deleteVoice({ artifactType: "provider_voice_id", uri: id });
+          return "deleted";
+        },
+      })
+        .then((n) => (n.done || n.failed) && console.log(JSON.stringify({ event: "voice.erased", ...n })))
+        .catch(() => {}); // before migration 0061
 
       // Talking with an avatar (W26; 0059): hear, answer, voice, animate.
       await advanceAvatarTalk(prisma as unknown as TalkDb, {

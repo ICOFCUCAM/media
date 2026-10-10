@@ -45,6 +45,7 @@ export type DegradationCode =
   | "WORLD_REFERENCE_UNAVAILABLE" // no reference still for the shot's place or a prop in frame; the prompt only
   | "REFERENCE_STILL_UNCONDITIONED" // the seed still was drawn from text only; its reference images could not be used (W24)
   | "CHARACTER_ANIMATION_SKIPPED" // a storybook/motion-comic page was moved by the camera only; its characters were not animated (W26)
+  | "TRANSITION_SKIPPED" // a planned dissolve or fade was rendered as a hard cut (W27)
   | "VISUAL_REVIEW_UNAVAILABLE" // the generated frame was not reviewed (no vision provider / frame)
   | "VISUAL_REVIEW_FLAGGED" // the Visual Reviewer found the frame contradicts canon (record mode)
   | "PROMPT_LIMITED" // the video model could not take part of the shot's canonical request (length, motion, negative prompt)
@@ -54,6 +55,8 @@ export type DegradationCode =
   | "LIP_SYNC_UNAVAILABLE" // dialogue shots not lip-synced: no lip-sync provider (W21)
   | "LIP_SYNC_FAILED" // a dialogue shot keeps its original clip: its lip sync failed (W21)
   | "PREVIS_TIMING" // previs: a scene's rough voice runs longer than its planned pictures (W19)
+  | "CLAIM_UNSUPPORTED" // an advert line states a number, superlative or guarantee no source fact supports (A2, docs/47)
+  | "BRAND_ASSET_UNUSED" // a brand file the advertiser supplied (logo, product photo) could not be used (A3, docs/47)
   | "QUALITY_FLAGGED"; // a quality gate found a defect it does not block on (record mode) or a minor one
 
 export type DegradationSeverity = "info" | "warning" | "major";
@@ -91,6 +94,7 @@ const SEVERITY: Record<DegradationCode, DegradationSeverity> = {
   WORLD_REFERENCE_UNAVAILABLE: "info",
   REFERENCE_STILL_UNCONDITIONED: "info",
   CHARACTER_ANIMATION_SKIPPED: "info",
+  TRANSITION_SKIPPED: "info",
   VISUAL_REVIEW_UNAVAILABLE: "info",
   VISUAL_REVIEW_FLAGGED: "major",
   PROMPT_LIMITED: "info",
@@ -100,6 +104,8 @@ const SEVERITY: Record<DegradationCode, DegradationSeverity> = {
   LIP_SYNC_UNAVAILABLE: "info",
   LIP_SYNC_FAILED: "warning",
   PREVIS_TIMING: "warning",
+  CLAIM_UNSUPPORTED: "warning",
+  BRAND_ASSET_UNUSED: "warning",
   QUALITY_FLAGGED: "warning",
 };
 

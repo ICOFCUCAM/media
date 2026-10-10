@@ -28,9 +28,12 @@ export interface DirectorialRole {
 export const DIRECTORIAL_ROLES: DirectorialRole[] = [
   {
     id: "director", label: "Director",
-    owns: ["the whole film in one master plan", "answering the owner's instructions", "deciding which role handles a request"],
-    prompts: [PROMPTS.directorMaster.id, PROMPTS.directorRevision.id, PROMPTS.directorEdit.id],
-    engines: ["packages/movie/src/intelligence/planner.ts", "apps/worker/src/canon/conversation.ts"],
+    owns: [
+      "the whole film in one master plan", "answering the owner's instructions", "deciding which role handles a request",
+      "reading an advertiser's page into source facts an advert is planned from (Ads Studio A2)",
+    ],
+    prompts: [PROMPTS.directorMaster.id, PROMPTS.directorRevision.id, PROMPTS.directorEdit.id, PROMPTS.siteAnalysis.id],
+    engines: ["packages/movie/src/intelligence/planner.ts", "apps/worker/src/canon/conversation.ts", "packages/movie/src/intelligence/site-fetch.ts"],
   },
   {
     id: "story", label: "Story / Screenplay",
@@ -58,9 +61,15 @@ export const DIRECTORIAL_ROLES: DirectorialRole[] = [
   },
   {
     id: "editor_qc", label: "Editor / QC",
-    owns: ["the cut as a whole and structured edits", "technical and visual quality gates", "launch copy for the finished film"],
+    owns: [
+      "the cut as a whole and structured edits", "technical and visual quality gates", "launch copy for the finished film",
+      "advert claims no source fact supports (numbers, superlatives, guarantees)",
+    ],
     prompts: [PROMPTS.editorReview.id, PROMPTS.visualReview.id, PROMPTS.socialKit.id],
-    engines: ["packages/movie/src/edit/operations.ts", "apps/worker/src/editor/editorial.ts", "apps/worker/src/quality", "apps/worker/src/review/visual-gate.ts"],
+    engines: [
+      "packages/movie/src/edit/operations.ts", "apps/worker/src/editor/editorial.ts", "apps/worker/src/quality", "apps/worker/src/review/visual-gate.ts",
+      "packages/movie/src/intelligence/site.ts (claimAdvisories)",
+    ],
   },
 ];
 

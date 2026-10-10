@@ -682,6 +682,27 @@ model Voice {
   @@map("voices")
 }
 
+// ── What a deleted voice leaves behind, and its erasure (W27, 0061) ─────────
+model VoiceErasure {
+  id              String    @id @default(uuid()) @db.Uuid
+  voiceId         String    @map("voice_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  name            String    @default("")
+  sampleKey       String?   @map("sample_key")
+  provider        String?
+  providerVoiceId String?   @map("provider_voice_id")
+  artifacts       Json      @default("[]")
+  status          String    @default("pending")
+  filesDeleted    String[]  @default([]) @map("files_deleted")
+  providerOutcome String?   @map("provider_outcome")
+  error           String?
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  finishedAt      DateTime? @map("finished_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt(sort: Desc)], map: "voice_erasures_user_idx")
+  @@map("voice_erasures")
+}
+
 // ── Per-use licences to community voices (W15, 0050; Part 4 §170) ───────────
 model VoiceLicence {
   id         String    @id @default(uuid()) @db.Uuid
