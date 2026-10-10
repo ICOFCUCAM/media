@@ -18,6 +18,7 @@ import {
   IntelligenceError,
   PlanInvalidError,
   planFilm,
+  refineCoverage,
   type PlanResult,
   type ProductionConstraints,
 } from "@cineforge/movie";
@@ -118,6 +119,14 @@ export class DirectorService {
       }
     } catch (e) {
       throw toProductionFailure(e) ?? e;
+    }
+    // 2b (W24): the Cinematographer redesigns scenes with grammar problems, from each scene's state only.
+    if (plan.provider !== "stub" && process.env.DIRECTOR_COVERAGE_PASS !== "0") {
+      const cov = await refineCoverage(router, plan.pkg, constraints, { projectId }).catch(() => null);
+      if (cov) {
+        plan = { ...plan, pkg: cov.pkg };
+        if (cov.revisions.length) console.log(JSON.stringify({ event: "director.coverage", projectId, revisions: cov.revisions }));
+      }
     }
     console.log(JSON.stringify({
       event: "director.planned", projectId, provider: plan.provider, model: plan.model, revised: plan.revised,

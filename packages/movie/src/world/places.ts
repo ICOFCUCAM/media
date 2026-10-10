@@ -10,7 +10,7 @@ import { createHash } from "node:crypto";
 import type { FilmPackage } from "../ir/schema";
 
 export interface WorldReferenceSpec {
-  kind: "location" | "prop";
+  kind: "location" | "prop" | "style";
   id: string;
   digest: string;
   prompt: string;
@@ -45,4 +45,22 @@ export function propReferenceSpec(pkg: FilmPackage, propId: string): WorldRefere
     `Film look: ${look.palette}; ${look.texture}.`,
   ].join(" ");
   return { kind: "prop", id: propId, digest: digest(canon), prompt };
+}
+
+/**
+ * The film's look as one still (W24; Part 1 §34 "style reference"): palette,
+ * light, lenses and texture in a representative frame of the film's world,
+ * with no characters. Keyed by the look, so a new look draws a new still.
+ */
+export function styleReferenceSpec(pkg: FilmPackage): WorldReferenceSpec {
+  const look = pkg.film.visualStyle;
+  const place = pkg.locations[0];
+  const canon = { look, genre: pkg.film.genre, tone: pkg.film.tone, era: pkg.film.era ?? null, place: place?.description ?? null };
+  const prompt = [
+    `Style frame, a single cinematic still that defines the look of a ${pkg.film.genre} film (${pkg.film.tone}); no people, no text.`,
+    place ? `It shows ${place.name}: ${place.description}.` : null,
+    `Palette: ${look.palette}. Lighting: ${look.lighting}. Lenses and framing: ${look.lensLanguage}. Texture: ${look.texture}.`,
+    pkg.film.era ? `Era: ${pkg.film.era}.` : null,
+  ].filter(Boolean).join(" ");
+  return { kind: "style", id: "style_film", digest: digest(canon), prompt };
 }

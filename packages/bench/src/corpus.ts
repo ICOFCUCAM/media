@@ -144,6 +144,8 @@ export function benchmarkFilm(f: number): FilmPackage {
       storyTime: { day, continuous: i === 7, flashback: false },
       reveals,
       relationshipChanges: i === 5 ? [{ relationshipId: "rel_rivals", becomes: "uneasy allies" }] : [],
+      goalChanges: [],
+      devices: [],
       deaths: i === 6 ? [charId(4)] : [],
       purpose: `beat ${i + 1} of the ${GENRES[f]} plot`,
       summary: `${names[0]} confronts ${names[others[0]!]} in ${places[loc]![0]}.`,
@@ -174,7 +176,7 @@ export function benchmarkFilm(f: number): FilmPackage {
       audioStyle: { score: "sparse strings", ambience: "weather and rooms" },
       rationale: "A contained cast keeps every canon rule in play.",
     },
-    cast, locations, props, facts, relationships,
+    cast, locations, props, facts, relationships, goals: [],
     acts: [1, 2, 3].map((a) => ({ index: a, purpose: ["setup", "confrontation", "resolution"][a - 1]!, sceneIds: scenes.filter((s) => s.act === a).map((s) => s.id) })),
     threads: [
       { id: "thread_debt", kind: "plot", description: "the debt is settled", sceneIds: scenes.map((s) => s.id), answerFactId: null },

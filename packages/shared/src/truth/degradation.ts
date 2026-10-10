@@ -43,6 +43,7 @@ export type DegradationCode =
   | "BRAND_OUTRO_SKIPPED"
   | "WARDROBE_REFERENCE_UNAVAILABLE" // no wardrobe reference still for a framed character; identity frames only
   | "WORLD_REFERENCE_UNAVAILABLE" // no reference still for the shot's place or a prop in frame; the prompt only
+  | "REFERENCE_STILL_UNCONDITIONED" // the seed still was drawn from text only; its reference images could not be used (W24)
   | "VISUAL_REVIEW_UNAVAILABLE" // the generated frame was not reviewed (no vision provider / frame)
   | "VISUAL_REVIEW_FLAGGED" // the Visual Reviewer found the frame contradicts canon (record mode)
   | "PROMPT_LIMITED" // the video model could not take part of the shot's canonical request (length, motion, negative prompt)
@@ -87,6 +88,7 @@ const SEVERITY: Record<DegradationCode, DegradationSeverity> = {
   BRAND_OUTRO_SKIPPED: "warning",
   WARDROBE_REFERENCE_UNAVAILABLE: "info",
   WORLD_REFERENCE_UNAVAILABLE: "info",
+  REFERENCE_STILL_UNCONDITIONED: "info",
   VISUAL_REVIEW_UNAVAILABLE: "info",
   VISUAL_REVIEW_FLAGGED: "major",
   PROMPT_LIMITED: "info",

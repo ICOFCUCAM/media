@@ -7,8 +7,11 @@
  *                         continuous action (shot-to-shot end-state memory)
  *   3. wardrobe stills    each framed character in this scene's wardrobe
  *   4. identity frames    each framed character's reference frames
- *   5. location still     the scene's place as canon describes it (W17)
- *   6. prop stills        each prop in frame (W17)
+ *   5. camera reference   the scene's establishing frame: the set as the camera
+ *                         first showed it, so later angles keep its geography (W24)
+ *   6. location still     the scene's place as canon describes it (W17)
+ *   7. style still        the film's look in one frame (W24)
+ *   8. prop stills        each prop in frame (W17)
  *
  * Whatever does not fit is listed, not silently lost.
  */
@@ -17,14 +20,16 @@ export interface ReferencePackInput {
   previousEndFrame?: string | null;
   wardrobe?: string[];
   identity?: string[];
+  camera?: string[];
   location?: string[];
+  style?: string[];
   props?: string[];
   max?: number;
 }
 
 export interface ReferencePack {
   keys: string[];
-  roles: Record<string, "seed" | "previous_end_frame" | "wardrobe" | "identity" | "location" | "prop">;
+  roles: Record<string, "seed" | "previous_end_frame" | "wardrobe" | "identity" | "camera" | "location" | "style" | "prop">;
   dropped: string[];
 }
 
@@ -35,7 +40,9 @@ export function assembleReferencePack(i: ReferencePackInput): ReferencePack {
     ...(i.previousEndFrame ? [[i.previousEndFrame, "previous_end_frame"] as const] : []),
     ...(i.wardrobe ?? []).map((k) => [k, "wardrobe"] as const),
     ...(i.identity ?? []).map((k) => [k, "identity"] as const),
+    ...(i.camera ?? []).map((k) => [k, "camera"] as const),
     ...(i.location ?? []).map((k) => [k, "location"] as const),
+    ...(i.style ?? []).map((k) => [k, "style"] as const),
     ...(i.props ?? []).map((k) => [k, "prop"] as const),
   ];
   const keys: string[] = [];

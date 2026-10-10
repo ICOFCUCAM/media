@@ -6,7 +6,10 @@
  * audio planning into ONE master call (one-pass intelligence). So a role here
  * is a responsibility, carried by prompts (model calls, each logged with its
  * why) and deterministic engines (code that checks or compiles), not a
- * free-running agent. No role depends on a vendor's multi-agent feature
+ * free-running agent. Since W24 the Cinematographer also has its own call: it
+ * redesigns the coverage of a scene with grammar problems from that scene's
+ * state only (./coverage.ts), and its answer is kept only when it validates.
+ * No role depends on a vendor's multi-agent feature
  * (§26.2: an optimisation, never the architecture).
  */
 import { PROMPTS } from "./prompts";
@@ -38,8 +41,8 @@ export const DIRECTORIAL_ROLES: DirectorialRole[] = [
   {
     id: "visual", label: "Visual / Cinematography",
     owns: ["coverage, shot sizes, camera, the 180° line", "prompts for image and video models", "the production's look"],
-    prompts: [],
-    engines: ["packages/movie/src/cinema/engine.ts", "packages/movie/src/prompt/compilers.ts", "apps/worker/src/animation/still-motion.ts"],
+    prompts: [PROMPTS.cinemaDesign.id],
+    engines: ["packages/movie/src/cinema/engine.ts", "packages/movie/src/intelligence/coverage.ts", "packages/movie/src/prompt/compilers.ts", "apps/worker/src/animation/still-motion.ts"],
   },
   {
     id: "audio", label: "Audio",

@@ -65,4 +65,20 @@ describe("location and prop references at render time (Part 1 §34–35)", () =>
     expect(p.roles).toMatchObject({ loc: "location" });
     expect(p.dropped).toEqual(["prop"]);
   });
+
+  it("the film's look is drawn once as a style still and shared by every shot; a new look draws again (W24)", async () => {
+    const pkg = mayaCoatFixture();
+    const { db, rows } = fakeDb();
+    const { g, calls } = fakeImage();
+    const a = await worldReferenceKeys(db, g, "p1", "shot-a", pkg, checkContinuity(pkg, { sceneId: "scene_11", shotIndex: 1 }));
+    const b = await worldReferenceKeys(db, g, "p1", "shot-b", pkg, checkContinuity(pkg, { sceneId: "scene_12", shotIndex: 0 }));
+    expect(a.style).toEqual([expect.stringMatching(/^projects\/p1\/world\/style_film-[0-9a-f]{16}\.png$/)]);
+    expect(b.style).toEqual(a.style);
+    expect(calls.filter((c) => c.meta?.subject === "style_film")).toHaveLength(1);
+    expect(calls.find((c) => c.meta?.subject === "style_film")!.prompt).toMatch(/^Style frame/);
+    const relooked = { ...pkg, film: { ...pkg.film, visualStyle: { ...pkg.film.visualStyle, palette: "bleached teal" } } };
+    const c = await worldReferenceKeys(db, g, "p1", "shot-c", relooked, checkContinuity(relooked, { sceneId: "scene_11", shotIndex: 1 }));
+    expect(c.style[0]).not.toBe(a.style[0]);
+    expect(rows.filter((x) => x.kind === "style")).toHaveLength(2);
+  });
 });

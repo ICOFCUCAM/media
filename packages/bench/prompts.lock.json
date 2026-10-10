@@ -1,6 +1,15 @@
 {
   "prompts": [
     {
+      "id": "cinema.design",
+      "version": 1,
+      "purpose": "The Cinematographer (Part 1 §11, §26): redesign one scene's coverage to film grammar, from that scene's state only.",
+      "sha256": "6dc8d15d4efdddbdf4b6e1964fdf9453ff28b03c20d400d1d9affb1503829fad",
+      "score": null,
+      "scoredAt": null,
+      "model": null
+    },
+    {
       "id": "director.edit",
       "version": 2,
       "purpose": "Director workspace (W9): read the owner's instruction as at most one canon change, and answer them.",
@@ -11,9 +20,9 @@
     },
     {
       "id": "director.master",
-      "version": 7,
+      "version": 8,
       "purpose": "One master call: brief → complete Film Production Package (Part 2 §85, §93).",
-      "sha256": "f0dce8f42adb101d265a785098b000d7b71edacc27b4c0f8b021e5726efc3ef7",
+      "sha256": "f3d5b66f8793ba708a9442f0a7c507346a0fb7e73d03d7dabe8a12b8380be76d",
       "score": null,
       "scoredAt": null,
       "model": null
@@ -22,7 +31,7 @@
       "id": "director.revision",
       "version": 6,
       "purpose": "Surgical revision: fix exactly the validator's issues in a package (Part 2 §93).",
-      "sha256": "852531606524faa122799f7c62fbe7733db413d9aa04f18c647f9cf01aba3636",
+      "sha256": "834a47f42d65336d38eaa093c60b80a37cc6d481e02290cc8487e91674c787d9",
       "score": null,
       "scoredAt": null,
       "model": null

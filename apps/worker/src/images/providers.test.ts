@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { candidateSeed, imageProvider, imageProviderStatuses, sha256Hex, withFallback, type FalImageDeps, type ImageProvider } from "./providers";
+import { candidateSeed, imageProvider, nearestAspect, imageProviderStatuses, sha256Hex, withFallback, type FalImageDeps, type ImageProvider } from "./providers";
 import { imageGenerationRow } from "./ledger";
 
 const PNG = new Uint8Array([137, 80, 78, 71, 1, 2, 3]);
@@ -78,5 +78,53 @@ describe("provider fallback (a revoked key must not cost every reference still)"
     const { provider } = imageProvider(async (k) => k, { OPENAI_API_KEY: "k", FAL_KEY: "f", S3_BUCKET: "b" });
     expect(provider?.id).toBe("openai-image");
     expect(imageProviderStatuses({}).map((x) => x.id)).toEqual(["openai", "fal"]);
+  });
+});
+
+describe("reference-conditioned stills (W24; Part 1 §34–35)", () => {
+  const refs = ["https://s3/ref-wardrobe.png", "https://s3/ref-face.png", "https://s3/ref-set.png", "https://s3/ref-look.png", "https://s3/ref-extra.png"];
+
+  it("fal draws from up to four reference images with its multi-reference model", async () => {
+    const models: string[] = [];
+    const inputs: Record<string, unknown>[] = [];
+    const deps: FalImageDeps = {
+      run: async (model, input) => { models.push(model); inputs.push(input); return { images: [{ url: "https://fal.media/x.png" }] }; },
+      fetch: async () => ({ ok: true, status: 200, bytes: PNG, contentType: "image/png" }),
+    };
+    const { provider } = imageProvider(async (k) => k, { IMAGE_PROVIDERS: "fal", FAL_KEY: "k", S3_BUCKET: "b" }, deps);
+    expect(provider!.references).toBe(true);
+    const img = await provider!.generate("Maya on the quay", "s.png", { width: 1280, height: 720 }, { seed: 3, referenceUrls: refs });
+    expect(models).toEqual(["fal-ai/flux-pro/kontext/multi"]);
+    expect(inputs[0]).toMatchObject({ prompt: "Maya on the quay", image_urls: refs.slice(0, 4), seed: 3, aspect_ratio: "16:9" });
+    expect(img).toMatchObject({ model: "fal-ai/flux-pro/kontext/multi", referencesUsed: 4 });
+  });
+
+  it("when the reference model fails, the still is drawn from text and the reason is kept", async () => {
+    const models: string[] = [];
+    const deps: FalImageDeps = {
+      run: async (model) => { models.push(model); if (model.includes("kontext")) throw new Error("422 bad image"); return { images: [{ url: "https://fal.media/x.png" }] }; },
+      fetch: async () => ({ ok: true, status: 200, bytes: PNG, contentType: "image/png" }),
+    };
+    const { provider } = imageProvider(async (k) => k, { IMAGE_PROVIDERS: "fal", FAL_KEY: "k", S3_BUCKET: "b", FAL_REFERENCE_IMAGE_MODEL: "fal-ai/flux-pro/kontext/max/multi" }, deps);
+    const img = await provider!.generate("p", "s.png", { width: 720, height: 1280 }, { referenceUrls: refs });
+    expect(models).toEqual(["fal-ai/flux-pro/kontext/max/multi", "fal-ai/flux/dev"]);
+    expect(img).toMatchObject({ model: "fal-ai/flux/dev", referencesUsed: 0, referenceGap: expect.stringContaining("422 bad image") });
+  });
+
+  it("with references, the provider that can use them is tried first", async () => {
+    const used: string[] = [];
+    const p = (id: string, references: boolean): ImageProvider => ({
+      id, model: null, seeds: false, references,
+      generate: async (prompt, key, size) => { used.push(id); return { key, provider: id, model: null, seed: null, sha256: null, promptSha256: sha256Hex(prompt), width: size.width, height: size.height }; },
+    });
+    const chain = withFallback([p("openai-image", false), p("fal-image", true)]);
+    await chain.generate("x", "k", { width: 1, height: 1 }, { referenceUrls: ["u"] });
+    await chain.generate("x", "k", { width: 1, height: 1 });
+    expect(used).toEqual(["fal-image", "openai-image"]);
+  });
+
+  it("the nearest supported aspect ratio", () => {
+    expect([nearestAspect(1920, 1080), nearestAspect(1080, 1920), nearestAspect(1024, 1024), nearestAspect(1080, 1350), nearestAspect(2560, 1080)])
+      .toEqual(["16:9", "9:16", "1:1", "3:4", "21:9"]);
   });
 });

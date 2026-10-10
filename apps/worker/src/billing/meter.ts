@@ -150,7 +150,7 @@ export function meteredEngine(engine: VoiceEngine, ctx: MeterContext, record: (e
 }
 
 /** An image provider whose every generated still is metered (under the provider's own model). */
-export function meteredImages<P extends { id: string; model?: string | null; generate(prompt: string, key: string, size: { width: number; height: number }, opts?: { seed?: number }): Promise<unknown> }>(
+export function meteredImages<P extends { id: string; model?: string | null; generate(prompt: string, key: string, size: { width: number; height: number }, opts?: { seed?: number; referenceUrls?: string[] }): Promise<unknown> }>(
   provider: P,
   ctx: MeterContext & { purpose: string },
   record: (e: UsageEvent) => Promise<unknown>,
@@ -159,10 +159,12 @@ export function meteredImages<P extends { id: string; model?: string | null; gen
   return new Proxy(provider, {
     get(target, prop, receiver) {
       if (prop !== "generate") return Reflect.get(target, prop, receiver);
-      return async (prompt: string, key: string, size: { width: number; height: number }, opts?: { seed?: number }) => {
+      return async (prompt: string, key: string, size: { width: number; height: number }, opts?: { seed?: number; referenceUrls?: string[] }) => {
         const out = await target.generate(prompt, key, size, opts);
+        // The model that drew it (a reference-conditioned still uses another, W24).
+        const used = (out as { model?: string | null } | null)?.model;
         await record({
-          kind: "image", provider: target.id, model: target.model ?? env.OPENAI_IMAGE_MODEL ?? null, unit: "images", units: 1,
+          kind: "image", provider: target.id, model: used ?? target.model ?? env.OPENAI_IMAGE_MODEL ?? null, unit: "images", units: 1,
           projectId: ctx.projectId, userId: ctx.userId, meta: { purpose: ctx.purpose, width: size.width, height: size.height },
         });
         return out;

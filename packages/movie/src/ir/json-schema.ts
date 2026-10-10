@@ -9,7 +9,8 @@
  * property and drops the defaults.
  */
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { FilmPackage } from "./schema";
+import { z } from "zod";
+import { FilmPackage, Shot } from "./schema";
 
 let cached: Record<string, unknown> | null = null;
 
@@ -30,5 +31,19 @@ export function filmPackageJsonSchema(): Record<string, unknown> {
   delete s.$schema;
   requireAll(s);
   cached = s;
+  return s;
+}
+
+let shotsCached: Record<string, unknown> | null = null;
+
+/** One scene's coverage, for the shot-design role (W24): { shots: Shot[] }. */
+export const ShotList = z.object({ shots: z.array(Shot).min(1).max(12) });
+
+export function shotListJsonSchema(): Record<string, unknown> {
+  if (shotsCached) return shotsCached;
+  const s = zodToJsonSchema(ShotList, { target: "jsonSchema7", $refStrategy: "none" }) as Record<string, unknown>;
+  delete s.$schema;
+  requireAll(s);
+  shotsCached = s;
   return s;
 }

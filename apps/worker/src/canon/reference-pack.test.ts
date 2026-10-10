@@ -29,3 +29,11 @@ describe("image provider registry (W6)", () => {
     expect(imageProvider(put, { IMAGE_PROVIDERS: "comfyui" }).reason).toMatch(/comfyui: ComfyUI runtime waits on Phase 1/);
   });
 });
+
+describe("camera and style references in the pack (W24)", () => {
+  it("orders camera (the scene's establishing frame) before location and style, and keeps their roles", () => {
+    const p = assembleReferencePack({ wardrobe: ["w"], camera: ["est"], location: ["loc"], style: ["look"], props: ["prop"], max: 8 });
+    expect(p.keys).toEqual(["w", "est", "loc", "look", "prop"]);
+    expect(p.roles).toEqual({ w: "wardrobe", est: "camera", loc: "location", look: "style", prop: "prop" });
+  });
+});
