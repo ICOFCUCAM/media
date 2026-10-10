@@ -325,6 +325,7 @@ export function renderPlanRequest(brief: string, c: ProductionConstraints, produ
     `- each scene's shots total ${c.sceneSec} seconds (±${Math.round(c.sceneTolerance * 100)}%)`,
     `- at most ${c.maxShotsPerScene} shots per scene, each 2 to ${c.maxShotSec} whole seconds`,
     `- the film totals ${c.targetSeconds} seconds (±${Math.round(c.filmTolerance * 100)}%)`,
+    ...(c.sceneCount === 1 ? ["- one scene only: setups must be empty (a payoff needs a later scene)"] : []),
     "",
     "Return the Film Production Package (irVersion 1).",
   ].join("\n");
