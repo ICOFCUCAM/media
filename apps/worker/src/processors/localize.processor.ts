@@ -6,6 +6,7 @@
  *
  * Resume-safe: a language already present in `scenes.subtitles` is skipped.
  */
+import { hasFilmPackage, type CanonDb } from "../canon/revision";
 import { Worker } from "bullmq";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -105,8 +106,9 @@ export const localizeWorker = new Worker<LocalizeJob>(
     let dubbed = 0;
     if (film) {
       const locales = (film.locales as Record<string, { mp4?: string; voice?: string; mixed?: boolean; lipSynced?: number }> | null) ?? {};
+      const planned = await hasFilmPackage(prisma as unknown as CanonDb, projectId);
       const speech: SceneSpeech[] = scenes.map((s) => ({
-        id: s.id, narration: s.narration, dialogue: s.dialogue, summary: s.summary,
+        id: s.id, narration: s.narration, dialogue: s.dialogue, summary: s.summary, planned,
         lines: s.dialogueLines.map((l) => ({ id: l.id, characterId: l.characterId, text: l.text, emotion: l.emotion })),
       }));
       if (speech.some((s) => sceneCues(s).length)) {

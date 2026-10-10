@@ -68,6 +68,11 @@ async function loadRaw(db: Pick<CanonDb, "screenplay">, projectId: string): Prom
   return { pkg: parsed.data, raw };
 }
 
+/** Whether the project was planned by the Director (has a Film IR); false when it cannot be read. */
+export async function hasFilmPackage(db: Pick<CanonDb, "screenplay">, projectId: string): Promise<boolean> {
+  return loadRaw(db, projectId).then(() => true, () => false);
+}
+
 export async function loadFilmPackage(db: Pick<CanonDb, "screenplay">, projectId: string): Promise<FilmPackage> {
   return (await loadRaw(db, projectId)).pkg;
 }

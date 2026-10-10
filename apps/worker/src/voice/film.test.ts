@@ -63,6 +63,12 @@ describe("scene cues", () => {
     expect(sceneCues(scene({ narration: " ", lines: [], summary: null }))).toEqual([]);
   });
 
+  it("a Director-planned scene with no narration or dialogue is silent: its summary is never read aloud", () => {
+    // A 5-second short's summary is a camera description (~25s spoken); voicing it broke the render.
+    expect(sceneCues(scene({ narration: null, lines: [], planned: true }))).toEqual([]);
+    expect(sceneCues(scene({ narration: "Plated.", lines: [], planned: true })).map((c) => c.text)).toEqual(["Plated."]);
+  });
+
   it("reads the chosen voice id only when it is a uuid", () => {
     expect(chosenVoiceId({ description: "warm", voiceId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" })).toBe("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
     expect(chosenVoiceId({ voiceId: "Deep_Voice_Man" })).toBeUndefined();

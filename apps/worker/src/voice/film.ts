@@ -40,6 +40,12 @@ export interface SceneSpeech {
   dialogue: string | null;
   summary: string | null;
   lines: SceneLine[];
+  /**
+   * Planned by the Director (Film IR): narration and dialogue are the whole
+   * soundtrack, and a scene without either is meant to be silent. The legacy
+   * fallback (speaking the summary, a camera description) is for older projects only.
+   */
+  planned?: boolean;
 }
 
 export interface Cue {
@@ -55,7 +61,7 @@ export function sceneCues(s: SceneSpeech): Cue[] {
   const cues: Cue[] = [];
   if (s.narration?.trim()) cues.push({ lineId: null, characterId: null, text: s.narration.trim(), emotion: null });
   for (const l of s.lines) if (l.text.trim()) cues.push({ lineId: l.id, characterId: l.characterId, text: l.text.trim(), emotion: l.emotion });
-  if (!cues.length) {
+  if (!cues.length && !s.planned) {
     const fallback = (s.dialogue || s.summary || "").trim();
     if (fallback) cues.push({ lineId: null, characterId: null, text: fallback, emotion: null });
   }

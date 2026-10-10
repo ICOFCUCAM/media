@@ -17,6 +17,7 @@
  * attempt — no phantom track row is written (the render downloads every
  * recorded key), and a TRACK_MISSING degradation is recorded and shown.
  */
+import { hasFilmPackage, type CanonDb } from "../canon/revision";
 import { Worker } from "bullmq";
 import { QUEUES, degradation, type AudioJob } from "@cineforge/shared";
 import { recordVersion, type VersionDb } from "../versions/record";
@@ -69,9 +70,10 @@ export const audioWorker = new Worker<AudioJob>(
         await trackMissing(projectId, "scene", `${label} has no voice track: storage is not configured.`, { track: "voice" }, sceneId);
         return { sceneId, kind, skipped: "no storage" };
       }
-      const [project, cast] = await Promise.all([
+      const [project, cast, planned] = await Promise.all([
         prisma.project.findUnique({ where: { id: projectId }, select: { userId: true } }),
         prisma.character.findMany({ where: { projectId }, orderBy: { name: "asc" }, select: { id: true, voiceProfile: true } }),
+        hasFilmPackage(prisma as unknown as CanonDb, projectId),
       ]);
       const chosenVoices = Object.fromEntries(cast.map((c) => [c.id, chosenVoiceId(c.voiceProfile)]));
       const traits = Object.fromEntries(cast.map((c) => [c.id, voiceTraits(c.voiceProfile)]));
@@ -80,7 +82,7 @@ export const audioWorker = new Worker<AudioJob>(
         const out = await renderSceneVoice(
           {
             scene: {
-              id: scene.id, narration: scene.narration, dialogue: scene.dialogue, summary: scene.summary,
+              id: scene.id, narration: scene.narration, dialogue: scene.dialogue, summary: scene.summary, planned,
               lines: scene.dialogueLines.map((l) => ({ id: l.id, characterId: l.characterId, text: l.text, emotion: l.emotion })),
             },
             language: "en",
