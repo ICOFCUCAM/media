@@ -7,3 +7,4 @@ export * from "./planner";
 export * from "./interpret";
 export * from "./cast";
 export * from "./roles";
+export * from "./schema-compat";
