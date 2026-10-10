@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  loudnessCorrectionArgs,
   outroTextArgs,
   normalizeArgs,
   concatListContent,
@@ -37,6 +38,9 @@ describe("ffmpeg command builders", () => {
     expect(a).toContain("sidechaincompress");
     expect(a).toContain("loudnorm");
     expect(a).toContain("amix=inputs=3");
+    // loudnorm outputs 192 kHz: the master is resampled to 48 kHz (a 96 kHz master was delivered).
+    expect(a).toMatch(/loudnorm=[^;]*,aresample=48000\[aout\]/);
+    expect(a).toContain("-ar 48000 -c:a aac");
   });
 
   it("handles music-only mix (no voice -> no ducking)", () => {
@@ -134,5 +138,24 @@ describe("planNarrationFit — narration is never cut (docs/38 §AW.11 test 1)",
 describe("extendVideoArgs", () => {
   it("clones the last frame for the requested time", () => {
     expect(extendVideoArgs("in.mp4", "out.mp4", 7).join(" ")).toContain("tpad=stop_mode=clone:stop_duration=7.000");
+  });
+});
+
+describe("loudnessCorrectionArgs — the second loudness pass (W23)", () => {
+  const delivery = { integratedLufs: -16, truePeakDbtp: -1 };
+  it("lifts a quiet mix by the measured gap, under a true-peak limiter, at 48 kHz", () => {
+    const a = loudnessCorrectionArgs("mix.m4a", "out.m4a", { integratedLufs: -30.2 }, delivery)!.join(" ");
+    expect(a).toContain("volume=14.20dB");
+    expect(a).toMatch(/alimiter=limit=0\.8414/); // -1.5 dBTP
+    expect(a).toContain("-ar 48000 -c:a aac");
+  });
+  it("leaves a mix within 1 LU, an unmeasured one and digital silence alone", () => {
+    expect(loudnessCorrectionArgs("m", "o", { integratedLufs: -16.8 }, delivery)).toBeNull();
+    expect(loudnessCorrectionArgs("m", "o", null, delivery)).toBeNull();
+    expect(loudnessCorrectionArgs("m", "o", { integratedLufs: -Infinity }, delivery)).toBeNull();
+    expect(loudnessCorrectionArgs("m", "o", { integratedLufs: -70.5 }, delivery)).toBeNull();
+  });
+  it("turns a hot mix down", () => {
+    expect(loudnessCorrectionArgs("m", "o", { integratedLufs: -9 }, delivery)!.join(" ")).toContain("volume=-7.00dB");
   });
 });

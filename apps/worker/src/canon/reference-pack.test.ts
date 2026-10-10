@@ -19,7 +19,7 @@ describe("image provider registry (W6)", () => {
   const put = async (k: string) => k;
   it("uses OpenAI when configured; says why when not", () => {
     expect(imageProvider(put, { OPENAI_API_KEY: "k", S3_BUCKET: "b" }).provider?.id).toBe("openai-image");
-    expect(imageProvider(put, {})).toEqual({ provider: null, reason: "openai: not configured" });
+    expect(imageProvider(put, {})).toEqual({ provider: null, reason: "openai: not configured; fal: not configured" });
     expect(imageProvider(put, { IMAGE_PROVIDERS: "none", OPENAI_API_KEY: "k", S3_BUCKET: "b" }).reason).toMatch(/disabled/);
   });
   it("ComfyUI is listed but gated on Phase 1 — never used, never silently skipped", () => {

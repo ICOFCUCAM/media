@@ -189,7 +189,7 @@ class GenerateJobs:
 
     TTL_SEC = 3600
 
-    def __init__(self, run: Callable[["GenerateInput"], "GenerateOutput"]):
+    def __init__(self, run: Callable[..., "GenerateOutput"]):
         self._run = run
         self._lock = threading.Lock()
         self._jobs: dict[str, dict] = {}
@@ -198,7 +198,9 @@ class GenerateJobs:
         task_id = uuid.uuid4().hex
         with self._lock:
             self._prune()
-            self._jobs[task_id] = {"status": "running", "started": time.time()}
+            # "queued" until the shot holds the GPU, then "running": the caller
+            # times the generation itself, not the wait behind other shots.
+            self._jobs[task_id] = {"status": "queued", "started": time.time()}
         threading.Thread(target=self._work, args=(task_id, inp), name=f"generate-{task_id[:8]}", daemon=True).start()
         return task_id
 
@@ -209,7 +211,7 @@ class GenerateJobs:
 
     def _work(self, task_id: str, inp: "GenerateInput") -> None:
         try:
-            out = self._run(inp)
+            out = self._run(inp, on_start=lambda: self._mark(task_id, "running"))
             done = {"status": "done", "result": out.model_dump(mode="json")}
         except HTTPException as e:
             done = {"status": "error", "httpStatus": e.status_code, "detail": e.detail}
@@ -219,6 +221,11 @@ class GenerateJobs:
         with self._lock:
             if task_id in self._jobs:
                 self._jobs[task_id] = {**done, "started": self._jobs[task_id]["started"], "finished": time.time()}
+
+    def _mark(self, task_id: str, status: str) -> None:
+        with self._lock:
+            if task_id in self._jobs and self._jobs[task_id]["status"] in ("queued", "running"):
+                self._jobs[task_id]["status"] = status
 
     def _prune(self) -> None:
         cutoff = time.time() - self.TTL_SEC
@@ -359,10 +366,10 @@ def create_app(
             return JSONResponse(status_code=202, content={"taskId": jobs.submit(inp)})
         return await run_in_threadpool(_generate_checked, inp)
 
-    def _generate_checked(inp: GenerateInput) -> GenerateOutput:
+    def _generate_checked(inp: GenerateInput, on_start: Callable[[], None] | None = None) -> GenerateOutput:
         """_generate with its known failures as the HTTP errors Cineforge reads."""
         try:
-            return _generate(inp)
+            return _generate(inp, on_start)
         except GpuUnavailableError as e:
             log.warning('{"event":"gpu.unavailable","code":%r,"sub":%r}', e.code, inp.jobId)
             raise HTTPException(status_code=503, detail={"error": e.code}) from None
@@ -386,13 +393,15 @@ def create_app(
             raise HTTPException(status_code=404, detail={"error": "UNKNOWN_TASK"})
         return JSONResponse(status_code=200, content=state)
 
-    def _generate(inp: GenerateInput) -> GenerateOutput:
+    def _generate(inp: GenerateInput, on_start: Callable[[], None] | None = None) -> GenerateOutput:
         seed = inp.seed if inp.seed is not None else uuid.uuid4().int % (2**31)
         # Serialize: only one inference runs on the GPU at a time (see infer_lock).
         with infer_lock:
             # GPU time starts when this shot has the GPU: time spent queued
             # behind another shot is not this shot's (it is billed as gpuMs).
             started = time.monotonic()
+            if on_start:
+                on_start()
             local_mp4, thumb = pipeline.generate(
                 prompt=inp.prompt,
                 negative_prompt=inp.negativePrompt,

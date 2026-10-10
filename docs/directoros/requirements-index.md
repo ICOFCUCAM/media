@@ -515,3 +515,7 @@ One row per requirement ID in the source record. Status and workstream (W0–W12
 | DOS-186.3 | 186. It connects to the existing engine | Reuse image, video, voice cloning, music, SFX, editing, rendering, GPU infrastructure | built | W11 — same engines (SFX generator not built for any production) |
 | DOS-186.4 | 186. It connects to the existing engine | The Animation Studio tells those engines how to work together | built | W11 — style profiles drive the Director and the prompt compilers |
 | DOS-186.5 | 186. It connects to the existing engine | Add it: from AI video generator to complete film, animation and storytelling studio | n/a | Author's recommendation |
+
+### W23 — production hardening (docs/68)
+
+Fixes from the first live films; no requirement changes status. 48 kHz masters, a measured second loudness pass, queue-aware GPU timeouts, image provider fallback (OpenAI → fal), and Resume for paused films (0055).

@@ -281,3 +281,28 @@ export async function restoreTake(shotId: string, storageKey: string): Promise<v
   const { error } = await sb.from("shots").update({ video_key: storageKey }).eq("id", shotId);
   if (error) throw new Error(error.message);
 }
+
+export interface ResumeState {
+  status: string;
+  errorMessage: string | null;
+  requestedAt: string | null;
+  spentMs: number;
+  estimatedMs: number | null;
+}
+
+/** A film's pause state (W23; 0055). Null before the migration or when unreadable. */
+export async function loadResumeState(projectId: string): Promise<ResumeState | null> {
+  const sb = untyped();
+  if (!sb) return null;
+  const { data, error } = await sb.from("projects").select("status, error_message, resume_requested_at, spent_ms, estimated_ms").eq("id", projectId).maybeSingle();
+  if (error || !data) return null;
+  return { status: data.status, errorMessage: data.error_message, requestedAt: data.resume_requested_at, spentMs: data.spent_ms, estimatedMs: data.estimated_ms };
+}
+
+/** Ask the worker to resume a paused film: it re-estimates the budget from the shots made and continues. */
+export async function requestResume(projectId: string): Promise<void> {
+  const sb = untyped();
+  if (!sb) throw new Error("Supabase not configured");
+  const { error } = await sb.from("projects").update({ resume_requested_at: new Date().toISOString() }).eq("id", projectId);
+  if (error) throw new Error(error.message);
+}

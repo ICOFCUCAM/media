@@ -7,7 +7,7 @@ import type { Storage } from "../storage/storage";
 import { degradation, MIX_SPECS, ProductionFailure, type Degradation, type DeliverySpec, type MixSpec } from "@cineforge/shared";
 import { placeCue } from "@cineforge/movie";
 import { ffmpeg, probeDuration, type DurationProbe, type FfmpegRunner } from "./ffmpeg";
-import { sha256File } from "./analysis";
+import { measureLoudness, sha256File } from "./analysis";
 import {
   normalizeArgs,
   interpolating,
@@ -16,6 +16,7 @@ import {
   concatListContent,
   concatArgs,
   audioMixArgs,
+  loudnessCorrectionArgs,
   soundStemArgs,
   type PlacedSound,
   muxArgs,
@@ -96,6 +97,7 @@ export class RenderEngine {
     private readonly run: FfmpegRunner = ffmpeg,
     private readonly fmt: VideoFormat = DEFAULT_FORMAT,
     private readonly probe: DurationProbe = probeDuration,
+    private readonly loudness: (path: string) => Promise<{ integratedLufs: number } | null> = measureLoudness,
   ) {}
 
   async renderFinal(
@@ -302,8 +304,18 @@ export class RenderEngine {
           console.log(`[render] sound design: ${beds.length} ambience bed(s), ${cues.length} effect(s)`);
         }
         if (voice || music || ambience || sfx) {
-          const mix = join(work, "mix.m4a");
+          let mix = join(work, "mix.m4a");
           await this.run(audioMixArgs({ music, voice, ambience, sfx }, mix, { musicLoopSec: Math.max(opts.filmSec ?? 0, outputSec ?? 0) || undefined, mix: mixSpec, delivery: opts.delivery }));
+          // Second loudness pass (W23): measured, then a fixed gain to the target.
+          const delivery = opts.delivery ?? { integratedLufs: -16, truePeakDbtp: -1 };
+          const measured = await this.loudness(mix).catch(() => null);
+          const corrected = join(work, "mix_level.m4a");
+          const fix = loudnessCorrectionArgs(mix, corrected, measured, delivery);
+          if (fix) {
+            await this.run(fix);
+            console.log(`[render] loudness ${measured!.integratedLufs.toFixed(1)} LUFS → ${delivery.integratedLufs} LUFS`);
+            mix = corrected;
+          }
           const muxed = join(work, "muxed.mp4");
           console.log(`[render] mux audio (voice=${!!voice} music=${!!music} ambience=${!!ambience} sfx=${!!sfx})`);
           // Length = picture (or picture held to the narration's end): only a

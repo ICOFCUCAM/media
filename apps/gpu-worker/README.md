@@ -14,7 +14,8 @@ container via `MODEL_NAME`. Every route except `GET /livez` is behind the
   `warm`). `POST /generate` needs scope `video:run`.
 - **Async generate:** `POST /generate` with header `x-cineforge-async: 1`
   returns `202 {"taskId"}` at once and runs the shot in the background;
-  `GET /generate/jobs/{taskId}` (scope `status`) answers `running`,
+  `GET /generate/jobs/{taskId}` (scope `status`) answers `queued` (waiting
+  for the GPU behind another shot), `running`,
   `done` + the result, or `error` + the same status/code the direct call
   would have returned. Cineforge always asks for it, so a long shot (e.g.
   `WAN_MAX_FRAMES=81`, several minutes) is not cut off by the ~100 s an edge

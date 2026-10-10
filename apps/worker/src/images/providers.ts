@@ -6,8 +6,10 @@
  * and model, the seed it drew with (null when the provider takes none), the
  * stored object's sha256 and the prompt's sha256 — the Image Engine's record.
  *
- *   IMAGE_PROVIDERS   ordered list, default "openai". The first configured
- *                     provider that is not gated is used.
+ *   IMAGE_PROVIDERS   ordered list, default "openai,fal". Every configured,
+ *                     ungated provider is used in that order: when one fails
+ *                     (a revoked key, an outage) the still is drawn by the next,
+ *                     and the record names the provider that made it.
  *
  *   openai   GPT-image (API). Configured with OPENAI_API_KEY and storage. No seeds.
  *   fal      a hosted text-to-image model on fal (FAL_IMAGE_MODEL, default
@@ -124,24 +126,52 @@ const KNOWN: Record<string, (env: Env, put: Put, fal?: FalImageDeps) => { status
   }),
 };
 
+const DEFAULT_PROVIDERS = "openai,fal";
+
 export function imageProviderStatuses(env: Env = process.env): ImageProviderStatus[] {
-  const ids = (env.IMAGE_PROVIDERS ?? "openai").split(",").map((s) => s.trim()).filter(Boolean);
+  const ids = (env.IMAGE_PROVIDERS ?? DEFAULT_PROVIDERS).split(",").map((s) => s.trim()).filter(Boolean);
   return ids.map((id) => KNOWN[id]?.(env, async () => "").status ?? { id, configured: false, gated: "unknown image provider" });
 }
 
 /** The image provider to use, or null with the reason (recorded by the caller). */
 export function imageProvider(put: Put, env: Env = process.env, fal?: FalImageDeps): { provider: ImageProvider | null; reason: string | null } {
   if (env.IMAGE_PROVIDERS?.trim() === "none") return { provider: null, reason: "image generation disabled (IMAGE_PROVIDERS=none)" };
-  const ids = (env.IMAGE_PROVIDERS ?? "openai").split(",").map((s) => s.trim()).filter(Boolean);
+  const ids = (env.IMAGE_PROVIDERS ?? DEFAULT_PROVIDERS).split(",").map((s) => s.trim()).filter(Boolean);
   const reasons: string[] = [];
+  const usable: ImageProvider[] = [];
   for (const id of ids) {
     const built = KNOWN[id]?.(env, put, fal);
     if (!built) { reasons.push(`${id}: unknown`); continue; }
     if (built.status.gated) { reasons.push(`${id}: ${built.status.gated}`); continue; }
-    if (built.provider) return { provider: built.provider, reason: null };
-    reasons.push(`${id}: not configured`);
+    if (built.provider) usable.push(built.provider);
+    else reasons.push(`${id}: not configured`);
   }
-  return { provider: null, reason: reasons.join("; ") || "no image provider listed" };
+  if (!usable.length) return { provider: null, reason: reasons.join("; ") || "no image provider listed" };
+  return { provider: usable.length === 1 ? usable[0]! : withFallback(usable), reason: null };
+}
+
+/**
+ * Providers in order: the first that succeeds makes the still. A failure is
+ * not silent: when every provider fails, the error names each one's reason.
+ */
+export function withFallback(providers: ImageProvider[]): ImageProvider {
+  const [first] = providers;
+  return {
+    id: first!.id,
+    model: first!.model,
+    seeds: first!.seeds,
+    async generate(prompt, key, size, opts) {
+      const failures: string[] = [];
+      for (const p of providers) {
+        try {
+          return await p.generate(prompt, key, size, opts);
+        } catch (e) {
+          failures.push(`${p.id}: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300));
+        }
+      }
+      throw new Error(failures.join(" | "));
+    },
+  };
 }
 
 /** A stable seed for candidate `i` of a subject: the same shot draws the same candidates again. */
