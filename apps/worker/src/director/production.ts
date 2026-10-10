@@ -16,7 +16,7 @@ import {
   type ProductionKind,
   type ProductionSpec,
 } from "@cineforge/shared";
-import type { PlanCastMember, PlanEpisode, PlanProduction, PlanShowBible, ProductionConstraints, RenderStyle } from "@cineforge/movie";
+import type { PlanAdvert, PlanCastMember, PlanEpisode, PlanProduction, PlanShowBible, ProductionConstraints, RenderStyle } from "@cineforge/movie";
 
 export interface ProductionRow {
   kind?: string | null;
@@ -83,8 +83,12 @@ export function constraintsFor(targetSeconds: number, spec: ProductionSpec, cano
   };
 }
 
-/** The PRODUCTION section of the plan request (none for a plain live-action film with nothing cast: v4 behaviour). */
-export function planProductionFor(spec: ProductionSpec, canon: ProductionCanon = NO_CANON): PlanProduction | undefined {
+/**
+ * The PRODUCTION section of the plan request (none for a plain live-action film with nothing cast: v4 behaviour).
+ * An advert carries its source facts and brand files (A2/A3, docs/47) — an advert without them still gets the
+ * section, which then forbids specific claims.
+ */
+export function planProductionFor(spec: ProductionSpec, canon: ProductionCanon = NO_CANON, advert: PlanAdvert | null = null): PlanProduction | undefined {
   const hasCanon = canon.cast.length > 0 || canon.bible !== null || canon.episode !== null;
   if (spec.kind === "film" && spec.medium === "live_action" && !hasCanon) return undefined;
   const k = KIND_PROFILES[spec.kind];
@@ -99,6 +103,7 @@ export function planProductionFor(spec: ProductionSpec, canon: ProductionCanon =
     ...(canon.cast.length ? { cast: canon.cast } : {}),
     ...(canon.bible ? { bible: canon.bible } : {}),
     ...(canon.episode ? { episode: canon.episode } : {}),
+    ...(spec.kind === "advert" ? { advert: advert ?? { sourceUrl: null, facts: [], productPhotos: 0, logo: false } } : {}),
   };
 }
 

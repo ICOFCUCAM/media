@@ -83,10 +83,11 @@ export function lockRendered(lockedAt: Date, timelines: { status: string; approv
  * timeline's order, each shot's clip for exactly its span. A shot the timeline
  * names without a clip is an error — a locked film never renders with gaps.
  */
-export function applyCut<A extends { sceneId: string; shotKeys: string[]; shotCutSec?: (number | null)[] }>(
+export function applyCut<A extends { sceneId: string; shotKeys: string[]; shotCutSec?: (number | null)[]; shotTransitions?: (string | null)[] }>(
   assets: A[],
   cut: TimelineCut,
   clipOf: Map<string, string | null>,
+  transitionOf?: Map<string, string | null>,
 ): A[] {
   const bySceneId = new Map(assets.map((a) => [a.sceneId, a]));
   return cut.scenes.map((sc) => {
@@ -97,6 +98,10 @@ export function applyCut<A extends { sceneId: string; shotKeys: string[]; shotCu
       if (!k) throw new Error(`timeline shot ${s.shotId} has no clip`);
       return k;
     });
-    return { ...base, shotKeys: keys, shotCutSec: sc.shots.map((s) => s.sec) };
+    return {
+      ...base, shotKeys: keys, shotCutSec: sc.shots.map((s) => s.sec),
+      // How each shot is entered (W27), as the plan says, in the timeline's order.
+      shotTransitions: transitionOf ? sc.shots.map((s) => transitionOf.get(s.shotId) ?? null) : undefined,
+    };
   });
 }

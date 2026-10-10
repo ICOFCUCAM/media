@@ -99,10 +99,12 @@ export function renderReviewRequest(ctx: GenerationContext, media: ReviewMedia =
     ...ctx.characters.map((c) =>
       `- ${c.name} (${c.characterId})${c.age !== null ? `, age ${c.age}` : ""}: face ${c.identity.face}; hair ${c.identity.hair}; body ${c.identity.body}` +
       `${c.identity.marks.length ? `; marks ${c.identity.marks.join(", ")}` : ""}; wearing ${c.wardrobe}` +
-      `${c.physical ? `; visibly ${c.physical}` : ""}${c.emotion ? `; feeling ${c.emotion}` : ""}${c.holding.length ? `; holding ${c.holding.map((h) => h.name).join(", ")}` : ""}`),
+      `${c.physical ? `; visibly ${c.physical}` : ""}${c.emotion ? `; feeling ${c.emotion}` : ""}${c.holding.length ? `; holding ${c.holding.map((h) => h.name).join(", ")}` : ""}` +
+      `${c.position ? `; placed ${c.position}` : ""}`),
     ...(ctx.props.length ? ["Props in play:", ...ctx.props.map((p) => `- ${p.name} (${p.id}): ${p.description}`)] : []),
     "",
     "Give one verdict per character for presence, identity, wardrobe and (if a physical state is listed) injuries;",
+    ...(ctx.characters.some((c) => c.position) ? ["for a character with a placement, presence is a mismatch when they are clearly elsewhere in the frame (say where);"] : []),
     "one for the location; one for time (subjectId \"scene\"); one per prop in play;",
     "one emotion verdict per character whose face is readable (does the expression fit?);",
     "hands and objects verdicts for any defect you see; then the five scores.",

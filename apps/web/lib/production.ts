@@ -192,20 +192,36 @@ export async function setStoryboardApproved(sceneId: string, approved: boolean):
 /* ── Edit requests (W8b, 0039) ──────────────────────────────────────────── */
 
 export interface CanonCast {
-  characters: { id: string; name: string; wardrobe: { id: string; description: string }[] }[];
+  characters: { id: string; name: string; wardrobe: { id: string; description: string }[]; identity: Record<IdentityField, string>; age: number | null }[];
   scenes: { id: string; index: number; heading: string }[];
+  /** Places and props (W27): what the change form can redescribe. */
+  locations: { id: string; name: string; fields: Record<LocationField, string> }[];
+  props: { id: string; name: string; description: string }[];
 }
+
+export const IDENTITY_FIELDS = ["face", "hair", "body"] as const;
+export type IdentityField = (typeof IDENTITY_FIELDS)[number];
+export const LOCATION_FIELDS = ["description", "architecture", "era", "lighting"] as const;
+export type LocationField = (typeof LOCATION_FIELDS)[number];
 
 /** The film's canon (Film IR) for the edit form; null for films planned before the IR. */
 export async function loadCanon(projectId: string): Promise<CanonCast | null> {
   const sb = untyped();
   if (!sb) return null;
   const { data } = await sb.from("screenplays").select("raw").eq("project_id", projectId).maybeSingle();
-  const pkg = (data as { raw?: { package?: { cast?: unknown[]; scenes?: unknown[] } } } | null)?.raw?.package;
+  const pkg = (data as { raw?: { package?: { cast?: unknown[]; scenes?: unknown[]; locations?: unknown[]; props?: unknown[] } } } | null)?.raw?.package;
   if (!pkg?.cast || !pkg.scenes) return null;
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
   return {
-    characters: (pkg.cast as { id: string; name: string; wardrobe: { id: string; description: string }[] }[]).map((c) => ({ id: c.id, name: c.name, wardrobe: c.wardrobe ?? [] })),
+    characters: (pkg.cast as { id: string; name: string; wardrobe?: { id: string; description: string }[]; identity?: Record<string, unknown>; age?: number | null }[]).map((c) => ({
+      id: c.id, name: c.name, wardrobe: c.wardrobe ?? [], age: typeof c.age === "number" ? c.age : null,
+      identity: Object.fromEntries(IDENTITY_FIELDS.map((f) => [f, str(c.identity?.[f])])) as Record<IdentityField, string>,
+    })),
     scenes: (pkg.scenes as { id: string; heading?: string; slugline?: string }[]).map((s, index) => ({ id: s.id, index, heading: s.heading ?? s.slugline ?? s.id })),
+    locations: ((pkg.locations ?? []) as Record<string, unknown>[]).map((l) => ({
+      id: str(l.id), name: str(l.name), fields: Object.fromEntries(LOCATION_FIELDS.map((f) => [f, str(l[f])])) as Record<LocationField, string>,
+    })),
+    props: ((pkg.props ?? []) as Record<string, unknown>[]).map((p) => ({ id: str(p.id), name: str(p.name), description: str(p.description) })),
   };
 }
 

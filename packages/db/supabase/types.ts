@@ -689,6 +689,57 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_assets: {
+        Row: {
+          bytes: number
+          created_at: string
+          id: string
+          mime: string
+          name: string
+          project_id: string
+          role: string
+          storage_key: string
+          user_id: string
+        }
+        Insert: {
+          bytes: number
+          created_at?: string
+          id?: string
+          mime: string
+          name?: string
+          project_id: string
+          role: string
+          storage_key: string
+          user_id: string
+        }
+        Update: {
+          bytes?: number
+          created_at?: string
+          id?: string
+          mime?: string
+          name?: string
+          project_id?: string
+          role?: string
+          storage_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_assets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_assets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_kits: {
         Row: {
           logo_key: string | null
@@ -1627,6 +1678,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          ad_source: Json | null
           animation_style: string | null
           aspect_ratio: string
           created_at: string
@@ -1658,6 +1710,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ad_source?: Json | null
           animation_style?: string | null
           aspect_ratio?: string
           created_at?: string
@@ -1689,6 +1742,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ad_source?: Json | null
           animation_style?: string | null
           aspect_ratio?: string
           created_at?: string
@@ -3196,6 +3250,65 @@ export type Database = {
             columns: ["voice_id"]
             isOneToOne: false
             referencedRelation: "voices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_erasures: {
+        Row: {
+          artifacts: Json
+          created_at: string
+          error: string | null
+          files_deleted: string[]
+          finished_at: string | null
+          id: string
+          name: string
+          provider: string | null
+          provider_outcome: string | null
+          provider_voice_id: string | null
+          sample_key: string | null
+          status: string
+          user_id: string
+          voice_id: string
+        }
+        Insert: {
+          artifacts?: Json
+          created_at?: string
+          error?: string | null
+          files_deleted?: string[]
+          finished_at?: string | null
+          id?: string
+          name?: string
+          provider?: string | null
+          provider_outcome?: string | null
+          provider_voice_id?: string | null
+          sample_key?: string | null
+          status?: string
+          user_id: string
+          voice_id: string
+        }
+        Update: {
+          artifacts?: Json
+          created_at?: string
+          error?: string | null
+          files_deleted?: string[]
+          finished_at?: string | null
+          id?: string
+          name?: string
+          provider?: string | null
+          provider_outcome?: string | null
+          provider_voice_id?: string | null
+          sample_key?: string | null
+          status?: string
+          user_id?: string
+          voice_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_erasures_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

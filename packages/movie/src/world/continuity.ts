@@ -9,7 +9,7 @@
  * request when they disagree.
  */
 import { shotPrompt } from "../compile/shot-prompt";
-import type { FilmCharacter, FilmPackage, FilmTimeOfDay } from "../ir/schema";
+import { blockingPhrase, type FilmCharacter, type FilmPackage, type FilmTimeOfDay } from "../ir/schema";
 import { canonVersion } from "./version";
 import { materializeWorld, type SceneWorld, type StoryClock, type WorldTimeline } from "./state";
 
@@ -73,6 +73,8 @@ export interface GenerationContext {
     physical: string | null;
     emotion: string;
     holding: { id: string; name: string }[];
+    /** Where the plan places them in the frame (W27), only when it does: "left third, foreground". */
+    position?: string;
   }[];
   props: { id: string; name: string; description: string; holderId: string | null }[];
   /** The canonical prompt for this shot. */
@@ -217,6 +219,7 @@ export function checkContinuity(pkg: FilmPackage, req: GenerationRequest, world:
   for (const p of inPlay) requiredReferences.push({ kind: "prop", id: p, reason: "in frame" });
 
   const loc = locs.get(scene.locationId)!;
+  const placed = new Map((shot.blocking ?? []).map((b) => [b.characterId, blockingPhrase(b)] as const));
   const context: GenerationContext = {
     sceneId: scene.id,
     shotIndex: shot.index,
@@ -232,6 +235,7 @@ export function checkContinuity(pkg: FilmPackage, req: GenerationRequest, world:
         characterId: id, name: c.name, age: c.age, identity: c.identity, ...(c.design ? { design: c.design } : {}), wardrobeId: st.wardrobeId!,
         wardrobe: c.wardrobe.find((x) => x.id === st.wardrobeId)!.description, physical: st.physical, emotion: st.emotion!,
         holding: st.holding.map((p) => ({ id: p, name: props.get(p)?.name ?? p })),
+        ...(placed.has(id) ? { position: placed.get(id)! } : {}),
       };
     }),
     props: [...inPlay].map((p) => ({ id: p, name: props.get(p)!.name, description: props.get(p)!.description, holderId: w.props[p]!.holderId })),

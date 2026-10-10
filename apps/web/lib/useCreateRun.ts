@@ -5,6 +5,7 @@ import { DemoRun, type DemoState } from "./demo";
 import { SupabaseRun } from "./supabase-run";
 import { SUPABASE_ENABLED } from "./supabase";
 import type { ProductionSpec } from "./production-types";
+import type { AdsHandoff } from "./ads-live";
 
 export interface RunConfig {
   prompt: string;
@@ -21,6 +22,8 @@ export interface RunConfig {
   production?: ProductionSpec;
   /** Character Cards cast into the production (W12; Part 5 §183 "Use character"). */
   castIds?: string[];
+  /** From the Ads Studio (docs/47): the page's source facts and the brand files, recorded on the advert. */
+  ads?: AdsHandoff | null;
   /** The production's title (defaults to the brief's opening). */
   title?: string;
 }

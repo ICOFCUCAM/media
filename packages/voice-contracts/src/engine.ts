@@ -88,6 +88,12 @@ export interface VoiceEngine {
   getCapabilities(): VoiceCapabilities;
   enrollVoice(request: VoiceEnrollmentRequest): Promise<VoiceEnrollmentResult>;
   synthesize(request: SpeechSynthesisRequest): Promise<SpeechSynthesisResult>;
+  /**
+   * Delete a provider-side clone when its voice is deleted (W27). Optional:
+   * an engine whose provider has no deletion call leaves it out, and the
+   * erasure records that the clone could not be deleted.
+   */
+  deleteVoice?(artifact: VoiceEngineArtifact): Promise<void>;
   health(): Promise<EngineHealth>;
   unload(): Promise<void>;
 }

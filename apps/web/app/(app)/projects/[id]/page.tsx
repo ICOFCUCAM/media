@@ -95,6 +95,12 @@ export default function ProjectCommandCenter({ params }: { params: { id: string 
               <Link href={`/projects/${project.id}/director`} className="cf-btn-ink">
                 Director workspace →
               </Link>
+              {/* An advert's scenes can be edited from the Ads Studio storyboard (docs/47 A5), through the same Director chat. */}
+              {project.kind === "advert" && (
+                <Link href={`/ads?project=${project.id}#studio`} className="cf-btn-line">
+                  Edit scenes in the Ads Studio
+                </Link>
+              )}
               <Link href="/create" className="cf-btn-line">
                 New production
               </Link>

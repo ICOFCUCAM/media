@@ -96,4 +96,14 @@ describe.runIf(HAVE_FFMPEG)("render engine — narration fit with real media", (
     const r = await new RenderEngine(storage).renderFinal("p1", [{ sceneId: "s1", index: 0, shotKeys: ["shot_a.mp4"] }]);
     expect(r.degradations).toEqual([]);
   }, 60_000);
+
+  it("planned transitions render as dissolves and fades and the film keeps its length (W27)", async () => {
+    out = await mkdtemp(join(tmpdir(), "cf-out-"));
+    // Three 1.5 s shots: fade in, dissolve, fade out — still 4.5 s.
+    const r = await new RenderEngine(storage).renderFinal("p1", [{
+      sceneId: "s1", index: 0, shotKeys: ["shot_a.mp4", "shot_b.mp4", "shot_a.mp4"], shotTransitions: ["fade_in", "dissolve", "fade_out"],
+    }]);
+    expect(r.degradations).toEqual([]);
+    expect(Math.abs(streamDuration(join(out, "projects_p1_film_final.mp4"), "v:0") - 4.5)).toBeLessThan(0.15);
+  }, 60_000);
 });

@@ -32,6 +32,13 @@ const FAILURE_MESSAGES: Record<string, string> = {
   MODERATION_UNAVAILABLE: "The film couldn't start: the content check is unavailable right now. No credits were used — please try again.",
 };
 
+/** The validator's first reasons after the message, so a failed plan says why (they used to reach only the log). */
+export function withReasons(message: string, detail: unknown): string {
+  const issues = (detail as { issues?: unknown } | undefined)?.issues;
+  if (!Array.isArray(issues) || !issues.length) return message;
+  return `${message} Why: ${issues.slice(0, 2).map(String).join("; ")}`.slice(0, 500);
+}
+
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const director = new DirectorService();
 
@@ -94,7 +101,7 @@ export const filmWorker = new Worker<FilmJob>(
       } catch (e) {
         if (!isProductionFailure(e)) throw e;
         await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);
-        await failProject(projectId, e.code, FAILURE_MESSAGES[e.code] ?? e.message);
+        await failProject(projectId, e.code, withReasons(FAILURE_MESSAGES[e.code] ?? e.message, e.detail));
         return { projectId, failed: e.code };
       }
       await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);

@@ -919,7 +919,40 @@ existing engines, migrations 0046–0047 live.
   to it and is recorded, DUB_MIX_FALLBACK).
 - BUILT lip-synced dubs: each dialogue shot lip-synced to the translated
   line, read out of the dubbed scene track (LIP_SYNC=1).
-- OPEN: the live conversation loop (ASR + LLM + avatar, §111.3, §117.4).
+- OPEN: the live conversation loop (ASR + LLM + avatar, §111.3, §117.4). (Since W26: built.)
+
+### W23–W26 — hardening, story state, scene revisions, seasons and talk
+
+Done 2026-10-10. Each has its own doc:
+- W23 (docs/68): resume a paused film and a second loudness pass.
+- W24 (docs/69): goals, audience devices, the Cinematographer's call,
+  style and camera references.
+- W25 (docs/70): multi-department scene revisions and timeline-placed
+  speech with ducking.
+- W26 (docs/71): seasons, quick voice, talking with an avatar, living
+  pages.
+
+### W27 — repairs, cut edges, fitted score, owner edits, Ads Studio A2/A3/A5
+
+**Done (docs/72, docs/47, 2026-10-10; migrations 0060–0062).**
+
+The open items the workstream docs carried and that need no gated runtime:
+- BUILT the repair engine (docs/38 Phase 9): planned sync repairs are carried
+  out (re-time, hold, trim, conform, regenerate), then the film renders again;
+  SYNC_REPAIR=off by default.
+- BUILT rendered dissolves and fades that keep the cut's timing.
+- BUILT a score re-timed to the cut and seamless loops for short beds and
+  scores.
+- BUILT voice erasure (recording, artifacts, provider clone; 0061).
+- BUILT identity, place and prop edits in the change form; the Film Bible
+  edited in the workspace (0062).
+- BUILT one Continuity Engine, with the web copy test-guarded.
+- BUILT blocking: where each framed character stands, prompted and
+  reviewed.
+- BUILT Ads Studio website intelligence (A2), brand assets in production
+  (A3) and scene edits on the live ad (A5); see docs/47.
+- OPEN: Ads billing (A4) waits for measured costs; everything else open is
+  gated on Phase 1 (ComfyUI, self-hosted voice).
 
 ---
 
@@ -954,6 +987,8 @@ approved models wait for docs/38 gates.
 | **S20 World and time state** | W20 film bible, story clock, weather and sun, shot record, structured end state | W2, W3 | S19 |
 | **S21 Lip sync and portraits** | W21 lip sync, frame interpolation, Character Card portraits | W7, W12, W17 | S20 |
 | **S22 Dubs as masters** | W22 full-mix, lip-synced dubbed masters | W7c, W21 | S21 |
+| **S23–S26** | W23–W26 hardening, story state, scene revisions, seasons and talk | W22 | — |
+| **S27 Repairs and owner edits** | W27 repair engine, cut edges, fitted score, voice erasure, bible and change-form edits, blocking, Ads A2/A3/A5 | W18, W8b, W9 | — |
 
 W11 hygiene items ride along with whichever stage touches the same files.
 
@@ -978,4 +1013,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-487 IDs: 351 built, 41 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 351 (85%) are built; 41 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W22, 2026-10-10.)
+487 IDs: 374 built, 18 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 374 (91%) are built; the 18 shallow and 21 not built are all gated on Phase 1 (ComfyUI, the self-hosted voice engine and its GPU worker). (Updated after W27, 2026-10-10.)

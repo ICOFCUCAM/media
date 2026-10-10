@@ -19,9 +19,25 @@ export interface BibleCharacter {
   voice: string;
 }
 
+/** The Film Bible's own fields (W27), as the workspace edits them. */
+export interface BibleFilm {
+  logline: string;
+  synopsis: string;
+  genre: string;
+  tone: string;
+  themes: string[];
+  premise: string;
+  audience: string;
+  era: string;
+  geography: string;
+  visualStyle: { palette: string; lighting: string; lensLanguage: string; texture: string };
+  audioStyle: { score: string; ambience: string };
+}
+
 export interface Bible {
   title: string;
   logline: string;
+  film: BibleFilm;
   characters: BibleCharacter[];
   locations: { id: string; name: string; description: string }[];
   props: { id: string; name: string; description: string }[];
@@ -32,13 +48,14 @@ export async function loadBible(projectId: string): Promise<Bible | null> {
   if (!sb) return null;
   const { data } = await sb.from("screenplays").select("raw,logline").eq("project_id", projectId).maybeSingle();
   const pkg = (data as { raw?: { package?: Record<string, unknown> } } | null)?.raw?.package as
-    | { film?: { title?: string; logline?: string }; cast?: Record<string, unknown>[]; locations?: Record<string, unknown>[]; props?: Record<string, unknown>[] }
+    | { film?: Record<string, unknown>; cast?: Record<string, unknown>[]; locations?: Record<string, unknown>[]; props?: Record<string, unknown>[] }
     | undefined;
   if (!pkg?.cast) return null;
   const str = (v: unknown) => (typeof v === "string" ? v : "");
   return {
     title: str(pkg.film?.title),
     logline: str(pkg.film?.logline),
+    film: filmOf(pkg.film ?? {}),
     characters: pkg.cast.map((c) => ({
       id: str(c.id), name: str(c.name), role: str(c.role), age: typeof c.age === "number" ? c.age : null,
       identity: (c.identity as BibleCharacter["identity"]) ?? {},
@@ -48,6 +65,45 @@ export async function loadBible(projectId: string): Promise<Bible | null> {
     locations: (pkg.locations ?? []).map((l) => ({ id: str(l.id), name: str(l.name), description: str(l.description) })),
     props: (pkg.props ?? []).map((p) => ({ id: str(p.id), name: str(p.name), description: str(p.description) })),
   };
+}
+
+function filmOf(f: Record<string, unknown>): BibleFilm {
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  const vs = (f.visualStyle ?? {}) as Record<string, unknown>;
+  const as = (f.audioStyle ?? {}) as Record<string, unknown>;
+  return {
+    logline: str(f.logline), synopsis: str(f.synopsis), genre: str(f.genre), tone: str(f.tone),
+    themes: Array.isArray(f.themes) ? f.themes.filter((t): t is string => typeof t === "string") : [],
+    premise: str(f.premise), audience: str(f.audience), era: str(f.era), geography: str(f.geography),
+    visualStyle: { palette: str(vs.palette), lighting: str(vs.lighting), lensLanguage: str(vs.lensLanguage), texture: str(vs.texture) },
+    audioStyle: { score: str(as.score), ambience: str(as.ambience) },
+  };
+}
+
+/**
+ * What the owner changed in the bible (pure; W27): only the fields that
+ * differ, trimmed, as a `film_bible` canon change's patch. Story text that is
+ * required in the Film IR cannot be emptied; optional fields can (null).
+ * Null when nothing changed.
+ */
+export function biblePatch(before: BibleFilm, after: BibleFilm): Record<string, unknown> | null {
+  const patch: Record<string, unknown> = {};
+  const t = (v: string) => v.trim().replace(/\s+/g, " ");
+  for (const k of ["logline", "synopsis", "genre", "tone"] as const) {
+    if (t(after[k]) && t(after[k]) !== t(before[k])) patch[k] = after[k].trim();
+  }
+  for (const k of ["premise", "audience", "era", "geography"] as const) {
+    if (t(after[k]) !== t(before[k])) patch[k] = t(after[k]) ? after[k].trim() : null;
+  }
+  const themes = after.themes.map(t).filter(Boolean).slice(0, 6);
+  if (themes.length && themes.join("|") !== before.themes.map(t).join("|")) patch.themes = themes;
+  for (const group of ["visualStyle", "audioStyle"] as const) {
+    const a = after[group] as Record<string, string>;
+    const b = before[group] as Record<string, string>;
+    const changed = Object.fromEntries(Object.keys(a).filter((k) => t(a[k]!) && t(a[k]!) !== t(b[k] ?? "")).map((k) => [k, a[k]!.trim()]));
+    if (Object.keys(changed).length) patch[group] = changed;
+  }
+  return Object.keys(patch).length ? patch : null;
 }
 
 export interface WorkspaceShot {

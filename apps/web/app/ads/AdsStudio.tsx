@@ -3,13 +3,28 @@
 /**
  * CineForge Ads Studio — the uploaded design (docs/design/cineforge_ad_studio.html) as a
  * CineForge page: same copy, same images, same layout and behaviour, styles
- * scoped under .cf-ads. One addition: "Produce this ad in CineForge" hands
- * the brief to the real Advert studio (/create/advert), where it is planned
- * and filmed by the production pipeline.
+ * scoped under .cf-ads. Connected to production (docs/47):
+ *
+ *   - "Produce this ad in CineForge" hands the brief to the real Advert studio
+ *     (/create/advert), where it is planned and filmed by the pipeline (A1);
+ *   - "Analyse" fetches and reads the page on the server; only facts quoted
+ *     from the page are kept, shown here and handed to the Director (A2);
+ *   - a logo and product photographs are uploaded to the owner's brand folder
+ *     and recorded on the advert: the logo closes the film as supplied, the
+ *     photographs are the references for shots that show the product (A3);
+ *   - once an advert is planned, the storyboard can open it and send a scene
+ *     edit through the Director chat — the Director workspace's own path (A5).
  */
-import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AD_SCENES, handoffHref, productionPlan, unsplash, type AdScene, type AdStudioState } from "../../lib/ads-studio";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  AD_SCENES, defaultBrandRole, FACT_LABEL, handoffHref, productionPlan, unsplash, type AdScene, type AdStudioState, type BrandRole, type SiteAnalysis,
+} from "../../lib/ads-studio";
+import {
+  analyseWebsite, brandFileProblem, listAdverts, loadLiveScenes, loadLiveState, PRODUCT_PHOTOS_MAX, reviseLiveScene, sceneInstructions, signedInUserId,
+  stashHandoff, uploadBrandFiles, type AdvertProject, type LiveScene, type LiveState, type SceneDraft,
+} from "../../lib/ads-live";
+import { signedUrl } from "../../lib/storyboard";
 
 type ModalKind = "how" | "script" | "timeline" | "plan";
 
@@ -41,7 +56,24 @@ export function AdsStudio() {
   const [assets, setAssets] = useState("AI + my assets");
   const [voice, setVoice] = useState(VOICES[0]!);
   const [formats, setFormats] = useState<string[]>(["16:9 Landscape"]);
-  const [uploaded, setUploaded] = useState<{ name: string; size: number; type: string }[]>([]);
+  const [uploaded, setUploaded] = useState<{ name: string; size: number; type: string; role: BrandRole }[]>([]);
+  // The File behind each uploaded entry (same order): only logo / product files are sent to production.
+  const files = useRef<File[]>([]);
+  const [analysis, setAnalysis] = useState<SiteAnalysis | null>(null);
+  const [analysing, setAnalysing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  // A5: the live advert this storyboard edits ("" = the concept storyboard on this page).
+  const [adverts, setAdverts] = useState<AdvertProject[]>([]);
+  const [liveId, setLiveId] = useState("");
+  const [live, setLive] = useState<LiveScene[]>([]);
+  const [liveLoaded, setLiveLoaded] = useState(false);
+  const [liveState, setLiveState] = useState<LiveState | null>(null);
+  const [liveFrames, setLiveFrames] = useState<Record<string, string>>({});
+  const [liveSel, setLiveSel] = useState(0);
+  const [liveDraft, setLiveDraft] = useState<SceneDraft & { for: string | null }>({ visual: "", line: "", seconds: 0, for: null });
+  const [liveBusy, setLiveBusy] = useState(false);
+  const router = useRouter();
   const [status, setStatus] = useState("CONCEPT PREVIEW");
   const [quality, setQuality] = useState("Storyboard preview");
   const [meter, setMeter] = useState<string | undefined>(undefined);
@@ -52,7 +84,7 @@ export function AdsStudio() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sceneUpload = useRef<HTMLInputElement>(null);
 
-  const state: AdStudioState = { url, brief, duration, style, assets, voice, formats, uploaded, scenes };
+  const state: AdStudioState = { url, brief, duration, style, assets, voice, formats, uploaded, scenes, analysis };
 
   function toast(msg: string) {
     setToastMsg(msg);
@@ -76,31 +108,145 @@ export function AdsStudio() {
   }
   function saveScene() {
     setScenes((all) => all.map((s, i) => (i === selected ? { ...s, ...draft, blurb: draft.visual } : s)));
-    toast("Scene edits saved to this prototype project.");
+    toast("Scene edits saved to this plan.");
   }
   function regenerateScene() {
     const visual = "REVISED PLAN: " + draft.visual + " Preserve brand identity, use source-backed claims, and maintain continuity with neighbouring scenes.";
     setDraft((d) => ({ ...d, visual }));
     setScenes((all) => all.map((s, i) => (i === selected ? { ...s, visual } : s)));
-    toast("Demo revision added. Live regeneration needs the CineForge API.");
+    toast("Plan revised on this page. To regenerate a produced ad's scene, open the ad in the storyboard selector.");
   }
-  function analyseUrl() {
+  async function analyseUrl() {
     const v = url.trim();
     if (!v) return toast("Enter a website URL first.");
     try {
       const u = new URL(v);
       if (!["http:", "https:"].includes(u.protocol)) throw new Error();
-      toast("URL format looks valid. Live website analysis requires a connected backend.");
-      setStatus("URL READY");
     } catch {
-      toast("Enter a valid http:// or https:// URL.");
+      return toast("Enter a valid http:// or https:// URL.");
+    }
+    // A2: the server fetches the page and the model reads it; only facts quoted from the page come back.
+    setAnalysing(true);
+    setAnalysisError(null);
+    setStatus("ANALYSING");
+    try {
+      const a = await analyseWebsite(v);
+      setAnalysis(a);
+      setStatus(a.facts.length ? "SOURCE FACTS READY" : "NO FACTS FOUND");
+      toast(a.facts.length ? `${a.facts.length} fact(s) quoted from the page.` : "The page was read, but no fact could be quoted from it.");
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "The analysis failed.";
+      setAnalysisError(m);
+      setStatus("URL READY");
+      toast(m);
+    } finally {
+      setAnalysing(false);
+    }
+  }
+
+  function addFiles(list: File[]) {
+    let hasLogo = uploaded.some((u) => u.role === "logo");
+    const added = list.map((f) => {
+      const role = defaultBrandRole(f, hasLogo);
+      if (role === "logo") hasLogo = true;
+      return { name: f.name, size: f.size, type: f.type, role };
+    });
+    files.current = [...files.current, ...list];
+    setUploaded((u) => [...u, ...added]);
+    toast(`${list.length} file(s) added. Logo and product images go to production with the ad; other files stay in this browser.`);
+  }
+  function removeFile(i: number) {
+    files.current = files.current.filter((_, j) => j !== i);
+    setUploaded((u) => u.filter((_, j) => j !== i));
+  }
+  function setRole(i: number, role: BrandRole) {
+    // One logo: choosing a new one makes the previous logo a product photo.
+    setUploaded((u) => u.map((a, j) => (j === i ? { ...a, role } : role === "logo" && a.role === "logo" ? { ...a, role: "product" } : a)));
+  }
+
+  /** A1 + A2 + A3: upload the brand files, stash the facts and files for this tab, open the Advert studio. */
+  async function produce() {
+    const send = uploaded.map((u, i) => ({ u, file: files.current[i] })).filter((x) => x.file && (x.u.role === "logo" || x.u.role === "product"));
+    const bad = send.find((x) => brandFileProblem(x.file!));
+    if (bad) return toast(`${bad.u.name}: ${brandFileProblem(bad.file!)}. Mark it "browser only" or remove it.`);
+    if (send.filter((x) => x.u.role === "product").length > PRODUCT_PHOTOS_MAX) return toast(`At most ${PRODUCT_PHOTOS_MAX} product photos per ad.`);
+    setSending(true);
+    try {
+      if (send.length && !(await signedInUserId())) {
+        toast("Sign in to CineForge first (same browser) so your logo and product photos can go with the ad.");
+        return;
+      }
+      const brandFiles = send.length ? await uploadBrandFiles(send.map((x) => ({ file: x.file!, role: x.u.role as "logo" | "product" }))) : [];
+      const id = analysis || brandFiles.length
+        ? stashHandoff({
+            source: analysis ? { url: analysis.url, title: analysis.title, brand: analysis.brand, fetchedAt: analysis.fetchedAt, facts: analysis.facts } : null,
+            brandFiles,
+          })
+        : "";
+      router.push(handoffHref(state, id || undefined));
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not send the brand files.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  // ── A5: the live advert ────────────────────────────────────────────────
+  useEffect(() => {
+    void listAdverts().then(setAdverts);
+    const q = new URLSearchParams(window.location.search).get("project");
+    if (q && /^[0-9a-f-]{36}$/i.test(q)) setLiveId(q);
+  }, []);
+  const refreshLive = useCallback(async () => {
+    if (!liveId) return;
+    const [sc, st] = await Promise.all([loadLiveScenes(liveId), loadLiveState(liveId)]);
+    setLive(sc);
+    setLiveState(st);
+    setLiveLoaded(true);
+  }, [liveId]);
+  useEffect(() => {
+    setLive([]);
+    setLiveLoaded(false);
+    setLiveState(null);
+    setLiveSel(0);
+    if (!liveId) return;
+    void refreshLive();
+    const t = setInterval(() => void refreshLive(), 8000);
+    return () => clearInterval(t);
+  }, [liveId, refreshLive]);
+  useEffect(() => {
+    const keys = live.map((s) => s.frameKey).filter((k): k is string => !!k && !liveFrames[k]);
+    if (!keys.length) return;
+    void Promise.all(keys.map(async (k) => [k, await signedUrl(k)] as const)).then((e) =>
+      setLiveFrames((f) => ({ ...f, ...Object.fromEntries(e.filter((x): x is readonly [string, string] => !!x[1])) })));
+  }, [live, liveFrames]);
+  const liveScene = live[liveSel] ?? null;
+  useEffect(() => {
+    // A newly selected (or first loaded) scene starts from what the live project says — never over the owner's edits.
+    if (liveScene && liveScene.id !== liveDraft.for) {
+      setLiveDraft({ visual: liveScene.summary, line: liveScene.firstLine ?? liveScene.narration ?? "", seconds: liveScene.durationSec, for: liveScene.id });
+    }
+  }, [liveScene, liveDraft.for]);
+
+  async function sendLiveEdit() {
+    if (!liveScene) return;
+    if (!sceneInstructions(liveScene, liveDraft).length) return toast("Nothing in this scene has changed yet.");
+    setLiveBusy(true);
+    try {
+      const n = await reviseLiveScene(liveId, liveScene, liveDraft);
+      toast(n > 1 ? "Sent to the Director: the scene revision, and the new length for the Editor." : `Scene ${liveScene.index + 1} sent to the Director.`);
+      await refreshLive();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not reach the Director.");
+    } finally {
+      setLiveBusy(false);
     }
   }
   function buildPlan() {
     const v = url.trim();
     if (v && !/^https?:\/\//i.test(v)) return toast("Please use a full URL beginning with https:// or http://");
     setStatus("PLAN PREVIEW");
-    setQuality("Plan ready · generation not connected");
+    setQuality(analysis?.facts.length ? `Plan ready · ${analysis.facts.length} source facts` : "Plan ready · not yet produced");
     setMeter("38%");
     const b = brief.trim();
     if (b) {
@@ -108,7 +254,7 @@ export function AdsStudio() {
       setScenes((all) => all.map((s, i) => (i === 0 ? { ...s, message } : s)));
       if (selected === 0) setDraft((d) => ({ ...d, message }));
     }
-    toast("Production brief prepared locally. No media jobs were submitted.");
+    toast("Production brief prepared. Nothing is generated until you produce it in CineForge.");
     setModal("plan");
   }
   function exportPlan() {
@@ -145,7 +291,7 @@ export function AdsStudio() {
         <p>2. Create a structured script, storyboard and scene specifications.</p>
         <p>3. Generate image, video and audio jobs using real CineForge providers.</p>
         <p>4. Assemble approved media, run quality gates and export the master.</p>
-        <p><strong>This interface is a front-end concept:</strong> live site crawling, generation and final rendering need backend integrations.</p>
+        <p><strong>What is connected:</strong> “Analyse” reads one public page on the server and keeps only facts it can quote from it; “Produce this ad in CineForge” plans and films the ad in the Advert studio with those facts, your logo (closing card) and product photos (references for product shots); a produced ad’s scenes can be edited here through the Director. The concept storyboard on this page is a plan preview.</p>
       </>),
     },
     script: {
@@ -172,7 +318,7 @@ export function AdsStudio() {
     plan: {
       kicker: "PRODUCTION PLAN", title: "Your editable advertisement brief",
       body: (<>
-        <p>This browser-only preview has assembled the current project settings and scene plan. It has not crawled the URL or generated any media.</p>
+        <p>This preview assembles the current settings, the source facts (when the page was analysed) and the scene plan. No media is generated until you produce the ad in CineForge.</p>
         <pre>{JSON.stringify(productionPlan(state), null, 2)}</pre>
       </>),
     },
@@ -227,37 +373,110 @@ export function AdsStudio() {
           </section>
 
           <section className="section" id="studio">
-            <div className="section-head"><div><div className="kicker">Your production workspace</div><h2>Start with a link.<br />Shape every scene.</h2></div><p>This interactive concept demonstrates the Ad Studio workflow. Generation controls are a front-end prototype until connected to live CineForge services.</p></div>
+            <div className="section-head"><div><div className="kicker">Your production workspace</div><h2>Start with a link.<br />Shape every scene.</h2></div><p>Plan the ad here, then produce it in CineForge: the page’s quoted facts, your logo and product photos go with it, and a produced ad’s scenes can be edited and regenerated from this storyboard.</p></div>
             <div className="studio">
               <aside className="panel">
                 <h3>New advertisement</h3><p className="sub">Brief your production. CineForge structures the work.</p>
-                <div className="field"><label htmlFor="siteUrl">Website or product URL</label><div className="input-wrap"><input id="siteUrl" type="url" placeholder="https://yourcompany.com" value={url} onChange={(e) => setUrl(e.target.value)} /><button className="btn" onClick={analyseUrl}>Analyse</button></div><div className="hint">Use a public page you own or have permission to use.</div></div>
+                <div className="field"><label htmlFor="siteUrl">Website or product URL</label><div className="input-wrap"><input id="siteUrl" type="url" placeholder="https://yourcompany.com" value={url} onChange={(e) => { setUrl(e.target.value); if (analysis) setAnalysis(null); }} /><button className="btn" disabled={analysing} onClick={() => void analyseUrl()}>{analysing ? "Reading…" : "Analyse"}</button></div><div className="hint">Use a public page you own or have permission to use. It is fetched once, on our server, to quote its facts (sign-in needed).</div>
+                  {analysisError && <div className="error" role="alert">{analysisError}</div>}
+                  {analysis && (
+                    <>
+                      <ul className="facts" aria-label="Source facts">
+                        {analysis.facts.map((f, i) => (<li key={i}><b>{FACT_LABEL[f.kind]}</b>{f.statement}<q>{f.quote}</q></li>))}
+                      </ul>
+                      <div className="hint">
+                        {analysis.facts.length ? `Quoted from ${analysis.url}. The Director plans from these facts and flags any line that claims more.` : `Nothing on ${analysis.url} could be quoted as a fact.`}
+                        {analysis.dropped > 0 && ` ${analysis.dropped} proposed fact(s) were dropped: their quote is not on the page.`}
+                      </div>
+                    </>
+                  )}
+                </div>
                 <div className="field"><label htmlFor="brief">What should this advertisement achieve?</label><textarea id="brief" rows={3} placeholder="Introduce our product, show the main benefits and encourage customers to book a demo..." value={brief} onChange={(e) => setBrief(e.target.value)} /></div>
                 <div className="field"><label>Duration</label><div className="chips">{DURATIONS.map((d) => <button key={d.value} className={`chip${duration === d.value ? " active" : ""}`} onClick={() => setDuration(d.value)}>{d.label}</button>)}</div></div>
                 <div className="field"><label>Creative direction</label><div className="chips">{STYLES.map((s) => <button key={s.value} className={`chip${style === s.value ? " active" : ""}`} onClick={() => setStyle(s.value)}>{s.label}</button>)}</div></div>
                 <div className="field"><label>Production approach</label><div className="segmented">{APPROACHES.map((a) => <button key={a} className={assets === a ? "active" : ""} onClick={() => setAssets(a)}>{a}</button>)}</div></div>
                 <div className="field"><label htmlFor="voice">Voice-over</label><select id="voice" value={voice} onChange={(e) => setVoice(e.target.value)}>{VOICES.map((v) => <option key={v}>{v}</option>)}</select></div>
                 <div className="field"><label>Upload brand materials</label>
-                  <label className="upload" htmlFor="assetUpload"><div className="upload-icon">＋</div><strong>Drop files here or browse</strong><small>Logo, product images, video, PDF, screenshots · prototype file selection</small>
+                  <label className="upload" htmlFor="assetUpload"><div className="upload-icon">＋</div><strong>Drop files here or browse</strong><small>Logo and product photos (PNG, JPEG, WebP) go into production · other files stay in this browser</small>
                     <input id="assetUpload" type="file" multiple accept="image/*,video/*,.pdf,.svg,.mp3,.wav" onChange={(e) => {
-                      const files = [...(e.target.files ?? [])];
-                      setUploaded((u) => [...u, ...files.map((f) => ({ name: f.name, size: f.size, type: f.type }))]);
-                      toast(`${files.length} file(s) added to this browser session.`);
+                      addFiles([...(e.target.files ?? [])]);
+                      e.target.value = "";
                     }} />
                   </label>
                   <div className="asset-list">{uploaded.map((a, i) => (
-                    <span key={`${a.name}-${i}`} className="asset-tag">{a.name} <button aria-label={`Remove ${a.name}`} style={{ border: 0, background: "none", color: "#e9b9a7", cursor: "pointer" }} onClick={() => setUploaded((u) => u.filter((_, j) => j !== i))}>×</button></span>
+                    <span key={`${a.name}-${i}`} className="asset-tag">{a.name}
+                      <select aria-label={`How ${a.name} is used`} value={a.role} onChange={(e) => setRole(i, e.target.value as BrandRole)}>
+                        <option value="logo" disabled={!!brandFileProblem(a)}>Logo · closing card</option>
+                        <option value="product" disabled={!!brandFileProblem(a)}>Product photo · reference</option>
+                        <option value="other">Browser only</option>
+                      </select>
+                      <button aria-label={`Remove ${a.name}`} style={{ border: 0, background: "none", color: "#e9b9a7", cursor: "pointer" }} onClick={() => removeFile(i)}>×</button></span>
                   ))}</div>
                 </div>
                 <div className="field"><label>Output formats</label><div className="chips">{FORMATS.map((f) => <button key={f} className={`chip${formats.includes(f) ? " active" : ""}`} onClick={() => toggleFormat(f)}>{f}</button>)}</div></div>
                 <button className="btn primary" style={{ width: "100%", padding: 14 }} onClick={buildPlan}>Build my production plan ↗</button>
-                <div className="hint">No media is generated by this demo. The plan preview is created locally in your browser.</div>
-                <Link className="btn" style={{ display: "block", width: "100%", padding: 14, marginTop: 12, textAlign: "center", textDecoration: "none" }} href={handoffHref(state)}>Produce this ad in CineForge ↗</Link>
-                <div className="hint">Opens the Advert studio with this brief, length and format. There the film is planned and generated on your plan.</div>
+                <div className="hint">The plan preview is assembled in your browser; no media is generated by it.</div>
+                <button className="btn" disabled={sending} style={{ display: "block", width: "100%", padding: 14, marginTop: 12, textAlign: "center" }} onClick={() => void produce()}>{sending ? "Uploading brand files…" : "Produce this ad in CineForge ↗"}</button>
+                <div className="hint">Opens the Advert studio with this brief, length and format{analysis?.facts.length ? ", the page’s source facts" : ""}{uploaded.some((u) => u.role !== "other") ? " and your logo / product photos (uploaded to your account first)" : ""}. There the film is planned and generated on your plan.</div>
               </aside>
 
               <section className="panel preview-panel">
-                <div className="preview-top"><div><h3>Storyboard &amp; scene editor</h3><p className="sub" style={{ margin: "5px 0 0" }}>Select a scene to edit its message and visual direction.</p></div><span className="status">{status}</span></div>
+                <div className="preview-top"><div><h3>Storyboard &amp; scene editor</h3><p className="sub" style={{ margin: "5px 0 0" }}>{liveId ? "A produced ad: edits go to the Director, and only the shots they touch regenerate." : "Select a scene to edit its message and visual direction."}</p></div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <select className="live-select" aria-label="Storyboard" value={liveId} onChange={(e) => setLiveId(e.target.value)}>
+                      <option value="">Plan on this page</option>
+                      {liveId && !adverts.some((a) => a.id === liveId) && <option value={liveId}>Advert {liveId.slice(0, 8)}</option>}
+                      {adverts.map((a) => <option key={a.id} value={a.id}>{a.title.slice(0, 40)} · {a.status.toLowerCase()}</option>)}
+                    </select>
+                    <span className="status">{liveId ? (adverts.find((a) => a.id === liveId)?.status ?? "LIVE") : status}</span>
+                  </div>
+                </div>
+                {liveId ? (
+                  <>
+                    {!liveLoaded ? <p className="sub">Opening the ad…</p> : live.length === 0 ? (
+                      <p className="sub">This ad has no scenes yet: they appear once the Director has planned it (or the ad is not yours).</p>
+                    ) : (
+                      <>
+                        <div className="storyboard">
+                          {live.map((sc, i) => (
+                            <article key={sc.id} className={`scene${i === liveSel ? " selected" : ""}`}>
+                              <div className="scene-img" style={sc.frameKey && liveFrames[sc.frameKey] ? { backgroundImage: `url('${liveFrames[sc.frameKey]}')` } : { background: "#111927" }}><span className="scene-num">Scene {sc.index + 1} · {sc.status.toLowerCase()}</span></div>
+                              <div className="scene-body"><b>{sc.heading}</b><small>{sc.summary.slice(0, 110)}</small><div className="scene-actions"><button onClick={() => setLiveSel(i)}>Edit scene ↗</button><span>{Math.round(sc.durationSec)}s · {sc.shots.length} shot{sc.shots.length === 1 ? "" : "s"}</span></div></div>
+                            </article>
+                          ))}
+                        </div>
+                        {liveScene && (
+                          <div className="selected-scene">
+                            <div><label>Scene</label><div className="readonly">{liveScene.index + 1}. {liveScene.heading}</div></div>
+                            <div><label htmlFor="liveSeconds">Length (seconds)</label><input id="liveSeconds" type="number" min={2} max={120} value={liveDraft.seconds} onChange={(e) => setLiveDraft({ ...liveDraft, seconds: Number(e.target.value) })} /></div>
+                            <div className="wide"><label htmlFor="liveVisual">What the scene shows — its look, light, camera and feel</label><textarea id="liveVisual" value={liveDraft.visual} onChange={(e) => setLiveDraft({ ...liveDraft, visual: e.target.value })} /></div>
+                            <div className="wide"><label htmlFor="liveLine">Spoken line</label><input id="liveLine" value={liveDraft.line} onChange={(e) => setLiveDraft({ ...liveDraft, line: e.target.value })} /></div>
+                            <div className="wide mini-actions">
+                              <button className="btn primary" disabled={liveBusy} onClick={() => void sendLiveEdit()}>{liveBusy ? "Sending…" : "Regenerate this scene"}</button>
+                              <a className="btn" style={{ textDecoration: "none" }} href={`/projects/${liveId}/director`}>Director workspace ↗</a>
+                              <a className="btn" style={{ textDecoration: "none" }} href={`/projects/${liveId}`}>Production file ↗</a>
+                            </div>
+                            <div className="wide hint">The Director reads your edit as one change to this scene (look, light, camera, music, its lines) and only the shots it touches are made again; a new length goes to the Editor, who proposes the cut for your approval in the Director workspace. Changes that would break the story are refused with the reason.</div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {liveState && (
+                      <ul className="feed" aria-label="The Director's answers and what the ad ran without">
+                        {(liveState.chat ?? []).slice(-6).map((m) => (
+                          <li key={m.id} className={m.author === "director" ? "director" : undefined}><small>{m.author === "owner" ? (m.status === "pending" ? "You · being read" : "You") : "Director"}</small>{m.body}</li>
+                        ))}
+                        {liveState.edits.slice(0, 4).map((r) => (
+                          <li key={r.id}><small>Change · {r.status}</small>{r.change.kind.replace(/_/g, " ")}{r.status === "applied" ? ` — ${r.affected_shots ?? 0} shot(s) regenerating` : r.status === "rejected" ? ` — ${r.issues.map((x) => x.message).join("; ")}` : r.status === "failed" ? ` — ${r.error ?? ""}` : ""}</li>
+                        ))}
+                        {liveState.flags.slice(0, 8).map((g) => (
+                          <li key={g.id} className="flag"><small>{g.code === "CLAIM_UNSUPPORTED" ? "Unsupported claim" : g.code.replace(/_/g, " ").toLowerCase()}</small>{g.message}</li>
+                        ))}
+                        {liveState.chat === null && <li><small>Director</small>The Director chat is not available on this database yet (migration 0042).</li>}
+                      </ul>
+                    )}
+                  </>
+                ) : (<>
                 <div className="storyboard">
                   {scenes.map((s, i) => (
                     <article key={s.image} className={`scene${i === selected ? " selected" : ""}`}>
@@ -288,6 +507,7 @@ export function AdsStudio() {
                   <button className="btn" onClick={() => setModal("timeline")}>View assembly plan</button>
                   <button className="btn primary" onClick={exportPlan}>Export production brief ↓</button>
                 </div>
+                </>)}
               </section>
             </div>
           </section>
@@ -312,7 +532,7 @@ export function AdsStudio() {
             </div>
           </section>
         </main>
-        <footer className="footer"><div><strong style={{ color: "#b7c5d8", letterSpacing: ".08em" }}>CINEFORGE AD STUDIO</strong><br />One source. One story. One finished advertisement.</div><div>Concept UI · Live media generation requires connected CineForge services.<br />© CineForge · Creative production workspace</div></footer>
+        <footer className="footer"><div><strong style={{ color: "#b7c5d8", letterSpacing: ".08em" }}>CINEFORGE AD STUDIO</strong><br />One source. One story. One finished advertisement.</div><div>Generation runs in CineForge on your plan · the page plan is a preview until produced.<br />© CineForge · Creative production workspace</div></footer>
       </div>
       <div className={`toast${toastOn ? " show" : ""}`} role="status" aria-live="polite">{toastMsg}</div>
       <div className={`modal${modal ? " show" : ""}`} role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setModal(null); }}>

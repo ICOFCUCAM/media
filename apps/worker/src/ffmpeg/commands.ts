@@ -62,6 +62,62 @@ export function concatArgs(listPath: string, output: string): string[] {
   return ["-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", output];
 }
 
+/** How long a rendered dissolve or fade lasts (W27). */
+export const TRANSITION_SEC = 0.5;
+
+export interface ClipTransition {
+  /** Fade up from black at the head of the clip. */
+  fadeIn: boolean;
+  /** Fade down to black at the tail of the clip. */
+  fadeOut: boolean;
+  /** Dissolve from the previous clip into this one. */
+  dissolve: boolean;
+}
+
+/**
+ * What each clip of the cut does at its edges (pure; W27). A shot's planned
+ * transition (Film IR) is how it is entered: `dissolve` crossfades from the
+ * shot before, `fade_in` fades up from black, `fade_out` fades the shot down
+ * at its end. `cut`, `smash_cut` and `match_cut` are hard cuts — a match cut
+ * is matched in the framing, which the Director plans; it cuts. A dissolve
+ * with nothing before it fades in. A clip shorter than two transitions keeps
+ * its hard edges.
+ */
+export function transitionPlan(transitions: (string | null | undefined)[], clipSec: number[], d = TRANSITION_SEC): ClipTransition[] {
+  return clipSec.map((sec, i) => {
+    const t = transitions[i] ?? "cut";
+    const room = sec >= 2 * d;
+    const prevRoom = i > 0 && (clipSec[i - 1] ?? 0) >= 2 * d;
+    return {
+      fadeIn: room && (t === "fade_in" || (t === "dissolve" && i === 0)),
+      fadeOut: room && t === "fade_out",
+      dissolve: room && prevRoom && t === "dissolve" && i > 0,
+    };
+  });
+}
+
+/** Fade a clip's head up and/or its tail down; the length does not change (W27). */
+export function fadeArgs(input: string, output: string, sec: number, t: { fadeIn: boolean; fadeOut: boolean }, enc: string[], d = TRANSITION_SEC): string[] {
+  const f = [t.fadeIn ? `fade=t=in:st=0:d=${d}` : null, t.fadeOut ? `fade=t=out:st=${Math.max(0, sec - d).toFixed(3)}:d=${d}` : null].filter(Boolean);
+  return ["-y", "-i", input, "-vf", [...f, "format=yuv420p"].join(","), ...enc, output];
+}
+
+/**
+ * A dissolve that keeps the cut's timing (W27): the outgoing clip's last frame
+ * is held for the length of the dissolve and crossfades into the incoming
+ * clip, so the incoming shot still starts exactly where the timeline put it
+ * and the pair lasts exactly as long as the two clips.
+ */
+export function dissolveArgs(a: string, b: string, output: string, aSec: number, enc: string[], d = TRANSITION_SEC): string[] {
+  return [
+    "-y", "-i", a, "-i", b,
+    "-filter_complex",
+    `[0]tpad=stop_mode=clone:stop_duration=${d},settb=AVTB[a];[1]settb=AVTB[b];` +
+      `[a][b]xfade=transition=fade:duration=${d}:offset=${aSec.toFixed(3)},format=yuv420p[v]`,
+    "-map", "[v]", ...enc, output,
+  ];
+}
+
 /** Crossfade two clips at a scene boundary. */
 export function xfadeArgs(
   a: string,
@@ -264,6 +320,62 @@ export interface PlacedSound {
   loopSec?: number;
   /** Fade in/out at its edges (looped beds). */
   fadeSec?: number;
+}
+
+/**
+ * How many copies of a bed a seamless loop needs (pure; W27): each join
+ * overlaps by `xfSec`, so n copies last n·bed − (n−1)·xf. Null when the bed
+ * is already long enough, or too short to crossfade, or the loop would need
+ * more than `maxCopies` (then the plain loop stands).
+ */
+export function seamlessLoopCopies(bedSec: number, targetSec: number, xfSec: number, maxCopies = 40): number | null {
+  if (!(bedSec > 0) || bedSec >= targetSec) return null;
+  if (bedSec <= 2 * xfSec) return null;
+  const n = Math.ceil((targetSec - xfSec) / (bedSec - xfSec));
+  return n >= 2 && n <= maxCopies ? n : null;
+}
+
+/**
+ * A bed looped to `targetSec` with every seam crossfaded (W27): copies of the
+ * bed joined by equal-power crossfades, so a short ambience or score never
+ * clicks or jumps where it starts over.
+ */
+export function seamlessLoopArgs(input: string, output: string, copies: number, targetSec: number, xfSec: number): string[] {
+  if (copies < 2) throw new Error("seamlessLoopArgs: at least two copies");
+  // One input per copy: a split of one input would stall, as each crossfade
+  // reads its second input only after the first has ended.
+  const prep = Array.from({ length: copies }, (_, i) => `[${i}:a]aresample=48000,aformat=channel_layouts=stereo[c${i}]`);
+  const joins: string[] = [];
+  let prev = "c0";
+  for (let i = 1; i < copies; i++) {
+    const out = i === copies - 1 ? "j" : `x${i}`;
+    joins.push(`[${prev}][c${i}]acrossfade=d=${xfSec}:c1=qsin:c2=qsin[${out}]`);
+    prev = out;
+  }
+  return ["-y", ...Array.from({ length: copies }, () => ["-i", input]).flat(), "-filter_complex", [...prep, ...joins].join(";"), "-map", "[j]", "-t", targetSec.toFixed(3), "-ar", "48000", "-c:a", "pcm_s16le", output];
+}
+
+/** How far the score's tempo may change to land on the cut (W27; Part 1 §46.2), as a fraction. */
+export const MUSIC_RETIME_MAX = 0.15;
+
+/**
+ * Fit the score to the film (pure; W27). Within ±`max` of the film's length
+ * the score is re-timed (tempo changed, pitch kept) so it ends with the cut;
+ * shorter beyond that it loops seamlessly; longer beyond that it is faded out
+ * where the film ends, as before.
+ */
+export function musicFit(musicSec: number, targetSec: number, max = MUSIC_RETIME_MAX): { kind: "none" } | { kind: "retime"; tempo: number } | { kind: "loop" } {
+  if (!(musicSec > 0) || !(targetSec > 0)) return { kind: "none" };
+  const tempo = musicSec / targetSec;
+  if (Math.abs(tempo - 1) < 0.01) return { kind: "none" };
+  if (Math.abs(tempo - 1) <= max) return { kind: "retime", tempo };
+  return tempo < 1 ? { kind: "loop" } : { kind: "none" };
+}
+
+/** Change the score's tempo, pitch kept (atempo takes 0.5–2). */
+export function retimeArgs(input: string, output: string, tempo: number): string[] {
+  if (!(tempo >= 0.5 && tempo <= 2)) throw new Error(`tempo ${tempo} is outside 0.5–2`);
+  return ["-y", "-i", input, "-filter:a", `aresample=48000,atempo=${tempo.toFixed(5)}`, "-ar", "48000", "-c:a", "pcm_s16le", output];
 }
 
 /**

@@ -20,6 +20,10 @@ export const realTrack = (t: { meta: unknown }) => (t.meta as { generated?: stri
 
 const cut = (v: unknown) => (v == null ? null : Number(v));
 
+/** The planned transition into a shot (Film IR `transition`, kept in its camera plan). */
+export const transitionOf = (sh: { cameraPlan: unknown }): string | null =>
+  (sh.cameraPlan as { transition?: string } | null)?.transition ?? null;
+
 /** The engine's scene assets: each shot's clip (or its replacement), cuts, music, voice, sound design. */
 export function sceneAssetsOf(
   scenes: RenderSceneRow[],
@@ -34,6 +38,8 @@ export function sceneAssetsOf(
       shotKeys: s.shots.map(clipOf).filter((k): k is string => !!k),
       // The editor's cut lengths (W13), aligned with shotKeys: the clip is trimmed to it.
       shotCutSec: s.shots.filter((sh) => !!sh.videoKey).map((sh) => cut(sh.cutSec)),
+      // How each shot is entered (W27): dissolve, fade in or out, or a cut.
+      shotTransitions: s.shots.filter((sh) => !!clipOf(sh)).map(transitionOf),
       musicKey: tracks.find((t) => t.kind === "MUSIC")?.key,
       voiceKey: opts.voiceOf ? opts.voiceOf(s.id) : tracks.find((t) => t.kind === "VOICE")?.key,
       // Sound design (W16): the scene's ambience bed and placed effects.

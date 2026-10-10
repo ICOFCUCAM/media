@@ -1,6 +1,15 @@
 {
   "prompts": [
     {
+      "id": "ads.site_analysis",
+      "version": 1,
+      "purpose": "Website intelligence (Ads Studio A2, docs/47): an advertiser's page → product, benefits, audience and call to action, each with a verbatim source quote.",
+      "sha256": "245a274bc184e9008c69600b62c366f72a556cff5c865b73d005a4645532cb07",
+      "score": null,
+      "scoredAt": null,
+      "model": null
+    },
+    {
       "id": "avatar.talk",
       "version": 1,
       "purpose": "Conversation (Part 3 §111, §117): the avatar's next spoken line, in its persona.",
@@ -29,18 +38,18 @@
     },
     {
       "id": "director.master",
-      "version": 8,
+      "version": 10,
       "purpose": "One master call: brief → complete Film Production Package (Part 2 §85, §93).",
-      "sha256": "f3d5b66f8793ba708a9442f0a7c507346a0fb7e73d03d7dabe8a12b8380be76d",
+      "sha256": "fc9ccf9aacc918afd0b3f01c5ad6b3883c54400bcf51ce5fc3b4075c9ba4bc3a",
       "score": null,
       "scoredAt": null,
       "model": null
     },
     {
       "id": "director.revision",
-      "version": 6,
+      "version": 7,
       "purpose": "Surgical revision: fix exactly the validator's issues in a package (Part 2 §93).",
-      "sha256": "834a47f42d65336d38eaa093c60b80a37cc6d481e02290cc8487e91674c787d9",
+      "sha256": "3279b7821101444d8cb5ab684d6e82d9a30a5dd8e228f09dd93b0e8b2a443f9d",
       "score": null,
       "scoredAt": null,
       "model": null
@@ -56,9 +65,9 @@
     },
     {
       "id": "review.visual",
-      "version": 2,
+      "version": 3,
       "purpose": "Visual Reviewer: does a generated shot show what canon and the shot plan say it must show, and how well (Part 1 §16–17, Part 2 §62; W5, W18)?",
-      "sha256": "f786eedd4882b6bf38ab011fe17445269f09cf1f1ff5d22e8d22e88956f0eebf",
+      "sha256": "cf923f0d119074b757af45c684a1666103750bb1c94a8b1f7556463e924d4866",
       "score": null,
       "scoredAt": null,
       "model": null

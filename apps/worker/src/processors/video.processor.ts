@@ -51,6 +51,7 @@ import { ffmpeg, probeDuration } from "../ffmpeg/ffmpeg";
 import { shotReferences } from "../canon/references";
 import { wardrobeReferenceKeys, type ReferenceImageGenerator, type WardrobeRefDb } from "../canon/wardrobe-refs";
 import { worldReferenceKeys, type WorldRefDb } from "../canon/world-refs";
+import { brandSeedGaps, loadBrandAssets, productReferenceKeys, type BrandDb } from "../canon/brand-refs";
 import { imageGenerationRow, recordImageGeneration, type ImageLedgerDb, type ImagePurpose } from "../images/ledger";
 import { S3Storage } from "../storage/storage";
 import { enqueueLora } from "../orchestration/lora-queue";
@@ -376,6 +377,20 @@ const PREVIEW_SEED = /^(generated:|local:|ref:)/;
  *     shot prompt, upload it, and persist the key;
  *  3. otherwise fall back to text-to-video (no seed).
  */
+/**
+ * The advertiser's product photographs for a shot that shows the product (A3;
+ * docs/47): an advert's shots listing prop_product are drawn from them.
+ */
+async function productKeysFor(shot: ShotWithScene): Promise<string[]> {
+  if (shot.scene.project.kind !== "advert") return [];
+  const assets = await loadBrandAssets(prisma as unknown as BrandDb, shot.scene.projectId);
+  if (!assets.some((a) => a.role === "product")) return [];
+  return productReferenceKeys(assets, await filmPackageOf(shot.scene.projectId), shot.scene.index, shot.index);
+}
+
+/** A still drawn now (not an uploaded or earlier one) — only then were the references sent with it. */
+const drawsSeedNow = (shot: ShotWithScene) => shot.source === "image" && !(shot.seedImageKey && !PREVIEW_SEED.test(shot.seedImageKey));
+
 /** What a seed still is conditioned on (W24): who is in it, what they wear, the set, the look — most important first. */
 function seedReferences(c: { identityKeys: string[]; wardrobeKeys: string[]; cameraKeys: string[]; locationKeys: string[]; styleKeys: string[] }): string[] {
   return [...new Set([...c.wardrobeKeys, ...c.identityKeys, ...c.cameraKeys, ...c.locationKeys, ...c.styleKeys])].slice(0, MAX_REFERENCE_IMAGES);
@@ -506,12 +521,26 @@ export const videoWorker = new Worker<VideoJob>(
     // ── PREVIS (W8b): the storyboard still only — no video ───────────────
     if (job.name === "previs") {
       if (shot.status === "READY" && shot.videoKey) return { shotId, previs: "already final" };
+      // An advert's product shot is drawn from the advertiser's photographs (A3).
+      const product = await productKeysFor(shot);
+      const drawing = drawsSeedNow(shot);
       try {
-        const seedImageKey = await resolveSeedKey(shot);
+        const previsGaps: Degradation[] = [];
+        const seedImageKey = await resolveSeedKey(shot, product, previsGaps);
+        if (drawing || shot.source !== "image") {
+          previsGaps.push(...brandSeedGaps(shotId, product, {
+            drawn: Boolean(seedImageKey), conditioned: !previsGaps.some((g) => g.code === "REFERENCE_STILL_UNCONDITIONED"),
+            reason: shot.source !== "image" ? "text-led shot" : null,
+          }));
+        }
+        if (previsGaps.length) await recordDegradations(prisma as unknown as DegradationDb, projectId, previsGaps);
         return { shotId, previs: seedImageKey ?? "text-led shot (no still)" };
       } catch (e) {
         if (!(e instanceof SeedUnavailable)) throw e;
-        await recordDegradations(prisma as unknown as DegradationDb, projectId, [degradation("SEED_IMAGE_UNAVAILABLE", "shot", "No storyboard still could be drawn for this shot.", { refId: shotId, detail: { reason: e.message, pass: "previs" } })]);
+        await recordDegradations(prisma as unknown as DegradationDb, projectId, [
+          degradation("SEED_IMAGE_UNAVAILABLE", "shot", "No storyboard still could be drawn for this shot.", { refId: shotId, detail: { reason: e.message, pass: "previs" } }),
+          ...brandSeedGaps(shotId, product, { drawn: false, conditioned: false, reason: e.message }),
+        ]);
         return { shotId, previs: "unavailable" };
       }
     }
@@ -577,8 +606,17 @@ export const videoWorker = new Worker<VideoJob>(
     const continuity = await resolveContinuity(shot);
     const { preamble, wardrobeKeys, identityKeys, locationKeys, propKeys, styleKeys, cameraKeys, previousEndFrame: endFrame, loraKeys, loraSha256, gaps: refGaps, canonContext } = continuity;
     let seedKey: string | undefined;
+    // An advert's product shot is drawn from the advertiser's photographs first (A3).
+    const product = await productKeysFor(shot);
+    const drawing = drawsSeedNow(shot);
     try {
-      seedKey = await resolveSeedKey(shot, seedReferences(continuity), gaps);
+      seedKey = await resolveSeedKey(shot, [...new Set([...product, ...seedReferences(continuity)])].slice(0, MAX_REFERENCE_IMAGES), gaps);
+      if (drawing || shot.source !== "image") {
+        gaps.push(...brandSeedGaps(shotId, product, {
+          drawn: Boolean(seedKey), conditioned: !gaps.some((g) => g.code === "REFERENCE_STILL_UNCONDITIONED"),
+          reason: shot.source !== "image" ? "text-led shot" : null,
+        }));
+      }
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
       // A storybook page or comic panel IS the shot: without it there is nothing to move across.
@@ -586,10 +624,11 @@ export const videoWorker = new Worker<VideoJob>(
       gaps.push(degradation("SEED_IMAGE_UNAVAILABLE", "shot", "No seed still for this shot; it was generated from text only.", {
         refId: shotId, detail: { reason },
       }));
+      gaps.push(...brandSeedGaps(shotId, product, { drawn: false, conditioned: false, reason }));
     }
     gaps.push(...refGaps);
     // Reference pack (W6, W24): seed → previous end frame → wardrobe → identity → camera → location → style → props, capped.
-    const pack = assembleReferencePack({ seed: seedKey, previousEndFrame: endFrame, wardrobe: wardrobeKeys, identity: identityKeys, camera: cameraKeys, location: locationKeys, style: styleKeys, props: propKeys });
+    const pack = assembleReferencePack({ seed: seedKey, previousEndFrame: endFrame, wardrobe: wardrobeKeys, identity: identityKeys, camera: cameraKeys, location: locationKeys, style: styleKeys, props: [...product, ...propKeys] });
     const request = buildShotRequest(shot, seedKey, preamble, pack.keys, loraKeys, loraSha256);
     // Job authorization reads the job's state fresh, immediately before dispatch.
     if (drawn) {

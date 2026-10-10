@@ -234,8 +234,20 @@ export const Shot = z.object({
     .describe("camera side of the scene's action line (180° rule): A or B; neutral = on the line or a move that crosses it"),
   screenDirection: z.enum(["left", "right"]).nullable().default(null)
     .describe("which way the main subject looks or moves on screen"),
+  // Where each framed character stands in the frame (W27; Part 1 §10.2, §17).
+  blocking: z.array(z.object({
+    characterId: CharacterId,
+    x: z.enum(["left", "center", "right"]),
+    depth: z.enum(["foreground", "midground", "background"]),
+  }).strict()).max(6).nullable().optional()
+    .describe("where each framed character stands: left/center/right third and foreground/midground/background"),
   rationale: why,
 });
+
+/** "left third, foreground" — a framed character's place in the frame (W27). */
+export function blockingPhrase(b: { x: "left" | "center" | "right"; depth: "foreground" | "midground" | "background" }): string {
+  return `${b.x === "center" ? "center" : `${b.x} third`}, ${b.depth}`;
+}
 
 export const SceneAudio = z.object({
   music: z.string().trim().max(200).nullable().describe("cue for this scene, or null for silence/score bed"),
@@ -253,7 +265,7 @@ export const SceneState = z.object({
 
 /** Story time (Part 1 §33): which story day, and whether the scene picks up the previous one with no time cut. */
 export const StoryTime = z.object({
-  day: z.number().int().min(1).max(3650).describe("story day, 1 = the first day of the story"),
+  day: z.number().int().min(1).max(36500).describe("story day, 1 = the first day of the story (a story across generations can span decades)"),
   continuous: z.boolean().describe("true when this scene continues the previous scene's action with no time cut (same clothes, same injuries)"),
   flashback: z.boolean(),
   clock: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "clock must be HH:MM (24h)").nullable().optional()

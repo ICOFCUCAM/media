@@ -87,6 +87,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@cineforge/movie':
+        specifier: workspace:*
+        version: link:../../packages/movie
       '@supabase/supabase-js':
         specifier: ^2.108.0
         version: 2.108.0

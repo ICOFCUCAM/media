@@ -10,6 +10,13 @@ import { ffmpeg, probeDuration, type DurationProbe, type FfmpegRunner } from "./
 import { measureLoudness, sha256File } from "./analysis";
 import {
   normalizeArgs,
+  seamlessLoopCopies,
+  seamlessLoopArgs,
+  musicFit,
+  retimeArgs,
+  transitionPlan,
+  fadeArgs,
+  dissolveArgs,
   interpolating,
   interpolateFilter,
   concatAudioArgs,
@@ -57,6 +64,8 @@ export interface SceneAssets {
   shotKeys: string[];
   /** The editor's cut length per clip (W13), aligned with shotKeys; null/absent = the whole clip. */
   shotCutSec?: (number | null)[];
+  /** How each clip is entered (W27; Film IR `transition`), aligned with shotKeys. */
+  shotTransitions?: (string | null)[];
   /** Optional S3 keys for this scene's audio. */
   musicKey?: string;
   voiceKey?: string;
@@ -155,6 +164,48 @@ export class RenderEngine {
         if (placeSounds || placeVoices) clipSec.push(await this.probe(norm));
         done++;
         onProgress?.((done / allShotKeys.length) * 0.6);
+      }
+
+      // 1a) Transitions (W27): dissolves and fades as the plan asks, with the
+      // cut's timing unchanged. A transition that cannot be rendered is a hard
+      // cut, recorded. RENDER_TRANSITIONS=0 renders every edge as a cut.
+      const allTransitions = scenes.flatMap((s) => s.shotKeys.map((_, i) => s.shotTransitions?.[i] ?? null));
+      if (process.env.RENDER_TRANSITIONS !== "0" && allTransitions.some((t) => t && t !== "cut" && t !== "smash_cut" && t !== "match_cut")) {
+        const secs = clipSec.length === clips.length ? clipSec : await Promise.all(clips.map((c) => this.probe(c)));
+        const enc = normalize ? ["-c:v", "libx264", "-crf", "18", "-preset", "medium", "-an"] : ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-an"];
+        const plan = transitionPlan(allTransitions, secs);
+        const joined: string[] = [];
+        let skipped = 0;
+        for (let i = 0; i < clips.length; i++) {
+          let clip = clips[i]!;
+          const t = plan[i]!;
+          if (t.fadeIn || t.fadeOut) {
+            const faded = join(work, `fade_${i}.mp4`);
+            try {
+              await this.run(fadeArgs(clip, faded, secs[i]!, t, enc));
+              clip = faded;
+            } catch (e) {
+              skipped++;
+              console.warn(`[render] fade on clip ${i + 1} skipped:`, e instanceof Error ? e.message : e);
+            }
+          }
+          if (t.dissolve && joined.length) {
+            const prev = joined[joined.length - 1]!;
+            const prevSec = await this.probe(prev);
+            const mixed = join(work, `dissolve_${i}.mp4`);
+            try {
+              await this.run(dissolveArgs(prev, clip, mixed, prevSec, enc));
+              joined[joined.length - 1] = mixed;
+              continue;
+            } catch (e) {
+              skipped++;
+              console.warn(`[render] dissolve into clip ${i + 1} skipped:`, e instanceof Error ? e.message : e);
+            }
+          }
+          joined.push(clip);
+        }
+        clips.splice(0, clips.length, ...joined);
+        if (skipped) gaps.push(degradation("TRANSITION_SKIPPED", "film", `${skipped} planned transition(s) were rendered as hard cuts.`, { detail: { skipped } }));
       }
 
       // 1b) Branded outro (AGENCY+/docs/33): the studio's logo on a brand-color
@@ -291,7 +342,31 @@ export class RenderEngine {
           outputSec = fit.outputSec;
         }
         const musicKey = scenes.find((s) => s.musicKey)?.musicKey;
-        const music = musicKey ? await dl(musicKey, "music.mp3") : undefined;
+        let music = musicKey ? await dl(musicKey, "music.mp3") : undefined;
+        // The score fitted to the cut (W27; Part 1 §46.2): re-timed when it is
+        // close to the film's length, looped with crossfaded seams when short.
+        const scoreSec = Math.max(opts.filmSec ?? 0, outputSec ?? 0);
+        if (music && scoreSec > 0 && process.env.RENDER_MUSIC_RETIME !== "0") {
+          try {
+            const fit = musicFit(await this.probe(music), scoreSec, Number(process.env.RENDER_MUSIC_RETIME_MAX ?? 0.15));
+            if (fit.kind === "retime") {
+              const out = join(work, "music_retimed.wav");
+              await this.run(retimeArgs(music, out, fit.tempo));
+              music = out;
+              console.log(`[render] score re-timed ×${fit.tempo.toFixed(3)} to ${scoreSec.toFixed(2)}s`);
+            } else if (fit.kind === "loop") {
+              const copies = seamlessLoopCopies(await this.probe(music), scoreSec, 2);
+              if (copies) {
+                const out = join(work, "music_looped.wav");
+                await this.run(seamlessLoopArgs(music, out, copies, scoreSec, 2));
+                music = out;
+                console.log(`[render] score looped ${copies}× with crossfaded seams`);
+              }
+            }
+          } catch (e) {
+            console.warn(`[render] score fit skipped (plain loop):`, e instanceof Error ? e.message : e);
+          }
+        }
         const mixSpec = opts.mix ?? MIX_SPECS.cinematic;
         // Sound design (W16): each scene's ambience under its own span, each
         // effect where its shot lands in the cut — built as two placed stems.
@@ -314,6 +389,18 @@ export class RenderEngine {
               const path = await fetchSound(snd.key);
               if (snd.kind === "AMBIENCE") beds.push({ path, startSec: span.startSec, loopSec: span.durSec, fadeSec: mixSpec.ambienceFadeSec });
               else cues.push({ path, startSec: span.startSec + placeCue(snd.startMs / 1000, (snd.plannedSceneMs ?? span.durSec * 1000) / 1000, span.durSec, snd.durationMs / 1000) });
+            }
+          }
+          // Beds shorter than their scene loop with crossfaded seams (W27), not a hard jump.
+          for (const [bi, bed] of beds.entries()) {
+            try {
+              const copies = seamlessLoopCopies(await this.probe(bed.path), bed.loopSec ?? 0, 1);
+              if (!copies) continue;
+              const out = join(work, `bed_seamless_${bi}.wav`);
+              await this.run(seamlessLoopArgs(bed.path, out, copies, bed.loopSec!, 1));
+              beds[bi] = { ...bed, path: out };
+            } catch (e) {
+              console.warn(`[render] ambience bed ${bi} keeps its plain loop:`, e instanceof Error ? e.message : e);
             }
           }
           if (beds.length) {

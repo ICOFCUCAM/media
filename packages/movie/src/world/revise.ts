@@ -35,7 +35,29 @@ export type CanonChange =
    * and spoken lines. Only what it names changes; the scene's story — who is
    * there, what happens, what anyone knows — stays.
    */
-  | { kind: "scene_revision"; sceneId: string; revision: SceneRevision };
+  | { kind: "scene_revision"; sceneId: string; revision: SceneRevision }
+  /**
+   * The Film Bible itself (W27): its story fields, its look and its sound.
+   * The look is in every shot's prompt, so a new look regenerates the shots
+   * it changes; a new score style recomposes the score; a new ambience style
+   * draws the ambience beds again.
+   */
+  | { kind: "film_bible"; patch: FilmBiblePatch };
+
+export interface FilmBiblePatch {
+  logline?: string;
+  synopsis?: string;
+  genre?: string;
+  tone?: string;
+  themes?: string[];
+  premise?: string | null;
+  audience?: string | null;
+  era?: string | null;
+  geography?: string | null;
+  narrativeStructure?: string | null;
+  visualStyle?: Partial<FilmPackage["film"]["visualStyle"]>;
+  audioStyle?: Partial<FilmPackage["film"]["audioStyle"]>;
+}
 
 export interface SceneRevision {
   emotionalArc?: { start: string; middle: string; end: string };
@@ -162,6 +184,13 @@ function apply(pkg: FilmPackage, change: CanonChange): FilmPackage {
       }
       return next;
     }
+    case "film_bible": {
+      const { visualStyle, audioStyle, ...story } = change.patch;
+      Object.assign(next.film, Object.fromEntries(Object.entries(story).filter(([, v]) => v !== undefined)));
+      if (visualStyle) next.film.visualStyle = { ...next.film.visualStyle, ...visualStyle };
+      if (audioStyle) next.film.audioStyle = { ...next.film.audioStyle, ...audioStyle };
+      return next;
+    }
   }
 }
 
@@ -185,6 +214,9 @@ function predictedRefs(pkg: FilmPackage, change: CanonChange): { refs: CanonRef[
     case "scene_revision":
       // Every shot of the one scene (filled in by reviseCanon: a scene is not a canon node).
       return { refs: [], within: new Set([change.sceneId]) };
+    case "film_bible":
+      // The look is in every shot (filled in by reviseCanon); story fields touch none.
+      return { refs: [] };
   }
 }
 
@@ -219,6 +251,11 @@ export function reviseCanon(pkg: FilmPackage, change: CanonChange): CanonRevisio
     if (old.music !== sc.music || old.mood !== sc.mood) audio.rescore = true;
     if (pkg.scenes[i]!.audio.ambience !== next.scenes[i]!.audio.ambience) audio.ambience.push(sc.key);
   });
+  // The bible's sound (W27): a new score style recomposes the score; a new ambience style redraws every bed.
+  if (pkg.film.audioStyle.score !== next.film.audioStyle.score) audio.rescore = true;
+  if (pkg.film.audioStyle.ambience !== next.film.audioStyle.ambience) {
+    for (const sc of after.scenes) if (!audio.ambience.includes(sc.key)) audio.ambience.push(sc.key);
+  }
   for (const k of [...audio.revoice, ...audio.ambience]) if (!affectedScenes.includes(k)) affectedScenes.push(k);
   if (audio.rescore) after.scenes.forEach((sc, i) => {
     const old = before.scenes[i]!;
@@ -232,6 +269,12 @@ export function reviseCanon(pkg: FilmPackage, change: CanonChange): CanonRevisio
   const predictedShots = new Map(deps.flatMap((d) => d.shots).filter((s) => inScope(s.sceneId)).map((s) => [shotKey(s), s]));
   const order = new Map(pkg.scenes.map((s) => [s.id, s.index]));
   const predictedScenes = [...new Set(deps.flatMap((d) => d.scenes))].filter(inScope).sort((a, b) => order.get(a)! - order.get(b)!);
+  if (change.kind === "film_bible" && change.patch.visualStyle) {
+    for (const sc of pkg.scenes) {
+      predictedScenes.push(sc.id);
+      for (const sh of sc.shots) predictedShots.set(shotKey({ sceneId: sc.id, sceneIndex: sc.index, shotIndex: sh.index }), { sceneId: sc.id, sceneIndex: sc.index, shotIndex: sh.index });
+    }
+  }
   if (change.kind === "scene_revision") {
     const sc = pkg.scenes.find((s) => s.id === change.sceneId)!;
     predictedScenes.push(sc.id);

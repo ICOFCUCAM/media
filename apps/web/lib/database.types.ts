@@ -90,6 +90,7 @@ export interface Database {
           episode_number: number | null;
           season_number: number | null;
           story_approved_at: string | null;
+          ad_source: Json | null;
           created_at: string;
           updated_at: string;
         };
@@ -114,6 +115,7 @@ export interface Database {
           series_id?: string | null;
           episode_number?: number | null;
           season_number?: number | null;
+          ad_source?: Json | null;
         };
         Update: {
           status?: ProjectStatus;

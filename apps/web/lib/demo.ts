@@ -6,6 +6,7 @@
  */
 import { planScenes, planShotsPerScene, estimateMs, msToUsd } from "./system";
 import { isStillMotion, type ProductionSpec } from "./production-types";
+import type { AdsHandoff } from "./ads-live";
 
 export type ProjectStatus = "PLANNING" | "GENERATING" | "RENDERING" | "READY";
 
@@ -95,6 +96,8 @@ export interface DemoConfig {
   production?: ProductionSpec;
   /** Character Cards cast into the production (W12). */
   castIds?: string[];
+  /** From the Ads Studio (docs/47): source facts and brand files for an advert. */
+  ads?: AdsHandoff | null;
   title?: string;
   prompt: string;
   modelId: string;

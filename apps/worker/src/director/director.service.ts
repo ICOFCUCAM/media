@@ -10,6 +10,7 @@ import {
 } from "@cineforge/shared";
 import { MODEL_VERSIONS } from "@cineforge/model-adapters";
 import {
+  adSourceOf,
   canonVersion,
   checkFilmContinuity,
   audioAdvisories,
@@ -30,6 +31,8 @@ import { chosenVoiceId } from "../voice/film";
 import { snapshotScenes, writeShotDependencies, type PlanHistoryDb } from "../versions/plan";
 import { constraintsFor, NO_CANON, planProductionFor, productionOf, renderStyleFor, type ProductionCanon, type ProductionRow } from "./production";
 import { loadProductionCanon, type CardRef, type StudioDb } from "./studio";
+import { advertPlanDegradations, planAdvertFor } from "./advert";
+import { loadBrandAssets, type BrandDb } from "../canon/brand-refs";
 
 /**
  * Director — planning service (DirectorOS W2: One-Pass Intelligence /
@@ -101,9 +104,13 @@ export class DirectorService {
       select: {
         prompt: true, targetSeconds: true, modelId: true, resolution: true, aspectRatio: true,
         kind: true, medium: true, animationStyle: true, episodes: true, seriesId: true, episodeNumber: true, seasonNumber: true, title: true,
+        adSource: true,
       },
     });
     const spec = productionOf(project);
+    // An advert from the Ads Studio (A2/A3): the advertiser's page facts and brand files.
+    const adSource = spec.kind === "advert" ? adSourceOf(project.adSource) : null;
+    const brandAssets = spec.kind === "advert" ? await loadBrandAssets(prisma as unknown as BrandDb, projectId) : [];
     // W12: cast cards, the show bible and what earlier episodes established.
     const canon = await loadProductionCanon(prisma as unknown as StudioDb, projectId, spec);
     const constraints = planningConstraints(project.targetSeconds, spec, canon);
@@ -115,7 +122,7 @@ export class DirectorService {
       if (!router.available("film_plan") && process.env.DIRECTOR_ALLOW_STUB === "1") {
         plan = { pkg: stubPackage(project.prompt, constraints), revised: false, fixedIssues: [], provider: "stub", model: "stub" };
       } else {
-        plan = await planFilm(router, project.prompt, constraints, { projectId, production: planProductionFor(spec, canon) });
+        plan = await planFilm(router, project.prompt, constraints, { projectId, production: planProductionFor(spec, canon, planAdvertFor(spec, adSource, brandAssets)) });
       }
     } catch (e) {
       throw toProductionFailure(e) ?? e;
@@ -135,7 +142,10 @@ export class DirectorService {
 
     // 3: compile + persist.
     const scenes = await persistPlan(projectId, project, plan, canon.cards);
-    return { projectId, modelId: project.modelId, scenes, degradations: planDegradations(plan.pkg, project.modelId), gates: planGates(plan) };
+    const degradations = planDegradations(plan.pkg, project.modelId);
+    // A2/A3: claims the source facts do not support, product photographs the plan cannot use.
+    if (spec.kind === "advert") degradations.push(...advertPlanDegradations(plan.pkg, adSource, brandAssets, seedStillsFor(spec)));
+    return { projectId, modelId: project.modelId, scenes, degradations, gates: planGates(plan) };
   }
 }
 
@@ -253,6 +263,15 @@ async function persistShowEpisode(projectId: string, seriesId: string, number: n
   return new Map(pkg.acts.map((a) => [a.index, ep.id]));
 }
 
+/**
+ * Scene stills: when OpenAI is configured, every shot starts as an image
+ * (video.processor resolveSeedKey). Disable with DIRECTOR_SEED_FRAMES=0.
+ * Storybook and motion comic (W12) are drawn stills by definition: every shot starts as an image.
+ */
+export function seedStillsFor(spec: ProductionSpec, env: NodeJS.ProcessEnv = process.env): boolean {
+  return isStillMotion(spec) || (env.DIRECTOR_SEED_FRAMES !== "0" && !!env.OPENAI_API_KEY);
+}
+
 /** Compile and persist a plan (exported for the database integration test). */
 export async function persistPlan(
   projectId: string,
@@ -266,10 +285,7 @@ export async function persistPlan(
   const compiled = compileFilm(pkg, { modelId: project.modelId, render: renderStyleFor(spec) });
   const [width, height] = outputDimensions(project.resolution, project.aspectRatio);
   const modelVersion = MODEL_VERSIONS[project.modelId] ?? "unknown";
-  // Scene stills: when OpenAI is configured, every shot starts as an image
-  // (video.processor resolveSeedKey). Disable with DIRECTOR_SEED_FRAMES=0.
-  // Storybook and motion comic (W12) are drawn stills by definition: every shot starts as an image.
-  const seedFrames = isStillMotion(spec) || (process.env.DIRECTOR_SEED_FRAMES !== "0" && !!process.env.OPENAI_API_KEY);
+  const seedFrames = seedStillsFor(spec);
 
   // Canon. `select: { id }` keeps each INSERT … RETURNING to columns every
   // deployed schema has (a full return also read characters.lora_sha256,

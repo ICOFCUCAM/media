@@ -192,3 +192,47 @@ describe("speech on the timeline (W25; Part 1 §40)", () => {
     expect(audioMixArgs({ music: "m.wav", voice: "v.wav" }, "o.m4a").join(" ")).toContain("sidechaincompress");
   });
 });
+
+describe("cut edges and score fit (W27)", () => {
+  it("plans transitions as the shots are entered", async () => {
+    const { transitionPlan } = await import("./commands");
+    const p = transitionPlan(["dissolve", "cut", "dissolve", "fade_out", "match_cut", "fade_in", "dissolve"], [3, 3, 3, 3, 3, 3, 0.6]);
+    expect(p[0]).toEqual({ fadeIn: true, fadeOut: false, dissolve: false }); // a dissolve with nothing before it fades in
+    expect(p[1]).toEqual({ fadeIn: false, fadeOut: false, dissolve: false });
+    expect(p[2]!.dissolve).toBe(true);
+    expect(p[3]!.fadeOut).toBe(true);
+    expect(p[4]).toEqual({ fadeIn: false, fadeOut: false, dissolve: false }); // a match cut cuts
+    expect(p[5]!.fadeIn).toBe(true);
+    expect(p[6]!.dissolve).toBe(false); // too short for a dissolve
+  });
+
+  it("builds a timing-preserving dissolve and fades", async () => {
+    const { dissolveArgs, fadeArgs } = await import("./commands");
+    const d = dissolveArgs("a", "b", "o", 3, ["-an"]).join(" ");
+    expect(d).toContain("tpad=stop_mode=clone:stop_duration=0.5");
+    expect(d).toContain("xfade=transition=fade:duration=0.5:offset=3.000");
+    expect(fadeArgs("a", "o", 4, { fadeIn: true, fadeOut: true }, []).join(" ")).toContain("fade=t=in:st=0:d=0.5,fade=t=out:st=3.500:d=0.5");
+  });
+
+  it("loops beds with crossfaded seams only when needed", async () => {
+    const { seamlessLoopCopies, seamlessLoopArgs } = await import("./commands");
+    expect(seamlessLoopCopies(10, 8, 1)).toBeNull();
+    expect(seamlessLoopCopies(1.5, 8, 1)).toBeNull();
+    expect(seamlessLoopCopies(3, 8, 1)).toBe(4);
+    expect(seamlessLoopCopies(3, 500, 1)).toBeNull();
+    const a = seamlessLoopArgs("i", "o", 3, 7, 1).join(" ");
+    expect(a.match(/-i i/g)).toHaveLength(3);
+    expect(a).toContain("[c0][c1]acrossfade=d=1:c1=qsin:c2=qsin[x1];[x1][c2]acrossfade=d=1:c1=qsin:c2=qsin[j]");
+  });
+
+  it("fits the score: re-time within the bound, loop when much shorter, fade when much longer", async () => {
+    const { musicFit, retimeArgs } = await import("./commands");
+    expect(musicFit(100, 100)).toEqual({ kind: "none" });
+    expect(musicFit(110, 100)).toEqual({ kind: "retime", tempo: 1.1 });
+    expect(musicFit(90, 100)).toEqual({ kind: "retime", tempo: 0.9 });
+    expect(musicFit(50, 100)).toEqual({ kind: "loop" });
+    expect(musicFit(200, 100)).toEqual({ kind: "none" });
+    expect(retimeArgs("i", "o", 1.1).join(" ")).toContain("atempo=1.10000");
+    expect(() => retimeArgs("i", "o", 3)).toThrow();
+  });
+});

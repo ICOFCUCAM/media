@@ -29,6 +29,18 @@ export const CanonChangeSchema = z.discriminatedUnion("kind", [
     patch: z.object({ description: text(600), architecture: text(400), era: text(120), lighting: text(300) }).partial().strict(),
   }).strict(),
   z.object({ kind: z.literal("prop"), propId: key("prop"), patch: z.object({ name: text(80), description: text(300) }).partial().strict() }).strict(),
+  // The Film Bible (W27): story fields, the look, the sound.
+  z.object({
+    kind: z.literal("film_bible"),
+    patch: z.object({
+      logline: text(300), synopsis: text(2000), genre: text(60), tone: text(120),
+      themes: z.array(text(120)).min(1).max(6),
+      premise: text(600).nullable(), audience: text(120).nullable(), era: text(120).nullable(),
+      geography: text(200).nullable(), narrativeStructure: text(200).nullable(),
+      visualStyle: z.object({ palette: text(200), lighting: text(200), lensLanguage: text(200), texture: text(200) }).partial().strict(),
+      audioStyle: z.object({ score: text(200), ambience: text(200) }).partial().strict(),
+    }).partial().strict().refine((p) => Object.keys(p).length > 0, "nothing to change"),
+  }).strict(),
   // One scene across departments (W25): tone, lighting, camera, music, ambience, lines.
   z.object({
     kind: z.literal("scene_revision"), sceneId: key("scene"),
