@@ -93,6 +93,36 @@ export interface MixOptions {
   mix?: MixSpec;
   /** Where the master must land (the sync policy's delivery spec). */
   delivery?: Pick<DeliverySpec, "integratedLufs" | "truePeakDbtp">;
+  /**
+   * Where speech is on the film's timeline (W25; Part 1 §40). Given, music and
+   * ambience are ducked exactly there — with short ramps — instead of by a
+   * sidechain listening to the voice; and the score fades in and out.
+   */
+  duckRegions?: DuckRegion[];
+}
+
+export interface DuckRegion { startSec: number; endSec: number }
+
+/** How far music and ambience dip under speech placed on the timeline (dB). */
+export const TIMELINE_DUCK_DB = { music: -12, ambience: -8 } as const;
+/** Ramp into and out of a dip (seconds), and the score's fade at the film's edges. */
+export const DUCK_RAMP_SEC = 0.25;
+export const MUSIC_FADE_SEC = 1.5;
+
+/**
+ * A volume expression that dips to `depthDb` inside each region, ramping
+ * linearly over `rampSec` before and after (pure; ffmpeg expression syntax).
+ */
+export function duckVolumeExpr(regions: DuckRegion[], depthDb: number, rampSec = DUCK_RAMP_SEC): string {
+  const floor = Math.pow(10, depthDb / 20).toFixed(4);
+  const r = rampSec.toFixed(3);
+  const terms = regions.slice(0, 200).map((g) => {
+    const a = g.startSec.toFixed(3);
+    const b = g.endSec.toFixed(3);
+    return `min(1,max(0,(t-${a}+${r})/${r}))*min(1,max(0,(${b}+${r}-t)/${r}))`;
+  });
+  if (!terms.length) return "1";
+  return `1-(1-${floor})*min(1,${terms.join("+")})`;
 }
 
 /** loudnorm overshoots a little: aim this far under the delivery true-peak ceiling. */
@@ -127,7 +157,9 @@ export function audioMixArgs(inputs: AudioInputs, output: string, opts: MixOptio
   const filters: string[] = [];
   const mixIns: string[] = [];
   const voice = labels.voice;
-  const ducked = [labels.music, labels.ambience].filter((l) => l !== undefined).length;
+  // Ducking from the timeline (W25) needs no sidechain keys.
+  const timelineDuck = Boolean(opts.duckRegions);
+  const ducked = timelineDuck ? 0 : [labels.music, labels.ambience].filter((l) => l !== undefined).length;
   // The dialogue keys every ducked stem and is mixed itself: split it once per use.
   let keys: string[] = [];
   if (voice !== undefined) {
@@ -138,14 +170,22 @@ export function audioMixArgs(inputs: AudioInputs, output: string, opts: MixOptio
       filters.push(`[${voice}:a]anull[v]`);
     }
   }
-  if (labels.music !== undefined) {
+  if (labels.music !== undefined && timelineDuck) {
+    const fade = opts.musicLoopSec && opts.musicLoopSec > 4 * MUSIC_FADE_SEC
+      ? `,afade=t=in:d=${MUSIC_FADE_SEC},afade=t=out:st=${(opts.musicLoopSec - MUSIC_FADE_SEC).toFixed(3)}:d=${MUSIC_FADE_SEC}` : "";
+    filters.push(`[${labels.music}:a]volume=${mix.musicDb}dB${fade},volume='${duckVolumeExpr(opts.duckRegions!, TIMELINE_DUCK_DB.music)}':eval=frame[mducked]`);
+    mixIns.push("[mducked]");
+  } else if (labels.music !== undefined) {
     filters.push(`[${labels.music}:a]volume=${mix.musicDb}dB[m]`);
     if (voice !== undefined) {
       filters.push(`[m]${keys.shift()}${duckFilter(mix.musicDuck)}[mducked]`);
       mixIns.push("[mducked]");
     } else mixIns.push("[m]");
   }
-  if (labels.ambience !== undefined) {
+  if (labels.ambience !== undefined && timelineDuck) {
+    filters.push(`[${labels.ambience}:a]volume='${duckVolumeExpr(opts.duckRegions!, TIMELINE_DUCK_DB.ambience)}':eval=frame[aducked]`);
+    mixIns.push("[aducked]");
+  } else if (labels.ambience !== undefined) {
     if (voice !== undefined) {
       filters.push(`[${labels.ambience}:a]${keys.shift()}${duckFilter(mix.ambienceDuck)}[aducked]`);
       mixIns.push("[aducked]");
@@ -186,6 +226,36 @@ export function loudnessCorrectionArgs(
 }
 
 /** One sound placed on the film's timeline. */
+/**
+ * The film's speech on the timeline (W25; Part 1 §40), pure: each scene's
+ * voice starts where its scene starts on the cut. Shorter than its scene, a
+ * pause follows (padding); longer, it runs on and the next scene's voice
+ * waits for it (extension) — speech is never cut and never overlaps. Speech
+ * regions closer than `mergeGapSec` are one dip for the music.
+ */
+export function planVoicePlacement(
+  spans: { startSec: number; durSec: number }[],
+  voiceSec: (number | null)[],
+  mergeGapSec = 0.6,
+): { voices: { sceneIndex: number; startSec: number; endSec: number; delayedBySec: number }[]; duckRegions: DuckRegion[]; endSec: number } {
+  const voices: { sceneIndex: number; startSec: number; endSec: number; delayedBySec: number }[] = [];
+  let cursor = 0;
+  spans.forEach((sp, i) => {
+    const sec = voiceSec[i];
+    if (!sec || sec <= 0) return;
+    const startSec = Math.max(sp.startSec, cursor);
+    voices.push({ sceneIndex: i, startSec, endSec: startSec + sec, delayedBySec: startSec - sp.startSec });
+    cursor = startSec + sec;
+  });
+  const duckRegions: DuckRegion[] = [];
+  for (const v of voices) {
+    const last = duckRegions[duckRegions.length - 1];
+    if (last && v.startSec - last.endSec <= mergeGapSec) last.endSec = v.endSec;
+    else duckRegions.push({ startSec: v.startSec, endSec: v.endSec });
+  }
+  return { voices, duckRegions, endSec: cursor };
+}
+
 export interface PlacedSound {
   path: string;
   /** Where it starts in the film (seconds). */

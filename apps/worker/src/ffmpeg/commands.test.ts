@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  duckVolumeExpr,
+  planVoicePlacement,
   loudnessCorrectionArgs,
   outroTextArgs,
   normalizeArgs,
@@ -157,5 +159,36 @@ describe("loudnessCorrectionArgs — the second loudness pass (W23)", () => {
   });
   it("turns a hot mix down", () => {
     expect(loudnessCorrectionArgs("m", "o", { integratedLufs: -9 }, delivery)!.join(" ")).toContain("volume=-7.00dB");
+  });
+});
+
+describe("speech on the timeline (W25; Part 1 §40)", () => {
+  it("each voice starts with its scene; short ones leave a pause, long ones push the next line, nothing overlaps", () => {
+    const spans = [{ startSec: 0, durSec: 5 }, { startSec: 5, durSec: 5 }, { startSec: 10, durSec: 5 }];
+    const p = planVoicePlacement(spans, [3, 7, 2]);
+    expect(p.voices).toEqual([
+      { sceneIndex: 0, startSec: 0, endSec: 3, delayedBySec: 0 },
+      { sceneIndex: 1, startSec: 5, endSec: 12, delayedBySec: 0 },
+      { sceneIndex: 2, startSec: 12, endSec: 14, delayedBySec: 2 },
+    ]);
+    expect(p.endSec).toBe(14);
+    // 3 → 5 is a 2 s gap (two dips); 12 → 12 is continuous (one dip).
+    expect(p.duckRegions).toEqual([{ startSec: 0, endSec: 3 }, { startSec: 5, endSec: 14 }]);
+    expect(planVoicePlacement(spans, [null, null, null])).toEqual({ voices: [], duckRegions: [], endSec: 0 });
+  });
+
+  it("the dip expression ramps into and out of each region", () => {
+    const e = duckVolumeExpr([{ startSec: 1, endSec: 2 }], -12, 0.25);
+    expect(e).toBe("1-(1-0.2512)*min(1,min(1,max(0,(t-1.000+0.250)/0.250))*min(1,max(0,(2.000+0.250-t)/0.250)))");
+    expect(duckVolumeExpr([], -12)).toBe("1");
+  });
+
+  it("with timeline regions the mix ducks by volume automation, not a sidechain, and fades the score", () => {
+    const a = audioMixArgs({ music: "m.wav", voice: "v.wav", ambience: "a.wav" }, "o.m4a", { musicLoopSec: 30, duckRegions: [{ startSec: 1, endSec: 2 }] }).join(" ");
+    expect(a).not.toContain("sidechaincompress");
+    expect(a).toContain("afade=t=in:d=1.5");
+    expect(a).toMatch(/volume='1-\(1-0\.2512\)/); // music −12 dB
+    expect(a).toMatch(/volume='1-\(1-0\.3981\)/); // ambience −8 dB
+    expect(audioMixArgs({ music: "m.wav", voice: "v.wav" }, "o.m4a").join(" ")).toContain("sidechaincompress");
   });
 });

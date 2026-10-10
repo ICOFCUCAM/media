@@ -29,6 +29,29 @@ export const CanonChangeSchema = z.discriminatedUnion("kind", [
     patch: z.object({ description: text(600), architecture: text(400), era: text(120), lighting: text(300) }).partial().strict(),
   }).strict(),
   z.object({ kind: z.literal("prop"), propId: key("prop"), patch: z.object({ name: text(80), description: text(300) }).partial().strict() }).strict(),
+  // One scene across departments (W25): tone, lighting, camera, music, ambience, lines.
+  z.object({
+    kind: z.literal("scene_revision"), sceneId: key("scene"),
+    revision: z.object({
+      emotionalArc: z.object({ start: text(80), middle: text(80), end: text(80) }).strict(),
+      lighting: text(200),
+      shots: z.array(z.object({
+        index: z.number().int().min(0).max(40),
+        size: z.enum(["EWS", "WS", "MS", "MCU", "CU", "ECU", "INSERT"]),
+        angle: z.enum(["eye", "low", "high", "dutch", "overhead"]),
+        movement: z.enum(["static", "pan", "tilt", "dolly", "crane", "handheld", "drone", "tracking"]),
+        lens: z.string().trim().max(40),
+        lighting: text(200),
+        composition: text(160),
+        depthOfField: z.enum(["shallow", "medium", "deep"]),
+        emotion: z.string().trim().max(80),
+      }).partial().required({ index: true }).strict()).max(12),
+      music: z.string().trim().min(1).max(200).nullable(),
+      ambience: text(200),
+      dialogue: z.array(z.object({ index: z.number().int().min(0).max(40), line: text(400), emotion: z.string().trim().max(60).nullable() })
+        .partial().required({ index: true }).strict()).max(24),
+    }).partial().strict().refine((r) => Object.keys(r).length > 0, "a revision must change something"),
+  }).strict(),
 ]);
 
 export interface EditRequestRow {
@@ -60,7 +83,7 @@ export async function processEditRequest(req: EditRequestRow, deps: EditDeps): P
       await deps.finish(req.id, { status: "rejected", issues: r.issues, affectedShots: 0, toVersion: r.toVersion });
       return "rejected";
     }
-    if (r.invalidatedShotIds.length) await deps.regenerate(req.projectId, r.toVersion);
+    if (r.invalidatedShotIds.length || r.audioRedo) await deps.regenerate(req.projectId, r.toVersion);
     await deps.finish(req.id, { status: "applied", issues: [], affectedShots: r.invalidatedShotIds.length, toVersion: r.toVersion });
     return "applied";
   } catch (e) {

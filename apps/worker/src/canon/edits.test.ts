@@ -59,3 +59,15 @@ describe("edit requests (W8b)", () => {
     expect(taken.log).toEqual([]);
   });
 });
+
+describe("scene revisions through the edit command (W25)", () => {
+  it("accepts a multi-department revision and refuses an empty or malformed one", () => {
+    expect(CanonChangeSchema.safeParse({
+      kind: "scene_revision", sceneId: "scene_07",
+      revision: { emotionalArc: { start: "uneasy", middle: "dread", end: "shaken" }, lighting: "one hard key, deep shadow", shots: [{ index: 2, angle: "low" }], music: null, dialogue: [{ index: 0, emotion: "cold" }] },
+    }).success).toBe(true);
+    expect(CanonChangeSchema.safeParse({ kind: "scene_revision", sceneId: "scene_07", revision: {} }).success).toBe(false);
+    expect(CanonChangeSchema.safeParse({ kind: "scene_revision", sceneId: "scene_07", revision: { shots: [{ angle: "low" }] } }).success).toBe(false);
+    expect(CanonChangeSchema.safeParse({ kind: "scene_revision", sceneId: "scene_07", revision: { shots: [{ index: 1, size: "HUGE" }] } }).success).toBe(false);
+  });
+});

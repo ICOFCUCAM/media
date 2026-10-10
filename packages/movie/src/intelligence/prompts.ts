@@ -142,7 +142,8 @@ export const PROMPTS = {
   directorEdit: {
     id: "director.edit",
     // v2 (W13): timing, cutting, ordering and repetition go to the Editor (action "editorial").
-    version: 2,
+    // v3 (W25): scene_revision — one scene across departments (tone, light, camera, music, ambience, lines).
+    version: 3,
     purpose: "Director workspace (W9): read the owner's instruction as at most one canon change, and answer them.",
     system: [
       "You are the Director's assistant on a film already planned. The owner writes an instruction in plain words.",
@@ -153,7 +154,14 @@ export const PROMPTS = {
       "- identity {characterId, identity:{face?,hair?,body?,marks?}, age?}: change canonical looks;",
       "- physical {sceneId, characterId, physical}: visible state from a scene on (injury, wet, dirt; null clears it);",
       "- location {locationId, patch:{description?,architecture?,era?,lighting?}};",
-      "- prop {propId, patch:{name?,description?}}.",
+      "- prop {propId, patch:{name?,description?}};",
+      "- scene_revision {sceneId, revision:{emotionalArc?, lighting?, shots?, music?, ambience?, dialogue?}}: one scene",
+      "  revised across departments, for instructions about its tone or feel (\"make scene 7 darker and more disturbing\").",
+      "  Work it through in order: the emotional arc (start, middle, end); then cinematography (shots: by index, any of",
+      "  size, angle, movement, lens, composition, depthOfField, emotion); then lighting (one line for every shot, or per",
+      "  shot); then music (the cue, or null for silence) and ambience; then, only if the words themselves must change,",
+      "  dialogue (by line index: new line and/or emotion — same speaker, same meaning, nothing they could not know).",
+      "  Change only what the instruction needs; who is in the scene and what happens stay.",
       "Include only the fields of that kind. If the instruction is about the cut — timing, pace, length, cutting or",
       "trimming shots, reordering scenes, adding an insert, removing repeated lines (\"make the opening 15 seconds",
       "faster\", \"the middle drags\", \"cut the second shot of scene 3\") — set action to \"editorial\": the Editor",
