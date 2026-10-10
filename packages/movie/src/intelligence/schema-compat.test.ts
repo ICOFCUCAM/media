@@ -7,7 +7,7 @@ import { filmPackageJsonSchema } from "../ir/json-schema";
 import { FilmPackage } from "../ir/schema";
 import { VisualReviewOutput } from "../review/visual";
 import { IntelligenceRouter } from "./router";
-import { countUnionParameters, MAX_UNION_PARAMETERS, modelSafeSchema, restoreNulls } from "./schema-compat";
+import { clampStrings, countUnionParameters, MAX_UNION_PARAMETERS, modelSafeSchema, restoreNulls } from "./schema-compat";
 import type { IntelligenceProvider, StructuredRequest } from "./types";
 
 /** What Anthropic actually receives: the SDK's transform of the model-safe schema. */
@@ -109,5 +109,32 @@ describe("router", () => {
     const res = await new IntelligenceRouter([provider], {}).call({ task: "translation", promptId: "t", promptVersion: 1, system: "", user: "", schema, schemaName: "X", maxTokens: 1 });
     expect(countUnionParameters(calls[0]!.schema)).toBe(0);
     expect(res.output).toEqual({ note: null });
+  });
+});
+
+describe("clampStrings", () => {
+  it("cuts over-long text back to maxLength at a word boundary; leaves everything else", () => {
+    const schema = {
+      type: "object",
+      properties: {
+        lighting: { anyOf: [{ type: "string", maxLength: 20 }, { type: "null" }] },
+        beats: { type: "array", maxItems: 1, items: { type: "string", maxLength: 10 } },
+        id: { type: "string", pattern: "^x$" },
+      },
+    };
+    const out = clampStrings({ lighting: "warm practical lamps, soft haze in the room", beats: ["short", "much longer beat here", "x"], id: "y", extra: 1 }, schema) as Record<string, unknown>;
+    expect(out.lighting).toBe("warm practical");
+    expect((out.lighting as string).length).toBeLessThanOrEqual(20);
+    expect(out.beats).toEqual(["short", "much longe", "x"]); // no space near the limit: a hard cut; the count is left for the validator
+    expect(out.id).toBe("y");
+    expect(out.extra).toBe(1);
+    expect(clampStrings({ lighting: null }, schema)).toEqual({ lighting: null });
+  });
+
+  it("a film package with an over-long field validates after clamping", () => {
+    const pkg = JSON.parse(JSON.stringify(fixturePackage()));
+    pkg.film.logline = `${pkg.film.logline} ${"and then much more ".repeat(60)}`;
+    expect(FilmPackage.safeParse(pkg).success).toBe(false);
+    expect(FilmPackage.safeParse(clampStrings(pkg, filmPackageJsonSchema())).success).toBe(true);
   });
 });

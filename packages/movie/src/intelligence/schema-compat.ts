@@ -114,3 +114,31 @@ export function countUnionParameters(schema: unknown): number {
   walk(schema);
   return count;
 }
+
+/**
+ * Over-long text cut back to the schema's maxLength (at a word boundary when
+ * one is near), so a description a few characters too long does not fail a
+ * whole plan. Only strings change; arrays, numbers and ids are left for the
+ * validator to judge (pure).
+ */
+export function clampStrings(value: unknown, schema: unknown): unknown {
+  if (!schema || typeof schema !== "object") return value;
+  const n = schema as Node;
+  if (Array.isArray(n.anyOf)) {
+    const branch = (n.anyOf as Node[]).find((b) =>
+      typeof value === "string" ? b.type === "string" : Array.isArray(value) ? b.type === "array" : value && typeof value === "object" ? b.type === "object" : false);
+    return branch ? clampStrings(value, branch) : value;
+  }
+  if (typeof value === "string" && typeof n.maxLength === "number" && value.trim().length > n.maxLength) {
+    const max = n.maxLength;
+    const cut = value.trim().slice(0, max);
+    const space = cut.lastIndexOf(" ");
+    return (space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,;:–—-]+$/, "");
+  }
+  if (Array.isArray(value) && n.items) return value.map((v) => clampStrings(v, n.items));
+  if (value && typeof value === "object" && !Array.isArray(value) && n.properties && typeof n.properties === "object") {
+    const props = n.properties as Record<string, unknown>;
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, k in props ? clampStrings(v, props[k]) : v]));
+  }
+  return value;
+}
