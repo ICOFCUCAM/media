@@ -1,7 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { buildPublishers, YouTubePublisher, TikTokPublisher, InstagramPublisher, FacebookPublisher, XPublisher } from "./publish";
 
 describe("social publishers", () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
   it("skips (never posts) when a provider is unconfigured", async () => {
     const yt = new YouTubePublisher({});
     expect(yt.configured).toBe(false);
@@ -35,6 +37,8 @@ describe("social publishers", () => {
   });
 
   it("publish() catches upload failures into an error result (never throws)", async () => {
+    // No real network: the upload fails the way an unreachable Graph API would.
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("fetch failed"); }));
     const fb = new FacebookPublisher({ pageId: "1", pageToken: "bad" });
     const r = await fb.publish({ title: "Ad", videoUrl: "http://127.0.0.1:1/x.mp4" });
     expect(r.provider).toBe("facebook");

@@ -111,7 +111,11 @@ export class IntelligenceRouter {
         return result;
       } catch (e) {
         const err = e instanceof IntelligenceError ? e : new IntelligenceError("PROVIDER_ERROR", e instanceof Error ? e.message : String(e));
-        await this.onDecision({ ...base, outputSha256: null, outcome: "error", errorCode: err.code, inputTokens: null, outputTokens: null, latencyMs: null });
+        // The provider's own words are the only record of why it failed (e.g. a 400 on the schema).
+        await this.onDecision({
+          ...base, outputSha256: null, outcome: "error", errorCode: err.code, inputTokens: null, outputTokens: null, latencyMs: null,
+          summary: err.message.slice(0, 500),
+        });
         last = err;
         if (!RETRY_NEXT.has(err.code)) throw err;
       }
