@@ -388,10 +388,11 @@ def create_app(
 
     def _generate(inp: GenerateInput) -> GenerateOutput:
         seed = inp.seed if inp.seed is not None else uuid.uuid4().int % (2**31)
-        started = time.monotonic()
-
         # Serialize: only one inference runs on the GPU at a time (see infer_lock).
         with infer_lock:
+            # GPU time starts when this shot has the GPU: time spent queued
+            # behind another shot is not this shot's (it is billed as gpuMs).
+            started = time.monotonic()
             local_mp4, thumb = pipeline.generate(
                 prompt=inp.prompt,
                 negative_prompt=inp.negativePrompt,

@@ -469,3 +469,29 @@ def test_async_generate_is_still_gated_and_polls_need_a_token(signing_key, mint)
         assert client.get("/generate/jobs/abc").status_code == 401
         missing = client.get("/generate/jobs/abc", headers={"authorization": f"Bearer {mint.token(b'', scope='status')}"})
     assert missing.status_code == 404 and missing.json()["detail"]["error"] == "UNKNOWN_TASK"
+
+
+def test_gpu_ms_counts_only_this_shots_turn_on_the_gpu(signing_key, mint):
+    # Two shots submitted together: the second waits for the first. Its gpuMs
+    # (billed to the owner) must not include that wait.
+    import time as _t
+
+    client, pipeline, _ = build_client(signing_key)
+    original = pipeline.generate
+
+    def slow(**kw):
+        _t.sleep(0.4)
+        return original(**kw)
+    pipeline.generate = slow
+    with client:
+        tasks = []
+        for job in ("grant-1", "grant-2"):
+            body = gen_body(jobId=job)
+            r = client.post("/generate", content=body, headers={
+                "content-type": "application/json", "x-cineforge-async": "1",
+                "authorization": f"Bearer {mint.token(body, sub=job, authz=cineforge_authz())}"})
+            assert r.status_code == 202, r.text
+            tasks.append(r.json()["taskId"])
+        results = [_poll(client, mint, t, timeout=5).json() for t in tasks]
+    assert all(x["status"] == "done" for x in results), results
+    assert all(350 <= x["result"]["gpuMs"] < 700 for x in results), [x["result"]["gpuMs"] for x in results]
