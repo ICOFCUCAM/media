@@ -15,6 +15,7 @@ import { recordDegradations, type DegradationDb } from "../truth/recorder";
 import { rememberGpuCaps } from "../truth/capabilities";
 import {
   QUEUES,
+  remainingBudgetMs,
   shouldPauseForBudget,
   computeContinuity,
   renderStatePreamble,
@@ -36,6 +37,8 @@ import { meter, meteredImages } from "../billing";
 import { productionOf, renderStyleFor } from "../director/production";
 import { isStillMotion } from "@cineforge/shared";
 import { StillMotionEngine, STILL_MOTION_FPS } from "../animation/still-motion";
+import { animatePage, livingPageMode, livingPagePrompt } from "../animation/living-page";
+import { DEFAULT_SHOT_GPU_MS } from "../orchestration/resume";
 import { pickCandidate, seedCandidates } from "../images/candidates";
 import { recordSeedCandidates, type MediaVersionDb } from "../images/record";
 import { assembleReferencePack, endFrameKey } from "../canon/reference-pack";
@@ -592,9 +595,34 @@ export const videoWorker = new Worker<VideoJob>(
     if (drawn) {
       if (!seedKey) throw new UnrecoverableError("This storybook/motion-comic shot has no drawn page (it was planned without a still).");
       request.fps = STILL_MOTION_FPS;
+      // Character animation inside the page (W26; §181.4–5): a page with a character in it may be
+      // brought to life by the production's video model from the drawn page, while the budget allows.
+      const p = shot.scene.project;
+      const living = animatePage(livingPageMode(), Boolean(canonContext?.characters.length) || identityKeys.length > 0,
+        p.estimatedMs ? remainingBudgetMs(p.estimatedMs, p.spentMs) : null, DEFAULT_SHOT_GPU_MS * Math.max(1, shot.durationSec / 5));
+      if (living.animate) {
+        adapter = registry.get(modelId);
+        request.fps = undefined;
+        request.prompt = livingPagePrompt(request.prompt, p.animationStyle ? p.animationStyle.replace(/_/g, " ") : null);
+      } else if (living.reason) {
+        gaps.push(degradation("CHARACTER_ANIMATION_SKIPPED", "shot", "This page was moved by the camera only; its characters were not animated.", { refId: shotId, detail: { reason: living.reason } }));
+      }
     }
     request.job = await jobContext(shotId, adapter.id);
-    const result = await adapter.generate(request);
+    let result: Awaited<ReturnType<VideoModelAdapter["generate"]>>;
+    try {
+      result = await adapter.generate(request);
+    } catch (e) {
+      // An animated page that fails falls back to the camera move (recorded); everything else fails as before.
+      if (!drawn || adapter === stillMotion) throw e;
+      gaps.push(degradation("CHARACTER_ANIMATION_SKIPPED", "shot", "This page was moved by the camera only; its characters were not animated.", {
+        refId: shotId, detail: { reason: (e instanceof Error ? e.message : String(e)).slice(0, 300) },
+      }));
+      adapter = stillMotion;
+      request.fps = STILL_MOTION_FPS;
+      request.job = await jobContext(shotId, adapter.id);
+      result = await adapter.generate(request);
+    }
 
     // What actually ran (DOS-70/75): placeholder media never becomes a shot;
     // clamped size/length, ignored references and skipped LoRAs are recorded.

@@ -1,6 +1,15 @@
 {
   "prompts": [
     {
+      "id": "avatar.talk",
+      "version": 1,
+      "purpose": "Conversation (Part 3 §111, §117): the avatar's next spoken line, in its persona.",
+      "sha256": "ad2e45c9c9954ddcba3647a3a8e00e2c9911a3d3cc0865d613f7aeecd43ca498",
+      "score": null,
+      "scoredAt": null,
+      "model": null
+    },
+    {
       "id": "cinema.design",
       "version": 1,
       "purpose": "The Cinematographer (Part 1 §11, §26): redesign one scene's coverage to film grammar, from that scene's state only.",

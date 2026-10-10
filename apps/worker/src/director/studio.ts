@@ -68,8 +68,8 @@ export interface StudioDb {
     findMany(args: {
       where: { seriesId: string; episodeNumber: { lt: number }; NOT: { id: string } };
       orderBy: [{ episodeNumber: "asc" }, { createdAt: "asc" }];
-      select: { episodeNumber: true; title: true; screenplay: { select: { raw: true } } };
-    }): Promise<{ episodeNumber: number | null; title: string; screenplay: { raw: unknown } | null }[]>;
+      select: { episodeNumber: true; seasonNumber: true; title: true; screenplay: { select: { raw: true } } };
+    }): Promise<{ episodeNumber: number | null; seasonNumber?: number | null; title: string; screenplay: { raw: unknown } | null }[]>;
   };
 }
 
@@ -167,13 +167,13 @@ export async function loadProductionCanon(db: StudioDb, projectId: string, spec:
   const earlier = await db.project.findMany({
     where: { seriesId: spec.seriesId, episodeNumber: { lt: spec.episodeNumber }, NOT: { id: projectId } },
     orderBy: [{ episodeNumber: "asc" }, { createdAt: "asc" }],
-    select: { episodeNumber: true, title: true, screenplay: { select: { raw: true } } },
+    select: { episodeNumber: true, seasonNumber: true, title: true, screenplay: { select: { raw: true } } },
   });
   for (const e of earlier) {
     const pkg = packageOf(e.screenplay?.raw);
     if (!pkg || !e.episodeNumber) continue;
     const [recap] = recapEpisodes(pkg, { number: e.episodeNumber, title: e.title });
-    if (recap) byNumber.set(e.episodeNumber, { recap, pkg });
+    if (recap) byNumber.set(e.episodeNumber, { recap: { ...recap, season: e.seasonNumber ?? 1 }, pkg });
   }
   const ordered = [...byNumber.entries()].sort(([a], [b]) => a - b).map(([, v]) => v);
   const pkgs = [...new Set(ordered.map((o) => o.pkg))];
@@ -190,7 +190,7 @@ export async function loadProductionCanon(db: StudioDb, projectId: string, spec:
     cast: [...cast, ...returning.values()],
     cards,
     bible: bibleOf(show.title, show.bible),
-    episode: { number: spec.episodeNumber, previously: ordered.map((o) => o.recap) },
+    episode: { number: spec.episodeNumber, season: spec.seasonNumber ?? 1, previously: ordered.map((o) => o.recap) },
     // A card cast into this episode who died earlier still may appear only in flashbacks.
     deceased,
   };

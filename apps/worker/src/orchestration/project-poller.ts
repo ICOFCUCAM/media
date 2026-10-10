@@ -19,6 +19,8 @@ import { enqueueSceneFlow } from "./film-flow";
 import { advancePasses } from "./passes";
 import { advanceLocks } from "./locks";
 import { claimResumeRequests, resumeCeilingMs, type ResumeDb } from "./resume";
+import { advanceAvatarTalk, type TalkDb } from "../voice/avatar-talk";
+import { falTranscribeDeps, transcribe } from "../voice/transcribe";
 import { drawPortraits, type PortraitDb } from "../images/portraits";
 import { imageProvider } from "../images/providers";
 import { meteredImages } from "../billing/meter";
@@ -26,7 +28,7 @@ import { meter } from "../billing";
 import { processEditRequest } from "../canon/edits";
 import { processDirectorMessage } from "../canon/conversation";
 import { loadFilmPackage } from "../canon/revision";
-import { interpretInstruction } from "@cineforge/movie";
+import { avatarReply, interpretInstruction } from "@cineforge/movie";
 import { applyEditorialReview, editorialReview, processEditorialReview } from "../editor/editorial";
 import { purgeOrphanedSpeech } from "../voice/cache";
 import { S3Storage } from "../storage/storage";
@@ -348,6 +350,18 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
       await purgeOrphanedSpeech(prisma as never, (keys) => new S3Storage().deleteKeys(keys))
         .then((n) => n && console.log(JSON.stringify({ event: "speech_cache.purged", clips: n })))
         .catch(() => {}); // before migration 0049
+
+      // Talking with an avatar (W26; 0059): hear, answer, voice, animate.
+      await advanceAvatarTalk(prisma as unknown as TalkDb, {
+        transcribe: (key, language) => {
+          const deps = falTranscribeDeps((k) => new S3Storage().getBytes(k));
+          if (!deps) throw new Error("speech recognition needs FAL_KEY");
+          return transcribe(key, language, deps);
+        },
+        reply: (persona, language, lines) => avatarReply(intelligence(), persona, language, lines),
+      })
+        .then((r) => (r.answered || r.voiced || r.finished || r.failed) && console.log(JSON.stringify({ event: "avatar.talk", ...r })))
+        .catch(() => {}); // before migration 0059
 
       // ── Voice Lab (docs/29): claim pending clones + voiceovers ─────────
       // Same producer/consumer split as films: the web writes PENDING rows,

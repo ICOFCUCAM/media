@@ -88,6 +88,7 @@ export interface Database {
           episodes: number | null;
           series_id: string | null;
           episode_number: number | null;
+          season_number: number | null;
           story_approved_at: string | null;
           created_at: string;
           updated_at: string;
@@ -112,6 +113,7 @@ export interface Database {
           episodes?: number | null;
           series_id?: string | null;
           episode_number?: number | null;
+          season_number?: number | null;
         };
         Update: {
           status?: ProjectStatus;

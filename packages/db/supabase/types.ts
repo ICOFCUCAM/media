@@ -472,6 +472,121 @@ export type Database = {
           },
         ]
       }
+      avatar_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          image_key: string | null
+          language: string
+          persona: string
+          quality: string
+          title: string
+          user_id: string
+          voice_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_key?: string | null
+          language?: string
+          persona: string
+          quality?: string
+          title?: string
+          user_id: string
+          voice_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_key?: string | null
+          language?: string
+          persona?: string
+          quality?: string
+          title?: string
+          user_id?: string
+          voice_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avatar_conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avatar_conversations_voice_id_fkey"
+            columns: ["voice_id"]
+            isOneToOne: false
+            referencedRelation: "voices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avatar_turns: {
+        Row: {
+          audio_key: string | null
+          avatar_video_id: string | null
+          conversation_id: string
+          created_at: string
+          error: string | null
+          id: string
+          role: string
+          status: string
+          text: string | null
+          user_id: string
+          voiceover_id: string | null
+        }
+        Insert: {
+          audio_key?: string | null
+          avatar_video_id?: string | null
+          conversation_id: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          role: string
+          status?: string
+          text?: string | null
+          user_id: string
+          voiceover_id?: string | null
+        }
+        Update: {
+          audio_key?: string | null
+          avatar_video_id?: string | null
+          conversation_id?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          role?: string
+          status?: string
+          text?: string | null
+          user_id?: string
+          voiceover_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avatar_turns_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "avatar_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avatar_turns_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avatar_turns_voiceover_id_fkey"
+            columns: ["voiceover_id"]
+            isOneToOne: false
+            referencedRelation: "voiceovers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avatar_videos: {
         Row: {
           created_at: string
@@ -1531,6 +1646,8 @@ export type Database = {
           progress: number
           prompt: string
           resolution: string
+          resume_requested_at: string | null
+          season_number: number | null
           series_id: string | null
           spent_ms: number
           status: Database["public"]["Enums"]["project_status"]
@@ -1560,6 +1677,8 @@ export type Database = {
           progress?: number
           prompt: string
           resolution?: string
+          resume_requested_at?: string | null
+          season_number?: number | null
           series_id?: string | null
           spent_ms?: number
           status?: Database["public"]["Enums"]["project_status"]
@@ -1589,6 +1708,8 @@ export type Database = {
           progress?: number
           prompt?: string
           resolution?: string
+          resume_requested_at?: string | null
+          season_number?: number | null
           series_id?: string | null
           spent_ms?: number
           status?: Database["public"]["Enums"]["project_status"]

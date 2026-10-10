@@ -7,7 +7,7 @@
  */
 
 /** What a call is for — the unit of routing and of the decision log. */
-export type IntelligenceTask = "film_plan" | "film_plan_revision" | "translation" | "social_kit" | "visual_review" | "edit_interpret" | "editorial" | "shot_design";
+export type IntelligenceTask = "film_plan" | "film_plan_revision" | "translation" | "social_kit" | "visual_review" | "edit_interpret" | "editorial" | "shot_design" | "conversation";
 
 /** An image shown to the model with the request (e.g. a generated frame to review). */
 export interface RequestImage {

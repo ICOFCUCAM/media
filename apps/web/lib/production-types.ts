@@ -35,6 +35,8 @@ export type AnimationStyle = (typeof ANIMATION_STYLES)[number];
  */
 export const SERIES_MAX_EPISODES = 5;
 export const EPISODE_MAX_NUMBER = 500;
+/** Seasons a show may run to (W26); episode numbers run on across them. */
+export const SEASON_MAX_NUMBER = 50;
 
 export interface KindProfile {
   id: ProductionKind;
@@ -165,6 +167,8 @@ export interface ProductionSpec {
   /** Episode (W12): the show it belongs to and its number in the show. */
   seriesId?: string | null;
   episodeNumber?: number | null;
+  /** Its season (W26): absent = season 1; never before an earlier episode's season. */
+  seasonNumber?: number | null;
 }
 
 /** True when the production's shots are drawn stills moved by the camera (storybook, motion comic). */
@@ -195,6 +199,9 @@ export function productionIssues(p: ProductionSpec, targetSeconds?: number, aspe
     out.push(isEpisode ? "an episode names its show and its number" : "only an episode belongs to a show");
   } else if (isEpisode && (!Number.isInteger(p.episodeNumber) || p.episodeNumber! < 1 || p.episodeNumber! > EPISODE_MAX_NUMBER)) {
     out.push(`an episode number is 1–${EPISODE_MAX_NUMBER}`);
+  }
+  if (p.seasonNumber != null && (!isEpisode || !Number.isInteger(p.seasonNumber) || p.seasonNumber < 1 || p.seasonNumber > SEASON_MAX_NUMBER)) {
+    out.push(isEpisode ? `a season is 1–${SEASON_MAX_NUMBER}` : "only an episode has a season");
   }
   if (targetSeconds !== undefined && (targetSeconds < k.minSec || targetSeconds > k.maxSec)) {
     out.push(`a ${k.label.toLowerCase()} runs ${k.minSec}–${k.maxSec}s, not ${targetSeconds}s`);

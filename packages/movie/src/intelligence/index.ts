@@ -9,3 +9,4 @@ export * from "./cast";
 export * from "./roles";
 export * from "./schema-compat";
 export * from "./coverage";
+export * from "./talk";

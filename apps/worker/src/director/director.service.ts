@@ -100,7 +100,7 @@ export class DirectorService {
       where: { id: projectId },
       select: {
         prompt: true, targetSeconds: true, modelId: true, resolution: true, aspectRatio: true,
-        kind: true, medium: true, animationStyle: true, episodes: true, seriesId: true, episodeNumber: true, title: true,
+        kind: true, medium: true, animationStyle: true, episodes: true, seriesId: true, episodeNumber: true, seasonNumber: true, title: true,
       },
     });
     const spec = productionOf(project);
