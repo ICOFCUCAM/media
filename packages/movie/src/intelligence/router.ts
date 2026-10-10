@@ -10,6 +10,7 @@
  * (DOS-75). Invalid-but-parseable output is the caller's to judge (validator),
  * not a reason to switch providers.
  */
+import { modelSafeSchema, restoreNulls } from "./schema-compat";
 import { createHash } from "node:crypto";
 import {
   IntelligenceError,
@@ -98,7 +99,10 @@ export class IntelligenceRouter {
       try {
         if (!provider) throw new IntelligenceError("PROVIDER_UNAVAILABLE", `unknown provider ${route.provider}`);
         if (!provider.configured()) throw new IntelligenceError("PROVIDER_UNAVAILABLE", `${route.provider} is not configured`);
-        const result = await provider.generateStructured(req, route.model);
+        // Providers get a flattened schema within their union limits; the answer is
+        // turned back (nulls restored) before anyone reads it.
+        const raw = await provider.generateStructured({ ...req, schema: modelSafeSchema(req.schema) }, route.model);
+        const result = { ...raw, output: restoreNulls(raw.output, req.schema) };
         await this.onDecision({
           ...base, model: result.model, outputSha256: sha(JSON.stringify(result.output)), outcome: "ok", errorCode: null,
           inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens, latencyMs: result.latencyMs,
