@@ -11,13 +11,11 @@
  */
 import { UnrecoverableError, Worker } from "bullmq";
 import { QUEUES, type RenderJob, parseLanguages, degradation, isProductionFailure, type Degradation } from "@cineforge/shared";
-import { editorialGate, judgeMaster, qualityMode, type GateResult } from "../quality/gates";
-import { measureMedia } from "../quality/measure";
+import { editorialGate, type GateResult } from "../quality/gates";
 import { recordGates, type GateDb } from "../quality/recorder";
 import { recordDegradations, type DegradationDb } from "../truth/recorder";
 import { prisma } from "@cineforge/db";
 import { NarrationOverrunError } from "../ffmpeg/commands";
-import { ffmpeg } from "../ffmpeg/ffmpeg";
 import { nextVersion, recordVersion, type VersionDb } from "../versions/record";
 import { RenderEngine, type SceneAssets } from "../ffmpeg/render-engine";
 import { S3Storage } from "../storage/storage";
@@ -27,10 +25,9 @@ import { enqueueLocalize } from "../orchestration/localize-queue";
 import { voiceContinuity } from "../voice/continuity";
 import { syncAfterRender } from "../avsync/run";
 import { applyCut, cutFromTimeline } from "../timeline/lock";
-import { renderProfile } from "../render/profile";
-import { framedFromCast, lipSyncEnabled, lipSyncFilm } from "../lipsync/run";
-import { lipSyncProvider } from "../lipsync/provider";
-import { loadFilmPackage, type CanonDb } from "../canon/revision";
+import { brandOutro, masterGate, renderProfile } from "../render/profile";
+import { sceneAssetsOf, realTrack as real } from "../render/inputs";
+import { lipSyncPass } from "../render/lip-sync-pass";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
@@ -53,10 +50,6 @@ async function recordFilmGates(projectId: string, quality: GateResult[]) {
 
 export { renderProfile };
 
-/** Final Quality Gate (W5): measure the local master with ffmpeg and judge it against the profile's delivery spec. */
-const masterGate = (filmSec: number, delivery: { integratedLufs: number; truePeakDbtp: number }) => async (path: string, ctx: { hasSound: boolean; filmSec: number | undefined }) =>
-  judgeMaster(await measureMedia(path, { loudness: true }),
-    { durationSec: ctx.filmSec ?? filmSec, hasSound: ctx.hasSound, integratedLufs: delivery.integratedLufs, truePeakMaxDbtp: delivery.truePeakDbtp, sampleRate: 48_000 }, qualityMode());
 
 async function upscaleFilm(projectId: string) {
   const apiKey = process.env.FAL_KEY;
@@ -124,60 +117,12 @@ export const renderWorker = new Worker<RenderJob>(
       }
       let durationSec = scenes.reduce((a, s) => a + s.durationSec, 0);
 
-      // Build per-scene asset lists from generated clips/audio. Legacy "stub"
-      // audio rows recorded a key without uploading a file — downloading one
-      // kills the assembly ("Object not found"), so exclude them.
-      const real = (t: { meta: unknown }) => (t.meta as { generated?: string } | null)?.generated !== "stub";
-
       // Lip sync (W21): dialogue shots get their speakers' lines on the mouth. LIP_SYNC=1; never blocks.
-      let lipClips = new Map<string, string>();
-      if (lipSyncEnabled() && process.env.S3_ENDPOINT) {
-        try {
-          const storage = new S3Storage();
-          const pkg = await loadFilmPackage(prisma as unknown as CanonDb, projectId).catch(() => null);
-          const framedOf = pkg
-            ? framedFromCast(pkg.cast, await prisma.character.findMany({ where: { projectId }, select: { id: true, name: true } }))
-            : () => [];
-          const provider = lipSyncProvider();
-          const ls = await lipSyncFilm({
-            provider,
-            download: (k, d) => storage.download(k, d), getBytes: (k) => storage.getBytes(k),
-            putBytes: (k, b, ct) => storage.putBytes(k, b, ct), size: (k) => storage.size(k), ffmpeg: (a) => ffmpeg(a),
-            meter: async (t) => { await meter({ kind: "video", provider: "fal", model: provider?.model ?? "lipsync", unit: "requests", units: 1, projectId, meta: { purpose: "lip_sync", shotId: t.shotId, speechSec: t.speechSec } }); },
-          }, projectId, scenes.map((s) => ({
-            sceneId: s.id, index: s.index,
-            shots: s.shots.map((sh) => ({
-              id: sh.id, videoKey: sh.videoKey, durationSec: sh.durationSec, cutSec: sh.cutSec == null ? null : Number(sh.cutSec),
-              size: (sh.cameraPlan as { shotSize?: string } | null)?.shotSize ?? sh.cameraType ?? null,
-              subjectKeys: (sh.cameraPlan as { subjectKeys?: string[] } | null)?.subjectKeys ?? [],
-            })),
-            lines: s.dialogueLines,
-            lineMs: Object.fromEntries(s.audioTracks.filter((t) => t.kind === "VOICE")
-              .flatMap((t) => ((t.meta as { cues?: { lineId?: string | null; durationMs?: number }[] } | null)?.cues ?? []))
-              .filter((c) => c.lineId && c.durationMs).map((c) => [c.lineId!, c.durationMs!])),
-          })), framedOf);
-          lipClips = ls.clips;
-          await record(projectId, ls.gaps);
-          console.log(JSON.stringify({ event: "render.lip_sync", projectId, made: ls.made, reused: ls.reused, gaps: ls.gaps.length }));
-        } catch (e) {
-          console.warn(`[render] lip sync skipped: ${e instanceof Error ? e.message : String(e)}`);
-        }
-      }
-      const clipOf = (sh: { id: string; videoKey: string | null }) => lipClips.get(sh.id) ?? sh.videoKey;
-      let assets: SceneAssets[] = scenes.map((s) => ({
-        sceneId: s.id,
-        index: s.index,
-        shotKeys: s.shots.map(clipOf).filter((k): k is string => !!k),
-        // The editor's cut lengths (W13), aligned with shotKeys: the clip is trimmed to it.
-        shotCutSec: s.shots.filter((sh) => !!sh.videoKey).map((sh) => (sh.cutSec == null ? null : Number(sh.cutSec))),
-        musicKey: s.audioTracks.filter(real).find((t) => t.kind === "MUSIC")?.key,
-        voiceKey: s.audioTracks.filter(real).find((t) => t.kind === "VOICE")?.key,
-        // Sound design (W16): the scene's ambience bed and placed effects.
-        sounds: s.audioTracks.filter(real).filter((t) => t.kind === "AMBIENCE" || t.kind === "SFX").map((t) => ({
-          kind: t.kind as "AMBIENCE" | "SFX", key: t.key, startMs: t.startMs, durationMs: t.durationMs ?? 0,
-          plannedSceneMs: (t.meta as { plannedSceneMs?: number } | null)?.plannedSceneMs,
-        })),
-      }));
+      const lip = await lipSyncPass(projectId, scenes);
+      await record(projectId, lip.gaps);
+      const clipOf = (sh: { id: string; videoKey: string | null }) => lip.clips.get(sh.id) ?? sh.videoKey;
+      // Per-scene asset lists from generated clips and audio (stub audio rows excluded).
+      let assets: SceneAssets[] = sceneAssetsOf(scenes, { clipOf });
 
       // A locked film (W19) renders from its approved timeline: the timeline
       // decides the order of the shots and how long each one plays.
@@ -228,21 +173,15 @@ export const renderWorker = new Worker<RenderJob>(
         // shows the final stage instead of an indefinite GENERATING.
         await prisma.project.update({ where: { id: projectId }, data: { status: "RENDERING" } });
         const engine = new RenderEngine(new S3Storage());
-        // White-label outro (docs/33): AGENCY+ (and admins) get their brand
-        // kit applied as a closing card.
-        const owner = await prisma.project.findUnique({
-          where: { id: projectId },
-          select: { userId: true, user: { select: { tier: true, role: true } } },
-        });
-        const branded = owner && (owner.user.role === "ADMIN" || owner.user.tier === "AGENCY" || owner.user.tier === "ENTERPRISE");
-        const kit = branded ? await prisma.brandKit.findUnique({ where: { userId: owner!.userId } }) : null;
+        // White-label outro (docs/33): AGENCY+ (and admins) get their brand kit applied as a closing card.
+        const brand = await brandOutro(projectId);
         const version = await nextVersion(prisma as unknown as VersionDb, "master", projectId);
         const profile = renderProfile();
         const out = await engine.renderFinal(
           projectId,
           assets,
           undefined,
-          kit ? { logoKey: kit.logoKey, primaryColor: kit.primaryColor, outroText: kit.outroText } : undefined,
+          brand,
           { filmSec: durationSec, gate: masterGate(durationSec, profile.delivery), version, mix: profile.mix, delivery: profile.delivery },
         );
         mp4Key = out.mp4Key;

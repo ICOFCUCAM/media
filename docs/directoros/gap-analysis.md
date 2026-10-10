@@ -908,6 +908,19 @@ existing engines, migrations 0046–0047 live.
 - OPEN: lip-synced dubs; live conversation through an avatar; character
   animation beyond the mouth in storybook and motion comic.
 
+### W22 — Dubs as real masters (Part 3 §111, §117)
+
+**Done (docs/67, 2026-10-10; no migration).**
+
+- BUILT dubbed languages rendered by the film's own engine: the translated
+  voice in place of the original under the same music, ambience and effects,
+  through the same quality gate; a locked film's dub follows its frozen
+  timeline (DUB_MIX=0 keeps the old voice swap; a failed full mix falls back
+  to it and is recorded, DUB_MIX_FALLBACK).
+- BUILT lip-synced dubs: each dialogue shot lip-synced to the translated
+  line, read out of the dubbed scene track (LIP_SYNC=1).
+- OPEN: the live conversation loop (ASR + LLM + avatar, §111.3, §117.4).
+
 ---
 
 ## 9. Sequenced roadmap
@@ -940,6 +953,7 @@ approved models wait for docs/38 gates.
 | **S19 Previs and lock** | W19 rough voice + animatic previs, review-first default, lock → approved timeline → master | W8, W18 | S18 |
 | **S20 World and time state** | W20 film bible, story clock, weather and sun, shot record, structured end state | W2, W3 | S19 |
 | **S21 Lip sync and portraits** | W21 lip sync, frame interpolation, Character Card portraits | W7, W12, W17 | S20 |
+| **S22 Dubs as masters** | W22 full-mix, lip-synced dubbed masters | W7c, W21 | S21 |
 
 W11 hygiene items ride along with whichever stage touches the same files.
 
@@ -964,4 +978,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-487 IDs: 347 built, 45 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 347 (84%) are built; 45 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W21, 2026-10-09.)
+487 IDs: 351 built, 41 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 351 (85%) are built; 41 exist but need upgrading or changing; 21 must be built — all of them GPU/ComfyUI work gated on Phase 1. (Updated after W22, 2026-10-10.)

@@ -24,7 +24,8 @@ export interface LipSyncScene {
   sceneId: string;
   index: number;
   shots: { id: string; videoKey: string | null; durationSec: number; cutSec: number | null; size: string | null; subjectKeys: string[] }[];
-  lines: { id: string; characterId: string | null; audioKey: string | null; startMs: number | null }[];
+  /** offsetMs: where the line starts inside its audio file (a dub's scene track, W22); absent = the line's own file. */
+  lines: { id: string; characterId: string | null; audioKey: string | null; startMs: number | null; offsetMs?: number }[];
   /** Spoken length per line, from the scene's voice track cues. */
   lineMs: Record<string, number>;
 }
@@ -40,7 +41,10 @@ export function sceneLipSyncInputs(sc: LipSyncScene, framedOf: (keys: string[]) 
   }
   const lines: LipSyncLine[] = sc.lines
     .filter((l) => l.characterId && l.audioKey && l.startMs != null && sc.lineMs[l.id])
-    .map((l) => ({ lineId: l.id, characterId: l.characterId!, audioKey: l.audioKey!, startSec: l.startMs! / 1000, durSec: sc.lineMs[l.id]! / 1000 }));
+    .map((l) => ({
+      lineId: l.id, characterId: l.characterId!, audioKey: l.audioKey!, startSec: l.startMs! / 1000, durSec: sc.lineMs[l.id]! / 1000,
+      ...(l.offsetMs ? { audioOffsetSec: l.offsetMs / 1000 } : {}),
+    }));
   return { shots, lines };
 }
 

@@ -20,6 +20,8 @@ import { voiceTraits } from "@cineforge/voice-contracts";
 import { chosenVoiceId, NoVoiceEngineError, renderSceneVoice, sceneCues, translateSpeech, type SceneSpeech } from "../voice/film";
 import { sceneVoiceDeps } from "../voice/deps";
 import { ffmpeg, probeDuration } from "../ffmpeg/ffmpeg";
+import { dubMixEnabled, renderDubbedFilm } from "../localize/dub";
+import type { DubbedScene } from "../render/inputs";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 const storage = new S3Storage();
@@ -102,7 +104,7 @@ export const localizeWorker = new Worker<LocalizeJob>(
     const film = await prisma.film.findUnique({ where: { projectId } });
     let dubbed = 0;
     if (film) {
-      const locales = (film.locales as Record<string, { mp4?: string; voice?: string }> | null) ?? {};
+      const locales = (film.locales as Record<string, { mp4?: string; voice?: string; mixed?: boolean; lipSynced?: number }> | null) ?? {};
       const speech: SceneSpeech[] = scenes.map((s) => ({
         id: s.id, narration: s.narration, dialogue: s.dialogue, summary: s.summary,
         lines: s.dialogueLines.map((l) => ({ id: l.id, characterId: l.characterId, text: l.text, emotion: l.emotion })),
@@ -122,6 +124,7 @@ export const localizeWorker = new Worker<LocalizeJob>(
             try {
               const translated = await translateSpeech(speech, (texts) => translateLines(texts, lang, { projectId }));
               const tracks: string[] = [];
+              const dubbedScenes = new Map<string, DubbedScene>();
               const substituted = new Set<string>();
               for (const sp of translated) {
                 const dir = join(work, `${lang}-${sp.id}`);
@@ -137,6 +140,7 @@ export const localizeWorker = new Worker<LocalizeJob>(
                 }, sceneVoiceDeps(storage, { projectId }));
                 if (!out) continue;
                 tracks.push(out.trackPath);
+                dubbedScenes.set(sp.id, { trackKey: out.trackKey, cues: out.cues });
                 for (const x of out.substitutions) {
                   if (substituted.has(x.characterId)) continue;
                   substituted.add(x.characterId);
@@ -150,6 +154,24 @@ export const localizeWorker = new Worker<LocalizeJob>(
               await ffmpeg(concatAudioArgs(tracks, voicePath));
               const voiceKey = `projects/${projectId}/film/voice_${lang}.m4a`;
               await storage.upload(voicePath, voiceKey, "audio/mp4");
+              // The full dub (W22): the film rendered again with this language's voice under its
+              // music, ambience and effects, lip-synced with LIP_SYNC=1, through the same gate.
+              if (dubMixEnabled()) {
+                try {
+                  const d = await renderDubbedFilm(projectId, lang, dubbedScenes);
+                  gaps.push(...d.gaps);
+                  locales[lang] = { mp4: d.mp4Key, voice: voiceKey, mixed: true, lipSynced: d.lipSynced };
+                  await prisma.film.update({ where: { projectId }, data: { locales } });
+                  dubbed++;
+                  console.log(`[localize] dubbed ${projectId} -> ${lang} (full mix, ${d.lipSynced} lip-synced shots)`);
+                  continue;
+                } catch (e) {
+                  console.warn(`[localize] full dub ${lang} failed, falling back to the voice swap:`, e instanceof Error ? e.message : e);
+                  gaps.push(degradation("DUB_MIX_FALLBACK", "locale", `${languageName(lang)} dub: the full mix could not be rendered; this dub carries the translated voice only.`, {
+                    refId: lang, detail: { error: (e instanceof Error ? e.message : String(e)).slice(0, 300) },
+                  }));
+                }
+              }
               const out = join(work, `final_${lang}.mp4`);
               // Never cut the dubbed narration, and never cut the picture to a
               // shorter dub (docs/38 §AW.2). A real overrun skips this language
