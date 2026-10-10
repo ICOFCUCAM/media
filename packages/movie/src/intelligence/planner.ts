@@ -11,6 +11,7 @@ import { formatIssues, validateFilmPackage, type Issue, type ProductionConstrain
 import { PROMPTS, renderPlanRequest, renderRevisionRequest, type PlanProduction } from "./prompts";
 import type { IntelligenceRouter } from "./router";
 import { applyCast } from "./cast";
+import { clampStrings } from "./schema-compat";
 
 export class PlanInvalidError extends Error {
   constructor(readonly issues: Issue[]) {
@@ -58,7 +59,9 @@ export async function planFilm(
     },
     ctx,
   );
-  const v1 = validateFilmPackage(first.output, constraints);
+  // Text a little over its length limit is trimmed, not failed (unconstrained output can overrun).
+  const draft = clampStrings(first.output, schema);
+  const v1 = validateFilmPackage(draft, constraints);
   // A cast character's identity is CineForge's, not the model's (W12): restored after validation.
   const cast = ctx.production?.cast ?? [];
   if (v1.ok) return { pkg: applyCast(v1.pkg, cast), revised: false, fixedIssues: [], provider: first.provider, model: first.model };
@@ -66,13 +69,13 @@ export async function planFilm(
   const second = await router.call(
     {
       task: "film_plan_revision", promptId: PROMPTS.directorRevision.id, promptVersion: PROMPTS.directorRevision.version,
-      system: PROMPTS.directorRevision.system, user: renderRevisionRequest(first.output, formatIssues(v1.issues)),
+      system: PROMPTS.directorRevision.system, user: renderRevisionRequest(draft, formatIssues(v1.issues)),
       schema, schemaName: "FilmPackage", maxTokens, effort: "high",
-      summarize: (o) => `Revised the plan to fix ${v1.issues.length} issue(s) (${[...new Set(v1.issues.map((i) => i.code))].slice(0, 6).join(", ")}). ${summarizePlan(o) ?? ""}`,
+      summarize: (o) => `Revised the plan to fix ${v1.issues.length} issue(s): ${v1.issues.slice(0, 4).map((i) => `${i.code} ${i.path}: ${i.message}`).join("; ")}. ${summarizePlan(o) ?? ""}`,
     },
     ctx,
   );
-  const v2 = validateFilmPackage(second.output, constraints);
+  const v2 = validateFilmPackage(clampStrings(second.output, schema), constraints);
   if (!v2.ok) throw new PlanInvalidError(v2.issues);
   return { pkg: applyCast(v2.pkg, cast), revised: true, fixedIssues: v1.issues, provider: second.provider, model: second.model };
 }
