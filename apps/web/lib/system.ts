@@ -20,9 +20,12 @@ export interface ModelInfo {
 export const MODELS: ModelInfo[] = [
   // msPer720Shot must track REAL inference time: the worker pauses a project
   // when GPU spend exceeds estimate × 1.25, so a low-ball here strands films
-  // mid-generation. Measured: Wan on the A40 ≈ 40–80s/shot (14B much more);
-  // Cinematic (fal.ai frontier models) ≈ 1–3 wall-minutes/shot, run in parallel.
-  { id: "wan-2.1", name: "Wan 2.1 · own GPU", klass: "primary", tiers: ["FREE", "CREATOR", "STUDIO", "AGENCY", "ENTERPRISE"], msPer720Shot: 80_000 },
+  // mid-generation. Measured: Wan 2.1 1.3B on an L4 with full-length shots
+  // (WAN_MAX_FRAMES=81, 5 s at 16 fps, 20 steps) ≈ 330 s/shot (it was ≈ 73 s
+  // at the old 25-frame cap, ~1.6 s clips); a 15 s advert paused after two
+  // shots against the old 80 s figure. Cinematic (fal.ai frontier models)
+  // ≈ 1–3 wall-minutes/shot, run in parallel.
+  { id: "wan-2.1", name: "Wan 2.1 · own GPU", klass: "primary", tiers: ["FREE", "CREATOR", "STUDIO", "AGENCY", "ENTERPRISE"], msPer720Shot: 330_000 },
   { id: "cinematic", name: "Kling 2.1 · fal.ai", klass: "premium", tiers: ["STUDIO", "AGENCY", "ENTERPRISE"], msPer720Shot: 180_000 },
 ];
 
