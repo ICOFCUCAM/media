@@ -37,6 +37,13 @@ export interface GpuManagers {
   tracker: ActiveJobTracker;
 }
 
+/** Wan 2.1 and Wan 2.2 are configured on the same pod (same pod id or address). */
+export function sharesWan22Pod(env: Pick<GpuEnv, "WAN_GPU_URL" | "WAN22_GPU_URL" | "RUNPOD_WAN_POD_ID" | "RUNPOD_WAN22_POD_ID">): boolean {
+  if (!env.WAN22_GPU_URL) return false;
+  if (env.RUNPOD_WAN_POD_ID && env.RUNPOD_WAN_POD_ID === env.RUNPOD_WAN22_POD_ID) return true;
+  return !!env.WAN_GPU_URL && env.WAN_GPU_URL.replace(/\/+$/, "") === env.WAN22_GPU_URL.replace(/\/+$/, "");
+}
+
 export function createGpuManagers(env: GpuEnv): GpuManagers {
   const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
   // Without an 'error' listener, ioredis turns a transient Redis blip (e.g. the
@@ -49,7 +56,27 @@ export function createGpuManagers(env: GpuEnv): GpuManagers {
 
   const byModel = new Map<string, GpuLifecycleManager>();
 
-  byModel.set(
+  let wan22: GpuLifecycleManager | undefined;
+  if (env.WAN22_GPU_URL) {
+    wan22 = new GpuLifecycleManager(
+      redis,
+      tracker,
+      new RunpodControlClient({
+        apiKey: env.RUNPOD_API_KEY,
+        podId: env.RUNPOD_WAN22_POD_ID,
+        endpointId: env.RUNPOD_WAN22_ENDPOINT_ID,
+        healthUrl: `${env.WAN22_GPU_URL}/livez`,
+      }),
+      { pool: "wan-2.2", graceMs, reconcileMs },
+    );
+    byModel.set("wan-2.2", wan22);
+  }
+
+  // One pod switched from Wan 2.1 to Wan 2.2 (docs/75) is one machine: both
+  // pools share its manager, so the idle 2.1 pool never stops the pod while
+  // 2.2 shots run on it.
+  if (wan22 && sharesWan22Pod(env)) byModel.set("wan-2.1", wan22);
+  else byModel.set(
     "wan-2.1",
     new GpuLifecycleManager(
       redis,
@@ -78,23 +105,6 @@ export function createGpuManagers(env: GpuEnv): GpuManagers {
       { pool: "hunyuan", graceMs, reconcileMs },
     ),
   );
-
-  if (env.WAN22_GPU_URL) {
-    byModel.set(
-      "wan-2.2",
-      new GpuLifecycleManager(
-        redis,
-        tracker,
-        new RunpodControlClient({
-          apiKey: env.RUNPOD_API_KEY,
-          podId: env.RUNPOD_WAN22_POD_ID,
-          endpointId: env.RUNPOD_WAN22_ENDPOINT_ID,
-          healthUrl: `${env.WAN22_GPU_URL}/livez`,
-        }),
-        { pool: "wan-2.2", graceMs, reconcileMs },
-      ),
-    );
-  }
 
   return { byModel, redis, tracker };
 }
