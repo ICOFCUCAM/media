@@ -1,0 +1,17 @@
+# Applied to every pip install in the image (pip install -c constraints.txt), so
+# ComfyUI's open requirement ranges cannot float to whatever is newest on the
+# day of the build. The rest of the resolved set is recorded in
+# /app/pip-freeze.txt at build time and reported by /capabilities
+# (dependencies.freezeSha256); the image digest pins it from then on.
+torch==2.8.0
+torchvision==0.23.0
+torchaudio==2.8.0
+transformers==4.56.2
+huggingface_hub==0.35.3
+safetensors==0.6.2
+tokenizers==0.22.1
+numpy==2.2.6
+pydantic==2.7.0
+fastapi==0.111.0
+uvicorn==0.30.0
+PyJWT==2.9.0

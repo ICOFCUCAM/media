@@ -1,0 +1,9 @@
+# CineForge sidecar (the only listener on the container network). Same pins as
+# apps/gpu-worker so the shared gateway code runs on the same stack.
+fastapi==0.111.0
+uvicorn[standard]==0.30.0
+pydantic==2.7.0
+# Media Runtime Gateway: Ed25519 (EdDSA) execution-token verification (docs/39).
+PyJWT[crypto]==2.9.0
+# Pinned model downloads (repo + 40-hex revision + file), docs/73 §2.
+huggingface_hub==0.35.3
