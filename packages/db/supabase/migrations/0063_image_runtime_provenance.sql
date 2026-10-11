@@ -1,4 +1,4 @@
--- Cineforge — schema part 64: provenance of stills drawn by CineForge's own
+-- Cineforge — schema part 63: provenance of stills drawn by CineForge's own
 -- image runtime (ComfyUI behind the Media Runtime Gateway; docs/73,
 -- docs/38 §AT.8 step 6, §AT.12).
 --

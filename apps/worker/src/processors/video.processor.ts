@@ -465,7 +465,10 @@ async function seedPrompt(shot: ShotWithScene): Promise<string> {
   if (!pkg || !scene?.shots.some((s) => s.index === shot.index)) return shot.prompt;
   // The still is drawn in the production's animation style, if it has one (W11).
   const render = renderStyleFor(productionOf(shot.scene.project));
-  return compileFor("openai-image", compileGeneration(pkg, scene.id, shot.index, undefined, { render })).prompt;
+  // Compiled for the image runtime that draws first: the self-hosted ComfyUI runtime (docs/73) when it leads IMAGE_PROVIDERS.
+  const first = (process.env.IMAGE_PROVIDERS ?? "").split(",")[0]?.trim();
+  const profile = first === "comfyui" && process.env.COMFYUI_GPU_URL ? "comfyui-qwen-image" : "openai-image";
+  return compileFor(profile, compileGeneration(pkg, scene.id, shot.index, undefined, { render })).prompt;
 }
 
 /**

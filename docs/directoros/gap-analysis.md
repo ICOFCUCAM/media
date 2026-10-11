@@ -954,6 +954,33 @@ The open items the workstream docs carried and that need no gated runtime:
 - OPEN: Ads billing (A4) waits for measured costs; everything else open is
   gated on Phase 1 (ComfyUI, self-hosted voice).
 
+### W28–W30 — CineForge's own engines: Wan 2.2 video, ComfyUI images, self-hosted voice
+
+**Done in code (docs/75, docs/73, docs/74, 2026-10-11; migration 0063).**
+The owner lifted the Phase 1 gate for these three runtimes. All three run
+behind the same Media Runtime Gateway (Ed25519 grants, pinned digests and
+revisions, presigned I/O, report then enforce). None has run on a real GPU
+yet; each needs its pod set up by the owner.
+
+- BUILT Wan 2.2 (TI2V-5B, Apache-2.0) in the GPU service: 1280×704 at 24 fps,
+  up to 121 frames, image-to-video from the approved still; optional A14B
+  image-to-video on an 80 GB GPU; `VIDEO_PRIMARY_MODEL=wan-2.2` routes Wan
+  shots to it; its own pod pool (docs/75).
+- BUILT the ComfyUI image runtime (`apps/gpu-image`): ComfyUI at a pinned
+  commit with Qwen-Image and Qwen-Image-Edit-2511, a versioned workflow
+  registry (no user graphs), `image:run` grants, workflow provenance in
+  `image_generations` (0063), the `comfyui-qwen-image` compiler profile for
+  seed stills (docs/73).
+- BUILT the self-hosted Voice Engine (`apps/gpu-voice`): Qwen3-TTS, CosyVoice
+  3 and GPT-SoVITS, one engine per pod, enroll / speak / batch / similarity /
+  evict, voice authorization bound by content hash, worker adapters, licence
+  gating (GPT-SoVITS needs a legal review; Fish Speech and F5-TTS blocked as
+  non-commercial), `voice:bench --evaluate --enroll` with similarity and VRAM
+  (docs/74).
+- OPEN: first runs on GPUs (owner pod setup), image LoRAs, Wan 2.2 LoRAs,
+  enrollment transcripts, emotion control and streaming for self-hosted
+  voices, several takes per shot.
+
 ---
 
 ## 9. Sequenced roadmap
@@ -989,6 +1016,7 @@ approved models wait for docs/38 gates.
 | **S22 Dubs as masters** | W22 full-mix, lip-synced dubbed masters | W7c, W21 | S21 |
 | **S23–S26** | W23–W26 hardening, story state, scene revisions, seasons and talk | W22 | — |
 | **S27 Repairs and owner edits** | W27 repair engine, cut edges, fitted score, voice erasure, bible and change-form edits, blocking, Ads A2/A3/A5 | W18, W8b, W9 | — |
+| **S28 Own engines** | W28 Wan 2.2, W29 ComfyUI image runtime, W30 self-hosted voice | owner lifted the Phase 1 gate (2026-10-11) | — |
 
 W11 hygiene items ride along with whichever stage touches the same files.
 
@@ -1013,4 +1041,4 @@ W11 hygiene items ride along with whichever stage touches the same files.
 
 Generated from [requirements-index.md](requirements-index.md):
 
-487 IDs: 374 built, 18 shallow, 0 poorly built, 21 not built, 74 n/a. Of the 413 IDs that are requirements, 374 (91%) are built; the 18 shallow and 21 not built are all gated on Phase 1 (ComfyUI, the self-hosted voice engine and its GPU worker). (Updated after W27, 2026-10-10.)
+487 IDs: 413 built, 0 shallow, 0 poorly built, 0 not built, 74 n/a. All 413 requirements are built in code. The ComfyUI image runtime and the self-hosted voice engines (W29, W30) are built and tested but have not yet run on a real GPU; that waits on the owner's pod setup (docs/73, docs/74). (Updated after W28–W30, 2026-10-11.)

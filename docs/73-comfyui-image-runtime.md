@@ -1,7 +1,7 @@
 # 73 — CineForge's own image runtime: ComfyUI on a GPU (W29)
 
 **Status:** implemented in code (2026-10-11), not yet deployed. Migration
-`0064` is **not applied**. The Docker image has **not been built yet**: this
+`0063` is applied (2026-10-11). The Docker image has **not been built yet**: this
 work was done where Docker, a GPU and Hugging Face were not available.
 
 **Builds on:**
@@ -434,8 +434,8 @@ then fall back to the next provider.
   by the real TypeScript authority. It covers register → approve → enforce →
   signed still → one-time write → read-back verification, and the
   `AUTHZ_MISMATCH` refusals.
-- **Migration 0064**, validated on a scratch Postgres with all migrations
-  0026–0062 and 0064.
+- **Migration 0063**, validated on a scratch Postgres with all migrations
+  0026–0063.
 
 **Not verified in this environment:**
 
@@ -463,12 +463,10 @@ then fall back to the next provider.
 - **LoRAs.** The slot exists and is verified by hash, but CineForge's
   character LoRAs are Wan *video* LoRAs and do not fit Qwen-Image. The worker
   never sends one. Image LoRA training is future work.
-- **The seed-still prompt** is still compiled with the `openai-image` profile:
-  the shot processor chooses it, and that file was frozen for this work. The
-  `comfyui-qwen-image` compiler profile exists (it has a still negative
-  prompt and a 2,000-character budget). Switching the seed prompt to it is a
-  one-line change in `video.processor.ts`. The provider sends the same still
-  negative prompt either way.
+- **The seed-still prompt** is compiled with the `comfyui-qwen-image`
+  profile (still negative prompt, 2,000-character budget) when `comfyui`
+  leads `IMAGE_PROVIDERS` and `COMFYUI_GPU_URL` is set; otherwise with
+  `openai-image`. A fallback provider receives the same prompt.
 - **References:** at most 3 (the node takes `image1..image3`). Extra ones are
   reported in `referenceGap`. If the reference workflow fails, the still is
   drawn from text and the reason is kept. A gateway refusal is never retried
@@ -482,9 +480,9 @@ then fall back to the next provider.
   worker has already authorized.
 - **Metering** counts images (as for fal and OpenAI). The GPU time is recorded
   on the grant (`gpu_ms`) but not billed separately yet.
-- **Generated database types** (`packages/db/supabase/types.ts`,
-  `apps/web/lib/database.types.ts`) are regenerated after 0064 is applied
-  live, as usual.
+- **Generated database types:** `packages/db/supabase/types.ts` was
+  regenerated after 0063 was applied; the web app's focused types do not read
+  these columns.
 - **The ComfyUI licence:** GPL-3.0. Running it as a service does not
   distribute it. Shipping the image to a customer would (docs/38 §AT.15).
 
@@ -498,4 +496,4 @@ then fall back to the next provider.
 | Worker side | `packages/model-adapters/src/gateway/image-authority.ts`, `src/comfyui/image-client.ts`, `apps/worker/src/images/comfyui.ts`, `providers.ts`, `ledger.ts`, `gateway/index.ts`, `truth/capabilities.ts`, `main.ts`, `acceptance/probes.ts` |
 | Registry and UI | `packages/shared/src/truth/capabilities.ts`, `apps/web/lib/{truth,system}.ts` |
 | Prompt | `packages/movie/src/prompt/compilers.ts` (`comfyui-qwen-image`, `STILL_NEGATIVE`) |
-| Data | `packages/db/supabase/migrations/0064_image_runtime_provenance.sql` + test; Prisma `ImageGeneration` fields |
+| Data | `packages/db/supabase/migrations/0063_image_runtime_provenance.sql` + test; Prisma `ImageGeneration` fields |

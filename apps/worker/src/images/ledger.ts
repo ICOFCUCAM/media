@@ -34,8 +34,8 @@ export function imageGenerationRow(
     storageKey: img.key, sha256: img.sha256, canonDigest: extra.canonDigest ?? null,
     candidate: purpose === "seed_candidate" ? (extra.candidate ?? 0) : null,
     chosen: purpose === "seed_candidate" ? (extra.chosen ?? false) : null,
-    // Self-hosted runtime (docs/73; migration 0064): which registry workflow drew it, on which runtime.
-    // Only set when present, so rows from other providers do not depend on 0064 being applied.
+    // Self-hosted runtime (docs/73; migration 0063): which registry workflow drew it, on which runtime.
+    // Only set when present, so rows from other providers do not depend on 0063 being applied.
     ...(img.workflow ? { workflowId: img.workflow.id, workflowVersion: img.workflow.version, workflowSha256: img.workflow.sha256 } : {}),
     ...(img.runtime ? { runtime: img.runtime.slice(0, 128) } : {}),
   };
@@ -48,9 +48,9 @@ export async function recordImageGeneration(db: ImageLedgerDb, row: Record<strin
     return "recorded";
   } catch (e) {
     if (isMissingTable(e)) { tableMissing = true; return "skipped"; }
-    // Migration 0064 not applied yet: keep the still on record without its workflow columns (logged).
+    // Migration 0063 not applied yet: keep the still on record without its workflow columns (logged).
     if (WORKFLOW_FIELDS.some((f) => f in row) && /P2022|column|Unknown arg/i.test(e instanceof Error ? e.message : String(e))) {
-      console.warn(JSON.stringify({ event: "image.ledger", subject: row.subject, note: "workflow columns missing (0064); recorded without them" }));
+      console.warn(JSON.stringify({ event: "image.ledger", subject: row.subject, note: "workflow columns missing (0063); recorded without them" }));
       return recordImageGeneration(db, Object.fromEntries(Object.entries(row).filter(([k]) => !WORKFLOW_FIELDS.includes(k))));
     }
     console.warn(JSON.stringify({ event: "image.ledger", subject: row.subject, error: e instanceof Error ? e.message : String(e) }));
