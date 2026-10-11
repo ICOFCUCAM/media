@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CinemaArt, type Scene } from "../cf/CinemaArt";
-import { listShowcase, publicUrl, type ShowcaseRow } from "../../lib/showcase";
+import { arrangeReel, listShowcase, publicUrl, type ShowcaseRow } from "../../lib/showcase";
 
 /** Placeholder frames shown until admins feature real films. */
 const PLACEHOLDERS: { title: string; tag: string; scene: Scene; quality: string; progress: number }[] = [
@@ -16,21 +16,25 @@ const PLACEHOLDERS: { title: string; tag: string; scene: Scene; quality: string;
 
 /**
  * Showreel grid — admin-featured films from the public showcase bucket,
- * playable by anonymous visitors (hover to play, tap on mobile). Real films
- * fill the first frames; placeholders keep the six-frame grid complete.
+ * playable by anonymous visitors (hover to play, tap on mobile). A film
+ * featured for a frame (/admin/showcase) replaces that frame's placeholder;
+ * films featured without a frame fill the empty frames; placeholders keep
+ * the six-frame grid complete.
  */
 export function HomeShowreel({ stills = [] }: { stills?: (string | undefined)[] }) {
   const [rows, setRows] = useState<ShowcaseRow[]>([]);
 
   useEffect(() => {
-    void listShowcase(6).then(setRows);
+    void listShowcase(20).then(setRows);
   }, []);
 
-  const fill = PLACEHOLDERS.map((p, i) => ({ ...p, still: stills[i] })).slice(rows.length);
+  const frames = arrangeReel(rows);
 
   return (
     <div className="reel-grid reveal">
-      {rows.map((r) => (
+      {frames.map((r, i) => {
+        const p = { ...PLACEHOLDERS[i]!, still: stills[i] };
+        return r ? (
         <div key={r.id} className="reel">
           <video
             src={publicUrl(r.video_path)}
@@ -49,8 +53,7 @@ export function HomeShowreel({ stills = [] }: { stills?: (string | undefined)[] 
             <span>{r.tag}</span>
           </div>
         </div>
-      ))}
-      {fill.map((p) => (
+        ) : (
         <div key={p.title} className="reel">
           {p.still ? (
             /* Plain <img>: a generated example still from public/frames. */
@@ -70,7 +73,8 @@ export function HomeShowreel({ stills = [] }: { stills?: (string | undefined)[] 
             <span>{p.tag}</span>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -114,6 +114,7 @@ export function SuperView() {
                 <Link href="/admin/users" className="cf-btn-line">Users &amp; credits</Link>
                 <Link href="/admin/moderation" className="cf-btn-line">Moderation</Link>
                 <Link href="/admin/gateway" className="cf-btn-line">GPU gateway</Link>
+                <Link href="/admin/showcase" className="cf-btn-line">Homepage films</Link>
               </div>
             </Section>
           </>

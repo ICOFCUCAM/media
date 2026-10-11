@@ -122,6 +122,7 @@ export interface Database {
           progress?: number;
           spent_ms?: number;
           error_message?: string | null;
+          showcase_slot?: string | null;
         };
         Relationships: [];
       };
@@ -287,8 +288,8 @@ export interface Database {
         Relationships: [];
       };
       showcase: {
-        Row: { id: string; project_id: string | null; title: string; tag: string; video_path: string; created_at: string };
-        Insert: { project_id?: string | null; title: string; tag?: string; video_path: string };
+        Row: { id: string; project_id: string | null; title: string; tag: string; video_path: string; slot: string | null; created_at: string };
+        Insert: { project_id?: string | null; title: string; tag?: string; video_path: string; slot?: string | null };
         Update: { title?: string; tag?: string };
         Relationships: [];
       };

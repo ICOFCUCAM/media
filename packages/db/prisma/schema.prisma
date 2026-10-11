@@ -141,6 +141,11 @@ model Project {
 
   /// Ads Studio (0060; docs/47): the advertiser's page and its source facts (url, title, brand, fetchedAt, facts[]).
   adSource Json? @map("ad_source")
+  /// A complete Film IR package written outside the Director (docs/76; 0064): validated like a Director plan, used instead of calling it.
+  suppliedPlan   Json?   @map("supplied_plan")
+  suppliedPlanBy String? @map("supplied_plan_by")
+  /// The homepage slot this film is made for (hero, work-1 … work-6); admin-only, replaced from /admin/showcase.
+  showcaseSlot   String? @map("showcase_slot")
 
   @@index([userId, status])
   @@map("projects")
