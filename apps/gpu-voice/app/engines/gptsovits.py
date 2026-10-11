@@ -90,8 +90,8 @@ class GptSovitsBackend(VoiceBackend):
         return {"mode": "prompted" if text else "reference_free", "transcriptUsed": text is not None,
                 "referenceSec": round(dur, 3), "promptText": text or "", "promptLang": language}
 
-    def _prepare_real(self, artifact_path, artifact_sha256):
-        return {"path": artifact_path}
+    def _prepare_real(self, artifact_path, artifact_sha256, metadata):
+        return {"path": artifact_path, "meta": metadata}
 
     def _synthesize_real(self, voice, texts, language, style: Style, out_paths) -> None:
         import numpy as np  # noqa: PLC0415

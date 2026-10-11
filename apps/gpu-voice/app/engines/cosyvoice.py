@@ -76,7 +76,7 @@ class CosyVoiceBackend(VoiceBackend):
         save_file(tensors, out_path, metadata={"format": ARTIFACT_FORMAT, "mode": mode})
         return {"mode": mode, "transcriptUsed": text is not None, "referenceSec": round(dur, 3), "format": ARTIFACT_FORMAT}
 
-    def _prepare_real(self, artifact_path, artifact_sha256):
+    def _prepare_real(self, artifact_path, artifact_sha256, metadata):
         from safetensors import safe_open  # noqa: PLC0415
         from safetensors.torch import load_file  # noqa: PLC0415
 

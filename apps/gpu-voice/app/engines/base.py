@@ -247,7 +247,7 @@ class VoiceBackend:
             return {"mode": "placeholder", "transcriptUsed": bool(reference_text)}
         return self._enroll_real(reference_path, reference_text, lang, out_path)
 
-    def prepare_voice(self, artifact_path: str, artifact_sha256: str):
+    def prepare_voice(self, artifact_path: str, artifact_sha256: str, metadata: dict | None = None):
         """Load a stored artifact into whatever the model consumes (cached by the server)."""
         self._require_ready()
         if not self._real:
@@ -256,7 +256,7 @@ class VoiceBackend:
             if not doc.get("placeholder"):
                 raise EngineError("ARTIFACT_MODE_MISMATCH", "a real artifact cannot be read in placeholder mode")
             return doc
-        return self._prepare_real(artifact_path, artifact_sha256)
+        return self._prepare_real(artifact_path, artifact_sha256, metadata or {})
 
     def release_voice(self, prepared) -> None:  # noqa: B027 — optional hook
         """Free anything a prepared voice holds on the GPU side (evicted from the cache)."""
@@ -303,7 +303,7 @@ class VoiceBackend:
     def _enroll_real(self, reference_path: str, reference_text: str | None, language: str, out_path: str) -> dict:
         raise NotImplementedError
 
-    def _prepare_real(self, artifact_path: str, artifact_sha256: str):
+    def _prepare_real(self, artifact_path: str, artifact_sha256: str, metadata: dict):
         raise NotImplementedError
 
     def _synthesize_real(self, voice, texts: list[str], language: str, style: Style, out_paths: list[str]) -> None:

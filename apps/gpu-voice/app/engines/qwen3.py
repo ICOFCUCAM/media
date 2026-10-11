@@ -83,7 +83,7 @@ class Qwen3Backend(VoiceBackend):
         return {"mode": "icl" if it.icl_mode else "x_vector_only", "transcriptUsed": text is not None,
                 "referenceSec": round(dur, 3), "format": ARTIFACT_FORMAT}
 
-    def _prepare_real(self, artifact_path, artifact_sha256):
+    def _prepare_real(self, artifact_path, artifact_sha256, metadata):
         from qwen_tts.inference.qwen3_tts_model import VoiceClonePromptItem  # noqa: PLC0415
         from safetensors import safe_open  # noqa: PLC0415
         from safetensors.torch import load_file  # noqa: PLC0415
