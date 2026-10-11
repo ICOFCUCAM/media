@@ -3,6 +3,7 @@ import { RunpodClient } from "./runpod-client";
 import type { GpuCallAuthorizer } from "./gateway/authority";
 import { WanAdapter } from "./wan/wan.adapter";
 import { HunyuanAdapter } from "./hunyuan/hunyuan.adapter";
+import { Wan22Adapter } from "./wan/wan22.adapter";
 import { ExternalApiAdapter } from "./external/external.adapter";
 import { FalAdapter } from "./fal-adapter";
 
@@ -67,6 +68,9 @@ export interface BuildClusterEnv {
   WAN_GPU_URL?: string;
   HUNYUAN_GPU_URLS?: string;
   HUNYUAN_GPU_URL?: string;
+  /** Wan 2.2 GPU workers (W28): the same service with MODEL_NAME=wan-2.2. */
+  WAN22_GPU_URLS?: string;
+  WAN22_GPU_URL?: string;
   /** @deprecated Never sent to GPU pods (docs/39 F2); only the RunPod control API uses it. */
   RUNPOD_API_KEY?: string;
   /** Drop-in external provider (text/image-to-video). Keyless models stay self-hosted. */
@@ -115,11 +119,17 @@ export function buildClusterRegistry(env: BuildClusterEnv, hooks: ExternalHooks 
 
   const wanUrls = urlsOf(env.WAN_GPU_URLS, env.WAN_GPU_URL);
   const hunyuanUrls = urlsOf(env.HUNYUAN_GPU_URLS, env.HUNYUAN_GPU_URL);
+  const wan22Urls = urlsOf(env.WAN22_GPU_URLS, env.WAN22_GPU_URL);
 
   const registry = new ModelRegistry();
   if (wanUrls.length) {
     registry.register(
       new WanAdapter(new RunpodClient({ resolveBaseUrl: roundRobin(wanUrls), authorizer: hooks.gpuAuthorizer })),
+    );
+  }
+  if (wan22Urls.length) {
+    registry.register(
+      new Wan22Adapter(new RunpodClient({ resolveBaseUrl: roundRobin(wan22Urls), authorizer: hooks.gpuAuthorizer })),
     );
   }
   if (hunyuanUrls.length) {

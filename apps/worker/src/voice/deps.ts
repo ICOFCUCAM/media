@@ -25,7 +25,7 @@ export function sceneVoiceDeps(storage: S3Storage, ctx: MeterContext): SceneVoic
     }),
     artifact: async (voiceId, engineId, engineVersion) => {
       const a = await prisma.voiceEngineArtifact.findUnique({ where: { voiceId_engineId_engineVersion: { voiceId, engineId, engineVersion } } });
-      return a && ({ artifactType: a.artifactType, uri: a.artifactUri } as VoiceEngineArtifact);
+      return a && ({ artifactType: a.artifactType, uri: a.artifactUri, metadata: a.metadata as Record<string, unknown> } as VoiceEngineArtifact);
     },
     master: masterSegment,
     join: joinSegments,

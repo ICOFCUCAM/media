@@ -5,6 +5,7 @@ export * from "./policy";
 export * from "./registry";
 export { WanAdapter } from "./wan/wan.adapter";
 export { HunyuanAdapter } from "./hunyuan/hunyuan.adapter";
+export { Wan22Adapter } from "./wan/wan22.adapter";
 export { ExternalApiAdapter } from "./external/external.adapter";
 export { FalAdapter, falUploadBytes, falRunQueue, falFindUrl } from "./fal-adapter";
 export type { ExternalAdapterOptions } from "./external/external.adapter";
@@ -35,3 +36,6 @@ export { YouTubePublisher, TikTokPublisher, InstagramPublisher, FacebookPublishe
 export type { Publisher, PublishInput, PublishResult, PublishStatus, PublishEnv } from "./publish/publish";
 export * from "./gateway";
 export * from "./runtime";
+// Self-hosted ComfyUI image runtime (apps/gpu-image; docs/73).
+export * from "./gateway/image-authority";
+export * from "./comfyui/image-client";

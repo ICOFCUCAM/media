@@ -1,0 +1,12 @@
+# Build context = repository root; send only what the image runtime copies.
+*
+!apps/gpu-image/constraints.txt
+!apps/gpu-image/requirements.txt
+!apps/gpu-image/workflows/**
+!apps/gpu-image/scripts/**
+!apps/gpu-image/app/**
+!apps/gpu-worker/app/gateway/**
+!apps/gpu-worker/app/media_io.py
+!apps/gpu-worker/app/code_digest.py
+**/__pycache__
+**/*.pyc

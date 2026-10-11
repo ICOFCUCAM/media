@@ -10,10 +10,13 @@
  *             script: word error rate), generation speed (real-time factor),
  *             long-form consistency (loudness and pace across the segments of
  *             one script), licensing (the licence registry).
- *             Voice similarity, naturalness and VRAM are reported as NOT
- *             MEASURED until something can measure them honestly: similarity
- *             needs a speaker-embedding model (self-hosted, Phase 1),
- *             naturalness needs listeners, VRAM needs a self-hosted engine.
+ *             Voice similarity (docs/74): cosine similarity of speaker
+ *             embeddings of each spoken segment to the owner's reference
+ *             recording, measured by ONE scorer for every engine
+ *             (VOICE_SIMILARITY_ENGINE, a self-hosted deployment's speaker
+ *             encoder) — reported as not measured without one.
+ *             VRAM: peak reported by a self-hosted engine. Naturalness needs
+ *             listeners and stays NOT MEASURED.
  *
  * The texts are original, written for this benchmark.
  */
@@ -135,12 +138,16 @@ export interface BenchCaseResult {
   wer?: number | null;
   loudnessSpreadLu?: number | null;
   paceCv?: number | null;
+  /** Median speaker-embedding cosine similarity to the reference (null: not measured). */
+  voiceSimilarity?: number | null;
+  /** Peak GPU memory a self-hosted engine reported (MB). */
+  vramPeakMb?: number | null;
 }
 
 export const NOT_MEASURED = {
-  voiceSimilarity: "not measured — needs a speaker-embedding model (self-hosted, waits on Phase 1)",
+  voiceSimilarity: "not measured — set VOICE_SIMILARITY_ENGINE to a configured self-hosted engine with a speaker encoder (qwen3-tts or cosyvoice-3) and run with --voice",
   naturalness: "not measured — needs listener ratings",
-  vram: "not applicable to cloud engines; reported by a self-hosted engine once one runs",
+  vram: "not applicable to cloud engines; reported per case by self-hosted engines (vramPeakMb)",
 } as const;
 
 /** One engine's summary over every script (medians, so one bad case does not hide the rest). */
@@ -157,5 +164,7 @@ export function summarizeEngine(results: BenchCaseResult[]): Record<string, numb
     medianRealTimeFactor: median(ok.map((r) => r.realTimeFactor)),
     medianLoudnessSpreadLu: median(ok.map((r) => r.loudnessSpreadLu)),
     medianPaceCv: median(ok.map((r) => r.paceCv)),
+    medianVoiceSimilarity: median(ok.map((r) => r.voiceSimilarity)),
+    maxVramPeakMb: ok.reduce<number | null>((m, r) => (typeof r.vramPeakMb === "number" ? Math.max(m ?? 0, r.vramPeakMb) : m), null),
   };
 }

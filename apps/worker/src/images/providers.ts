@@ -15,13 +15,17 @@
  *   fal      a hosted text-to-image model on fal (FAL_IMAGE_MODEL, default
  *            Flux dev). Configured with FAL_KEY and storage. Takes a seed, so a
  *            still can be drawn again exactly.
- *   comfyui  self-hosted ComfyUI workflows (docs/38 Phases 6–8). GATED: no
- *            ComfyUI or model work until Phase 1 (GPU execution security,
- *            docs/39) is operationally complete — listed so the registry and
- *            the Capability Registry say so, never silently skipped.
+ *   comfyui  CineForge's own image runtime: ComfyUI on a GPU behind the Media
+ *            Runtime Gateway (apps/gpu-image; docs/73). Registry workflows on
+ *            Qwen-Image / Qwen-Image-Edit-2511 (Apache-2.0). Takes a seed and
+ *            up to three reference images. Configured with COMFYUI_GPU_URL,
+ *            GPU_JWT_SIGNING_KEY and storage; off unless IMAGE_PROVIDERS names
+ *            it (e.g. IMAGE_PROVIDERS=comfyui,fal,openai). See ./comfyui.ts.
  */
 import { createHash } from "node:crypto";
 import { buildOpenAIProviders, falFindUrl, falRunQueue } from "@cineforge/model-adapters";
+
+import { comfyImageProvider, comfyuiStatus, type ComfyRunner } from "./comfyui";
 
 export interface GeneratedImage {
   key: string;
@@ -38,6 +42,10 @@ export interface GeneratedImage {
   referencesUsed?: number;
   /** Why references that were asked for were not used. */
   referenceGap?: string;
+  /** Self-hosted runtime only (comfyui): the registry workflow that drew it, with its graph hash. */
+  workflow?: { id: string; version: number; sha256: string };
+  /** Self-hosted runtime only: the runtime and its version, e.g. comfyui@<commit>. */
+  runtime?: string;
 }
 
 export interface ImageProvider {
@@ -99,7 +107,7 @@ const defaultFalDeps = (key: string): FalImageDeps => ({
   },
 });
 
-const KNOWN: Record<string, (env: Env, put: Put, fal?: FalImageDeps) => { status: ImageProviderStatus; provider: ImageProvider | null }> = {
+const KNOWN: Record<string, (env: Env, put: Put, fal?: FalImageDeps, comfy?: ComfyRunner) => { status: ImageProviderStatus; provider: ImageProvider | null }> = {
   openai: (env, rawPut) => {
     const configured = Boolean(env.OPENAI_API_KEY && env.S3_BUCKET);
     const model = env.OPENAI_IMAGE_MODEL ?? "gpt-image-1";
@@ -161,10 +169,11 @@ const KNOWN: Record<string, (env: Env, put: Put, fal?: FalImageDeps) => { status
         : null,
     };
   },
-  comfyui: () => ({
-    status: { id: "comfyui", configured: false, gated: "ComfyUI runtime waits on Phase 1 (docs/39) being operationally complete" },
-    provider: null,
-  }),
+  comfyui: (env, _put, _fal, comfy) => {
+    // The GPU writes the still itself, through a one-time URL to the caller's key: `put` is not used.
+    const st = comfyuiStatus(env);
+    return { status: { id: "comfyui", configured: st.configured, gated: null }, provider: st.configured ? comfyImageProvider(env, comfy) : null };
+  },
 };
 
 const DEFAULT_PROVIDERS = "openai,fal";
@@ -175,17 +184,17 @@ export function imageProviderStatuses(env: Env = process.env): ImageProviderStat
 }
 
 /** The image provider to use, or null with the reason (recorded by the caller). */
-export function imageProvider(put: Put, env: Env = process.env, fal?: FalImageDeps): { provider: ImageProvider | null; reason: string | null } {
+export function imageProvider(put: Put, env: Env = process.env, fal?: FalImageDeps, comfy?: ComfyRunner): { provider: ImageProvider | null; reason: string | null } {
   if (env.IMAGE_PROVIDERS?.trim() === "none") return { provider: null, reason: "image generation disabled (IMAGE_PROVIDERS=none)" };
   const ids = (env.IMAGE_PROVIDERS ?? DEFAULT_PROVIDERS).split(",").map((s) => s.trim()).filter(Boolean);
   const reasons: string[] = [];
   const usable: ImageProvider[] = [];
   for (const id of ids) {
-    const built = KNOWN[id]?.(env, put, fal);
+    const built = KNOWN[id]?.(env, put, fal, comfy);
     if (!built) { reasons.push(`${id}: unknown`); continue; }
     if (built.status.gated) { reasons.push(`${id}: ${built.status.gated}`); continue; }
     if (built.provider) usable.push(built.provider);
-    else reasons.push(`${id}: not configured`);
+    else reasons.push(id === "comfyui" ? `comfyui: not configured (needs ${comfyuiStatus(env).missing.join(", ")})` : `${id}: not configured`);
   }
   if (!usable.length) return { provider: null, reason: reasons.join("; ") || "no image provider listed" };
   return { provider: usable.length === 1 ? usable[0]! : withFallback(usable), reason: null };

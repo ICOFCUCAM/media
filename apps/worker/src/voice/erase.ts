@@ -40,6 +40,12 @@ export interface EraseDeps {
   deleteKeys(keys: string[]): Promise<void>;
   /** Delete a provider-side clone; "not_supported" when the engine has no deletion call. */
   deleteProviderVoice(engine: string, providerVoiceId: string): Promise<"deleted" | "not_supported">;
+  /**
+   * Optional (docs/74): let the engine that holds a stored artifact release it
+   * (a self-hosted engine drops it from its GPU's warm cache). Best effort —
+   * the file itself is already deleted; a failure is noted, never fatal.
+   */
+  releaseArtifact?(engine: string, artifact: { type: string; uri: string }): Promise<void>;
 }
 
 const STORED = new Set(["reference_audio", "prompt_audio", "speaker_embedding", "adapter_weights"]);
@@ -63,6 +69,14 @@ export function erasurePlan(r: Pick<ErasureRow, "userId" | "sampleKey" | "provid
   return { keys: [...keys], clones: [...clones.values()] };
 }
 
+/** The stored, engine-held artifacts of an erasure (owner's folder only). */
+export function storedEngineArtifacts(r: Pick<ErasureRow, "userId" | "artifacts">): { engine: string; type: string; uri: string }[] {
+  const own = `voices/${r.userId}/`;
+  const list = Array.isArray(r.artifacts) ? (r.artifacts as { engine?: string; type?: string; uri?: string }[]) : [];
+  return list.filter((a) => a.engine && a.type && STORED.has(a.type) && a.uri?.startsWith(own))
+    .map((a) => ({ engine: a.engine!, type: a.type!, uri: a.uri! }));
+}
+
 const triesOf = (error: string | null) => Number(/^\[try (\d+)\]/.exec(error ?? "")?.[1] ?? 0);
 
 /** One tick: erase what deleted voices left behind. */
@@ -76,6 +90,11 @@ export async function eraseDeletedVoices(db: EraseDb, deps: EraseDeps): Promise<
       if (plan.keys.length) await deps.deleteKeys(plan.keys);
       let provider: ProviderOutcome = plan.clones.length ? "deleted" : "none";
       const notes: string[] = [];
+      if (deps.releaseArtifact) {
+        for (const a of storedEngineArtifacts(r)) {
+          await deps.releaseArtifact(a.engine, a).catch((e) => notes.push(`${a.engine} could not release ${a.type}: ${e instanceof Error ? e.message : String(e)}`));
+        }
+      }
       for (const c of plan.clones) {
         try {
           if ((await deps.deleteProviderVoice(c.engine, c.id)) === "not_supported") {

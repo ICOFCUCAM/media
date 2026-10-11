@@ -16,7 +16,7 @@ describe("model routing policy (C5)", () => {
   });
 
   it("lists allowed models per tier", () => {
-    expect(allowedModels("FREE")).toEqual(["wan-2.1"]);
+    expect(allowedModels("FREE")).toEqual(["wan-2.1", "wan-2.2"]);
     expect(allowedModels("STUDIO")).toContain("hunyuan");
   });
 

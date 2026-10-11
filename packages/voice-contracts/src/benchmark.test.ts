@@ -45,6 +45,12 @@ describe("voice benchmark (Part 4 §136)", () => {
       { engine: "e", script: "c", language: "en", kind: "conversational", ok: true, wer: 0.04, realTimeFactor: 0.2 },
       { engine: "e", script: "d", language: "no", kind: "narration_30s", ok: false, error: "x" },
     ]);
-    expect(s).toMatchObject({ cases: 4, succeeded: 3, medianWer: 0.04, medianRealTimeFactor: 0.3, medianLoudnessSpreadLu: null });
+    expect(s).toMatchObject({ cases: 4, succeeded: 3, medianWer: 0.04, medianRealTimeFactor: 0.3, medianLoudnessSpreadLu: null,
+      medianVoiceSimilarity: null, maxVramPeakMb: null });
+    const sim = summarizeEngine([
+      { engine: "e", script: "a", language: "en", kind: "emotional", ok: true, voiceSimilarity: 0.81, vramPeakMb: 5100 },
+      { engine: "e", script: "b", language: "en", kind: "documentary", ok: true, voiceSimilarity: 0.74, vramPeakMb: 6200 },
+    ]);
+    expect(sim).toMatchObject({ medianVoiceSimilarity: 0.74, maxVramPeakMb: 6200 });
   });
 });

@@ -1,0 +1,140 @@
+name: Build GPU voice images
+
+# Builds apps/gpu-voice (CineForge's self-hosted Voice Engine, docs/74) — ONE
+# image per engine — and pushes each to Docker Hub as
+# <user>/cineforge-gpu-voice-<engine>, then verifies it by digest before
+# anyone deploys it (apps/gpu-worker/scripts/verify_image.py --profile gpu-voice:
+# identity, source commit, exact /app/app contents against git, gateway probes
+# in enforce mode, and that the image reports the expected engine).
+#
+# Same rules as the video worker's image (docs/39 §10): only the immutable
+# sha-<commit> tag is published, never :latest; the job summary prints the
+# repo@sha256:<digest> to pin and approve (gateway:admin approve). Requires the
+# repo secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN. No model weights and no
+# keys are ever baked in.
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - "apps/gpu-voice/**"
+      - "apps/gpu-worker/app/gateway/**"
+      - "apps/gpu-worker/app/media_io.py"
+      - "apps/gpu-worker/app/code_digest.py"
+      - "apps/gpu-worker/scripts/verify_image.py"
+      - ".github/workflows/build-gpu-voice.yml"
+  workflow_dispatch:
+    inputs:
+      engine:
+        description: "Which engine image to build"
+        required: true
+        default: all
+        type: choice
+        options: [all, qwen3-tts, cosyvoice-3, gpt-sovits]
+
+concurrency:
+  group: gpu-voice-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [qwen3-tts, cosyvoice-3, gpt-sovits]
+    steps:
+      - name: Skip engines not asked for
+        id: want
+        env:
+          ASKED: ${{ github.event_name == 'workflow_dispatch' && inputs.engine || 'all' }}
+        run: |
+          if [ "$ASKED" = "all" ] || [ "$ASKED" = "${{ matrix.engine }}" ]; then echo "run=1" >> "$GITHUB_OUTPUT"; else echo "run=0" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Free up disk space
+        if: steps.want.outputs.run == '1'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          sudo docker image prune -af || true
+          df -h /
+
+      # Full history: the verifier checks the image's source commit exists here.
+      - uses: actions/checkout@v4
+        if: steps.want.outputs.run == '1'
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        if: steps.want.outputs.run == '1'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: steps.want.outputs.run == '1'
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          user="$(printf '%s' "$DH_USER" | tr -cd 'A-Za-z0-9._-')"
+          token="$(printf '%s' "$DH_TOKEN" | tr -cd 'A-Za-z0-9_-')"
+          printf '%s' "$token" | docker login -u "$user" --password-stdin
+
+      - name: Compute tag
+        if: steps.want.outputs.run == '1'
+        id: tags
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          user="$(printf '%s' "$DH_USER" | tr -cd 'A-Za-z0-9._-')"
+          repo="$user/cineforge-gpu-voice-${{ matrix.engine }}"
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+          echo "tag=$repo:sha-$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push (sha-<commit> only)
+        if: steps.want.outputs.run == '1'
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          # Context = repository root: the image includes the gateway shared with apps/gpu-worker.
+          context: .
+          file: apps/gpu-voice/Dockerfile
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            VOICE_ENGINE=${{ matrix.engine }}
+            SOURCE_COMMIT=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          tags: ${{ steps.tags.outputs.tag }}
+
+      - uses: actions/setup-python@v5
+        if: steps.want.outputs.run == '1'
+        with:
+          python-version: "3.11"
+
+      - name: Verify the pushed digest
+        if: steps.want.outputs.run == '1'
+        run: |
+          pip install "PyJWT[crypto]==2.9.0"
+          python3 apps/gpu-worker/scripts/verify_image.py "${{ steps.tags.outputs.repo }}@${{ steps.build.outputs.digest }}" \
+            --profile gpu-voice --expect-engine "${{ matrix.engine }}" --expect-commit "$GITHUB_SHA" --report verify-report.json
+
+      # The immutable reference to approve and pin (docs/74): repo@sha256:<digest>.
+      - name: Record image digest
+        if: always() && steps.want.outputs.run == '1' && steps.build.outputs.digest != ''
+        run: |
+          {
+            echo "### Voice image: ${{ matrix.engine }}"
+            echo "Pin and approve: \`cineforge-gpu-voice-${{ matrix.engine }}@${{ steps.build.outputs.digest }}\` (source ${{ github.sha }})"
+            if [ -f verify-report.json ]; then
+              python3 -c "import json; r=json.load(open('verify-report.json')); print('Verification:', 'VERIFIED' if r['passed'] else 'NOT VERIFIED — do not deploy'); [print(f\"- {'PASS' if c['ok'] else 'FAIL'} {c['name']}\") for c in r['checks']]"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "digest: ${{ steps.build.outputs.digest }}"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.want.outputs.run == '1'
+        with:
+          name: gpu-voice-verification-${{ matrix.engine }}
+          path: verify-report.json
+          if-no-files-found: ignore

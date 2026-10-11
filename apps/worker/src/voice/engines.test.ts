@@ -75,7 +75,13 @@ describe("openai-tts engine", () => {
   });
 });
 
-it("gated self-hosted engines have no adapter", () => {
-  expect(voiceEngine("qwen3-tts", { VOICE_GPU_URL: "http://gpu" })).toBeNull();
+it("a self-hosted engine has an adapter when its GPU URL is set (its licence decides whether it speaks)", () => {
+  expect(voiceEngine("qwen3-tts", {})).toBeNull();
+  expect(voiceEngine("qwen3-tts", { VOICE_GPU_URL: "http://gpu" })).toBeNull(); // the old shared variable means nothing
+  const q = voiceEngine("qwen3-tts", { VOICE_GPU_QWEN3_URL: "https://gpu", VOICE_GPU_QWEN3_REVISION: "a".repeat(40) });
+  expect(q).toMatchObject({ id: "qwen3-tts", version: "Qwen/Qwen3-TTS-12Hz-1.7B-Base@aaaaaaaaaaaa" });
+  expect(voiceEngine("cosyvoice-3", { VOICE_GPU_COSYVOICE_URL: "https://gpu" })?.version).toBe("FunAudioLLM/Fun-CosyVoice3-0.5B-2512@unpinned");
+  expect(voiceEngine("gpt-sovits", { VOICE_GPU_GPTSOVITS_URL: "https://gpu" })?.id).toBe("gpt-sovits");
+  expect(typeof q!.deleteVoice).toBe("function");
   expect(voiceEngine("fal-minimax", {})?.id).toBe("fal-minimax");
 });

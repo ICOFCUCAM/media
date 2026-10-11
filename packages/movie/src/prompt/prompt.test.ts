@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fixturePackage, mayaCoatFixture } from "../ir/fixture";
 import { reviseCanon } from "../world/revise";
 import { canonicalHash, compileGeneration } from "./canonical";
-import { compileFor, MODEL_PROFILES } from "./compilers";
+import { compileFor, MODEL_PROFILES, STILL_NEGATIVE } from "./compilers";
 
 describe("canonical media request (Part 1 §14)", () => {
   it("carries intent, camera, environment, style, continuity and sound from canon", () => {
@@ -47,6 +47,24 @@ describe("model-specific compilers (Part 1 §13)", () => {
     expect(o.prompt).not.toContain("dollies");
     expect(o.negativePrompt).toBeNull();
     expect(o.dropped).toEqual(["camera movement (dolly) — a still has none"]);
+  });
+
+  it("ComfyUI Qwen-Image (docs/73): the still structure within its budget, with a still negative prompt", () => {
+    const moving = { ...req, camera: { ...req.camera, movement: "dolly" } };
+    const q = compileFor("comfyui-qwen-image", moving);
+    const o = compileFor("openai-image", moving);
+    expect(q.prompt).toMatch(/^Scene: The Harbour/);
+    expect(q.prompt).toContain("Constraints: keep every listed face");
+    expect(q.prompt.length).toBeLessThanOrEqual(MODEL_PROFILES["comfyui-qwen-image"]!.maxPromptChars);
+    expect(q.negativePrompt).toBe(STILL_NEGATIVE);
+    expect(q.negativePrompt).not.toContain("flicker");
+    expect(q.dropped).toEqual(["camera movement (dolly) — a still has none"]);
+    // A separate model: its compiled request has its own hash; OpenAI's output is unchanged.
+    expect(q.hash).not.toBe(o.hash);
+    expect(o.negativePrompt).toBeNull();
+    const long = compileFor("comfyui-qwen-image", { ...req, environment: { ...req.environment, description: "x".repeat(3000) } });
+    expect(long.prompt.length).toBeLessThanOrEqual(2000);
+    expect(long.dropped.length).toBeGreaterThan(0);
   });
 
   it("respects each model's prompt limit by dropping the lowest-priority parts first, and says so", () => {

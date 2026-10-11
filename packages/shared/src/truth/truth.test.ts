@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCapabilityRegistry, formatsFor, offeredFormats } from "./capabilities";
+import { buildCapabilityRegistry, formatsFor, offeredFormats, type CapabilityProbe } from "./capabilities";
 import { judgeRun, ProductionFailure } from "./degradation";
 
 const shot = { width: 1280, height: 720, durationSec: 5, fps: 16, shotId: "shot-1" };
@@ -63,13 +63,24 @@ describe("capability registry (DOS-77/78)", () => {
     expect(vq({ VISUAL_REVIEW: "off" }, true)).toMatchObject({ status: "disabled", realExecution: false });
   });
 
-  it("voice cloning follows the voice router; self-hosted voice models are shown as gated", () => {
-    const get = (env: Record<string, string>) => buildCapabilityRegistry({ env }).find((c) => c.capability === "voice_cloning")!;
+  it("voice cloning follows the voice router; a self-hosted engine counts only when configured AND approved", () => {
+    const get = (env: Record<string, string>, voice?: CapabilityProbe["voice"]) =>
+      buildCapabilityRegistry({ env, voice }).find((c) => c.capability === "voice_cloning")!;
     expect(get({ FAL_KEY: "k" })).toMatchObject({ provider: "fal-minimax", status: "experimental", realExecution: true });
     expect(get({ FAL_KEY: "k", VOICE_ENGINES: "openai-tts:80" })).toMatchObject({ provider: null, status: "unavailable" });
-    const gated = get({ VOICE_ENGINES: "qwen3-tts:100,fal-minimax:90" });
-    expect(gated).toMatchObject({ status: "unavailable", realExecution: false });
-    expect(gated.note).toMatch(/qwen3-tts wait on Phase 1/);
+    const env = { VOICE_ENGINES: "qwen3-tts:100,fal-minimax:90" };
+    const unknown = get(env);
+    expect(unknown).toMatchObject({ status: "unavailable", realExecution: false });
+    expect(unknown.note).toMatch(/qwen3-tts: status unknown/);
+    expect(unknown.note).not.toMatch(/Phase 1/);
+    const notApproved = get(env, [{ id: "qwen3-tts", listed: true, configured: true, approved: false, reason: "not approved — no owner approval" }]);
+    expect(notApproved).toMatchObject({ provider: null, status: "unavailable" });
+    expect(notApproved.note).toMatch(/qwen3-tts: not approved/);
+    const ready = get(env, [{ id: "qwen3-tts", listed: true, configured: true, approved: true, reason: null }]);
+    expect(ready).toMatchObject({ provider: "qwen3-tts", status: "experimental", realExecution: true });
+    expect(ready.note).toMatch(/self-hosted/);
+    // Approved but not configured: still unavailable.
+    expect(get(env, [{ id: "qwen3-tts", listed: true, configured: false, approved: true, reason: "not configured" }]).provider).toBeNull();
   });
 
   it("film voice follows the voice router", () => {
@@ -101,5 +112,33 @@ describe("capability registry (DOS-77/78)", () => {
     const ready = reg.filter((c) => c.status === "production_ready").map((c) => c.capability);
     expect(ready).toEqual([]);
     expect(reg.find((c) => c.capability === "reference_video_conditioning")?.status).toBe("not_implemented");
+  });
+});
+
+describe("the self-hosted image runtime capability (docs/73)", () => {
+  const CONFIG = { IMAGE_PROVIDERS: "comfyui,fal", COMFYUI_GPU_URL: "https://pod", GPU_JWT_SIGNING_KEY: "k1:x", S3_BUCKET: "b", S3_ACCESS_KEY: "a" };
+  const get = (env: Record<string, string>, gpu?: Record<string, { realExecution?: boolean; execution?: string; supportsRefImage?: boolean; supportsLora?: boolean } | null>) => {
+    const reg = buildCapabilityRegistry({ env, gpu });
+    return { runtime: reg.find((c) => c.capability === "self_hosted_image_runtime")!, seed: reg.find((c) => c.capability === "seed_image_generation")! };
+  };
+
+  it("is off unless IMAGE_PROVIDERS names it", () => {
+    const { runtime, seed } = get({ FAL_KEY: "k", IMAGE_PROVIDERS: "fal" }, { "comfyui-image": { realExecution: true } });
+    expect(runtime).toMatchObject({ status: "disabled", realExecution: false, provider: null });
+    expect(seed).toMatchObject({ provider: "fal", status: "experimental" });
+  });
+
+  it("listed but not configured: unavailable, saying what it needs; the next provider draws", () => {
+    const { runtime, seed } = get({ IMAGE_PROVIDERS: "comfyui,fal", FAL_KEY: "k" });
+    expect(runtime).toMatchObject({ status: "unavailable", realExecution: false, note: expect.stringMatching(/needs COMFYUI_GPU_URL/) });
+    expect(seed).toMatchObject({ provider: "fal", note: expect.stringMatching(/comfyui: not configured/) });
+  });
+
+  it("configured: available only once the pod reports real execution", () => {
+    expect(get(CONFIG, { "comfyui-image": { execution: "placeholder", realExecution: false } }).runtime)
+      .toMatchObject({ status: "unavailable", realExecution: false, note: expect.stringMatching(/placeholder/) });
+    const { runtime, seed } = get(CONFIG, { "comfyui-image": { execution: "real", realExecution: true, supportsRefImage: true, supportsLora: true } });
+    expect(runtime).toMatchObject({ status: "experimental", realExecution: true, provider: "comfyui", requiresGpu: true, supports: ["text_to_image", "reference_images", "lora"] });
+    expect(seed).toMatchObject({ provider: "comfyui", status: "experimental", realExecution: true });
   });
 });

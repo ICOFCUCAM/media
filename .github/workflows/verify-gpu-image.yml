@@ -1,11 +1,14 @@
 name: Verify GPU worker image
 
 # docs/39 §10: Base commit → GPU image → immutable digest → VERIFY CONTENTS →
-# deploy → verify runtime. Checks a cineforge-gpu image by digest without a
+# deploy → verify runtime. Checks a GPU image by digest without a
 # GPU and without touching any pod: identity, source commit, exact contents of
 # /app/app against git, and the gateway's security boundary in enforce mode
 # (apps/gpu-worker/scripts/verify_image.py). Runs after every image build and
 # on demand for any digest (Actions → Verify GPU worker image → Run workflow).
+# `profile`: gpu-worker (the video worker, cineforge-gpu; default) or gpu-image
+# (the ComfyUI image runtime, cineforge-gpu-image; docs/73) or gpu-voice (the
+# self-hosted Voice Engine, cineforge-gpu-voice-<engine>; docs/74 — give `engine`).
 on:
   workflow_dispatch:
     inputs:
@@ -16,12 +19,30 @@ on:
         description: "Expected source commit (optional, full 40-char sha)"
         required: false
         default: ""
+      profile:
+        description: "Which image: gpu-worker (video) or gpu-image (ComfyUI image runtime)"
+        required: false
+        default: gpu-worker
+        type: choice
+        options: [gpu-worker, gpu-image, gpu-voice]
+      engine:
+        description: "gpu-voice only: qwen3-tts | cosyvoice-3 | gpt-sovits (the image must report it)"
+        required: false
+        default: ""
   workflow_call:
     inputs:
       image:
         type: string
         required: true
       expect_commit:
+        type: string
+        required: false
+        default: ""
+      profile:
+        type: string
+        required: false
+        default: gpu-worker
+      engine:
         type: string
         required: false
         default: ""
@@ -67,13 +88,21 @@ jobs:
         env:
           IMAGE: ${{ inputs.image }}
           EXPECT: ${{ inputs.expect_commit }}
+          PROFILE: ${{ inputs.profile || 'gpu-worker' }}
+          ENGINE: ${{ inputs.engine || '' }}
           DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
-          case "$IMAGE" in
-            sha256:*) IMAGE="$(printf '%s' "$DH_USER" | tr -cd 'A-Za-z0-9._-')/cineforge-gpu@$IMAGE" ;;
+          case "$PROFILE" in
+            gpu-image) repo=cineforge-gpu-image ;;
+            gpu-voice) repo="cineforge-gpu-voice-$(printf '%s' "$ENGINE" | tr -cd 'a-z0-9-')" ;;
+            *) repo=cineforge-gpu ;;
           esac
-          args=("$IMAGE" --report verify-report.json)
+          case "$IMAGE" in
+            sha256:*) IMAGE="$(printf '%s' "$DH_USER" | tr -cd 'A-Za-z0-9._-')/$repo@$IMAGE" ;;
+          esac
+          args=("$IMAGE" --report verify-report.json --profile "$PROFILE")
           if [ -n "$EXPECT" ]; then args+=(--expect-commit "$EXPECT"); fi
+          if [ -n "$ENGINE" ]; then args+=(--expect-engine "$ENGINE"); fi
           python3 apps/gpu-worker/scripts/verify_image.py "${args[@]}"
 
       - name: Summary
@@ -98,6 +127,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: gpu-image-verification
+          name: gpu-image-verification-${{ inputs.profile || 'gpu-worker' }}${{ inputs.engine && format('-{0}', inputs.engine) || '' }}
           path: verify-report.json
           if-no-files-found: ignore

@@ -29,7 +29,7 @@ import type { ShotRequest, ShotResult } from "@cineforge/model-adapters";
 export type TimingPolicyMode = "record" | "enforce";
 
 /** The rate each self-hosted adapter sends when the request names none. */
-export const NATIVE_FPS: Record<string, number> = { "wan-2.1": 16, hunyuan: 24 };
+export const NATIVE_FPS: Record<string, number> = { "wan-2.1": 16, "wan-2.2": 24, hunyuan: 24 };
 
 export function timingPolicyMode(env: NodeJS.ProcessEnv = process.env): TimingPolicyMode {
   const v = (env.RUNTIME_TIMING_POLICY ?? "record").trim().toLowerCase();

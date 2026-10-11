@@ -34,12 +34,15 @@ describe("real-provider verdict (Part 2 §76)", () => {
 });
 
 describe("probes", () => {
-  it("with no credentials every probe says why it cannot run; ComfyUI and self-hosted voices are gated", async () => {
+  it("with no credentials every probe says why it cannot run; self-hosted voices are gated", async () => {
     const results = await runProbes(allProbes(), { env: {}, fetch, dir: "/nonexistent" });
     expect(results.every((x) => x.status === "NOT_CONFIGURED" || x.status === "GATED")).toBe(true);
-    expect(results.find((x) => x.id === "image:comfyui")).toMatchObject({ status: "GATED", reason: expect.stringMatching(/Phase 1/) });
-    expect(results.filter((x) => x.capability === "voice" && x.status === "GATED").map((x) => x.provider)).toEqual(
-      expect.arrayContaining(["qwen3-tts", "cosyvoice-3", "gpt-sovits"]));
+    // ComfyUI is no longer gated (docs/73): without its configuration it says what it needs.
+    expect(results.find((x) => x.id === "image:comfyui")).toMatchObject({ status: "NOT_CONFIGURED", reason: expect.stringMatching(/COMFYUI_GPU_URL/) });
+    const selfHosted = results.filter((x) => x.capability === "voice" && x.status === "GATED");
+    expect(selfHosted.map((x) => x.provider)).toEqual(expect.arrayContaining(["qwen3-tts", "cosyvoice-3", "gpt-sovits"]));
+    // Held by the licence registry (owner approval), no longer by Phase 1.
+    expect(selfHosted.every((x) => /^licence: /.test(x.reason ?? ""))).toBe(true);
     expect(results.find((x) => x.id === "planning:anthropic")?.reason).toMatch(/ANTHROPIC_API_KEY/);
   });
 

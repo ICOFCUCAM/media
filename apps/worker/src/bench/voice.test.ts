@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ENGINE_REGISTRY, type VoiceEngine } from "@cineforge/voice-contracts";
 import { benchmarkStatus, runVoiceBenchmark, type VoiceBenchDeps } from "./voice";
-import { openAiTranscriber } from "./voice-cli";
+import { openAiTranscriber, similarityScorer } from "./voice-cli";
 
 function fakeEngine(id: string, opts: { fail?: boolean } = {}): VoiceEngine & { texts: string[] } {
   const texts: string[] = [];
@@ -46,7 +46,7 @@ describe("voice benchmark (Part 4 §136)", () => {
   it("runs every usable engine on the same scripts and never runs a gated or uncleared model", async () => {
     const r = await runVoiceBenchmark(deps(), { scripts: ["en-narration-30s", "en-narration-2m"] });
     expect(Object.keys(r.engines)).toEqual(["fal-minimax", "openai-tts", "qwen3-tts"]);
-    expect(r.engines["qwen3-tts"]!.skipped).toMatch(/Phase 1/);
+    expect(r.engines["qwen3-tts"]!.skipped).toMatch(/^licence: .*no owner approval/);
     expect(r.engines["qwen3-tts"]!.licence.cleared).toBe(false);
     const fal = r.engines["fal-minimax"]!;
     expect(fal.cases.map((c) => c.script)).toEqual(["en-narration-30s", "en-narration-2m"]);
@@ -76,6 +76,38 @@ describe("voice benchmark (Part 4 §136)", () => {
     expect(benchmarkStatus(r)).toBe("fail");
   });
 
+  it("--evaluate runs a configured self-hosted engine that is not yet approved, marked evaluation only; never a blocked one", async () => {
+    const env = { VOICE_GPU_QWEN3_URL: "https://gpu", VOICE_GPU_QWEN3_REVISION: "a".repeat(40) };
+    const r = await runVoiceBenchmark(deps({ env }), { scripts: ["en-emotional", "no-narration-30s"], engines: ["qwen3-tts", "gpt-sovits"], evaluation: true });
+    expect(r.engines["qwen3-tts"]).toMatchObject({ evaluationOnly: true, licence: { cleared: false } });
+    // Qwen3-TTS does not speak Norwegian: listed, not run, not a failure.
+    expect(r.engines["qwen3-tts"]!.unsupportedScripts).toEqual(["no-narration-30s"]);
+    expect(r.engines["qwen3-tts"]!.cases.map((c) => c.script)).toEqual(["en-emotional"]);
+    expect(r.engines["gpt-sovits"]!.evaluationOnly).toBe(true);
+    expect(benchmarkStatus(r)).toBe("pass");
+    // Without --evaluate it is never run.
+    const plain = await runVoiceBenchmark(deps({ env }), { scripts: ["en-emotional"], engines: ["qwen3-tts"] });
+    expect(plain.engines["qwen3-tts"]!.skipped).toMatch(/^licence: /);
+  });
+
+  it("--enroll enrolls the owner's voice with an engine first; similarity is measured by one scorer", async () => {
+    const enrolled: string[] = [];
+    const scored: number[] = [];
+    const r = await runVoiceBenchmark(deps({
+      artifact: async () => null,
+      enroll: async (voiceId, engine) => { enrolled.push(`${voiceId}:${engine.id}`); return { artifactType: "speaker_embedding", uri: "voices/u/v/engines/x/g.safetensors" }; },
+      similarity: async (paths) => { scored.push(paths.length); return { scores: paths.map((_, i) => 0.7 + i * 0.05), scorer: "cosyvoice-3 speaker encoder" }; },
+    }), { voiceId: "v", scripts: ["en-documentary"], engines: ["fal-minimax"], enroll: true });
+    expect(enrolled).toEqual(["v:fal-minimax"]);
+    expect(r.engines["fal-minimax"]!.enrolledForBenchmark).toBe(true);
+    const c = r.engines["fal-minimax"]!.cases[0]!;
+    expect(c.voiceSimilarity).toBeGreaterThanOrEqual(0.7);
+    expect(r.engines["fal-minimax"]!.summary!.medianVoiceSimilarity).toBe(c.voiceSimilarity);
+    expect(r.similarityScorer).toBe("cosyvoice-3 speaker encoder");
+    expect(r.notMeasured.voiceSimilarity).toBeUndefined();
+    await expect(runVoiceBenchmark(deps(), { enroll: true })).rejects.toThrow(/--enroll needs --voice/);
+  });
+
   it("the transcriber is OpenAI speech-to-text and only exists with a key", async () => {
     expect(openAiTranscriber({})).toBeNull();
     const calls: { url: string; auth: string | null }[] = [];
@@ -89,5 +121,14 @@ describe("voice benchmark (Part 4 §136)", () => {
     expect(await t(path, "en")).toBe("hello there");
     expect(calls[0]).toEqual({ url: expect.stringMatching(/\/audio\/transcriptions$/), auth: "Bearer sk" });
     await rm(path, { force: true });
+  });
+});
+
+describe("voice similarity scorer (VOICE_SIMILARITY_ENGINE)", () => {
+  it("is a configured self-hosted engine with a speaker encoder, else not measured with the reason", () => {
+    expect(similarityScorer({})).toEqual({ engine: null, why: null });
+    expect(similarityScorer({ VOICE_SIMILARITY_ENGINE: "gpt-sovits" }).why).toMatch(/no speaker encoder/);
+    expect(similarityScorer({ VOICE_SIMILARITY_ENGINE: "cosyvoice-3" }).why).toMatch(/not configured/);
+    expect(similarityScorer({ VOICE_SIMILARITY_ENGINE: "cosyvoice-3", VOICE_GPU_COSYVOICE_URL: "https://gpu" }).engine?.id).toBe("cosyvoice-3");
   });
 });

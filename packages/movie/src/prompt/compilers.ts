@@ -11,11 +11,17 @@
  *   hunyuan       the same order, denser camera vocabulary
  *   openai-image  a still (seed frame) in the structure OpenAI recommends:
  *                 scene, subject, details, constraints, intended use; no motion
+ *   comfyui-qwen-image  the self-hosted ComfyUI image runtime's still models
+ *                 (Qwen-Image / Qwen-Image-Edit-2511, docs/73): the same still
+ *                 structure, a shorter budget, and a negative prompt (the
+ *                 registry workflows take one; CFG 4)
  *   default       any other registered video model (external providers)
  *
- * Image models such as Flux/SDXL and ComfyUI workflows are added here when the
- * image runtime lands (W6); TTS / music / SFX compilers come with the Voice
- * Engine (W7) — the canonical request already carries the scene's sound.
+ * Flux and SDXL are not compiled for: their only licence-safe ComfyUI options
+ * are not in the image runtime's registry (docs/38 §C; FLUX.1 [dev] and
+ * FLUX.2 [dev]/[klein] 9B are non-commercial). TTS / music / SFX compilers
+ * come with the Voice Engine (W7) — the canonical request already carries the
+ * scene's sound.
  */
 import { createHash } from "node:crypto";
 import { sizeWords, type CanonicalMediaRequest } from "./canonical";
@@ -31,11 +37,16 @@ export interface ModelProfile {
 
 export const MODEL_PROFILES: Record<string, ModelProfile> = {
   "wan-2.1": { id: "wan-2.1", still: false, maxPromptChars: 1200, negativePrompt: true, cameraMotion: true },
+  // Wan 2.2 (W28) reads the same natural-language prompt as 2.1, with a longer budget (umT5 512 tokens).
+  "wan-2.2": { id: "wan-2.2", still: false, maxPromptChars: 2000, negativePrompt: true, cameraMotion: true },
   hunyuan: { id: "hunyuan", still: false, maxPromptChars: 1500, negativePrompt: true, cameraMotion: true },
   "openai-image": { id: "openai-image", still: true, maxPromptChars: 3800, negativePrompt: false, cameraMotion: false },
+  "comfyui-qwen-image": { id: "comfyui-qwen-image", still: true, maxPromptChars: 2000, negativePrompt: true, cameraMotion: false },
   default: { id: "default", still: false, maxPromptChars: 1000, negativePrompt: false, cameraMotion: true },
 };
 
+/** Negative prompt for still models that take one (the ComfyUI image runtime). */
+export const STILL_NEGATIVE = "blurry, low quality, watermark, text, caption, logo, signature, extra fingers, deformed hands, distorted face, duplicate person, cropped head, oversaturated";
 export const VIDEO_NEGATIVE = "blurry, low quality, watermark, text, subtitles, logo, extra limbs, deformed hands, duplicate faces, morphing face, flicker, jump cut within the shot";
 
 export interface CompiledModelPrompt {
@@ -131,7 +142,8 @@ export function compileFor(modelId: string, req: CanonicalMediaRequest): Compile
     ? still(req, profile, dropped)
     : video(req, profile, modelId === "hunyuan" ? "hunyuan" : "wan", dropped);
   if (!profile.cameraMotion && !profile.still && req.camera.movement !== "static") dropped.push(`camera movement (${req.camera.movement})`);
-  const negativePrompt = profile.negativePrompt ? (req.style.render ? `${VIDEO_NEGATIVE}, ${req.style.render.avoid}` : VIDEO_NEGATIVE) : null;
+  const base = profile.still ? STILL_NEGATIVE : VIDEO_NEGATIVE;
+  const negativePrompt = profile.negativePrompt ? (req.style.render ? `${base}, ${req.style.render.avoid}` : base) : null;
   if (!profile.negativePrompt && !profile.still) dropped.push("negative prompt (not supported)");
   const hash = createHash("sha256").update(JSON.stringify([modelId, prompt, negativePrompt])).digest("hex");
   return { modelId, prompt, negativePrompt, dropped, hash };

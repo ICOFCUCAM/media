@@ -21,7 +21,8 @@ import { socialWorker } from "./processors/social.processor";
 import { startProjectPoller } from "./orchestration/project-poller";
 import { countJobs, startHealthServer } from "./health";
 import { prisma } from "@cineforge/db";
-import { currentRegistry, publishCapabilities, readGpuCaps } from "./truth/capabilities";
+import { COMFY_CAPS_ID, currentRegistry, publishCapabilities, readGpuCaps, rememberGpuCaps } from "./truth/capabilities";
+import { comfyCapabilities } from "./images/comfyui";
 import { intelligence } from "./intelligence";
 
 // Resilience net: a background worker must not die on a transient connection
@@ -43,6 +44,9 @@ const gpu = createGpuManagers({
   HUNYUAN_GPU_URL: process.env.HUNYUAN_GPU_URL!,
   RUNPOD_HUNYUAN_POD_ID: process.env.RUNPOD_HUNYUAN_POD_ID,
   RUNPOD_HUNYUAN_ENDPOINT_ID: process.env.RUNPOD_HUNYUAN_ENDPOINT_ID,
+  WAN22_GPU_URL: process.env.WAN22_GPU_URL,
+  RUNPOD_WAN22_POD_ID: process.env.RUNPOD_WAN22_POD_ID,
+  RUNPOD_WAN22_ENDPOINT_ID: process.env.RUNPOD_WAN22_ENDPOINT_ID,
 });
 
 // 1) Periodic reconcile loop per model pool (the safety net + grace driver).
@@ -67,7 +71,10 @@ const stopPoller = startProjectPoller();
 // operational, from env + the GPU workers' last verified /capabilities.
 const reporter = process.env.DEPLOYMENT_ID || process.env.HOSTNAME || "worker";
 const publishNow = async () => {
-  const caps = await readGpuCaps(gpu.redis, ["wan-2.1", "hunyuan"]);
+  // The ComfyUI image runtime (docs/73) reports for itself when listed and configured.
+  const comfyCaps = await comfyCapabilities(process.env);
+  if (comfyCaps) await rememberGpuCaps(gpu.redis, COMFY_CAPS_ID, comfyCaps);
+  const caps = await readGpuCaps(gpu.redis, ["wan-2.1", "wan-2.2", "hunyuan", COMFY_CAPS_ID]);
   const router = intelligence();
   const brain = (task: "film_plan" | "translation" | "visual_review") => {
     const first = router.routesFor(task).find(() => true);

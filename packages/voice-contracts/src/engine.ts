@@ -44,6 +44,12 @@ export interface VoiceEnrollmentRequest {
   language: string;
   /** Local path of the (analysed) reference recording. */
   referencePath: string;
+  /** The voice's owner (self-hosted engines store their artifact under voices/<owner>/). */
+  userId?: string;
+  /** Where the recording is stored (`voices/<owner>/…`); a self-hosted engine reads it from there. */
+  referenceKey?: string;
+  /** What is said in the recording, when known (some engines clone better with it). */
+  referenceText?: string;
 }
 
 /** Engine-specific representation of a voice — stored opaquely in voice_engine_artifacts. */
@@ -94,6 +100,11 @@ export interface VoiceEngine {
    * erasure records that the clone could not be deleted.
    */
   deleteVoice?(artifact: VoiceEngineArtifact): Promise<void>;
+  /**
+   * Speak many lines in one job, model kept warm (§155). Optional: callers
+   * fall back to `synthesize` per line. Results are in request order.
+   */
+  synthesizeBatch?(requests: SpeechSynthesisRequest[]): Promise<SpeechSynthesisResult[]>;
   health(): Promise<EngineHealth>;
   unload(): Promise<void>;
 }

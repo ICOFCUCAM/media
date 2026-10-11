@@ -1,0 +1,108 @@
+name: Build GPU image runtime (ComfyUI)
+
+# Builds apps/gpu-image (CineForge's ComfyUI image runtime, docs/73) and pushes
+# it to Docker Hub as <user>/cineforge-gpu-image, so it can be deployed on a
+# RunPod GPU pod. Same rules as the video worker's image (docs/39 §10): a push
+# build publishes ONLY the immutable sha-<commit> tag and prints the digest to
+# pin; any other tag is applied only by a manual run with an explicit `tag`.
+# Then the verify job checks that digest before anyone deploys it.
+# Requires the same two repo secrets as build-gpu-worker.yml:
+#   DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - "apps/gpu-image/**"
+      - "apps/gpu-worker/app/gateway/**"
+      - "apps/gpu-worker/app/media_io.py"
+      - "apps/gpu-worker/app/code_digest.py"
+      - ".github/workflows/build-gpu-image.yml"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Extra tag (e.g. candidate-3f37433). Leave empty for sha-<commit> only."
+        required: false
+        default: ""
+
+concurrency:
+  group: gpu-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          sudo docker image prune -af || true
+          df -h /
+
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          user="$(printf '%s' "$DH_USER" | tr -cd 'A-Za-z0-9._-')"
+          token="$(printf '%s' "$DH_TOKEN" | tr -cd 'A-Za-z0-9_-')"
+          echo "cleaned username length=${#user} token length=${#token}"
+          printf '%s' "$token" | docker login -u "$user" --password-stdin
+
+      - name: Compute tags
+        id: tags
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          EXTRA_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || '' }}
+        run: |
+          user="$(printf '%s' "$DH_USER" | tr -cd 'A-Za-z0-9._-')"
+          repo="$user/cineforge-gpu-image"
+          extra="$(printf '%s' "$EXTRA_TAG" | tr -cd 'A-Za-z0-9._-')"
+          if [ "$extra" = "latest" ]; then echo "the image runtime is never tagged latest; pin the digest"; exit 1; fi
+          {
+            echo "tags<<EOF"
+            echo "$repo:sha-$GITHUB_SHA"
+            if [ -n "$extra" ]; then echo "$repo:$extra"; fi
+            echo "EOF"
+            echo "repo=$repo"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          # Context = repository root: the Dockerfile COPYs the shared gateway,
+          # media_io.py and code_digest.py from apps/gpu-worker/app.
+          context: .
+          file: apps/gpu-image/Dockerfile
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            SOURCE_COMMIT=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          tags: ${{ steps.tags.outputs.tags }}
+
+      - name: Record image digest
+        run: |
+          echo "### GPU image runtime (ComfyUI)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pin and approve: \`cineforge-gpu-image@${{ steps.build.outputs.digest }}\` (source ${{ github.sha }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "Tags: $(echo '${{ steps.tags.outputs.tags }}' | sed 's#.*/##' | tr '\n' ' ')" >> "$GITHUB_STEP_SUMMARY"
+          echo "The verify job below checks this digest (contents vs git, workflow registry, gateway probes). Deploy only a VERIFIED digest." >> "$GITHUB_STEP_SUMMARY"
+
+  verify:
+    needs: build
+    uses: ./.github/workflows/verify-gpu-image.yml
+    with:
+      image: ${{ needs.build.outputs.digest }}
+      expect_commit: ${{ github.sha }}
+      profile: gpu-image
+    secrets: inherit

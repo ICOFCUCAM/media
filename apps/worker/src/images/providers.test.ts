@@ -34,9 +34,9 @@ describe("the Image Engine's providers (Part 2 §69, §95)", () => {
     await expect(provider!.generate("x", "k", { width: 8, height: 8 })).rejects.toThrow(/no image/);
   });
 
-  it("the registry keeps its order and says why a provider is not used; ComfyUI stays gated", () => {
+  it("the registry keeps its order and says why a provider is not used; ComfyUI says what it needs", () => {
     expect(imageProvider(async (k) => k, { IMAGE_PROVIDERS: "fal,openai", OPENAI_API_KEY: "k", S3_BUCKET: "b" }).provider?.id).toBe("openai-image");
-    expect(imageProvider(async (k) => k, { IMAGE_PROVIDERS: "comfyui,fal" })).toEqual({ provider: null, reason: expect.stringMatching(/comfyui: ComfyUI runtime waits on Phase 1.*fal: not configured/) });
+    expect(imageProvider(async (k) => k, { IMAGE_PROVIDERS: "comfyui,fal" })).toEqual({ provider: null, reason: expect.stringMatching(/comfyui: not configured \(needs COMFYUI_GPU_URL, GPU_JWT_SIGNING_KEY, S3_BUCKET, S3_ACCESS_KEY\).*fal: not configured/) });
     expect(imageProviderStatuses({ IMAGE_PROVIDERS: "openai,fal", FAL_KEY: "k", S3_BUCKET: "b" })).toEqual([
       { id: "openai", configured: false, gated: null }, { id: "fal", configured: true, gated: null },
     ]);

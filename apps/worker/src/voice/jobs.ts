@@ -169,7 +169,8 @@ async function enroll(job: VoiceJobRow, deps: VoiceJobDeps, dir: string, set: Se
   if (quality.quality === "poor") throw new VoiceJobError(`the recording is not good enough to clone: ${quality.issues.join(" ")}`);
 
   await set("generating");
-  const { artifacts } = await engine.enrollVoice({ voiceId: voice.id, language, referencePath: sample });
+  // Self-hosted engines read the owner's stored recording themselves (docs/74).
+  const { artifacts } = await engine.enrollVoice({ voiceId: voice.id, language, referencePath: sample, userId: job.userId, referenceKey: voice.sampleKey });
   if (!artifacts.length) throw new Error(`${engine.id} returned no voice artifact`);
   await deps.db.saveArtifacts(voice.id, engine.id, engine.version, artifacts);
 
@@ -215,15 +216,26 @@ async function speak(job: VoiceJobRow, deps: VoiceJobDeps, dir: string, set: Set
   const count = plan.reduce((n, p) => n + p.segments.length, 0);
   let done = 0;
   const raws: string[][] = [];
-  for (const [i, p] of plan.entries()) {
-    const files: string[] = [];
-    for (const seg of p.segments) {
-      const out = join(dir, `raw-${i}-${seg.sequence}`);
-      const r = await engine.synthesize({ text: seg.text, language: body.language, voice: artifact, style, outPath: out, voiceId: voice?.id ?? null });
-      files.push(r.path);
-      await deps.progress?.(++done / count);
+  if (engine.synthesizeBatch) {
+    // One job for every line, model kept warm (§155): self-hosted engines.
+    const reqs = plan.flatMap((p, i) => p.segments.map((seg) => ({
+      text: seg.text, language: body.language, voice: artifact, style, outPath: join(dir, `raw-${i}-${seg.sequence}`), voiceId: voice?.id ?? null,
+    })));
+    const out = await engine.synthesizeBatch(reqs);
+    let k = 0;
+    for (const p of plan) raws.push(p.segments.map(() => out[k++]!.path));
+    await deps.progress?.(1);
+  } else {
+    for (const [i, p] of plan.entries()) {
+      const files: string[] = [];
+      for (const seg of p.segments) {
+        const out = join(dir, `raw-${i}-${seg.sequence}`);
+        const r = await engine.synthesize({ text: seg.text, language: body.language, voice: artifact, style, outPath: out, voiceId: voice?.id ?? null });
+        files.push(r.path);
+        await deps.progress?.(++done / count);
+      }
+      raws.push(files);
     }
-    raws.push(files);
   }
 
   await set("post_processing");

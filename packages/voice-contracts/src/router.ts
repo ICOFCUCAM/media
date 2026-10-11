@@ -4,11 +4,17 @@
  *
  *   VOICE_ENGINES = "fal-minimax:90,openai-tts:80,qwen3-tts:100"
  *
- * Each entry is id:priority. Engines the registry knows but that may not run
- * yet are reported with the reason (never silently skipped):
- *   qwen3-tts, cosyvoice-3, gpt-sovits  self-hosted GPU models — gated: no
- *       model work until Phase 1 (docs/39) is operationally complete, and each
- *       needs its licence registry entry and owner approval (Part 4 §130, §141)
+ * Each entry is id:priority. An engine that may not run is passed over with
+ * the reason (never silently skipped):
+ *   - the licence registry has not cleared it (W14; for a self-hosted model:
+ *     recorded terms plus the owner's approval of that exact checkpoint);
+ *   - it is not configured (a self-hosted engine needs its own GPU deployment
+ *     URL and the pinned checkpoint revision, docs/74);
+ *   - it cannot do what the request needs (cloning, language, built-in voices).
+ *
+ * Self-hosted models (qwen3-tts, cosyvoice-3, gpt-sovits) are no longer held
+ * by the Phase 1 rule (lifted by the owner, docs/74); the licence registry and
+ * the owner's approval still keep each one off until it is cleared.
  */
 import type { VoiceCapabilities } from "./engine";
 import { licenceStatus } from "./licences";
@@ -24,7 +30,22 @@ export interface EngineDescriptor {
 }
 
 const ANY = "any" as const;
-const SELF_HOSTED_GATE = "self-hosted voice model — waits on Phase 1 (docs/39) being operationally complete";
+
+/**
+ * Self-hosted engines (apps/gpu-voice, docs/74): each runs on its own GPU
+ * deployment. url: the deployment (registered and approved with gateway:admin).
+ * revision: the pinned Hugging Face commit of its checkpoint — CineForge keys
+ * voice artifacts and cached speech by it, and refuses a pod running another.
+ * checkpoint (optional): the checkpoint repository, when not the licence
+ * registry's (an approval names the checkpoint it covers).
+ */
+export const SELF_HOSTED_VOICE_ENGINES = {
+  "qwen3-tts": { url: "VOICE_GPU_QWEN3_URL", revision: "VOICE_GPU_QWEN3_REVISION", checkpoint: "VOICE_GPU_QWEN3_MODEL" },
+  "cosyvoice-3": { url: "VOICE_GPU_COSYVOICE_URL", revision: "VOICE_GPU_COSYVOICE_REVISION", checkpoint: "VOICE_GPU_COSYVOICE_MODEL" },
+  "gpt-sovits": { url: "VOICE_GPU_GPTSOVITS_URL", revision: "VOICE_GPU_GPTSOVITS_REVISION", checkpoint: "VOICE_GPU_GPTSOVITS_MODEL" },
+} as const;
+export type SelfHostedVoiceEngineId = keyof typeof SELF_HOSTED_VOICE_ENGINES;
+export const isSelfHostedVoiceEngine = (id: string): id is SelfHostedVoiceEngineId => id in SELF_HOSTED_VOICE_ENGINES;
 
 export const ENGINE_REGISTRY: Record<string, EngineDescriptor> = {
   "fal-minimax": {
@@ -37,17 +58,24 @@ export const ENGINE_REGISTRY: Record<string, EngineDescriptor> = {
     capabilities: { voiceCloning: false, voiceDesign: false, multilingual: true, languages: ANY, emotionControl: false, speedControl: true, streaming: false, batch: false, maxChars: 4000,
       presets: ["onyx", "nova", "alloy", "shimmer", "echo", "fable"] },
   },
+  // Self-hosted (docs/74). Capabilities are what the CineForge GPU service
+  // actually wires for each model — not everything the model family can do.
   "qwen3-tts": {
-    id: "qwen3-tts", kind: "self-hosted", gated: SELF_HOSTED_GATE, requires: ["VOICE_GPU_URL"],
-    capabilities: { voiceCloning: true, voiceDesign: true, multilingual: true, languages: ANY, emotionControl: true, speedControl: true, streaming: false, batch: true, maxChars: 600, presets: [] },
+    id: "qwen3-tts", kind: "self-hosted", gated: null, requires: ["VOICE_GPU_QWEN3_URL", "VOICE_GPU_QWEN3_REVISION"],
+    // The Base checkpoint clones; instructions/emotion and named voices belong to other checkpoints.
+    capabilities: { voiceCloning: true, voiceDesign: false, multilingual: true, languages: ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it"],
+      emotionControl: false, speedControl: false, streaming: false, batch: true, maxChars: 600, presets: [] },
   },
   "cosyvoice-3": {
-    id: "cosyvoice-3", kind: "self-hosted", gated: SELF_HOSTED_GATE, requires: ["VOICE_GPU_URL"],
-    capabilities: { voiceCloning: true, voiceDesign: false, multilingual: true, languages: ANY, emotionControl: true, speedControl: true, streaming: true, batch: true, maxChars: 600, presets: [] },
+    id: "cosyvoice-3", kind: "self-hosted", gated: null, requires: ["VOICE_GPU_COSYVOICE_URL", "VOICE_GPU_COSYVOICE_REVISION"],
+    capabilities: { voiceCloning: true, voiceDesign: false, multilingual: true, languages: ["zh", "en", "ja", "ko", "de", "es", "fr", "it", "ru"],
+      emotionControl: false, speedControl: true, streaming: false, batch: true, maxChars: 600, presets: [] },
   },
   "gpt-sovits": {
-    id: "gpt-sovits", kind: "self-hosted", gated: SELF_HOSTED_GATE, requires: ["VOICE_GPU_URL"],
-    capabilities: { voiceCloning: true, voiceDesign: false, multilingual: true, languages: ["en", "zh", "ja", "ko", "yue"], emotionControl: false, speedControl: true, streaming: false, batch: true, maxChars: 400, presets: [] },
+    id: "gpt-sovits", kind: "self-hosted", gated: null, requires: ["VOICE_GPU_GPTSOVITS_URL", "VOICE_GPU_GPTSOVITS_REVISION"],
+    // Chinese/Cantonese need the G2PW model, which the image does not download.
+    capabilities: { voiceCloning: true, voiceDesign: false, multilingual: true, languages: ["en", "ja", "ko"],
+      emotionControl: false, speedControl: true, streaming: false, batch: true, maxChars: 400, presets: [] },
   },
 };
 
@@ -84,6 +112,7 @@ export function routeVoice(needs: RouteNeeds, env: Record<string, string | undef
     const missing = d.requires.filter((k) => !env[k]);
     if (missing.length) { passedOver.push({ id, reason: `not configured (${missing.join(", ")})` }); continue; }
     if (needs.cloning && !d.capabilities.voiceCloning) { passedOver.push({ id, reason: "cannot speak in a cloned voice" }); continue; }
+    if (!needs.cloning && !d.capabilities.presets.length) { passedOver.push({ id, reason: "has no built-in voices (speaks enrolled voices only)" }); continue; }
     const langs = d.capabilities.languages;
     if (langs !== "any" && !langs.includes(needs.language.slice(0, 2))) { passedOver.push({ id, reason: `does not speak ${needs.language}` }); continue; }
     return { engine: d, passedOver };

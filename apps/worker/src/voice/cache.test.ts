@@ -107,3 +107,29 @@ describe("speech cache (Part 4 §154)", () => {
     expect(deleted).toEqual(["audio_cache/voice/v/k1.mp3"]);
   });
 });
+
+describe("speech cache with a batch engine (docs/74)", () => {
+  it("serves hits from storage and sends only the misses to the engine, in one batch", async () => {
+    const batches: string[][] = [];
+    const { e } = fakeEngine();
+    const engine: VoiceEngine = {
+      ...e, id: "qwen3-tts",
+      synthesizeBatch: async (reqs) => {
+        batches.push(reqs.map((r) => r.text));
+        return Promise.all(reqs.map(async (r) => { await writeFile(r.outPath, `audio:${r.text}`); return { path: r.outPath, format: "wav" as const }; }));
+      },
+    };
+    const { store, rows } = memoryStore();
+    const stats: CacheStats = { hits: 0, misses: 0, errors: 0 };
+    const c = cachedEngine(engine, store, stats);
+    await c.synthesize(req("Seen before."));
+    const out = await c.synthesizeBatch!([req("Seen before."), req("New one."), req("Another new.")]);
+    expect(batches).toEqual([["New one.", "Another new."]]);
+    expect(await readFile(out[0]!.path, "utf8")).toBe("audio:Seen before.");
+    expect(await readFile(out[2]!.path, "utf8")).toBe("audio:Another new.");
+    expect(stats).toEqual({ hits: 1, misses: 3, errors: 0 });
+    expect(rows.size).toBe(3);
+    // An engine without a batch keeps none.
+    expect(cachedEngine(fakeEngine().e, store).synthesizeBatch).toBeUndefined();
+  });
+});

@@ -19,7 +19,8 @@
 import { randomUUID } from "node:crypto";
 
 import { authzDigest, secondsToMicros } from "./authz";
-import { mintExecutionToken, sha256Hex, type ExecutionScope, type SigningKey } from "./token";
+import { mintExecutionToken, sha256Hex, type ExecutionScope, type SigningKey, type VoiceExecutionScope } from "./token";
+import { voiceAuthzDigest, type VoiceOperation } from "./voice-authz";
 import {
   GatewayDeniedError,
   IMMUTABLE_IMAGE,
@@ -86,6 +87,58 @@ export interface GpuCallAuthorizer {
   prepare(req: PrepareRequest): Promise<PreparedCall>;
 }
 
+/**
+ * A self-hosted voice call (docs/74). The voice service has no storage
+ * credentials and no legacy write path: every object it reads or writes is a
+ * one-time URL presigned here, inside the owner's own `voices/<owner>/` folder.
+ */
+export interface VoicePrepareRequest {
+  baseUrl: string;
+  path: string;
+  scope: VoiceExecutionScope;
+  /** The engine the call is for — must be the deployment's model id. */
+  engineId: string;
+  /** Whose `voices/<owner>/` folder the call may read and write. */
+  ownerId: string;
+  /** Body fields (the authority adds jobId, inputUrls and the output targets). */
+  payload: Record<string, unknown>;
+  /** Objects the service reads, bound by content hash in the token's authz. */
+  inputs?: { key: string; sha256: string }[];
+  /** Objects the service writes; `{grant}` in a key becomes the grant id. */
+  outputs?: { name: string; key: string; contentType: string }[];
+  /** "output": one target as `output`; "outputs" (default): a name → target map. */
+  outputField?: "output" | "outputs";
+}
+
+export interface VoiceGrantHandle {
+  readonly id: string;
+  /** name → granted output key. */
+  readonly outputKeys: Record<string, string>;
+  /** Verify every granted output exists with the reported size, then record the grant completed. */
+  complete(written: { key: string; bytes?: number }[], gpuMs?: number): Promise<void>;
+  fail(code: string): Promise<void>;
+}
+
+export interface PreparedVoiceCall {
+  body: string;
+  headers: Record<string, string>;
+  grant: VoiceGrantHandle | null;
+  mode: EnforcementMode;
+}
+
+export interface VoiceCallAuthorizer {
+  prepareVoice(req: VoicePrepareRequest): Promise<PreparedVoiceCall>;
+  /** Status / warm tokens (health, capabilities, polls). */
+  prepare(req: PrepareRequest): Promise<PreparedCall>;
+}
+
+const VOICE_OPERATION: Record<VoiceExecutionScope, VoiceOperation | null> = {
+  "voice:enroll": "enroll",
+  "voice:run": "speak",
+  "voice:score": "score",
+  "voice:evict": null,
+};
+
 export interface GatewayAuthorityOptions {
   store: GatewayStore;
   signingKey: SigningKey | null;
@@ -100,7 +153,7 @@ export interface GatewayAuthorityOptions {
   log?: (line: string) => void;
 }
 
-export class GatewayAuthority implements GpuCallAuthorizer {
+export class GatewayAuthority implements GpuCallAuthorizer, VoiceCallAuthorizer {
   private readonly attestCache = new Map<string, { image: string | null; at: number }>();
   private readonly now: () => number;
   private readonly log: (line: string) => void;
@@ -173,6 +226,123 @@ export class GatewayAuthority implements GpuCallAuthorizer {
       return { body: undefined, headers: { authorization: `Bearer ${token}` }, grant: null, mode };
     }
     return this.prepareGenerate(dep!, req.job!, req.payload!, mode, req);
+  }
+
+  // ── self-hosted voice (docs/74) ─────────────────────────────────────
+  async prepareVoice(req: VoicePrepareRequest): Promise<PreparedVoiceCall> {
+    let dep: RuntimeDeployment | null = null;
+    let registryError = false;
+    try {
+      dep = await this.opts.store.deploymentByUrl(req.baseUrl);
+    } catch (e) {
+      registryError = true;
+      this.log(JSON.stringify({ event: "gateway.registry_unavailable", error: e instanceof Error ? e.message : String(e) }));
+    }
+    const mode: EnforcementMode = this.opts.globalMode === "enforce" || dep?.enforcement === "enforce" ? "enforce" : "report";
+    const inputs = req.inputs ?? [];
+    const own = `voices/${req.ownerId}/`;
+    const grantId = `g_${randomUUID()}`;
+    const outputs = (req.outputs ?? []).map((o) => ({ ...o, key: o.key.replaceAll("{grant}", grantId) }));
+
+    const problems: string[] = [];
+    if (!dep) problems.push(registryError ? "REGISTRY_UNAVAILABLE" : "UNREGISTERED_DEPLOYMENT");
+    else if (dep.status !== "approved") problems.push("DEPLOYMENT_NOT_APPROVED");
+    if (!this.opts.signingKey) problems.push("NO_SIGNING_KEY");
+    if (dep && dep.status === "approved" && !dep.manifest) problems.push("NO_APPROVED_MANIFEST");
+    if (dep && dep.modelId !== req.engineId) problems.push("MODEL_NOT_AUTHORIZED");
+    if (mode === "enforce" && dep) {
+      const imageProblem = await this.checkImage(dep);
+      if (imageProblem) problems.push(imageProblem);
+    }
+    if (!req.ownerId || inputs.some((i) => i.key.includes("..") || !i.key.startsWith(own))) problems.push("INPUT_OUT_OF_SCOPE");
+    if (outputs.some((o) => o.key.includes("..") || !o.key.startsWith(own))) problems.push("OUTPUT_OUT_OF_SCOPE");
+    if (inputs.some((i) => !SHA256_HEX.test(i.sha256))) problems.push("INPUT_UNHASHED");
+    // No legacy path: without one-time URLs the service cannot read or write anything.
+    const fatal = (inputs.length || outputs.length) && !this.opts.presigner ? "NO_PRESIGNER" : null;
+    if (fatal) problems.push(fatal);
+
+    const record = req.scope !== "voice:evict";
+    if (problems.length && (mode === "enforce" || fatal || problems.includes("INPUT_OUT_OF_SCOPE") || problems.includes("OUTPUT_OUT_OF_SCOPE"))) {
+      // Out-of-scope storage is refused in every mode: a voice is only ever its owner's.
+      const code = fatal ?? problems.find((p) => p.endsWith("_OUT_OF_SCOPE")) ?? problems[0]!;
+      await this.event({ type: "dispatch.denied", deploymentId: dep?.id ?? null, grantId: null, code, detail: { problems, path: req.path, engine: req.engineId } });
+      if (record) await this.opts.store.insertGrant({ ...this.voiceGrantRow(grantId, dep, req, mode, inputs, outputs), outcome: "denied", errorCode: code });
+      throw new GatewayDeniedError(code, problems.join(", "));
+    }
+    if (problems.length && record) {
+      await this.event({ type: "dispatch.would_deny", deploymentId: dep?.id ?? null, grantId, code: problems[0]!, detail: { problems, path: req.path, engine: req.engineId } });
+    }
+
+    const presigner = this.opts.presigner;
+    const inputUrls: Record<string, string> = {};
+    for (const i of inputs) inputUrls[i.key] = await presigner!.presignGet(i.key, INPUT_URL_TTL_SEC);
+    const targets: Record<string, { key: string; uploadUrl: string }> = {};
+    for (const o of outputs) targets[o.name] = { key: o.key, uploadUrl: await presigner!.presignPut(o.key, o.contentType, OUTPUT_URL_TTL_SEC) };
+    const outputField = req.outputField ?? "outputs";
+    const outputBody = !outputs.length ? {} : outputField === "output" ? { output: Object.values(targets)[0] } : { outputs: targets };
+    const body = JSON.stringify({ ...req.payload, jobId: grantId, ...(inputs.length ? { inputUrls } : {}), ...outputBody });
+
+    const operation = VOICE_OPERATION[req.scope];
+    const canSign = dep && dep.status === "approved" && dep.manifest && this.opts.signingKey && dep.modelId === req.engineId;
+    let headers: Record<string, string> = {};
+    let authz: string | undefined;
+    let jti: string | null = null;
+    let expiresAt: Date | null = null;
+    if (canSign) {
+      authz = operation
+        ? voiceAuthzDigest({ engine: req.engineId, operation, runtime: dep!.manifest!.runtime, models: dep!.manifest!.models, inputs })
+        : undefined;
+      const minted = mintExecutionToken({ key: this.opts.signingKey!, deploymentId: dep!.id, subject: grantId, scope: req.scope, body, authz,
+        ttlSec: this.opts.tokenTtlSec, now: this.now() / 1000 });
+      headers = { authorization: `Bearer ${minted.token}` };
+      jti = minted.claims.jti;
+      expiresAt = new Date(minted.claims.exp * 1000);
+    } else if (record) {
+      await this.event({ type: "dispatch.legacy", deploymentId: dep?.id ?? null, grantId, code: problems[0] ?? null, detail: { path: req.path, engine: req.engineId } });
+    }
+    if (!record) return { body, headers, grant: null, mode };
+
+    const row = this.voiceGrantRow(grantId, dep, req, mode, inputs, outputs);
+    row.jti = jti;
+    row.authzDigest = authz ?? null;
+    row.bodySha256 = sha256Hex(body);
+    row.expiresAt = expiresAt;
+    await this.audit(() => this.opts.store.insertGrant(row), mode);
+    return { body, headers, grant: this.voiceHandle(grantId, dep, outputs, mode), mode };
+  }
+
+  private voiceGrantRow(id: string, dep: RuntimeDeployment | null, req: VoicePrepareRequest, mode: EnforcementMode,
+    inputs: { key: string }[], outputs: { key: string }[]): GrantRecord {
+    return {
+      id, jti: null, deploymentId: dep?.id ?? null, shotId: null, projectId: null, scope: req.scope, mode,
+      authzDigest: null, bodySha256: null, inputKeys: inputs.map((i) => i.key), outputKeys: outputs.map((o) => o.key),
+      imageRef: dep?.approvedImage ?? null, issuedAt: new Date(this.now()), expiresAt: null, outcome: "issued", errorCode: null,
+    };
+  }
+
+  private voiceHandle(grantId: string, dep: RuntimeDeployment | null, outputs: { name: string; key: string }[], mode: EnforcementMode): VoiceGrantHandle {
+    const outputKeys = Object.fromEntries(outputs.map((o) => [o.name, o.key]));
+    return {
+      id: grantId,
+      outputKeys,
+      complete: async (written, gpuMs) => {
+        let total = 0;
+        for (const o of outputs) {
+          const w = written.find((x) => x.key === o.key);
+          const head = w ? await this.opts.presigner!.head(o.key).catch(() => null) : null;
+          const ok = w && head && head.size > 0 && (w.bytes === undefined || w.bytes === head.size);
+          if (!ok) {
+            if (dep) await this.reject(grantId, dep, w ? "OUTPUT_NOT_VERIFIED" : "OUTPUT_KEY_MISMATCH", mode);
+            throw new GatewayDeniedError(w ? "OUTPUT_NOT_VERIFIED" : "OUTPUT_KEY_MISMATCH", `granted output ${o.key} missing or size mismatch`);
+          }
+          total += head!.size;
+        }
+        await this.audit(() => this.opts.store.updateGrant(grantId, { outcome: "completed", gpuMs: gpuMs ?? null, outputBytes: total, completedAt: new Date(this.now()) }), mode);
+      },
+      fail: async (code) => {
+        await this.audit(() => this.opts.store.updateGrant(grantId, { outcome: "failed", errorCode: code, completedAt: new Date(this.now()) }), mode);
+      },
+    };
   }
 
   // ── job authorization ───────────────────────────────────────────────

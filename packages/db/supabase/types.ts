@@ -1357,11 +1357,15 @@ export type Database = {
           prompt_sha256: string
           provider: string
           purpose: string
+          runtime: string | null
           seed: number | null
           sha256: string | null
           storage_key: string
           subject: string
           width: number | null
+          workflow_id: string | null
+          workflow_sha256: string | null
+          workflow_version: number | null
         }
         Insert: {
           candidate?: number | null
@@ -1375,11 +1379,15 @@ export type Database = {
           prompt_sha256: string
           provider: string
           purpose: string
+          runtime?: string | null
           seed?: number | null
           sha256?: string | null
           storage_key: string
           subject: string
           width?: number | null
+          workflow_id?: string | null
+          workflow_sha256?: string | null
+          workflow_version?: number | null
         }
         Update: {
           candidate?: number | null
@@ -1393,11 +1401,15 @@ export type Database = {
           prompt_sha256?: string
           provider?: string
           purpose?: string
+          runtime?: string | null
           seed?: number | null
           sha256?: string | null
           storage_key?: string
           subject?: string
           width?: number | null
+          workflow_id?: string | null
+          workflow_sha256?: string | null
+          workflow_version?: number | null
         }
         Relationships: [
           {

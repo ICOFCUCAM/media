@@ -1,0 +1,13 @@
+# Service layer shared by every voice engine image (exact pins; no ranges).
+# Transitive dependencies are fixed by the image digest that is approved and
+# pinned for a deployment (docs/39 §10, docs/74).
+fastapi==0.115.6
+uvicorn[standard]==0.30.0
+pydantic==2.10.6
+# Media Runtime Gateway: Ed25519 (EdDSA) execution-token verification (shared with apps/gpu-worker).
+PyJWT[crypto]==2.9.0
+# Pinned checkpoint download (repo + 40-hex revision) and the weights digest.
+huggingface_hub==0.34.4
+safetensors==0.5.3
+soundfile==0.12.1
+numpy==1.26.4

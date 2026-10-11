@@ -68,9 +68,18 @@ describe("voice router (§167–168)", () => {
       { id: "openai-tts", reason: "cannot speak in a cloned voice" },
     ]);
   });
-  it("self-hosted models are listed but gated", () => {
-    const r = routeVoice({ cloning: true, language: "en" }, { VOICE_ENGINES: "qwen3-tts:100,fal-minimax:90", FAL_KEY: "k", VOICE_GPU_URL: "http://gpu" });
+  it("self-hosted models are no longer held by Phase 1 — they wait on the licence registry and the owner's approval", () => {
+    const gpu = { VOICE_GPU_QWEN3_URL: "https://gpu", VOICE_GPU_QWEN3_REVISION: "a".repeat(40) };
+    const r = routeVoice({ cloning: true, language: "en" }, { VOICE_ENGINES: "qwen3-tts:100,fal-minimax:90", FAL_KEY: "k", ...gpu });
     expect(r.engine?.id).toBe("fal-minimax");
-    expect(r.passedOver[0]).toMatchObject({ id: "qwen3-tts", reason: expect.stringMatching(/Phase 1/) });
+    expect(r.passedOver[0]).toMatchObject({ id: "qwen3-tts", reason: expect.stringMatching(/^licence: .*no owner approval/) });
+    expect(r.passedOver[0]!.reason).not.toMatch(/Phase 1/);
+    // Approved by the owner for the registry's checkpoint: it speaks — when configured.
+    const approved = { VOICE_ENGINES: "qwen3-tts:100,fal-minimax:90", FAL_KEY: "k", VOICE_MODEL_APPROVALS: "qwen3-tts@Qwen/Qwen3-TTS-12Hz-1.7B-Base=owner:2026-10-11" };
+    expect(routeVoice({ cloning: true, language: "en" }, { ...approved, ...gpu }).engine?.id).toBe("qwen3-tts");
+    expect(routeVoice({ cloning: true, language: "en" }, approved).passedOver[0]).toEqual({ id: "qwen3-tts", reason: "not configured (VOICE_GPU_QWEN3_URL, VOICE_GPU_QWEN3_REVISION)" });
+    // It has no built-in voices, and does not speak Norwegian.
+    expect(routeVoice({ cloning: false, language: "en" }, { ...approved, ...gpu, OPENAI_API_KEY: "k" }).passedOver[0]!.reason).toMatch(/no built-in voices/);
+    expect(routeVoice({ cloning: true, language: "no" }, { ...approved, ...gpu }).passedOver[0]!.reason).toBe("does not speak no");
   });
 });

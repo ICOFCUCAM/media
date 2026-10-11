@@ -105,6 +105,7 @@ export const CAPABILITY_LABEL: Record<string, string> = {
   film_planning: "Film planning (AI Director)",
   content_moderation: "Content check",
   seed_image_generation: "Seed stills",
+  self_hosted_image_runtime: "Own image GPU (ComfyUI)",
   video_generation: "Video generation (own GPU)",
   video_generation_cinematic: "Cinematic engine",
   reference_image_conditioning: "Image-to-video identity",

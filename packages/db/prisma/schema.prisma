@@ -1456,6 +1456,11 @@ model ImageGeneration {
   candidate    Int?
   chosen       Boolean?
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Stills drawn by CineForge's own image runtime (docs/73; 0063): the runtime and registry workflow.
+  runtime         String?
+  workflowId      String? @map("workflow_id")
+  workflowVersion Int?    @map("workflow_version")
+  workflowSha256  String? @map("workflow_sha256")
 
   @@index([projectId, purpose], map: "image_generations_project_idx")
   @@index([subject, purpose], map: "image_generations_subject_idx")

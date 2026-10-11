@@ -7,6 +7,7 @@
 
 export const MODEL_VERSIONS: Record<string, string> = {
   "wan-2.1": "wan-2.1-1.0",
+  "wan-2.2": "wan-2.2-ti2v-5b-1.0",
   hunyuan: "hunyuan-1.0",
   cinematic: "fal-kling-2.1",
 };
@@ -22,6 +23,8 @@ interface CostBase {
 // output are apples-to-apples (premium Hunyuan costs more at the same target).
 const MODEL_COST: Record<string, CostBase> = {
   "wan-2.1": { baseMs: 12_000, refW: 1280, refH: 720, refDur: 5 },
+  // Wan 2.2 TI2V-5B: native 720p at 24 fps — more frames per second of film; calibrate from telemetry.
+  "wan-2.2": { baseMs: 30_000, refW: 1280, refH: 720, refDur: 5 },
   hunyuan: { baseMs: 22_000, refW: 1280, refH: 720, refDur: 5 },
 };
 
