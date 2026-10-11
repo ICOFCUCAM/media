@@ -26,6 +26,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# Ubuntu 22.04's pip 22.0.2 builds source packages against the system
+# setuptools 59, which cannot read a [project] table: pyopenjtalk 0.4.1
+# (GPT-SoVITS) then reports its name as "unknown" and the install fails.
+# A current, pinned pip builds them in a clean isolated environment.
+RUN python3 -m pip install --no-cache-dir pip==25.1.1
+
 # torch per engine, from the CUDA wheel index (exact versions).
 #   qwen3-tts, gpt-sovits: torch 2.6.0 (cu124)    cosyvoice-3: torch 2.3.1 (cu121, the upstream pin)
 RUN case "$VOICE_ENGINE" in \
