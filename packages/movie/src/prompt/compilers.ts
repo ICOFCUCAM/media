@@ -31,6 +31,8 @@ export interface ModelProfile {
 
 export const MODEL_PROFILES: Record<string, ModelProfile> = {
   "wan-2.1": { id: "wan-2.1", still: false, maxPromptChars: 1200, negativePrompt: true, cameraMotion: true },
+  // Wan 2.2 (W28) reads the same natural-language prompt as 2.1, with a longer budget (umT5 512 tokens).
+  "wan-2.2": { id: "wan-2.2", still: false, maxPromptChars: 2000, negativePrompt: true, cameraMotion: true },
   hunyuan: { id: "hunyuan", still: false, maxPromptChars: 1500, negativePrompt: true, cameraMotion: true },
   "openai-image": { id: "openai-image", still: true, maxPromptChars: 3800, negativePrompt: false, cameraMotion: false },
   default: { id: "default", still: false, maxPromptChars: 1000, negativePrompt: false, cameraMotion: true },

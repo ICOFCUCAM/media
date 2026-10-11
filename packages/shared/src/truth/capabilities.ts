@@ -91,7 +91,9 @@ export function formatsFor(max: [number, number] | null | undefined): string[] {
  */
 export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
   const { env } = probe;
-  const wan = probe.gpu?.["wan-2.1"] ?? null;
+  // The production video model (W28): Wan 2.2 when its worker is reporting, else Wan 2.1.
+  const wanId = probe.gpu?.["wan-2.2"] ? "wan-2.2" : "wan-2.1";
+  const wan = probe.gpu?.[wanId] ?? null;
   const gpuReal = wan?.realExecution === true;
   const gpuMode = wan?.execution ?? (probe.gpu ? "unreachable" : "unprobed");
   const cap = (c: Capability) => c;
@@ -129,7 +131,7 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
     })(),
     cap({
       capability: "video_generation",
-      provider: wan ? "wan-2.1" : null,
+      provider: wan ? wanId : null,
       status: gpuReal ? "experimental" : "unavailable",
       realExecution: gpuReal,
       requiresGpu: true,
@@ -144,7 +146,7 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
     }),
     cap({
       capability: "reference_image_conditioning",
-      provider: wan ? "wan-2.1" : null,
+      provider: wan ? wanId : null,
       status: gpuReal && wan?.supportsRefImage ? "experimental" : "unavailable",
       realExecution: gpuReal && !!wan?.supportsRefImage,
       note: gpuReal && !wan?.supportsRefImage ? "no I2V model configured (WAN_I2V_MODEL_ID)" : undefined,
@@ -153,7 +155,7 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
     cap({ capability: "camera_control", provider: null, status: "not_implemented", realExecution: false }),
     cap({
       capability: "lora_identity",
-      provider: wan ? "wan-2.1" : null,
+      provider: wan ? wanId : null,
       status: gpuReal && wan?.supportsLora ? "experimental" : "unavailable",
       realExecution: gpuReal && !!wan?.supportsLora,
     }),

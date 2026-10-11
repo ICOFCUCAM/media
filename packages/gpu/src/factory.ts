@@ -23,6 +23,11 @@ export interface GpuEnv {
   HUNYUAN_GPU_URL: string;
   RUNPOD_HUNYUAN_POD_ID?: string;
   RUNPOD_HUNYUAN_ENDPOINT_ID?: string;
+
+  // Wan 2.2 (W28; the production candidate): a pool only when its worker is configured.
+  WAN22_GPU_URL?: string;
+  RUNPOD_WAN22_POD_ID?: string;
+  RUNPOD_WAN22_ENDPOINT_ID?: string;
 }
 
 export interface GpuManagers {
@@ -73,6 +78,23 @@ export function createGpuManagers(env: GpuEnv): GpuManagers {
       { pool: "hunyuan", graceMs, reconcileMs },
     ),
   );
+
+  if (env.WAN22_GPU_URL) {
+    byModel.set(
+      "wan-2.2",
+      new GpuLifecycleManager(
+        redis,
+        tracker,
+        new RunpodControlClient({
+          apiKey: env.RUNPOD_API_KEY,
+          podId: env.RUNPOD_WAN22_POD_ID,
+          endpointId: env.RUNPOD_WAN22_ENDPOINT_ID,
+          healthUrl: `${env.WAN22_GPU_URL}/livez`,
+        }),
+        { pool: "wan-2.2", graceMs, reconcileMs },
+      ),
+    );
+  }
 
   return { byModel, redis, tracker };
 }

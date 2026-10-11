@@ -29,7 +29,7 @@ import {
   degradation,
   type Degradation,
 } from "@cineforge/shared";
-import { buildClusterRegistry, MODEL_VERSIONS, type JobContext, type ShotRequest, type VideoModelAdapter } from "@cineforge/model-adapters";
+import { buildClusterRegistry, MODEL_VERSIONS, routeVideoModel, type JobContext, type ShotRequest, type VideoModelAdapter } from "@cineforge/model-adapters";
 import { prisma } from "@cineforge/db";
 import { checkContinuity, compileFor, compileGeneration, endStateOf, FilmPackage, reviewFrame, type GenerationContext } from "@cineforge/movie";
 import { candidateSeed, imageProvider, MAX_REFERENCE_IMAGES } from "../images/providers";
@@ -56,7 +56,7 @@ import { imageGenerationRow, recordImageGeneration, type ImageLedgerDb, type Ima
 import { S3Storage } from "../storage/storage";
 import { enqueueLora } from "../orchestration/lora-queue";
 import { buildGatewayAuthority } from "../gateway";
-import { gateShotTiming, timingSummary } from "../runtime/timing-gate";
+import { gateShotTiming, NATIVE_FPS, timingSummary } from "../runtime/timing-gate";
 import { recordVideoGeneration, videoGenerationRow, type LedgerDb } from "../runtime/ledger";
 
 // Bytes uploader for provider adapters (OpenAI seed frames).
@@ -80,6 +80,8 @@ const registry = buildClusterRegistry(
     WAN_GPU_URL: process.env.WAN_GPU_URL,
     HUNYUAN_GPU_URLS: process.env.HUNYUAN_GPU_URLS,
     HUNYUAN_GPU_URL: process.env.HUNYUAN_GPU_URL,
+    WAN22_GPU_URLS: process.env.WAN22_GPU_URLS,
+    WAN22_GPU_URL: process.env.WAN22_GPU_URL,
     RUNPOD_API_KEY: process.env.RUNPOD_API_KEY,
     EXTERNAL_VIDEO_API_URL: process.env.EXTERNAL_VIDEO_API_URL,
     EXTERNAL_VIDEO_API_KEY: process.env.EXTERNAL_VIDEO_API_KEY,
@@ -515,8 +517,13 @@ async function findCacheHit(shot: ShotWithScene): Promise<{ videoKey: string; th
 export const videoWorker = new Worker<VideoJob>(
   QUEUES.video,
   async (job) => {
-    const { shotId, modelId, projectId } = job.data;
+    const { shotId, projectId } = job.data;
     const shot = await loadShot(shotId);
+    // The production video model (W28): a shot planned for the legacy Wan 2.1
+    // runs on VIDEO_PRIMARY_MODEL (e.g. wan-2.2) when that worker is configured.
+    const route = routeVideoModel(job.data.modelId, { primary: process.env.VIDEO_PRIMARY_MODEL, available: (id) => registry.has(id) });
+    const modelId = route.modelId;
+    if (route.upgraded) console.log(JSON.stringify({ event: "video.routed", shotId, requested: job.data.modelId, modelId }));
 
     // ── PREVIS (W8b): the storyboard still only — no video ───────────────
     if (job.name === "previs") {
@@ -666,7 +673,7 @@ export const videoWorker = new Worker<VideoJob>(
     // What actually ran (DOS-70/75): placeholder media never becomes a shot;
     // clamped size/length, ignored references and skipped LoRAs are recorded.
     const judged = judgeRun(result.execution, result.realExecution,
-      { width: request.width, height: request.height, durationSec: request.durationSec, fps: request.fps ?? 16, shotId },
+      { width: request.width, height: request.height, durationSec: request.durationSec, fps: request.fps ?? NATIVE_FPS[adapter.id] ?? 16, shotId },
       { allowPlaceholder: allowPlaceholder() });
     if (judged.failure) {
       await recordDegradations(prisma as unknown as DegradationDb, projectId, gaps);

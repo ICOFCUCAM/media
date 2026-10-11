@@ -55,7 +55,7 @@ export function currentRegistry(
   for (const [m, c] of Object.entries(gpu)) wire[m] = c?.caps ?? { execution: "not yet verified", realExecution: false };
   const registry = buildCapabilityRegistry({ env, gpu: wire, intelligence });
   // Say when the GPU facts were last verified (pods sleep when idle).
-  const wan = gpu["wan-2.1"];
+  const wan = gpu["wan-2.2"] ?? gpu["wan-2.1"];
   return registry.map((c) =>
     c.requiresGpu && wan ? { ...c, note: [c.note, `GPU verified ${wan.verifiedAt}`].filter(Boolean).join("; ") } : c,
   );

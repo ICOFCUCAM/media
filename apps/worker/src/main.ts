@@ -43,6 +43,9 @@ const gpu = createGpuManagers({
   HUNYUAN_GPU_URL: process.env.HUNYUAN_GPU_URL!,
   RUNPOD_HUNYUAN_POD_ID: process.env.RUNPOD_HUNYUAN_POD_ID,
   RUNPOD_HUNYUAN_ENDPOINT_ID: process.env.RUNPOD_HUNYUAN_ENDPOINT_ID,
+  WAN22_GPU_URL: process.env.WAN22_GPU_URL,
+  RUNPOD_WAN22_POD_ID: process.env.RUNPOD_WAN22_POD_ID,
+  RUNPOD_WAN22_ENDPOINT_ID: process.env.RUNPOD_WAN22_ENDPOINT_ID,
 });
 
 // 1) Periodic reconcile loop per model pool (the safety net + grace driver).
@@ -67,7 +70,7 @@ const stopPoller = startProjectPoller();
 // operational, from env + the GPU workers' last verified /capabilities.
 const reporter = process.env.DEPLOYMENT_ID || process.env.HOSTNAME || "worker";
 const publishNow = async () => {
-  const caps = await readGpuCaps(gpu.redis, ["wan-2.1", "hunyuan"]);
+  const caps = await readGpuCaps(gpu.redis, ["wan-2.1", "wan-2.2", "hunyuan"]);
   const router = intelligence();
   const brain = (task: "film_plan" | "translation" | "visual_review") => {
     const first = router.routesFor(task).find(() => true);

@@ -10,6 +10,7 @@ export type Tier = "FREE" | "CREATOR" | "STUDIO" | "ENTERPRISE";
 /** Which tiers may use each model. Mirrors each adapter's capabilities().tiers. */
 export const MODEL_TIERS: Record<string, Tier[]> = {
   "wan-2.1": ["FREE", "CREATOR", "STUDIO", "ENTERPRISE"],
+  "wan-2.2": ["FREE", "CREATOR", "STUDIO", "ENTERPRISE"],
   hunyuan: ["STUDIO", "ENTERPRISE"],
 };
 
@@ -42,4 +43,20 @@ export function resolveModel(modelId: string, tier: Tier): ModelResolution {
     requested: modelId,
     reason: modelId in MODEL_TIERS ? "MODEL_NOT_ALLOWED_FOR_TIER" : "MODEL_UNKNOWN",
   };
+}
+
+/**
+ * The video model a shot actually runs on (W28; docs/38 §H — the router, not
+ * the app, decides). VIDEO_PRIMARY_MODEL names the production model (e.g.
+ * wan-2.2); a shot that asked for the legacy primary (wan-2.1) runs on it when
+ * it is registered and allowed for the tier. Anything else runs as asked.
+ */
+export const LEGACY_PRIMARY = "wan-2.1";
+
+export function routeVideoModel(requested: string, opts: { primary?: string | null; available: (id: string) => boolean; tier?: Tier }): { modelId: string; upgraded: boolean } {
+  const primary = opts.primary?.trim();
+  if (primary && requested === LEGACY_PRIMARY && primary !== requested && opts.available(primary) && (!opts.tier || isModelAllowed(primary, opts.tier))) {
+    return { modelId: primary, upgraded: true };
+  }
+  return { modelId: requested, upgraded: false };
 }

@@ -4,6 +4,10 @@ Model loading + inference + S3 upload for the GPU worker.
 Runs REAL inference for both models (docs/22):
   - MODEL_NAME=wan-2.1  → Wan 2.1   (primary; default Wan-AI/Wan2.1-T2V-1.3B-Diffusers)
   - MODEL_NAME=hunyuan  → Hunyuan Video (premium; hunyuanvideo-community/HunyuanVideo)
+  - MODEL_NAME=wan-2.2  → Wan 2.2   (W28; docs/38 §E production candidate; default
+    Wan-AI/Wan2.2-TI2V-5B-Diffusers — one model for text- AND image-to-video at
+    720p on a 24–48 GB GPU; WAN22_I2V_MODEL_ID=Wan-AI/Wan2.2-I2V-A14B-Diffusers
+    adds the 14B two-expert image-to-video model on an 80 GB GPU)
 
 The heavy deps (torch/diffusers) are imported lazily so this module still loads
 on a machine without a GPU. The FFmpeg placeholder runs ONLY when
@@ -34,16 +38,22 @@ PLACEHOLDER = os.environ.get("CINEFORGE_PLACEHOLDER") == "1"
 MODEL_IDS = {
     "wan-2.1": os.environ.get("WAN_MODEL_ID", "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"),
     "hunyuan": os.environ.get("HUNYUAN_MODEL_ID", "hunyuanvideo-community/HunyuanVideo"),
+    "wan-2.2": os.environ.get("WAN22_MODEL_ID", "Wan-AI/Wan2.2-TI2V-5B-Diffusers"),
 }
 # Pinned Hugging Face commit per model (docs/39 F6). The gateway refuses to
 # enforce with an unpinned model: an unpinned repo can change weights silently.
 MODEL_REVISIONS = {
     "wan-2.1": os.environ.get("WAN_MODEL_REVISION") or None,
     "hunyuan": os.environ.get("HUNYUAN_MODEL_REVISION") or None,
+    "wan-2.2": os.environ.get("WAN22_MODEL_REVISION") or None,
 }
 # Optional image-to-video model (enables seed-frame conditioning / identity lock).
 WAN_I2V_MODEL_ID = os.environ.get("WAN_I2V_MODEL_ID")  # e.g. Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
 WAN_I2V_MODEL_REVISION = os.environ.get("WAN_I2V_MODEL_REVISION") or None
+# Wan 2.2 (W28): the TI2V-5B model animates a still by itself; a separate
+# image-to-video model (the 14B A14B, two experts) is optional and needs 80 GB.
+WAN22_I2V_MODEL_ID = os.environ.get("WAN22_I2V_MODEL_ID") or None
+WAN22_I2V_MODEL_REVISION = os.environ.get("WAN22_I2V_MODEL_REVISION") or None
 
 
 def _cuda_available() -> bool:
@@ -89,12 +99,17 @@ class VideoPipeline:
 
     def has_i2v(self) -> bool:
         """Whether a reference frame switches this worker to image-to-video."""
+        if self.model_name == "wan-2.2":
+            return True  # TI2V-5B animates a still itself; or the A14B I2V model
         return self.model_name == "wan-2.1" and bool(WAN_I2V_MODEL_ID)
 
     def model_specs(self) -> dict[str, tuple[str, str | None]]:
         """role → (repository id, pinned revision) for every model this worker may run."""
         specs = {"t2v": (MODEL_IDS[self.model_name], MODEL_REVISIONS.get(self.model_name))}
-        if self.has_i2v():
+        if self.model_name == "wan-2.2":
+            if WAN22_I2V_MODEL_ID:
+                specs["i2v"] = (WAN22_I2V_MODEL_ID, WAN22_I2V_MODEL_REVISION)
+        elif self.has_i2v():
             specs["i2v"] = (WAN_I2V_MODEL_ID, WAN_I2V_MODEL_REVISION)
         return specs
 
@@ -116,7 +131,8 @@ class VideoPipeline:
         import torch  # noqa: PLC0415
         from diffusers import DiffusionPipeline  # noqa: PLC0415
 
-        dtype = torch.bfloat16 if self.model_name == "hunyuan" else torch.float16
+        # Hunyuan and Wan 2.2 are trained in bfloat16; Wan 2.1 runs in float16.
+        dtype = torch.bfloat16 if self.model_name in ("hunyuan", "wan-2.2") else torch.float16
         # DiffusionPipeline.from_pretrained resolves the right class (Wan / Hunyuan)
         # from the repo's model_index.json — robust across diffusers versions.
         pipe = DiffusionPipeline.from_pretrained(
@@ -149,6 +165,8 @@ class VideoPipeline:
         self._real = True
 
     def _load_i2v(self):
+        if self.model_name == "wan-2.2":
+            return self._load_i2v_22()
         if self._i2v is not None or not WAN_I2V_MODEL_ID:
             return self._i2v
         import torch  # noqa: PLC0415
@@ -161,6 +179,28 @@ class VideoPipeline:
             pipe.enable_model_cpu_offload()
         except Exception:
             pipe.to("cuda")
+        self._i2v = pipe
+        return self._i2v
+
+    def _load_i2v_22(self):
+        """Wan 2.2 image-to-video: the A14B model when configured, else the TI2V-5B
+        weights already loaded, reused through the image-to-video pipeline."""
+        if self._i2v is not None:
+            return self._i2v
+        import torch  # noqa: PLC0415
+        from diffusers import WanImageToVideoPipeline  # noqa: PLC0415
+
+        if WAN22_I2V_MODEL_ID:
+            pipe = WanImageToVideoPipeline.from_pretrained(
+                WAN22_I2V_MODEL_ID, revision=WAN22_I2V_MODEL_REVISION, torch_dtype=torch.bfloat16
+            )
+            try:
+                pipe.enable_model_cpu_offload()
+            except Exception:
+                pipe.to("cuda")
+        else:
+            # Same components, no second copy in memory.
+            pipe = WanImageToVideoPipeline.from_pipe(self._t2v)
         self._i2v = pipe
         return self._i2v
 
@@ -179,10 +219,14 @@ class VideoPipeline:
         a clip must be visible). Reference video, camera control and v2v are not
         implemented on these backends, so they are reported as unsupported.
         """
-        caps = runtime_limits()
+        caps = runtime_limits(model=self.model_name)
         real = self.is_real
         placeholder = self._loaded and not real and not self._unavailable
-        res = [[1280, 720], [1920, 1080]] if self.model_name == "hunyuan" else [[832, 480], [1280, 720]]
+        res = (
+            [[1280, 720], [1920, 1080]] if self.model_name == "hunyuan"
+            else [[1280, 704], [704, 1280]] if self.model_name == "wan-2.2"
+            else [[832, 480], [1280, 720]]
+        )
         return {
             "model": self.model_name,
             "execution": self.execution_mode,
@@ -264,9 +308,11 @@ class VideoPipeline:
         # Cap the per-shot workload (all env-tunable) so a clip renders in a
         # practical time on one GPU. The worker's ~80 frames x 30 steps takes many
         # minutes per clip; these defaults bring it to ~1 min. Raise for quality.
-        caps = runtime_limits()
+        caps = runtime_limits(model=self.model_name)
         width, height = clamp_dims(width, height, caps)
         num_frames = min(num_frames, caps["maxFrames"])
+        if self.model_name == "wan-2.2":
+            num_frames = wan_frames(num_frames)
         gen = torch.Generator(device="cuda").manual_seed(int(seed))
         steps = min(int((extra or {}).get("steps", 30)), caps["maxSteps"])
         guidance = float((extra or {}).get("guidance", 5.0))
@@ -281,6 +327,9 @@ class VideoPipeline:
             "guidance_scale": guidance,
             "generator": gen,
         }
+        # Wan 2.2 A14B (two experts): the low-noise expert's guidance, when given.
+        if self.model_name == "wan-2.2" and (extra or {}).get("guidance2") is not None:
+            call["guidance_scale_2"] = float(extra["guidance2"])
 
         # Identity lock: a seed/reference frame drives image-to-video when an I2V
         # model is configured; otherwise we run text-to-video.
@@ -437,15 +486,32 @@ def _ignored(reference_image_keys, reference_video_keys, video_op, camera, *, us
     }
 
 
-def runtime_limits(env: dict | None = None) -> dict:
-    """Per-shot workload caps applied by the real pipeline (env-tunable)."""
+# Each model's own working size (W28): Wan 2.2 TI2V-5B is a 720p model
+# (1280×704, up to 121 frames at 24 fps); Wan 2.1 1.3B stays at 480p.
+MODEL_LIMIT_DEFAULTS = {
+    "wan-2.2": {"maxWidth": 1280, "maxHeight": 704, "maxFrames": 121, "maxSteps": 40},
+}
+DEFAULT_LIMITS = {"maxWidth": 832, "maxHeight": 480, "maxFrames": 25, "maxSteps": 20}
+
+
+def runtime_limits(env: dict | None = None, model: str | None = None) -> dict:
+    """Per-shot workload caps applied by the real pipeline (env-tunable).
+
+    The model's own defaults apply unless the WAN_MAX_* variables are set.
+    """
     env = os.environ if env is None else env
+    d = MODEL_LIMIT_DEFAULTS.get(model or os.environ.get("MODEL_NAME", ""), DEFAULT_LIMITS)
     return {
-        "maxWidth": int(env.get("WAN_MAX_WIDTH", "832")),
-        "maxHeight": int(env.get("WAN_MAX_HEIGHT", "480")),
-        "maxFrames": int(env.get("WAN_MAX_FRAMES", "25")),
-        "maxSteps": int(env.get("WAN_MAX_STEPS", "20")),
+        "maxWidth": int(env.get("WAN_MAX_WIDTH", d["maxWidth"])),
+        "maxHeight": int(env.get("WAN_MAX_HEIGHT", d["maxHeight"])),
+        "maxFrames": int(env.get("WAN_MAX_FRAMES", d["maxFrames"])),
+        "maxSteps": int(env.get("WAN_MAX_STEPS", d["maxSteps"])),
     }
+
+
+def wan_frames(n: int) -> int:
+    """Wan generates 4k+1 frames; round down to the nearest valid count (at least 5)."""
+    return max(5, ((max(1, n) - 1) // 4) * 4 + 1)
 
 
 def clamp_dims(width: int, height: int, caps: dict) -> tuple[int, int]:

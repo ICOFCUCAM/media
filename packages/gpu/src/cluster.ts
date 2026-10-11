@@ -85,5 +85,6 @@ export function parseClusterFromEnv(env: Record<string, string | undefined>): Gp
   };
   add("wan-2.1", env.WAN_GPU_URLS, env.WAN_GPU_URL);
   add("hunyuan", env.HUNYUAN_GPU_URLS, env.HUNYUAN_GPU_URL);
+  add("wan-2.2", env.WAN22_GPU_URLS, env.WAN22_GPU_URL);
   return workers;
 }

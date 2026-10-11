@@ -1,5 +1,6 @@
 # GPU worker image for RunPod. One image per model via MODEL_NAME:
-#   MODEL_NAME=wan-2.1 (primary)  |  MODEL_NAME=hunyuan (premium)
+#   MODEL_NAME=wan-2.2 (production candidate, W28) | MODEL_NAME=wan-2.1 (legacy)
+#   | MODEL_NAME=hunyuan (premium)
 # Weights download from Hugging Face on first run — bake them in or mount a
 # RunPod network volume at /root/.cache/huggingface to avoid slow cold starts.
 FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
@@ -19,6 +20,8 @@ WORKDIR /app
 RUN pip3 install --no-cache-dir torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
+# Fail the build, not the pod, if the pinned set cannot load the pipelines we run.
+RUN python3 -c "from diffusers import WanPipeline, WanImageToVideoPipeline, DiffusionPipeline; import transformers, peft, accelerate"
 
 COPY app ./app
 
