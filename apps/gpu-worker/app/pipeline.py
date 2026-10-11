@@ -149,7 +149,10 @@ class VideoPipeline:
             total_vram_gb = torch.cuda.get_device_properties(0).total_memory / 1e9
         except Exception:
             pass
-        if total_vram_gb >= 40:
+        # Wan 2.2 at 720p needs its activations and VAE decode on the card, so
+        # its ~11GB text encoder waits on the CPU while the video is drawn —
+        # held on the GPU, a 48GB A40 runs out of memory on a 5 s shot.
+        if total_vram_gb >= 40 and not offload_always(self.model_name):
             pipe.to("cuda")
         else:
             try:
@@ -388,6 +391,8 @@ class VideoPipeline:
                     pipe.unload_lora_weights()
                 except Exception:
                     pass
+            # Free this shot's activations so the next shot starts with an empty cache.
+            torch.cuda.empty_cache()
 
     # ── helpers ──────────────────────────────────────────────
     def _fetch_lora(self, key: str) -> str:
@@ -492,6 +497,15 @@ MODEL_LIMIT_DEFAULTS = {
     "wan-2.2": {"maxWidth": 1280, "maxHeight": 704, "maxFrames": 121, "maxSteps": 40},
 }
 DEFAULT_LIMITS = {"maxWidth": 832, "maxHeight": 480, "maxFrames": 25, "maxSteps": 20}
+
+
+def offload_always(model: str | None) -> bool:
+    """Whether the model streams its components from the CPU on every card
+    (WAN_CPU_OFFLOAD=1/0 overrides; Wan 2.2 offloads by default)."""
+    flag = os.environ.get("WAN_CPU_OFFLOAD")
+    if flag is not None and flag != "":
+        return flag.lower() in ("1", "true", "yes")
+    return model == "wan-2.2"
 
 
 def runtime_limits(env: dict | None = None, model: str | None = None) -> dict:

@@ -56,3 +56,15 @@ def test_wan22_capabilities_report_720p_and_image_conditioning(pipeline):
     assert caps["model"] == "wan-2.2"
     assert caps["resolutions"] == [[1280, 704], [704, 1280]]
     assert caps["supportsRefImage"] is True
+
+
+def test_wan22_offloads_by_default(monkeypatch):
+    from app.pipeline import offload_always
+
+    monkeypatch.delenv("WAN_CPU_OFFLOAD", raising=False)
+    assert offload_always("wan-2.2") is True
+    assert offload_always("wan") is False
+    monkeypatch.setenv("WAN_CPU_OFFLOAD", "0")
+    assert offload_always("wan-2.2") is False
+    monkeypatch.setenv("WAN_CPU_OFFLOAD", "1")
+    assert offload_always("wan") is True
