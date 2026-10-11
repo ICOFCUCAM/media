@@ -1713,9 +1713,12 @@ export type Database = {
           resume_requested_at: string | null
           season_number: number | null
           series_id: string | null
+          showcase_slot: string | null
           spent_ms: number
           status: Database["public"]["Enums"]["project_status"]
           story_approved_at: string | null
+          supplied_plan: Json | null
+          supplied_plan_by: string | null
           target_seconds: number
           title: string
           updated_at: string
@@ -1745,9 +1748,12 @@ export type Database = {
           resume_requested_at?: string | null
           season_number?: number | null
           series_id?: string | null
+          showcase_slot?: string | null
           spent_ms?: number
           status?: Database["public"]["Enums"]["project_status"]
           story_approved_at?: string | null
+          supplied_plan?: Json | null
+          supplied_plan_by?: string | null
           target_seconds: number
           title: string
           updated_at?: string
@@ -1777,9 +1783,12 @@ export type Database = {
           resume_requested_at?: string | null
           season_number?: number | null
           series_id?: string | null
+          showcase_slot?: string | null
           spent_ms?: number
           status?: Database["public"]["Enums"]["project_status"]
           story_approved_at?: string | null
+          supplied_plan?: Json | null
+          supplied_plan_by?: string | null
           target_seconds?: number
           title?: string
           updated_at?: string
@@ -2625,6 +2634,7 @@ export type Database = {
           created_at: string
           id: string
           project_id: string | null
+          slot: string | null
           tag: string
           title: string
           video_path: string
@@ -2633,6 +2643,7 @@ export type Database = {
           created_at?: string
           id?: string
           project_id?: string | null
+          slot?: string | null
           tag?: string
           title: string
           video_path: string
@@ -2641,6 +2652,7 @@ export type Database = {
           created_at?: string
           id?: string
           project_id?: string | null
+          slot?: string | null
           tag?: string
           title?: string
           video_path?: string
