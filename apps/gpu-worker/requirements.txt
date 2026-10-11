@@ -12,11 +12,13 @@ PyJWT[crypto]==2.9.0
 # load ("Could not import module 'BloomPreTrainedModel'"). diffusers 0.35.2
 # (W28) is the first release with both Wan 2.2 pipelines (TI2V-5B and the
 # two-expert A14B) and still runs Wan 2.1; its requirements resolve with the
-# pins below (checked with pip). transformers/peft/accelerate stay where they were.
+# pins below. It imports with peft>=0.17.0 only (checked at import time), so
+# peft moved 0.14.0 -> 0.17.1; the Wan pipelines were import-checked with
+# exactly this set. transformers/accelerate stay where they were.
 diffusers==0.35.2
 transformers==4.49.0
 accelerate==1.4.0
-peft==0.14.0
+peft==0.17.1
 imageio[ffmpeg]>=2.34.0
 ftfy>=6.1.0
 sentencepiece>=0.2.0
