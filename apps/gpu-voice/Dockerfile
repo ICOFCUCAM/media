@@ -29,7 +29,12 @@ WORKDIR /app
 # Ubuntu 22.04's pip 22.0.2 builds source packages against the system
 # setuptools 59, which cannot read a [project] table: pyopenjtalk 0.4.1
 # (GPT-SoVITS) then reports its name as "unknown" and the install fails.
-# A current, pinned pip builds them in a clean isolated environment.
+# A current, pinned pip builds them in a clean isolated environment. That
+# environment would take the newest setuptools, which has dropped
+# pkg_resources (still imported by CosyVoice's dependencies' setup.py), so
+# every build and install is held to setuptools 80.9.0.
+RUN echo "setuptools==80.9.0" > /etc/pip-constraints.txt
+ENV PIP_CONSTRAINT=/etc/pip-constraints.txt
 RUN python3 -m pip install --no-cache-dir pip==25.1.1
 
 # torch per engine, from the CUDA wheel index (exact versions).
