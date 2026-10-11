@@ -1,0 +1,126 @@
+{
+  "registry": "cineforge.comfyui.image",
+  "runtime": {
+    "name": "comfyui",
+    "repo": "https://github.com/comfyanonymous/ComfyUI",
+    "tag": "v0.37.4",
+    "commit": "8ff6dc384ba5c410266b40e137799e049459d4f2",
+    "licence": "GPL-3.0-only",
+    "licenceSource": "LICENSE at the pinned commit (GNU GENERAL PUBLIC LICENSE Version 3); docs/38 §AT.4, §AT.15"
+  },
+  "customNodes": [],
+  "allowedNodes": [
+    "UNETLoader",
+    "CLIPLoader",
+    "VAELoader",
+    "LoraLoaderModelOnly",
+    "ModelSamplingAuraFlow",
+    "CFGNorm",
+    "CLIPTextEncode",
+    "TextEncodeQwenImageEditPlus",
+    "EmptySD3LatentImage",
+    "KSampler",
+    "VAEDecode",
+    "LoadImage",
+    "SaveImage"
+  ],
+  "models": {
+    "qwen-image.diffusion": {
+      "repo": "Comfy-Org/Qwen-Image_ComfyUI",
+      "revisionEnv": "QWEN_IMAGE_COMFY_REVISION",
+      "file": "split_files/diffusion_models/qwen_image_fp8_e4m3fn.safetensors",
+      "folder": "diffusion_models",
+      "name": "qwen_image_fp8_e4m3fn.safetensors",
+      "model": "Qwen-Image (fp8 e4m3fn, ComfyUI repackage)",
+      "licence": "Apache-2.0",
+      "licenceSource": "github.com/QwenLM/Qwen-Image: \"Qwen-Image is licensed under Apache 2.0\" (docs/38 §C, §D, read 2026-10-06). Repackaged weights: re-check the licence on the Comfy-Org model card at the pinned revision before approval."
+    },
+    "qwen-image-edit-2511.diffusion": {
+      "repo": "Comfy-Org/Qwen-Image-Edit_ComfyUI",
+      "revisionEnv": "QWEN_IMAGE_EDIT_COMFY_REVISION",
+      "file": "split_files/diffusion_models/qwen_image_edit_2511_bf16.safetensors",
+      "folder": "diffusion_models",
+      "name": "qwen_image_edit_2511_bf16.safetensors",
+      "model": "Qwen-Image-Edit-2511 (bf16, ComfyUI repackage)",
+      "licence": "Apache-2.0",
+      "licenceSource": "github.com/QwenLM/Qwen-Image: Edit releases (2509, 2511) under the same Apache 2.0 licence (docs/38 §D, read 2026-10-06). Repackaged weights: re-check the licence on the Comfy-Org model card at the pinned revision before approval."
+    },
+    "qwen2.5-vl-7b.text-encoder": {
+      "repo": "Comfy-Org/Qwen-Image_ComfyUI",
+      "revisionEnv": "QWEN_IMAGE_COMFY_REVISION",
+      "file": "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "folder": "text_encoders",
+      "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "model": "Qwen2.5-VL-7B-Instruct text encoder (fp8 scaled, ComfyUI repackage)",
+      "licence": "Apache-2.0",
+      "licenceSource": "Bundled text encoder of Qwen-Image (docs/38 'No hidden dependencies'). Qwen2.5-VL-7B-Instruct is published under Apache-2.0 (Qwen/Qwen2.5-VL-7B-Instruct model card). NOT in docs/38's verified table: verify and archive before approving a deployment."
+    },
+    "qwen-image.vae": {
+      "repo": "Comfy-Org/Qwen-Image_ComfyUI",
+      "revisionEnv": "QWEN_IMAGE_COMFY_REVISION",
+      "file": "split_files/vae/qwen_image_vae.safetensors",
+      "folder": "vae",
+      "name": "qwen_image_vae.safetensors",
+      "model": "Qwen-Image VAE",
+      "licence": "Apache-2.0",
+      "licenceSource": "Part of the Qwen-Image release, Apache 2.0 (docs/38 §D)."
+    }
+  },
+  "workflows": [
+    {
+      "id": "cineforge.still.t2i",
+      "version": 1,
+      "file": "cineforge.still.t2i@1.json",
+      "purpose": "text_to_image",
+      "modelLabel": "qwen-image",
+      "models": {
+        "diffusion": "qwen-image.diffusion",
+        "text_encoder": "qwen2.5-vl-7b.text-encoder",
+        "vae": "qwen-image.vae"
+      },
+      "output": "11",
+      "slots": {
+        "prompt": {"type": "string", "required": true, "maxLength": 4000, "targets": [["6", "text"]]},
+        "negative": {"type": "string", "default": "", "maxLength": 2000, "targets": [["7", "text"]]},
+        "seed": {"type": "int", "required": true, "min": 0, "max": 2147483647, "targets": [["9", "seed"]]},
+        "width": {"type": "int", "required": true, "min": 256, "max": 2048, "multipleOf": 16, "targets": [["8", "width"]]},
+        "height": {"type": "int", "required": true, "min": 256, "max": 2048, "multipleOf": 16, "targets": [["8", "height"]]},
+        "steps": {"type": "int", "default": 20, "min": 4, "max": 50, "targets": [["9", "steps"]]},
+        "lora": {"type": "lora", "node": "4", "bypassInput": "model", "defaultScale": 1.0, "minScale": 0.0, "maxScale": 2.0}
+      },
+      "limits": {"maxMegapixels": 2.1, "timeoutSec": 600}
+    },
+    {
+      "id": "cineforge.still.ref",
+      "version": 1,
+      "file": "cineforge.still.ref@1.json",
+      "purpose": "reference_to_image",
+      "modelLabel": "qwen-image-edit-2511",
+      "models": {
+        "diffusion": "qwen-image-edit-2511.diffusion",
+        "text_encoder": "qwen2.5-vl-7b.text-encoder",
+        "vae": "qwen-image.vae"
+      },
+      "output": "11",
+      "slots": {
+        "prompt": {"type": "string", "required": true, "maxLength": 4000, "targets": [["12", "prompt"]]},
+        "negative": {"type": "string", "default": "", "maxLength": 2000, "targets": [["13", "prompt"]]},
+        "seed": {"type": "int", "required": true, "min": 0, "max": 2147483647, "targets": [["9", "seed"]]},
+        "width": {"type": "int", "required": true, "min": 256, "max": 2048, "multipleOf": 16, "targets": [["8", "width"]]},
+        "height": {"type": "int", "required": true, "min": 256, "max": 2048, "multipleOf": 16, "targets": [["8", "height"]]},
+        "steps": {"type": "int", "default": 20, "min": 4, "max": 50, "targets": [["9", "steps"]]},
+        "references": {
+          "type": "images",
+          "min": 1,
+          "targets": [
+            {"node": "20", "consumers": [["12", "image1"], ["13", "image1"]]},
+            {"node": "21", "consumers": [["12", "image2"], ["13", "image2"]]},
+            {"node": "22", "consumers": [["12", "image3"], ["13", "image3"]]}
+          ]
+        },
+        "lora": {"type": "lora", "node": "4", "bypassInput": "model", "defaultScale": 1.0, "minScale": 0.0, "maxScale": 2.0}
+      },
+      "limits": {"maxMegapixels": 2.1, "timeoutSec": 900}
+    }
+  ]
+}
