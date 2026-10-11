@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CinemaArt, type Scene } from "../cf/CinemaArt";
 import { MasterShot } from "./scenes/MasterShot";
-import { listShowcase, publicUrl, type ShowcaseRow } from "../../lib/showcase";
+import { heroFilm, listShowcase, publicUrl, type ShowcaseRow } from "../../lib/showcase";
 
 /**
  * The hero's living frame: a film visibly becoming a film. When admins have
@@ -30,7 +30,7 @@ export function HeroFrame({ masterStill }: { masterStill?: string }) {
   const [still, setStill] = useState(true);
 
   useEffect(() => {
-    void listShowcase(1).then((rows) => rows[0] && setReal(rows[0]));
+    void listShowcase(20).then((rows) => { const r = heroFilm(rows); if (r) setReal(r); });
     setStill(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }, []);
 

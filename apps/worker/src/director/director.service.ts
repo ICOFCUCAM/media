@@ -25,6 +25,7 @@ import {
 } from "@cineforge/movie";
 import { intelligence } from "../intelligence";
 import { stubPackage } from "./stub";
+import { suppliedPlan } from "./supplied";
 import { shotGenerationFields, statePatchRow } from "./rows";
 import type { GateResult } from "../quality/gates";
 import { chosenVoiceId } from "../voice/film";
@@ -104,7 +105,7 @@ export class DirectorService {
       select: {
         prompt: true, targetSeconds: true, modelId: true, resolution: true, aspectRatio: true,
         kind: true, medium: true, animationStyle: true, episodes: true, seriesId: true, episodeNumber: true, seasonNumber: true, title: true,
-        adSource: true,
+        adSource: true, suppliedPlan: true, suppliedPlanBy: true,
       },
     });
     const spec = productionOf(project);
@@ -119,7 +120,10 @@ export class DirectorService {
     let plan: PlanResult;
     const router = intelligence();
     try {
-      if (!router.available("film_plan") && process.env.DIRECTOR_ALLOW_STUB === "1") {
+      if (project.suppliedPlan != null) {
+        // docs/76: a plan written outside the Director, held to the same validators.
+        plan = suppliedPlan(project.suppliedPlan, project.suppliedPlanBy, constraints);
+      } else if (!router.available("film_plan") && process.env.DIRECTOR_ALLOW_STUB === "1") {
         plan = { pkg: stubPackage(project.prompt, constraints), revised: false, fixedIssues: [], provider: "stub", model: "stub" };
       } else {
         plan = await planFilm(router, project.prompt, constraints, { projectId, production: planProductionFor(spec, canon, planAdvertFor(spec, adSource, brandAssets)) });
@@ -128,7 +132,7 @@ export class DirectorService {
       throw toProductionFailure(e) ?? e;
     }
     // 2b (W24): the Cinematographer redesigns scenes with grammar problems, from each scene's state only.
-    if (plan.provider !== "stub" && process.env.DIRECTOR_COVERAGE_PASS !== "0") {
+    if (plan.provider !== "stub" && plan.provider !== "supplied" && process.env.DIRECTOR_COVERAGE_PASS !== "0") {
       const cov = await refineCoverage(router, plan.pkg, constraints, { projectId }).catch(() => null);
       if (cov) {
         plan = { ...plan, pkg: cov.pkg };

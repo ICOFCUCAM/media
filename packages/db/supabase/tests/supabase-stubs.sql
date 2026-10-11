@@ -148,3 +148,12 @@ alter table public.voiceovers enable row level security;
 drop policy if exists voiceovers_owner on public.voiceovers;
 create policy voiceovers_owner on public.voiceovers for all using (user_id = auth.uid());
 grant select, insert, update, delete on public.voiceovers to anon, authenticated;
+-- Homepage showcase (real: 0021) for 0064.
+create table if not exists public.showcase (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid,
+  title text not null,
+  tag text not null default 'Film',
+  video_path text not null,
+  created_at timestamptz not null default now()
+);
