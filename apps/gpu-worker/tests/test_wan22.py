@@ -18,7 +18,8 @@ def test_wan22_is_a_known_model_with_ti2v_default(pipeline):
     vp = pipeline.VideoPipeline("wan-2.2")
     # TI2V-5B animates a still by itself: image conditioning without a second model.
     assert vp.has_i2v() is True
-    assert list(vp.model_specs()) == ["t2v"]
+    # One model for both: animating a still reuses the text-to-video weights.
+    assert vp.model_specs()["i2v"] == vp.model_specs()["t2v"]
 
 
 def test_wan22_optional_a14b_image_to_video(monkeypatch):

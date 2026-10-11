@@ -107,8 +107,8 @@ class VideoPipeline:
         """role → (repository id, pinned revision) for every model this worker may run."""
         specs = {"t2v": (MODEL_IDS[self.model_name], MODEL_REVISIONS.get(self.model_name))}
         if self.model_name == "wan-2.2":
-            if WAN22_I2V_MODEL_ID:
-                specs["i2v"] = (WAN22_I2V_MODEL_ID, WAN22_I2V_MODEL_REVISION)
+            # TI2V-5B animates stills with the same weights; the A14B model has its own.
+            specs["i2v"] = (WAN22_I2V_MODEL_ID, WAN22_I2V_MODEL_REVISION) if WAN22_I2V_MODEL_ID else specs["t2v"]
         elif self.has_i2v():
             specs["i2v"] = (WAN_I2V_MODEL_ID, WAN_I2V_MODEL_REVISION)
         return specs
