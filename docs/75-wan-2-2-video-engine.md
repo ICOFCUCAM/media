@@ -41,7 +41,9 @@ and the new image has passed its check (I give you the digest).
 2. **DeployPro: point the worker at it.** The pod's address and id don't
    change; the worker also reads them under the Wan 2.2 names. The old
    `WAN_GPU_URL` / `RUNPOD_WAN_POD_ID` can stay: with `VIDEO_PRIMARY_MODEL`
-   set, every Wan shot goes to Wan 2.2.
+   set, every Wan shot goes to Wan 2.2, and when both point at the same pod
+   the worker manages it once (the idle Wan 2.1 pool never stops it while
+   Wan 2.2 shots run).
 
    ```sh
    deploypro env set cineforge-worker WAN22_GPU_URL 'https://<POD_ID>-8000.proxy.runpod.net' --target production
