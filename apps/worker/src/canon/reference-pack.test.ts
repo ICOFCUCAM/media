@@ -22,11 +22,16 @@ describe("image provider registry (W6)", () => {
     expect(imageProvider(put, {})).toEqual({ provider: null, reason: "openai: not configured; fal: not configured" });
     expect(imageProvider(put, { IMAGE_PROVIDERS: "none", OPENAI_API_KEY: "k", S3_BUCKET: "b" }).reason).toMatch(/disabled/);
   });
-  it("ComfyUI is listed but gated on Phase 1 — never used, never silently skipped", () => {
+  it("ComfyUI is used only when listed and configured — never silently skipped (docs/73)", () => {
     const env = { IMAGE_PROVIDERS: "comfyui,openai", OPENAI_API_KEY: "k", S3_BUCKET: "b" };
     expect(imageProvider(put, env).provider?.id).toBe("openai-image");
-    expect(imageProviderStatuses(env)[0]).toMatchObject({ id: "comfyui", configured: false, gated: expect.stringMatching(/Phase 1/) });
-    expect(imageProvider(put, { IMAGE_PROVIDERS: "comfyui" }).reason).toMatch(/comfyui: ComfyUI runtime waits on Phase 1/);
+    expect(imageProviderStatuses(env)[0]).toEqual({ id: "comfyui", configured: false, gated: null });
+    expect(imageProvider(put, { IMAGE_PROVIDERS: "comfyui" }).reason).toMatch(/comfyui: not configured \(needs COMFYUI_GPU_URL/);
+    const ready = { ...env, COMFYUI_GPU_URL: "https://pod", GPU_JWT_SIGNING_KEY: "k1:x", S3_ACCESS_KEY: "a" };
+    expect(imageProviderStatuses(ready)[0]).toEqual({ id: "comfyui", configured: true, gated: null });
+    expect(imageProvider(put, ready).provider?.id).toBe("comfyui-image");
+    // Not listed: never used, even when configured.
+    expect(imageProvider(put, { ...ready, IMAGE_PROVIDERS: "openai" }).provider?.id).toBe("openai-image");
   });
 });
 

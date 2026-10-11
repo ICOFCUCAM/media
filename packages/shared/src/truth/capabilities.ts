@@ -18,6 +18,7 @@ export type CapabilityId =
   | "film_planning"
   | "content_moderation"
   | "seed_image_generation"
+  | "self_hosted_image_runtime"
   | "video_generation"
   | "video_generation_cinematic"
   | "reference_image_conditioning"
@@ -52,6 +53,12 @@ export interface CapabilityProbe {
   env: Record<string, string | undefined>;
   /** GPU worker `/capabilities` per model id, when reachable. */
   gpu?: Record<string, GpuCapabilitiesWire | null>;
+  /**
+   * Self-hosted voice engines as the worker sees them (docs/74), computed with
+   * the voice licence registry: listed in VOICE_ENGINES, configured (GPU URL +
+   * pinned revision), approved (licence cleared incl. the owner's approval).
+   */
+  voice?: { id: string; listed: boolean; configured: boolean; approved: boolean; reason: string | null }[];
   /** Intelligence router availability per reasoning task (first configured route's provider). */
   intelligence?: Partial<Record<"film_plan" | "translation" | "visual_review", { available: boolean; provider: string | null }>>;
 }
@@ -115,19 +122,44 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
       status: has(env, "OPENAI_API_KEY") ? "experimental" : "unavailable",
       realExecution: has(env, "OPENAI_API_KEY"),
     }),
-    (() => {
-      // Image provider registry (W6, W17): IMAGE_PROVIDERS, default "openai"; fal is a hosted option; ComfyUI is gated on Phase 1.
+    ...(() => {
+      // Image provider registry (W6, W17): IMAGE_PROVIDERS, default "openai"; fal is a hosted option;
+      // comfyui is CineForge's own image runtime (docs/73), off unless listed AND configured.
       const listed = (env.IMAGE_PROVIDERS ?? "openai").split(",").map((x) => x.trim());
-      // The first configured, ungated provider in IMAGE_PROVIDERS order (W17 adds fal).
-      const ready = listed.find((id) => (id === "openai" && has(env, "OPENAI_API_KEY")) || (id === "fal" && has(env, "FAL_KEY"))) ?? null;
-      const gated = listed.includes("comfyui") ? "ComfyUI waits on Phase 1 (docs/39)" : null;
-      return cap({
-        capability: "seed_image_generation",
-        provider: ready,
-        status: ready ? "experimental" : listed.includes("none") ? "disabled" : "unavailable",
-        realExecution: Boolean(ready),
-        note: [gated, ready ? null : "no image provider configured (IMAGE_PROVIDERS with OPENAI_API_KEY or FAL_KEY)"].filter(Boolean).join("; ") || undefined,
-      });
+      const comfy = probe.gpu?.["comfyui-image"] ?? null;
+      const comfyListed = listed.includes("comfyui");
+      const comfyMissing = ["COMFYUI_GPU_URL", "GPU_JWT_SIGNING_KEY", "S3_BUCKET", "S3_ACCESS_KEY"].filter((k) => !env[k]);
+      const comfyConfigured = comfyListed && comfyMissing.length === 0;
+      // Available only when configured AND the pod itself reports real execution.
+      const comfyReal = comfyConfigured && comfy?.realExecution === true;
+      // The first configured provider in IMAGE_PROVIDERS order (W17 adds fal, docs/73 comfyui).
+      const ready = listed.find((id) => (id === "openai" && has(env, "OPENAI_API_KEY")) || (id === "fal" && has(env, "FAL_KEY")) || (id === "comfyui" && comfyReal)) ?? null;
+      const comfyNote = !comfyListed
+        ? "off (IMAGE_PROVIDERS does not name comfyui)"
+        : comfyMissing.length
+          ? `not configured (needs ${comfyMissing.join(", ")})`
+          : comfyReal
+            ? "Qwen-Image / Qwen-Image-Edit-2511 on ComfyUI; real-provider test pending"
+            : `configured; the pod reports ${comfy?.execution ?? "nothing yet"} (verified when it is awake)`;
+      return [
+        cap({
+          capability: "seed_image_generation",
+          provider: ready === "comfyui" ? "comfyui" : ready,
+          status: ready ? "experimental" : listed.includes("none") ? "disabled" : "unavailable",
+          realExecution: Boolean(ready),
+          note: [comfyListed && ready !== "comfyui" ? `comfyui: ${comfyNote}` : null,
+            ready ? null : "no image provider configured (IMAGE_PROVIDERS with OPENAI_API_KEY, FAL_KEY or a configured comfyui)"].filter(Boolean).join("; ") || undefined,
+        }),
+        cap({
+          capability: "self_hosted_image_runtime",
+          provider: comfyConfigured ? "comfyui" : null,
+          status: comfyReal ? "experimental" : comfyListed ? "unavailable" : "disabled",
+          realExecution: comfyReal,
+          requiresGpu: true,
+          supports: comfyReal ? ["text_to_image", ...(comfy?.supportsRefImage ? ["reference_images"] : []), ...(comfy?.supportsLora ? ["lora"] : [])] : [],
+          note: comfyNote,
+        }),
+      ];
     })(),
     cap({
       capability: "video_generation",
@@ -181,18 +213,24 @@ export function buildCapabilityRegistry(probe: CapabilityProbe): Capability[] {
     })(),
     (() => {
       // Voice Engine router (W7): VOICE_ENGINES, default "fal-minimax:90,openai-tts:80".
-      // Self-hosted voice models are listed but gated on Phase 1 (docs/39).
+      // Self-hosted voice models (docs/74) count only when listed, configured
+      // AND approved (licence registry + the owner's approval).
       const listed = (env.VOICE_ENGINES ?? "fal-minimax:90,openai-tts:80").split(",").map((x) => x.split(":")[0]!.trim());
-      const fal = listed.includes("fal-minimax") && has(env, "FAL_KEY");
-      const gated = listed.filter((id) => ["qwen3-tts", "cosyvoice-3", "gpt-sovits"].includes(id));
+      const selfHosted = ["qwen3-tts", "cosyvoice-3", "gpt-sovits"];
+      const known = new Map((probe.voice ?? []).map((v) => [v.id, v]));
+      const usable = (id: string) => (id === "fal-minimax" && has(env, "FAL_KEY")) || (selfHosted.includes(id) && !!known.get(id)?.configured && !!known.get(id)?.approved);
+      const provider = listed.find(usable) ?? null;
+      const waiting = listed.filter((id) => selfHosted.includes(id) && !usable(id))
+        .map((id) => `${id}: ${known.get(id)?.reason ?? "status unknown"}`);
       return cap({
         capability: "voice_cloning",
-        provider: fal ? "fal-minimax" : null,
-        status: fal ? "experimental" : "unavailable",
-        realExecution: fal,
+        provider,
+        status: provider ? "experimental" : "unavailable",
+        realExecution: !!provider,
         note: [
-          gated.length ? `${gated.join(", ")} wait on Phase 1 (docs/39)` : null,
-          fal ? "consent required; recordings judged before cloning" : "no cloning engine configured (VOICE_ENGINES / FAL_KEY)",
+          waiting.length ? waiting.join("; ") : null,
+          provider && selfHosted.includes(provider) ? "self-hosted on CineForge's GPU; real-provider test pending" : null,
+          provider ? "consent required; recordings judged before cloning" : "no cloning engine configured (VOICE_ENGINES / FAL_KEY / an approved self-hosted engine)",
         ].filter(Boolean).join("; "),
       });
     })(),

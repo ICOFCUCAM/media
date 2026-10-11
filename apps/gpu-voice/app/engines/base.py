@@ -123,7 +123,12 @@ class VoiceBackend:
         return self._runtime_version()
 
     def _runtime_version(self) -> str:
+        # Engines installed from a git checkout record the pinned commit at build time.
         commit = self.env.get("VOICE_ENGINE_SOURCE_COMMIT", "").strip()
+        marker = self.env.get("VOICE_ENGINE_SOURCE_FILE", "/opt/engine-source-commit")
+        if not commit and os.path.isfile(marker):
+            with open(marker, encoding="utf-8") as f:
+                commit = f.read().strip()
         if commit:
             return f"{self.runtime_package}@{commit[:12]}"
         try:

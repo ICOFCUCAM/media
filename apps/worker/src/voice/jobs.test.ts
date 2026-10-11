@@ -103,7 +103,7 @@ describe("voice.enroll", () => {
   it("fails with the reasons when no configured engine can clone", async () => {
     const w = world({ job: { type: "voice.enroll", voiceId: "v-1" }, env: { VOICE_ENGINES: "qwen3-tts:100,openai-tts:80", OPENAI_API_KEY: "k" } });
     await runVoiceJob("job-1", w.deps);
-    expect(error(w)).toMatch(/qwen3-tts: self-hosted voice model — waits on Phase 1/);
+    expect(error(w)).toMatch(/qwen3-tts: licence: .*no owner approval/);
     expect(error(w)).toMatch(/openai-tts: cannot speak in a cloned voice/);
   });
 });
@@ -172,5 +172,62 @@ describe("speech.batch", () => {
     const w = world({ job: { type: "speech.batch", payload: { items: [{ id: "../x", text: "One." }] } } });
     await runVoiceJob("job-1", w.deps);
     expect(error(w)).toMatch(/invalid request: item ids/);
+  });
+});
+
+describe("self-hosted engines in voice jobs (docs/74)", () => {
+  const APPROVED = { VOICE_ENGINES: "qwen3-tts:100", VOICE_GPU_QWEN3_URL: "https://gpu", VOICE_GPU_QWEN3_REVISION: "a".repeat(40),
+    VOICE_MODEL_APPROVALS: "qwen3-tts@Qwen/Qwen3-TTS-12Hz-1.7B-Base=owner:2026-10-12" };
+
+  function batchEngine(calls: string[], enrolls: unknown[]): VoiceEngine {
+    return {
+      id: "qwen3-tts", version: "Qwen/Qwen3-TTS-12Hz-1.7B-Base@aaaaaaaaaaaa",
+      getCapabilities: () => ({ voiceCloning: true, voiceDesign: false, multilingual: true, languages: ["en"], emotionControl: false, speedControl: false, streaming: false, batch: true, maxChars: 120, presets: [] }),
+      enrollVoice: async (r) => { enrolls.push(r); return { artifacts: [{ artifactType: "speaker_embedding", uri: `voices/${ME}/v-1/engines/qwen3-tts/g.safetensors`, metadata: { sha256: "f".repeat(64) } }] }; },
+      synthesize: async () => { throw new Error("per-line synthesize must not be used when a batch is available"); },
+      synthesizeBatch: async (reqs) => {
+        calls.push(`batch:${reqs.length}`);
+        for (const r of reqs) await writeFile(r.outPath, "raw");
+        return reqs.map((r) => ({ path: r.outPath, format: "wav" as const }));
+      },
+      health: async () => ({ ok: true }),
+      unload: async () => {},
+    };
+  }
+
+  it("enrollment hands a self-hosted engine the owner and the stored recording; consent rules unchanged", async () => {
+    const calls: string[] = [];
+    const enrolls: unknown[] = [];
+    const w = world({ job: { type: "voice.enroll", voiceId: "v-1" }, env: APPROVED });
+    w.deps.engine = (id) => (id === "qwen3-tts" ? batchEngine(calls, enrolls) : null);
+    expect(await runVoiceJob("job-1", w.deps)).toEqual({ status: "completed" });
+    expect(enrolls[0]).toMatchObject({ voiceId: "v-1", userId: ME, referenceKey: `voices/${ME}/a.wav` });
+    expect(w.saved[0]).toMatchObject({ artifactType: "speaker_embedding" });
+    const noConsent = world({ job: { type: "voice.enroll", voiceId: "v-1" }, env: APPROVED, voice: { consentType: null, consentConfirmedAt: null } });
+    noConsent.deps.engine = (id) => (id === "qwen3-tts" ? batchEngine(calls, enrolls) : null);
+    await runVoiceJob("job-1", noConsent.deps);
+    expect(error(noConsent)).toMatch(/consent is required/);
+    expect(enrolls).toHaveLength(1);
+  });
+
+  it("a batch of lines is spoken in ONE engine call, then each line is mastered and delivered", async () => {
+    const calls: string[] = [];
+    const w = world({
+      job: { type: "speech.batch", voiceId: "v-1", payload: { language: "en", items: [{ id: "a", text: "First line." }, { id: "b", text: "Second line. And a third sentence here." }] } },
+      voice: { status: "READY" }, env: APPROVED,
+      artifact: { artifactType: "speaker_embedding", uri: `voices/${ME}/v-1/engines/qwen3-tts/g.safetensors` },
+    });
+    w.deps.engine = (id) => (id === "qwen3-tts" ? batchEngine(calls, []) : null);
+    expect(await runVoiceJob("job-1", w.deps)).toEqual({ status: "completed" });
+    expect(calls).toEqual(["batch:2"]);
+    expect(w.uploads).toEqual(["audio/job-1/a.wav", "audio/job-1/b.wav"]);
+  });
+
+  it("not approved: the job fails and says the licence is why", async () => {
+    const { VOICE_MODEL_APPROVALS: _a, ...notApproved } = APPROVED;
+    const w = world({ job: { type: "voice.enroll", voiceId: "v-1" }, env: notApproved });
+    w.deps.engine = (id) => (id === "qwen3-tts" ? batchEngine([], []) : null);
+    await runVoiceJob("job-1", w.deps);
+    expect(error(w)).toMatch(/qwen3-tts: licence: no owner approval/);
   });
 });

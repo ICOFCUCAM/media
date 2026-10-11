@@ -36,3 +36,6 @@ export { YouTubePublisher, TikTokPublisher, InstagramPublisher, FacebookPublishe
 export type { Publisher, PublishInput, PublishResult, PublishStatus, PublishEnv } from "./publish/publish";
 export * from "./gateway";
 export * from "./runtime";
+// Self-hosted ComfyUI image runtime (apps/gpu-image; docs/73).
+export * from "./gateway/image-authority";
+export * from "./comfyui/image-client";

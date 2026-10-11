@@ -286,6 +286,7 @@ def create_app(
             "asyncImages": True,
             "manifest": identity.manifest(),
             "image": {"sourceCommit": os.environ.get("CINEFORGE_SOURCE_COMMIT") or None, "codeSha256": CODE_SHA256},
+            "dependencies": {"freezeSha256": _freeze_sha256()},
         }
 
     @app.post("/images")
@@ -425,6 +426,15 @@ def _bind_request(req: ImageRequest, *, seed: int, refs: list[str], loras: list[
 def _name(s: str) -> str:
     """Pre-run checks see storage keys; the binder sees runtime file names. Both must be safe names."""
     return re.sub(r"[^A-Za-z0-9._-]", "_", s.rsplit("/", 1)[-1])[:128] or "x"
+
+
+def _freeze_sha256(path: str = "/app/pip-freeze.txt") -> str | None:
+    """sha256 of the Python package set resolved at build time (status only)."""
+    try:
+        with open(path, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()
+    except OSError:
+        return None
 
 
 def _tmpdir() -> str:

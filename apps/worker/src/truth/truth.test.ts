@@ -62,6 +62,20 @@ describe("capability publishing", () => {
     expect(video.status).toBe("unavailable");
   });
 
+  it("the ComfyUI image runtime shows as available only when configured and verified real (docs/73)", async () => {
+    const cache = new MemCache();
+    await rememberGpuCaps(cache, "comfyui-image", { model: "comfyui-image", execution: "real", realExecution: true, supportsRefImage: true },
+      new Date("2026-10-11T00:00:00Z"));
+    const gpu = await readGpuCaps(cache, ["wan-2.1", "comfyui-image"]);
+    const env = { IMAGE_PROVIDERS: "comfyui,fal", COMFYUI_GPU_URL: "https://pod", GPU_JWT_SIGNING_KEY: "k1:x", S3_BUCKET: "b", S3_ACCESS_KEY: "a" };
+    const rt = currentRegistry(env, gpu).find((c) => c.capability === "self_hosted_image_runtime")!;
+    expect(rt).toMatchObject({ status: "experimental", realExecution: true, provider: "comfyui" });
+    expect(rt.note).toContain("GPU verified 2026-10-11T00:00:00.000Z");
+    expect(currentRegistry({ ...env, COMFYUI_GPU_URL: "" }, gpu).find((c) => c.capability === "self_hosted_image_runtime"))
+      .toMatchObject({ status: "unavailable", realExecution: false });
+    expect(currentRegistry({}, gpu).find((c) => c.capability === "self_hosted_image_runtime")).toMatchObject({ status: "disabled", realExecution: false });
+  });
+
   it("upserts every capability; skips quietly-but-logged before 0031", async () => {
     const upsert = vi.fn(async () => ({}));
     const reg = currentRegistry({}, {});
@@ -70,5 +84,21 @@ describe("capability publishing", () => {
     const failing = { systemCapability: { upsert: vi.fn(async () => { throw missing; }) } };
     expect(await publishCapabilities(failing, reg, "worker-1")).toBe("skipped");
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("not migrated (0031)"));
+  });
+});
+
+describe("self-hosted voice in the Capability Registry (docs/74)", () => {
+  it("available only when listed, configured and approved", async () => {
+    const { selfHostedVoiceProbe } = await import("./capabilities");
+    const cloning = (env: Record<string, string>) => currentRegistry(env, {}).find((c) => c.capability === "voice_cloning")!;
+    const base = { VOICE_ENGINES: "qwen3-tts:100", VOICE_GPU_QWEN3_URL: "https://gpu", VOICE_GPU_QWEN3_REVISION: "a".repeat(40) };
+    expect(cloning(base)).toMatchObject({ provider: null, status: "unavailable" });
+    expect(cloning(base).note).toMatch(/qwen3-tts: not approved/);
+    const approved = { ...base, VOICE_MODEL_APPROVALS: "qwen3-tts@Qwen/Qwen3-TTS-12Hz-1.7B-Base=owner:2026-10-12" };
+    expect(cloning(approved)).toMatchObject({ provider: "qwen3-tts", status: "experimental", realExecution: true });
+    const { VOICE_GPU_QWEN3_URL: _u, ...unconfigured } = approved;
+    expect(cloning(unconfigured).note).toMatch(/qwen3-tts: not configured \(VOICE_GPU_QWEN3_URL\)/);
+    expect(selfHostedVoiceProbe({}).map((v) => [v.id, v.reason])).toEqual([
+      ["qwen3-tts", "not listed in VOICE_ENGINES"], ["cosyvoice-3", "not listed in VOICE_ENGINES"], ["gpt-sovits", "not listed in VOICE_ENGINES"]]);
   });
 });

@@ -93,6 +93,16 @@ describe("metered engines and providers", () => {
     expect(seen).toEqual([expect.objectContaining({ kind: "tts", provider: "openai-tts", model: "tts-1", unit: "characters", units: 12, projectId: "p1" })]);
   });
 
+  it("a batch (self-hosted engines, docs/74) is metered line by line; an engine without one gets none", async () => {
+    const seen: UsageEvent[] = [];
+    const batchEngine = { ...engine, id: "qwen3-tts", version: "Qwen/Qwen3-TTS-12Hz-1.7B-Base@cccc",
+      synthesizeBatch: async (reqs: { outPath: string }[]) => reqs.map((r) => ({ path: r.outPath, format: "wav" as const })) } as unknown as VoiceEngine;
+    const m = meteredEngine(batchEngine, { userId: "u1" }, async (e) => { seen.push(e); });
+    await m.synthesizeBatch!([{ text: "One.", language: "en", voice: null, outPath: "/a" }, { text: "Two two.", language: "en", voice: null, outPath: "/b" }]);
+    expect(seen.map((e) => [e.provider, e.units])).toEqual([["qwen3-tts", 4], ["qwen3-tts", 8]]);
+    expect(meteredEngine(engine, {}, async () => {}).synthesizeBatch).toBeUndefined();
+  });
+
   it("meters each generated still with its purpose", async () => {
     const seen: UsageEvent[] = [];
     const p = meteredImages({ id: "openai-image", generate: async (_p: string, key: string, _s: { width: number; height: number }) => key }, { projectId: "p1", purpose: "seed_frame" }, async (e) => { seen.push(e); }, {});

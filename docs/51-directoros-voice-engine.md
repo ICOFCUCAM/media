@@ -1,10 +1,11 @@
 # 51 — Voice Engine (DirectorOS W7a–W7c)
 
 **Status:** implemented in code (2026-10-09) for the cloud engines; migration
-0036 **applied live**. The self-hosted voice models (Qwen3-TTS, CosyVoice 3,
-GPT-SoVITS) are **blocked by the owner's rule**: no model work until Phase 1
-(docs/39) is operationally complete, and each also needs a licence registry
-entry with owner approval (Part 4 §130, §141). Contract:
+0036 **applied live**. Update 2026-10-11: the owner lifted the Phase 1 rule for
+voice; the self-hosted voice models (Qwen3-TTS, CosyVoice 3, GPT-SoVITS) now
+have a GPU service and adapters — see
+[docs/74](74-self-hosted-voice-engine.md). Each still needs its licence
+registry entry cleared by the owner's approval (Part 4 §130, §141). Contract:
 [voice-engine.md](directoros/contracts/voice-engine.md).
 
 ## 1. What changed

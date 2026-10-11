@@ -139,10 +139,21 @@ export interface MeterContext {
 export function meteredEngine(engine: VoiceEngine, ctx: MeterContext, record: (e: UsageEvent) => Promise<unknown>): VoiceEngine {
   return new Proxy(engine, {
     get(target, prop, receiver) {
+      const meterOne = (req: SpeechSynthesisRequest) =>
+        record({ kind: "tts", provider: target.id, model: target.version, unit: "characters", units: req.text.length, ...ctx, meta: { language: req.language, cloned: Boolean(req.voice) } });
+      // A batch (self-hosted engines, docs/74) is metered line by line, exactly like single calls.
+      if (prop === "synthesizeBatch") {
+        if (!target.synthesizeBatch) return undefined;
+        return async (reqs: SpeechSynthesisRequest[]): Promise<SpeechSynthesisResult[]> => {
+          const res = await target.synthesizeBatch!(reqs);
+          for (const r of reqs) await meterOne(r);
+          return res;
+        };
+      }
       if (prop !== "synthesize") return Reflect.get(target, prop, receiver);
       return async (req: SpeechSynthesisRequest): Promise<SpeechSynthesisResult> => {
         const res = await target.synthesize(req);
-        await record({ kind: "tts", provider: target.id, model: target.version, unit: "characters", units: req.text.length, ...ctx, meta: { language: req.language, cloned: Boolean(req.voice) } });
+        await meterOne(req);
         return res;
       };
     },

@@ -10,7 +10,7 @@
  *   GPU_UPLOAD_URL_MODE   s3 (default) | supabase — output upload URL kind.
  *   RUNPOD_API_KEY        control-plane lookup of the running image digest.
  */
-import { GatewayAuthority, parseSigningKey, type EnforcementMode } from "@cineforge/model-adapters";
+import { GatewayAuthority, ImageGatewayAuthority, parseSigningKey, type EnforcementMode } from "@cineforge/model-adapters";
 
 import { RunpodImageAttestor } from "./attestor";
 import { buildPresigner } from "./presigners";
@@ -30,6 +30,24 @@ export function buildGatewayAuthority(env: NodeJS.ProcessEnv = process.env): Gat
     globalMode: mode,
     // Clips written before the gateway live under _generated/; they stay readable as inputs.
     legacyInputPrefixes: ["_generated/"],
+  });
+}
+
+/**
+ * The same gateway for the self-hosted ComfyUI image runtime (docs/73): one
+ * signed `image:run` token per still, one-time I/O URLs, verified results.
+ * Reads the same env as the video authority.
+ */
+export function buildImageGatewayAuthority(env: NodeJS.ProcessEnv = process.env): ImageGatewayAuthority {
+  if (env.GPU_GATEWAY_MODE && !["report", "enforce"].includes(env.GPU_GATEWAY_MODE)) {
+    throw new Error(`GPU_GATEWAY_MODE must be report or enforce, got ${env.GPU_GATEWAY_MODE}`);
+  }
+  return new ImageGatewayAuthority({
+    store: new PrismaGatewayStore(),
+    signingKey: env.GPU_JWT_SIGNING_KEY ? parseSigningKey(env.GPU_JWT_SIGNING_KEY) : null,
+    presigner: buildPresigner(env),
+    attestor: env.RUNPOD_API_KEY ? new RunpodImageAttestor(env.RUNPOD_API_KEY) : null,
+    globalMode: env.GPU_GATEWAY_MODE === "enforce" ? "enforce" : "report",
   });
 }
 

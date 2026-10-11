@@ -1,0 +1,31 @@
+{
+  "note": "Shared with packages/model-adapters/src/gateway/image-authority.test.ts: the TypeScript authority must compute the same digest for a still.",
+  "input": {
+    "workflow": "cineforge.still.ref@1#1111111111111111111111111111111111111111111111111111111111111111",
+    "runtime": "comfyui@8ff6dc384ba5c410266b40e137799e049459d4f2",
+    "models": [
+      {
+        "role": "qwen-image-edit-2511.diffusion",
+        "id": "Comfy-Org/Qwen-Image-Edit_ComfyUI:split_files/diffusion_models/qwen_image_edit_2511_bf16.safetensors",
+        "revision": "dddddddddddddddddddddddddddddddddddddddd",
+        "weights": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      {
+        "role": "qwen-image.vae",
+        "id": "Comfy-Org/Qwen-Image_ComfyUI:split_files/vae/qwen_image_vae.safetensors",
+        "revision": "cccccccccccccccccccccccccccccccccccccccc",
+        "weights": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      {
+        "role": "qwen2.5-vl-7b.text-encoder",
+        "id": "Comfy-Org/Qwen-Image_ComfyUI:split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+        "revision": "cccccccccccccccccccccccccccccccccccccccc",
+        "weights": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ],
+    "loras": [],
+    "width": 1344,
+    "height": 768
+  },
+  "digest": "099e35bb7d7164822f7fdf51caf07eb4b6dc20b348908e9823e4e6e80826458e"
+}

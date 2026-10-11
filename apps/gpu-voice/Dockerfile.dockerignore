@@ -1,0 +1,9 @@
+# Build context = repository root; send only what the voice image copies.
+*
+!apps/gpu-voice/requirements*.txt
+!apps/gpu-voice/app/**
+!apps/gpu-worker/app/gateway/**
+!apps/gpu-worker/app/media_io.py
+!apps/gpu-worker/app/code_digest.py
+**/__pycache__
+**/*.pyc

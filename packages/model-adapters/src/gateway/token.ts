@@ -12,7 +12,11 @@ export const MAX_TOKEN_TTL_SEC = 300;
 export const DEFAULT_TOKEN_TTL_SEC = 120;
 export const ISSUER = "cineforge-worker";
 
-export type ExecutionScope = "video:run" | "status" | "warm";
+export type ExecutionScope = "video:run" | "status" | "warm" | VoiceExecutionScope | ImageExecutionScope;
+/** The self-hosted ComfyUI image runtime (docs/73): draw one still from a registry workflow. */
+export type ImageExecutionScope = "image:run";
+/** Self-hosted voice (docs/74): enroll a voice, speak lines, score similarity, evict a deleted voice. */
+export type VoiceExecutionScope = "voice:enroll" | "voice:run" | "voice:score" | "voice:evict";
 
 export interface SigningKey {
   kid: string;

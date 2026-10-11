@@ -1,0 +1,23 @@
+{
+  "publicKey": "kfix:_RckOFqgx1tk-3jNYC-h2ZH96_drE8WO1wLqyDXp9hg",
+  "deploymentId": "dep-voice-fixture",
+  "now": 1800000000,
+  "models": [
+    {
+      "role": "tts",
+      "id": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+      "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "weights": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  ],
+  "runtime": "qwen-tts@0.1.1",
+  "inputs": [
+    {
+      "key": "voices/u1/v1/sample.wav",
+      "sha256": "abababababababababababababababababababababababababababababababab"
+    }
+  ],
+  "body": "{\"voiceId\":\"v1\",\"language\":\"en\",\"reference\":{\"key\":\"voices/u1/v1/sample.wav\",\"sha256\":\"abababababababababababababababababababababababababababababababab\"},\"referenceText\":\"Hallo, dette er stemmen min — æøå.\",\"jobId\":\"g_voice_fixture\"}",
+  "authz": "22744e6894fd471e5e69ffb3c89ba75fa058872900fd708293c99c3e229e29ea",
+  "token": "eyJhbGciOiJFZERTQSIsImtpZCI6ImtmaXgiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJjaW5lZm9yZ2Utd29ya2VyIiwiYXVkIjoiZGVwLXZvaWNlLWZpeHR1cmUiLCJzdWIiOiJnX3ZvaWNlX2ZpeHR1cmUiLCJzY29wZSI6InZvaWNlOmVucm9sbCIsImp0aSI6Imp0aS12b2ljZS1maXh0dXJlIiwiaWF0IjoxODAwMDAwMDAwLCJleHAiOjE4MDAwMDAxMjAsImJoIjoiMDc4YmZjY2NlZWU5Nzc3YWU5NTUyYjQ5MTVlNDA4YTUwODg2YzdmOGU0NDk3M2Y4ZjU2OTBjNmFkZTIzMWE5ZSIsImF1dGh6IjoiMjI3NDRlNjg5NGZkNDcxZTVlNjlmZmIzYzg5YmE3NWZhMDU4ODcyOTAwZmQ3MDgyOTNjOTljM2UyMjllMjllYSJ9.vQoxnSMz5uW41hX6PKnP5jCRMEjLmiqQEnoncy-y8RXYXn5IiEZ0lSGk_InDe1ZtrGG5UOi9qplj5vzBUYDOAw"
+}

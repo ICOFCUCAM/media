@@ -3,6 +3,15 @@
  *
  *   pnpm --filter @cineforge/worker voice:bench [--voice <voice id>] [--scripts en-narration-30s,fr-narration-30s]
  *                                               [--engines fal-minimax,openai-tts] [--out report.json] [--record]
+ *                                               [--evaluate] [--enroll]
+ *
+ * Self-hosted engines (docs/74): --evaluate runs engines that are configured
+ * but not yet approved for production, when their licence permits evaluation
+ * (marked "evaluation only" in the report); --enroll enrolls the --voice
+ * recording with each engine it is not enrolled with yet (same consent rule).
+ * VOICE_SIMILARITY_ENGINE=qwen3-tts|cosyvoice-3 scores every engine's speech
+ * against the voice's reference recording with that deployment's speaker
+ * encoder — one scorer for all engines.
  *
  * Spends real money: every script through every usable engine, always generated
  * (never the speech cache). With --voice the engines speak in that cloned voice
@@ -16,8 +25,10 @@ import { readFile, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { providerUrl } from "@cineforge/shared";
 import type { VoiceEngineArtifact } from "@cineforge/voice-contracts";
+import { evaluationAllowed, isSelfHostedVoiceEngine, licenceStatus } from "@cineforge/voice-contracts";
 import { voiceEngine } from "../voice/engines";
 import { measureSpeech } from "../voice/mastering";
+import { SelfHostedVoiceEngine } from "../voice/selfhosted";
 import { benchmarkStatus, runVoiceBenchmark, type VoiceBenchDeps } from "./voice";
 
 function arg(name: string): string | undefined {
@@ -42,6 +53,21 @@ export function openAiTranscriber(env: Record<string, string | undefined>, f: ty
   };
 }
 
+/**
+ * The voice-similarity scorer (VOICE_SIMILARITY_ENGINE): a configured
+ * self-hosted engine with a speaker encoder whose licence permits at least
+ * evaluation. Null (similarity reported as not measured) otherwise, with why.
+ */
+export function similarityScorer(env: Record<string, string | undefined>): { engine: SelfHostedVoiceEngine | null; why: string | null } {
+  const id = env.VOICE_SIMILARITY_ENGINE?.trim();
+  if (!id) return { engine: null, why: null };
+  if (!isSelfHostedVoiceEngine(id) || id === "gpt-sovits") return { engine: null, why: `${id} has no speaker encoder for scoring (use qwen3-tts or cosyvoice-3)` };
+  if (!evaluationAllowed(id).allowed) return { engine: null, why: `${id}: ${evaluationAllowed(id).reason}` };
+  const e = voiceEngine(id, env);
+  if (!(e instanceof SelfHostedVoiceEngine)) return { engine: null, why: `${id} is not configured` };
+  return { engine: e, why: null };
+}
+
 async function main(): Promise<number> {
   const voiceId = arg("voice") ?? null;
   const deps: VoiceBenchDeps = {
@@ -61,14 +87,46 @@ async function main(): Promise<number> {
     if (!v.consentType || !v.consentConfirmedAt) throw new Error(`voice ${voiceId} has no recorded consent`);
     deps.artifact = async (id, engine) => {
       const a = await prisma.voiceEngineArtifact.findUnique({ where: { voiceId_engineId_engineVersion: { voiceId: id, engineId: engine.id, engineVersion: engine.version } } });
-      return a && ({ artifactType: a.artifactType, uri: a.artifactUri } as VoiceEngineArtifact);
+      return a && ({ artifactType: a.artifactType, uri: a.artifactUri, metadata: a.metadata as Record<string, unknown> } as VoiceEngineArtifact);
     };
+    const full = await prisma.voice.findUnique({ where: { id: voiceId }, select: { userId: true, sampleKey: true, language: true } });
+    // Enrol the owner's own recording with an engine it is not enrolled with yet (docs/74).
+    deps.enroll = async (id, engine) => {
+      if (!full?.sampleKey || !full.sampleKey.startsWith(`voices/${full.userId}/`)) throw new Error("the voice has no stored recording of its own");
+      const [{ S3Storage }, { mkdtemp, rm }, { tmpdir }, { join }] = await Promise.all([import("../storage/storage"), import("node:fs/promises"), import("node:os"), import("node:path")]);
+      const dir = await mkdtemp(join(tmpdir(), "voice-bench-enroll-"));
+      try {
+        const ref = join(dir, `reference.${full.sampleKey.split(".").pop() ?? "wav"}`);
+        await new S3Storage().download(full.sampleKey, ref);
+        const { artifacts } = await engine.enrollVoice({ voiceId: id, language: full.language ?? "en", referencePath: ref, userId: full.userId, referenceKey: full.sampleKey });
+        const a = artifacts[0];
+        if (!a) return null;
+        const data = { artifactType: a.artifactType, artifactUri: a.uri, metadata: { ...(a.metadata ?? {}), enrolledBy: "voice:bench" } as never };
+        await prisma.voiceEngineArtifact.upsert({
+          where: { voiceId_engineId_engineVersion: { voiceId: id, engineId: engine.id, engineVersion: engine.version } },
+          create: { voiceId: id, engineId: engine.id, engineVersion: engine.version, ...data }, update: data, select: { id: true },
+        });
+        return a;
+      } finally {
+        await rm(dir, { recursive: true, force: true });
+      }
+    };
+    const scorer = similarityScorer(process.env);
+    if (scorer.why) console.log(`voice similarity: not measured — ${scorer.why}`);
+    if (scorer.engine && full?.sampleKey) {
+      const e = scorer.engine;
+      if (!licenceStatus(e.id, process.env).cleared) console.log(`voice similarity scorer ${e.id} is not approved for production: used for evaluation only`);
+      deps.similarity = (paths) => e.similarity(full.sampleKey!, paths);
+    }
   }
-  const report = await runVoiceBenchmark(deps, { voiceId, scripts: list(arg("scripts")), engines: list(arg("engines")) });
+  const report = await runVoiceBenchmark(deps, {
+    voiceId, scripts: list(arg("scripts")), engines: list(arg("engines")),
+    evaluation: process.argv.includes("--evaluate"), enroll: process.argv.includes("--enroll"),
+  });
   const status = benchmarkStatus(report);
   for (const [id, e] of Object.entries(report.engines)) {
     if (e.skipped) console.log(`${"skipped".padEnd(9)} ${id} — ${e.skipped}`);
-    else console.log(`${"ran".padEnd(9)} ${id} ${JSON.stringify(e.summary)}`);
+    else console.log(`${"ran".padEnd(9)} ${id}${e.evaluationOnly ? " (evaluation only — not approved for production)" : ""} ${JSON.stringify(e.summary)}`);
   }
   for (const [k, v] of Object.entries(report.notMeasured)) console.log(`${k}: ${v}`);
   const full = { at: new Date().toISOString(), commit: process.env.GITHUB_SHA ?? process.env.SOURCE_COMMIT ?? null, status, ...report };
@@ -78,7 +136,7 @@ async function main(): Promise<number> {
     const [{ prisma }, { recordBenchmarkRun }] = await Promise.all([import("@cineforge/db"), import("./record")]);
     const id = await recordBenchmarkRun(prisma as never, {
       suite: "voice", status, score: null,
-      metrics: { voice: report.voice, engines: Object.fromEntries(Object.entries(report.engines).map(([k, e]) => [k, { licence: e.licence, skipped: e.skipped ?? null, summary: e.summary ?? null }])), notMeasured: report.notMeasured },
+      metrics: { voice: report.voice, engines: Object.fromEntries(Object.entries(report.engines).map(([k, e]) => [k, { licence: e.licence, evaluationOnly: e.evaluationOnly ?? false, skipped: e.skipped ?? null, unsupportedScripts: e.unsupportedScripts ?? [], summary: e.summary ?? null }])), notMeasured: report.notMeasured, similarityScorer: report.similarityScorer ?? null },
       cases: Object.values(report.engines).flatMap((e) => e.cases),
     });
     console.log(`recorded benchmark_runs ${id}`);

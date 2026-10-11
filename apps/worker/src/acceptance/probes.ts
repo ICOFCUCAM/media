@@ -11,7 +11,8 @@
  *              the hosted fal tier: one short clip, downloaded and QC'd; a
  *              self-hosted runtime must report real model execution
  *   voice      OpenAI TTS and fal MiniMax: one line, measured and mastered;
- *              self-hosted engines GATED
+ *              self-hosted engines (docs/74): GATED until licence-cleared,
+ *              then the deployment's health, engine and pinned checkpoint
  *   music      fal text-to-music: a 10 s cue, measured
  */
 import { mkdir, writeFile } from "node:fs/promises";
@@ -28,11 +29,11 @@ import {
   type ProductionConstraints,
 } from "@cineforge/movie";
 import { buildClusterRegistry, buildOpenAIProviders, falFindUrl, falRunQueue, type ExternalHooks, type JobContext } from "@cineforge/model-adapters";
-import { ENGINE_REGISTRY } from "@cineforge/voice-contracts";
+import { ENGINE_REGISTRY, licenceStatus, SELF_HOSTED_VOICE_ENGINES } from "@cineforge/voice-contracts";
 import { imageProvider, imageProviderStatuses } from "../images/providers";
 import { lipSyncProvider } from "../lipsync/provider";
 import { ffmpeg } from "../ffmpeg/ffmpeg";
-import { FalMinimaxEngine, OpenAiTtsEngine } from "../voice/engines";
+import { FalMinimaxEngine, OpenAiTtsEngine, voiceEngine } from "../voice/engines";
 import { SCORE_MODEL } from "../audio/score";
 import type { Capability, ProbeResult, ProbeStatus } from "./report";
 import { ArtifactError, verifyAudio, verifyClip, verifyImage } from "./verify";
@@ -182,16 +183,32 @@ const lipSyncFal: Probe = {
   },
 };
 
+/**
+ * CineForge's own image runtime (docs/73): a real still through the gateway
+ * (signed image:run grant, one-time URLs), read back from storage and decoded.
+ * A placeholder pod fails (the provider refuses placeholder stills).
+ */
 const imageComfy: Probe = {
   id: "image:comfyui",
   capability: "image",
   provider: "comfyui",
   ready(env) {
     const s = imageProviderStatuses({ ...env, IMAGE_PROVIDERS: "comfyui" })[0]!;
-    return s.gated ? { status: "GATED", reason: s.gated } : { status: "NOT_CONFIGURED", reason: "no ComfyUI adapter" };
+    if (s.gated) return { status: "GATED", reason: s.gated };
+    return need(env, ["COMFYUI_GPU_URL", "GPU_JWT_SIGNING_KEY", "S3_BUCKET", "S3_ACCESS_KEY"]);
   },
-  async run() {
-    throw new Error("unreachable: ComfyUI is gated");
+  async run({ env, dir }) {
+    const { provider } = imageProvider(async (key) => key, { ...env, IMAGE_PROVIDERS: "comfyui" });
+    if (!provider) throw new ArtifactError("the ComfyUI image provider could not be built");
+    const key = `projects/acceptance/probes/comfyui-${Date.now()}.png`;
+    const out = await provider.generate("A weathered lighthouse on a rocky coast at dusk, film still, 35mm", key, { width: 1280, height: 720 }, { seed: 7 });
+    const { buildPresigner } = await import("../gateway");
+    const presigner = buildPresigner(env as NodeJS.ProcessEnv);
+    if (!presigner) throw new ArtifactError("no storage to read the still back");
+    const res = await fetch(await presigner.presignGet(out.key, 300));
+    if (!res.ok) throw new ArtifactError(`stored still could not be read (${res.status})`);
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    return { model: out.model, seed: out.seed, sha256: out.sha256, workflow: out.workflow, runtime: out.runtime, ...(await verifyImage(bytes, dir)) };
   },
 };
 
@@ -245,11 +262,28 @@ function voiceProbe(id: "openai-tts" | "fal-minimax"): Probe {
   };
 }
 
-function gatedVoiceProbes(): Probe[] {
-  return Object.values(ENGINE_REGISTRY).filter((d) => d.gated).map((d) => ({
-    id: `voice:${d.id}`, capability: "voice" as const, provider: d.id,
-    ready: () => ({ status: "GATED" as const, reason: d.gated! }),
-    run: async () => { throw new Error("unreachable: gated"); },
+/**
+ * Self-hosted voice engines (docs/74). GATED until the licence registry clears
+ * them (the owner's approval of the exact checkpoint); NOT_CONFIGURED without
+ * a deployment. The run checks the deployment is healthy, runs this engine and
+ * this pinned checkpoint, for real — speaking needs an enrolled voice, which
+ * the voice benchmark exercises with the owner's own recording.
+ */
+function selfHostedVoiceProbes(): Probe[] {
+  return Object.keys(SELF_HOSTED_VOICE_ENGINES).map((id) => ({
+    id: `voice:${id}`, capability: "voice" as const, provider: id,
+    ready: (env: Env) => {
+      const licence = licenceStatus(id, env);
+      if (!licence.cleared) return { status: "GATED" as const, reason: `licence: ${licence.reasons.join("; ")}` };
+      return need(env, [...ENGINE_REGISTRY[id]!.requires, "DATABASE_URL", "GPU_JWT_SIGNING_KEY"]);
+    },
+    async run({ env }) {
+      const engine = voiceEngine(id, env);
+      if (!engine) throw new ArtifactError(`${id} is not configured`);
+      const h = await engine.health();
+      if (!h.ok) throw new ArtifactError(`${id} is not healthy: ${h.detail ?? "unknown"}`);
+      return { engine: id, version: engine.version, health: h.detail ?? "ok" };
+    },
   }));
 }
 
@@ -283,7 +317,7 @@ export function allProbes(): Probe[] {
     videoProbe("fal", (env) => env.FAL_MODEL_ID ?? "cinematic", ["FAL_KEY", "S3_BUCKET"], true),
     voiceProbe("openai-tts"),
     voiceProbe("fal-minimax"),
-    ...gatedVoiceProbes(),
+    ...selfHostedVoiceProbes(),
     musicFal,
   ];
 }

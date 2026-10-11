@@ -147,7 +147,7 @@ class ComfyRuntime(ImageRuntime):
         self.models_dir = os.path.join(comfy_dir, "models")
         self._cuda = cuda
         self._download = download
-        whitelist = [Path(n["repo"]).name for n in registry.custom_nodes]
+        whitelist = [Path(n["repo"]).name.removesuffix(".git") for n in registry.custom_nodes]
         self.proc = process or ComfyProcess(comfy_dir, base, port=int(os.environ.get("COMFYUI_PORT", "8188")), whitelist=whitelist)
         self._lock = threading.Lock()
 

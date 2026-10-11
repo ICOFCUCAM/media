@@ -7,6 +7,20 @@ export interface RuntimeManifest {
   authzVersion: number;
   runtime: string;
   models: { role: string; id: string; revision: string; weights: string }[];
+  /**
+   * Workflow-runtime deployments only (the ComfyUI image runtime, docs/73): the
+   * registry workflows the pod runs, each with its graph hash and the model
+   * roles (keys of `models`) it loads. Absent for the video worker.
+   */
+  workflows?: ManifestWorkflow[];
+  registrySha256?: string;
+}
+
+export interface ManifestWorkflow {
+  id: string;
+  version: number;
+  sha256: string;
+  models: string[];
 }
 
 export interface RuntimeDeployment {

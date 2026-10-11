@@ -77,7 +77,45 @@ jobs:
         run: python -m pytest -q
         working-directory: apps/gpu-worker
 
-  # docs/39 PR 2 acceptance: the real GPU worker in GATEWAY_MODE=enforce,
+  # The ComfyUI image runtime (apps/gpu-image, docs/73): registry, slot
+  # filling, gateway and placeholder-only-on-flag tests, without a GPU. It
+  # imports the video worker's gateway, so it also runs when that changes.
+  gpu-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps (sidecar only; no torch/ComfyUI needed)
+        run: pip install fastapi==0.111.0 "uvicorn[standard]==0.30.0" pydantic==2.7.0 "PyJWT[crypto]==2.9.0" -r apps/gpu-image/requirements-dev.txt
+      - name: Import check (placeholder flag only)
+        run: CINEFORGE_PLACEHOLDER=1 python -c "import app.server"
+        working-directory: apps/gpu-image
+      - name: Tests
+        run: python -m pytest -q
+        working-directory: apps/gpu-image
+
+  # The self-hosted Voice Engine (apps/gpu-voice, docs/74): gateway, voice
+  # authz (cross-language with the TypeScript authority), engines in explicit
+  # placeholder mode only — no GPU, no torch, no weights. It shares the video
+  # worker's gateway, so it also runs when that changes.
+  gpu-voice:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install service deps (no ML stack)
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+          pip install -r apps/gpu-voice/requirements.txt -r apps/gpu-voice/requirements-dev.txt
+      - name: Tests
+        run: python -m pytest -q
+        working-directory: apps/gpu-voice
+
+
   # driven by the real TypeScript Gateway Authority (happy path + rejections).
   gateway-e2e:
     runs-on: ubuntu-latest
@@ -151,6 +189,29 @@ jobs:
       - name: Mutable references are refused
         run: |
           if python3 apps/gpu-worker/scripts/verify_image.py localhost:5000/cineforge-gpu-verify:good; then exit 1; fi
+      # The same chain for the ComfyUI image runtime (profile gpu-image, docs/73).
+      - name: Verified image runtime passes (gpu-image profile)
+        run: |
+          commit="$(git rev-parse HEAD)"
+          docker build -q -f apps/gpu-image/tests/fixtures/verify/Dockerfile \
+            --build-arg SOURCE_COMMIT="$commit" -t localhost:5000/cineforge-gpu-image-verify:good .
+          docker push -q localhost:5000/cineforge-gpu-image-verify:good
+          ref="$(docker inspect --format '{{index .RepoDigests 0}}' localhost:5000/cineforge-gpu-image-verify:good)"
+          docker rmi -f localhost:5000/cineforge-gpu-image-verify:good >/dev/null
+          python3 apps/gpu-worker/scripts/verify_image.py "$ref" --profile gpu-image --expect-commit "$commit" --report good-image.json --port 18001
+      - name: Tampered workflow fails (gpu-image profile)
+        run: |
+          commit="$(git rev-parse HEAD)"
+          rm -rf /tmp/tampered-image && mkdir -p /tmp/tampered-image/apps && cp -r apps/gpu-image apps/gpu-worker /tmp/tampered-image/apps/
+          sed -i 's/"cfg": 4.0/"cfg": 9.0/' "/tmp/tampered-image/apps/gpu-image/workflows/cineforge.still.t2i@1.json"
+          docker build -q -f /tmp/tampered-image/apps/gpu-image/tests/fixtures/verify/Dockerfile \
+            --build-arg SOURCE_COMMIT="$commit" -t localhost:5000/cineforge-gpu-image-verify:tampered /tmp/tampered-image
+          docker push -q localhost:5000/cineforge-gpu-image-verify:tampered
+          ref="$(docker inspect --format '{{index .RepoDigests 0}}' localhost:5000/cineforge-gpu-image-verify:tampered)"
+          if python3 apps/gpu-worker/scripts/verify_image.py "$ref" --profile gpu-image --report bad-image.json --port 18002; then
+            echo "tampered image runtime was VERIFIED"; exit 1
+          fi
+          python3 -c "import json,sys; r=json.load(open('bad-image.json')); bad=[c['name'] for c in r['checks'] if not c['ok']]; print(bad); sys.exit(0 if any('/app/workflows' in n for n in bad) else 1)"
 
   # Migrations 0026+ applied in order to a scratch Postgres, each followed by
   # its validation script (every new migration must ship one).

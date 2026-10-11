@@ -40,7 +40,7 @@ provider that is not gated is used:
 |---|---|---|---|
 | `openai` | `OPENAI_IMAGE_MODEL` (default gpt-image-1) | no | `OPENAI_API_KEY` + storage |
 | `fal` | `FAL_IMAGE_MODEL` (default Flux dev) | **yes**: the same seed redraws the same still | `FAL_KEY` + storage |
-| `comfyui` | — | — | gated on Phase 1 |
+| `comfyui` | CineForge's own GPU: Qwen-Image / Qwen-Image-Edit-2511 workflows on ComfyUI ([docs/73](73-comfyui-image-runtime.md)) | **yes** | `COMFYUI_GPU_URL` + `GPU_JWT_SIGNING_KEY` + storage, and listed in `IMAGE_PROVIDERS` |
 
 Metering now names each provider's own model; it used to say OpenAI for every
 image. The `seed_image_generation` capability reports whichever provider will
@@ -83,8 +83,10 @@ props in frame.
 
 ## 5. What is still open
 
-- **An image system of CineForge's own** (ComfyUI with Flux or SDXL, LoRA-driven
-  stills): gated on Phase 1.
+- **An image system of CineForge's own:** built (W29, [docs/73](73-comfyui-image-runtime.md)):
+  ComfyUI on a GPU behind the Media Runtime Gateway, with registry workflows on
+  Qwen-Image and Qwen-Image-Edit-2511 (Apache-2.0). Flux [dev] and SDXL are not
+  used (licences, docs/38 §C). LoRA-driven stills wait on Qwen-Image LoRAs.
 - **Style and camera references:** they are not separate images. The film's
   look is written into every prompt.
 - **Per-dimension frame scores** (identity, composition, lighting): not

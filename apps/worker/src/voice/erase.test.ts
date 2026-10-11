@@ -70,3 +70,28 @@ describe("erasing a deleted voice (W27)", () => {
     expect(state.get("e1")).toMatchObject({ status: "done", providerOutcome: "failed", error: "fal-minimax: 401" });
   });
 });
+
+describe("self-hosted artifacts (docs/74)", () => {
+  it("the engine holding a stored artifact is asked to release it; a failure is noted, never fatal", async () => {
+    const r = row({ artifacts: [
+      { engine: "qwen3-tts", type: "speaker_embedding", uri: `voices/${U}/v1/engines/qwen3-tts/g1.safetensors` },
+      { engine: "gpt-sovits", type: "prompt_audio", uri: `voices/${U}/v1/engines/gpt-sovits/g2.wav` },
+      { engine: "qwen3-tts", type: "speaker_embedding", uri: "voices/someone-else/x.safetensors" },
+    ], providerVoiceId: null });
+    const { db, state } = fakeDb([r]);
+    const released: string[] = [];
+    const deleted: string[][] = [];
+    const out = await eraseDeletedVoices(db, {
+      deleteKeys: async (k) => { deleted.push(k); },
+      deleteProviderVoice: async () => "deleted",
+      releaseArtifact: async (engine, a) => {
+        if (engine === "gpt-sovits") throw new Error("pod asleep");
+        released.push(a.uri);
+      },
+    });
+    expect(out).toEqual({ done: 1, failed: 0 });
+    expect(deleted[0]).toEqual(expect.arrayContaining([`voices/${U}/v1/engines/qwen3-tts/g1.safetensors`, `voices/${U}/v1/engines/gpt-sovits/g2.wav`]));
+    expect(released).toEqual([`voices/${U}/v1/engines/qwen3-tts/g1.safetensors`]);
+    expect(state.get("e1")).toMatchObject({ status: "done", error: expect.stringMatching(/gpt-sovits could not release prompt_audio: pod asleep/) });
+  });
+});

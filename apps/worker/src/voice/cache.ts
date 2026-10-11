@@ -11,7 +11,7 @@
  * objects and the rows.
  */
 import { stat } from "node:fs/promises";
-import { speechCacheKey, speechCacheObjectKey, type SpeechSynthesisRequest, type SpeechSynthesisResult, type VoiceEngine } from "@cineforge/voice-contracts";
+import { speechCacheKey, speechCacheObjectKey, type SpeechSynthesisRequest, type SpeechSynthesisResult, type VoiceEngine, type VoiceEngineArtifact } from "@cineforge/voice-contracts";
 
 export interface SpeechCacheEntry {
   key: string;
@@ -40,6 +40,58 @@ const CONTENT_TYPE = { mp3: "audio/mpeg", wav: "audio/wav" } as const;
 
 export function cachedEngine(inner: VoiceEngine, store: SpeechCacheStore, stats?: CacheStats, log: (e: Record<string, unknown>) => void = (e) => console.warn(JSON.stringify(e))): VoiceEngine {
   const engine = inner;
+  /** A cached clip for this request, or null (a read failure is a miss). */
+  const lookup = async (req: SpeechSynthesisRequest): Promise<SpeechSynthesisResult | null> => {
+    const key = speechCacheKey(engine, req);
+    try {
+      const found = await store.find(key);
+      if (found) {
+        const path = `${req.outPath}.${found.format}`;
+        await store.download(found.storageKey, path);
+        await store.hit(key).catch(() => {});
+        if (stats) stats.hits++;
+        return { path, format: found.format };
+      }
+    } catch (e) {
+      if (stats) stats.errors++;
+      log({ event: "speech_cache.read_failed", key, error: e instanceof Error ? e.message : String(e) });
+    }
+    return null;
+  };
+  const remember = async (req: SpeechSynthesisRequest, out: SpeechSynthesisResult) => {
+    const key = speechCacheKey(engine, req);
+    try {
+      const storageKey = speechCacheObjectKey(key, out.format, req.voice ? req.voiceId ?? null : null);
+      await store.upload(out.path, storageKey, CONTENT_TYPE[out.format]);
+      const bytes = await stat(out.path).then((s) => s.size).catch(() => null);
+      await store.save({
+        key, engineId: engine.id, engineVersion: engine.version, voiceId: req.voice ? req.voiceId ?? null : null, cloned: !!req.voice,
+        language: req.language, chars: req.text.length, storageKey, format: out.format, bytes,
+      });
+    } catch (e) {
+      if (stats) stats.errors++;
+      log({ event: "speech_cache.write_failed", key, error: e instanceof Error ? e.message : String(e) });
+    }
+  };
+  const batch = engine.synthesizeBatch
+    ? {
+        // Hits are served from storage; only the misses go to the engine, in one batch (docs/74).
+        async synthesizeBatch(reqs: SpeechSynthesisRequest[]): Promise<SpeechSynthesisResult[]> {
+          const results: (SpeechSynthesisResult | null)[] = [];
+          for (const r of reqs) results.push(await lookup(r));
+          const missing = reqs.map((r, i) => ({ r, i })).filter(({ i }) => !results[i]);
+          if (missing.length) {
+            const outs = await engine.synthesizeBatch!(missing.map((m) => m.r));
+            for (const [k, m] of missing.entries()) {
+              if (stats) stats.misses++;
+              results[m.i] = outs[k]!;
+              await remember(m.r, outs[k]!);
+            }
+          }
+          return results as SpeechSynthesisResult[];
+        },
+      }
+    : {};
   return {
     get id() { return engine.id; },
     get version() { return engine.version; },
@@ -47,35 +99,14 @@ export function cachedEngine(inner: VoiceEngine, store: SpeechCacheStore, stats?
     enrollVoice: (r) => engine.enrollVoice(r),
     health: () => engine.health(),
     unload: () => engine.unload(),
+    ...(engine.deleteVoice ? { deleteVoice: (a: VoiceEngineArtifact) => engine.deleteVoice!(a) } : {}),
+    ...batch,
     async synthesize(req: SpeechSynthesisRequest): Promise<SpeechSynthesisResult> {
-      const key = speechCacheKey(engine, req);
-      try {
-        const found = await store.find(key);
-        if (found) {
-          const path = `${req.outPath}.${found.format}`;
-          await store.download(found.storageKey, path);
-          await store.hit(key).catch(() => {});
-          if (stats) stats.hits++;
-          return { path, format: found.format };
-        }
-      } catch (e) {
-        if (stats) stats.errors++;
-        log({ event: "speech_cache.read_failed", key, error: e instanceof Error ? e.message : String(e) });
-      }
+      const hit = await lookup(req);
+      if (hit) return hit;
       const out = await engine.synthesize(req);
       if (stats) stats.misses++;
-      try {
-        const storageKey = speechCacheObjectKey(key, out.format, req.voice ? req.voiceId ?? null : null);
-        await store.upload(out.path, storageKey, CONTENT_TYPE[out.format]);
-        const bytes = await stat(out.path).then((s) => s.size).catch(() => null);
-        await store.save({
-          key, engineId: engine.id, engineVersion: engine.version, voiceId: req.voice ? req.voiceId ?? null : null, cloned: !!req.voice,
-          language: req.language, chars: req.text.length, storageKey, format: out.format, bytes,
-        });
-      } catch (e) {
-        if (stats) stats.errors++;
-        log({ event: "speech_cache.write_failed", key, error: e instanceof Error ? e.message : String(e) });
-      }
+      await remember(req, out);
       return out;
     },
   };

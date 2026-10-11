@@ -12,8 +12,11 @@ security boundary. It never deploys anything and needs no GPU:
                 names a commit that exists in this git checkout, and equals
                 --expect-commit when given.
   3. Contents   the code digest of /app/app inside the image equals the code
-                digest of apps/gpu-worker/app at that commit (app/code_digest.py,
-                run from the checkout so older images can be checked too).
+                digest of the service's source tree at that commit
+                (app/code_digest.py, run from the checkout so older images can
+                be checked too). --profile gpu-voice composes apps/gpu-voice/app
+                with the gateway, media I/O and code digest it shares with
+                gpu-worker, exactly as its Dockerfile copies them.
   4. Runtime    the image is started in placeholder mode with GATEWAY_MODE=enforce
                 and an ephemeral key, and the gateway is probed: public /livez,
                 no token / foreign key / replayed token rejected, /capabilities
@@ -24,6 +27,12 @@ Exit 0 only when every check passes. A machine-readable report is written with
 
     python3 apps/gpu-worker/scripts/verify_image.py \\
         docker.io/icofcucam/cineforge-gpu@sha256:<digest> [--expect-commit <sha>] [--report out.json]
+
+`--profile` picks which image is being verified (default `gpu-worker`, the
+video worker). `--profile gpu-image` verifies the ComfyUI image runtime
+(apps/gpu-image, docs/73): its /app/app is apps/gpu-image/app plus the video
+worker's shared gateway, media_io.py and code_digest.py, and its
+/app/workflows must equal apps/gpu-image/workflows (the Workflow Registry).
 """
 from __future__ import annotations
 
@@ -50,6 +59,45 @@ DIGEST_SCRIPT = REPO_ROOT / APP_DIR / "code_digest.py"
 IMMUTABLE_REF = re.compile(r"^(?P<repo>[^\s@]+)@(?P<digest>sha256:[0-9a-f]{64})$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
 DEPLOYMENT = "verify-image"
+
+
+@dataclass(frozen=True)
+class Profile:
+    """What one GPU image is built from, and how its gateway is probed."""
+
+    name: str
+    # (path in git, path inside /app/app); "" = the root of /app/app.
+    sources: tuple[tuple[str, str], ...]
+    # Extra trees compared file by file: (path in git, absolute path in the image).
+    trees: tuple[tuple[str, str], ...] = ()
+    # Protected routes probed without a token: (method, path).
+    protected: tuple[tuple[str, str], ...] = (("GET", "/health"), ("POST", "/generate"))
+    # Routes that must not be open at all (any refusal is fine).
+    closed: tuple[tuple[str, str], ...] = (("POST", "/train"),)
+
+
+PROFILES = {
+    "gpu-worker": Profile("gpu-worker", sources=((APP_DIR, ""),)),
+    "gpu-image": Profile(
+        "gpu-image",
+        sources=(("apps/gpu-image/app", ""), ("apps/gpu-worker/app/gateway", "gateway"),
+                 ("apps/gpu-worker/app/media_io.py", "media_io.py"), ("apps/gpu-worker/app/code_digest.py", "code_digest.py")),
+        trees=(("apps/gpu-image/workflows", "/app/workflows"),),
+        protected=(("GET", "/health"), ("POST", "/images"), ("GET", "/images/jobs/x")),
+        closed=(("POST", "/prompt"), ("GET", "/object_info")),
+    ),
+    # Self-hosted Voice Engine (apps/gpu-voice; docs/74): one image per engine,
+    # sharing the gateway, media I/O and code digest with gpu-worker.
+    "gpu-voice": Profile(
+        "gpu-voice",
+        sources=(("apps/gpu-worker/app/gateway", "gateway"), ("apps/gpu-worker/app/media_io.py", "media_io.py"),
+                 ("apps/gpu-worker/app/code_digest.py", "code_digest.py"), ("apps/gpu-voice/app", "")),
+        protected=(("GET", "/health"), ("POST", "/v1/speech"), ("POST", "/v1/voices/enroll"),
+                   ("POST", "/v1/similarity"), ("POST", "/v1/voices/evict"), ("GET", "/v1/jobs/x")),
+        closed=(("POST", "/generate"), ("POST", "/train")),
+    ),
+}
+DEFAULT_PROFILE = PROFILES["gpu-worker"]
 
 
 @dataclass
@@ -129,19 +177,63 @@ def sh(*args: str, check: bool = True, input: bytes | None = None) -> str:
     return r.stdout.decode()
 
 
-def git_listing(commit: str) -> str:
-    """code_digest --list of apps/gpu-worker/app exactly as committed."""
+def _git_extract(commit: str, paths: list[str], dest: str) -> None:
+    archive = subprocess.run(["git", "-C", str(REPO_ROOT), "archive", "--format=tar", commit, *paths],
+                             capture_output=True, check=True).stdout
+    tar_path = Path(dest) / "src.tar"
+    tar_path.write_bytes(archive)
+    with tarfile.open(tar_path) as t:
+        try:
+            t.extractall(dest, filter="data")
+        except TypeError:  # Python without extraction filters; the archive is our own git tree
+            t.extractall(dest)
+    tar_path.unlink()
+
+
+def git_listing(commit: str, profile: Profile = DEFAULT_PROFILE) -> str:
+    """code_digest --list of /app/app as the profile composes it from git at `commit`."""
     with tempfile.TemporaryDirectory() as tmp:
-        archive = subprocess.run(["git", "-C", str(REPO_ROOT), "archive", "--format=tar", commit, APP_DIR],
-                                 capture_output=True, check=True).stdout
-        tar_path = Path(tmp) / "src.tar"
-        tar_path.write_bytes(archive)
-        with tarfile.open(tar_path) as t:
-            try:
-                t.extractall(tmp, filter="data")
-            except TypeError:  # Python without extraction filters; the archive is our own git tree
-                t.extractall(tmp)
-        return sh(sys.executable, "-I", str(DIGEST_SCRIPT), str(Path(tmp) / APP_DIR), "--list")
+        _git_extract(commit, [src for src, _ in profile.sources], tmp)
+        if profile.sources == ((APP_DIR, ""),):
+            root = Path(tmp) / APP_DIR
+        else:
+            root = Path(tmp) / "_composed"
+            root.mkdir()
+            for src, dst in profile.sources:
+                s_path, d_path = Path(tmp) / src, root / dst if dst else root
+                if s_path.is_dir():
+                    shutil.copytree(s_path, d_path, dirs_exist_ok=True)
+                else:
+                    shutil.copyfile(s_path, d_path)
+        return sh(sys.executable, "-I", str(DIGEST_SCRIPT), str(root), "--list")
+
+
+_TREE_LIST = (
+    "import hashlib,os,sys\n"
+    "r=sys.argv[1]\n"
+    "for d,_,fs in sorted(os.walk(r)):\n"
+    " for f in sorted(fs):\n"
+    "  p=os.path.join(d,f); print(hashlib.sha256(open(p,'rb').read()).hexdigest()+'  '+os.path.relpath(p,r).replace(os.sep,'/'))\n"
+)
+
+
+def tree_files(listing: str) -> dict[str, str]:
+    out = {}
+    for line in listing.strip().splitlines():
+        h, _, rel = line.partition("  ")
+        if rel:
+            out[rel] = h
+    return out
+
+
+def git_tree_listing(commit: str, path: str) -> str:
+    with tempfile.TemporaryDirectory() as tmp:
+        _git_extract(commit, [path], tmp)
+        return sh(sys.executable, "-I", "-c", _TREE_LIST, str(Path(tmp) / path))
+
+
+def image_tree_listing(ref: str, path: str) -> str:
+    return sh("docker", "run", "--rm", "--network=none", "--entrypoint", "python3", ref, "-I", "-c", _TREE_LIST, path)
 
 
 def image_listing(ref: str) -> str:
@@ -188,7 +280,8 @@ def http(method: str, url: str, token: str | None = None, body: bytes | None = N
         return e.code, e.read()
 
 
-def runtime_probes(rep: Report, ref: str, commit: str, code_sha: str, port: int) -> None:
+def runtime_probes(rep: Report, ref: str, commit: str, code_sha: str, port: int, profile: Profile = DEFAULT_PROFILE,
+                   expect_engine: str | None = None) -> None:
     keys = Keys()
     name = f"cineforge-verify-{uuid.uuid4().hex[:8]}"
     sh("docker", "run", "-d", "--rm", "--name", name, "-p", f"127.0.0.1:{port}:8000",
@@ -209,12 +302,12 @@ def runtime_probes(rep: Report, ref: str, commit: str, code_sha: str, port: int)
             print(sh("docker", "logs", name, check=False)[-2000:])
             return
         rejected = (401, 403)
-        st, _ = http("GET", f"{base}/health")
-        rep.add("runtime: /health without a token is rejected", st in rejected, f"HTTP {st}")
-        st, _ = http("POST", f"{base}/generate", body=b"{}")
-        rep.add("runtime: /generate without a token is rejected", st in rejected, f"HTTP {st}")
-        st, _ = http("POST", f"{base}/train", body=b"{}")
-        rep.add("runtime: /train is not an open endpoint", st in rejected + (404, 405, 410, 503), f"HTTP {st}")
+        for method, path in profile.protected:
+            st, _ = http(method, f"{base}{path}", body=b"{}" if method == "POST" else None)
+            rep.add(f"runtime: {path} without a token is rejected", st in rejected, f"HTTP {st}")
+        for method, path in profile.closed:
+            st, _ = http(method, f"{base}{path}", body=b"{}" if method == "POST" else None)
+            rep.add(f"runtime: {path} is not an open endpoint", st in rejected + (404, 405, 410, 503), f"HTTP {st}")
         st, _ = http("GET", f"{base}/health", token=keys.token(foreign=True))
         rep.add("runtime: a token from a foreign key is rejected", st in rejected, f"HTTP {st}")
         jti = uuid.uuid4().hex
@@ -230,6 +323,9 @@ def runtime_probes(rep: Report, ref: str, commit: str, code_sha: str, port: int)
         rep.add("runtime: /capabilities reports gatewayMode=enforce", caps.get("gatewayMode") == "enforce",
                 str(caps.get("gatewayMode")))
         rep.add("runtime: reported sourceCommit matches", img.get("sourceCommit") == commit, str(img.get("sourceCommit")))
+        if expect_engine:
+            rep.facts["capabilities"]["model"] = caps.get("model")
+            rep.add("runtime: the image runs the expected engine", caps.get("model") == expect_engine, str(caps.get("model")))
         if "codeSha256" in img:
             rep.add("runtime: reported codeSha256 matches the code in git", img["codeSha256"] == code_sha, img["codeSha256"])
         else:
@@ -238,7 +334,8 @@ def runtime_probes(rep: Report, ref: str, commit: str, code_sha: str, port: int)
         sh("docker", "rm", "-f", name, check=False)
 
 
-def verify(ref: str, expect_commit: str | None, port: int, skip_runtime: bool) -> Report:
+def verify(ref: str, expect_commit: str | None, port: int, skip_runtime: bool, profile: Profile = DEFAULT_PROFILE,
+           expect_engine: str | None = None) -> Report:
     rep = Report(image=ref)
     try:
         _, digest = parse_ref(ref)
@@ -266,15 +363,21 @@ def verify(ref: str, expect_commit: str | None, port: int, skip_runtime: bool) -
     if not rep.add("source: commit exists in this repository", exists):
         return rep
 
-    expected_files, expected = code_digest_lines(git_listing(commit))
+    expected_files, expected = code_digest_lines(git_listing(commit, profile))
     actual_files, actual = code_digest_lines(image_listing(ref))
-    rep.facts.update(codeSha256Git=expected, codeSha256Image=actual, files=len(expected_files))
+    rep.facts.update(profile=profile.name, codeSha256Git=expected, codeSha256Image=actual, files=len(expected_files))
     diffs = diff_files(expected_files, actual_files)
-    rep.add("contents: /app/app is exactly apps/gpu-worker/app at the source commit",
+    what = " + ".join(src for src, _ in profile.sources)
+    rep.add(f"contents: /app/app is exactly {what} at the source commit",
             expected == actual and not diffs, f"{len(expected_files)} files" if not diffs else "; ".join(diffs[:10]))
+    for src, dest in profile.trees:
+        want, got = tree_files(git_tree_listing(commit, src)), tree_files(image_tree_listing(ref, dest))
+        d = diff_files(want, got)
+        rep.add(f"contents: {dest} is exactly {src} at the source commit", bool(want) and not d,
+                f"{len(want)} files" if not d else "; ".join(d[:10]))
 
     if not skip_runtime:
-        runtime_probes(rep, ref, commit, expected, port)
+        runtime_probes(rep, ref, commit, expected, port, profile, expect_engine)
     return rep
 
 
@@ -285,11 +388,13 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--report")
     ap.add_argument("--port", type=int, default=18000)
     ap.add_argument("--skip-runtime", action="store_true")
+    ap.add_argument("--expect-engine", help="gpu-voice: the engine the image must report (/capabilities model)")
+    ap.add_argument("--profile", choices=sorted(PROFILES), default="gpu-worker")
     a = ap.parse_args(argv)
     if shutil.which("docker") is None:
         print("docker is required", file=sys.stderr)
         return 2
-    rep = verify(a.image, a.expect_commit, a.port, a.skip_runtime)
+    rep = verify(a.image, a.expect_commit, a.port, a.skip_runtime, PROFILES[a.profile], a.expect_engine)
     if a.report:
         Path(a.report).write_text(json.dumps(rep.to_json(), indent=2))
     print("VERIFIED" if rep.passed else "NOT VERIFIED")

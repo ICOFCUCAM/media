@@ -28,7 +28,13 @@ interface Capabilities {
   model?: string;
   deploymentId?: string | null;
   gatewayMode?: string;
-  manifest?: { authzVersion: number; runtime: string; models: { role: string; id: string; revision: string | null; weights: string | null; pinned?: boolean }[] };
+  manifest?: {
+    authzVersion: number;
+    runtime: string;
+    models: { role: string; id: string; revision: string | null; weights: string | null; pinned?: boolean }[];
+    workflows?: { id: string; version: number; sha256: string; models: string[] }[];
+    registrySha256?: string;
+  };
   image?: { sourceCommit?: string | null };
 }
 
@@ -44,6 +50,8 @@ function sameManifest(a: RuntimeManifest, b: RuntimeManifest): boolean {
       v: m.authzVersion,
       r: m.runtime,
       m: [...m.models].map((x) => [x.role, x.id, x.revision, x.weights]).sort(),
+      // Image runtime deployments (docs/73): the registry workflows and their graph hashes too.
+      ...(m.workflows ? { w: [...m.workflows].map((x) => [x.id, x.version, x.sha256, [...x.models].sort().join(",")]).sort(), rs: m.registrySha256 ?? null } : {}),
     });
   return norm(a) === norm(b);
 }
@@ -53,6 +61,8 @@ function toManifest(m: NonNullable<Capabilities["manifest"]>): RuntimeManifest {
     authzVersion: m.authzVersion,
     runtime: m.runtime,
     models: m.models.map((x) => ({ role: x.role, id: x.id, revision: x.revision ?? "", weights: x.weights ?? "" })),
+    ...(m.workflows ? { workflows: m.workflows.map((w) => ({ id: w.id, version: w.version, sha256: w.sha256, models: [...w.models] })) } : {}),
+    ...(m.registrySha256 ? { registrySha256: m.registrySha256 } : {}),
   };
 }
 

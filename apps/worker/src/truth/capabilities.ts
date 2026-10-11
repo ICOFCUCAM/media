@@ -9,8 +9,25 @@
  */
 import { buildCapabilityRegistry, type Capability, type CapabilityProbe, type GpuCapabilitiesWire } from "@cineforge/shared";
 import { isMissingTable } from "../timeline/store";
+import { ENGINE_REGISTRY, licenceStatus, parseVoiceEngines, SELF_HOSTED_VOICE_ENGINES } from "@cineforge/voice-contracts";
+
+/** Self-hosted voice engines (docs/74): listed, configured and approved — never assumed. */
+export function selfHostedVoiceProbe(env: Record<string, string | undefined>): NonNullable<CapabilityProbe["voice"]> {
+  const listed = new Set(parseVoiceEngines(env.VOICE_ENGINES).map((e) => e.id));
+  return Object.keys(SELF_HOSTED_VOICE_ENGINES).map((id) => {
+    const missing = ENGINE_REGISTRY[id]!.requires.filter((k) => !env[k]);
+    const licence = licenceStatus(id, env);
+    const reason = !listed.has(id) ? "not listed in VOICE_ENGINES"
+      : missing.length ? `not configured (${missing.join(", ")})`
+      : !licence.cleared ? `not approved — ${licence.reasons.join("; ")}`
+      : null;
+    return { id, listed: listed.has(id), configured: missing.length === 0, approved: licence.cleared, reason };
+  });
+}
 
 export const GPU_CAPS_TTL_SEC = 7 * 24 * 3600;
+/** Cache id of the ComfyUI image runtime's /capabilities (docs/73). */
+export const COMFY_CAPS_ID = "comfyui-image";
 const key = (modelId: string) => `cf:truth:gpu-caps:${modelId}`;
 
 export interface CapsCache {
@@ -53,12 +70,14 @@ export function currentRegistry(
 ): Capability[] {
   const wire: Record<string, GpuCapabilitiesWire | null> = {};
   for (const [m, c] of Object.entries(gpu)) wire[m] = c?.caps ?? { execution: "not yet verified", realExecution: false };
-  const registry = buildCapabilityRegistry({ env, gpu: wire, intelligence });
+  const registry = buildCapabilityRegistry({ env, gpu: wire, intelligence, voice: selfHostedVoiceProbe(env) });
   // Say when the GPU facts were last verified (pods sleep when idle).
   const wan = gpu["wan-2.2"] ?? gpu["wan-2.1"];
-  return registry.map((c) =>
-    c.requiresGpu && wan ? { ...c, note: [c.note, `GPU verified ${wan.verifiedAt}`].filter(Boolean).join("; ") } : c,
-  );
+  return registry.map((c) => {
+    // The image runtime is its own pod (docs/73): its own verification time.
+    const src = c.capability === "self_hosted_image_runtime" ? gpu[COMFY_CAPS_ID] : wan;
+    return c.requiresGpu && src ? { ...c, note: [c.note, `GPU verified ${src.verifiedAt}`].filter(Boolean).join("; ") } : c;
+  });
 }
 
 export interface CapabilityRow {

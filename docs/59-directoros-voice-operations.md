@@ -8,6 +8,12 @@ Nothing here needs a GPU. Self-hosted voice models (Qwen3-TTS, CosyVoice 3,
 GPT-SoVITS) stay gated until docs/38 Phase 1 is operationally complete; W14
 builds what must be true **before** one of them may ever speak.
 
+> **Update 2026-10-11 ([docs/74](74-self-hosted-voice-engine.md)):** the Phase 1
+> rule no longer holds voice. The registry entries below were re-checked and
+> rewritten (sources linked in `licences.ts`); the benchmark can now run the
+> self-hosted engines on the owner's voice (`--evaluate --enroll`) and measure
+> voice similarity and VRAM. The approval mechanism is unchanged.
+
 ## 1. The voice licence registry (§114, §129, §139, §141)
 
 `packages/voice-contracts/src/licences.ts` records, for every model CineForge

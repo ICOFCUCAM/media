@@ -33,6 +33,7 @@ import { applyEditorialReview, editorialReview, processEditorialReview } from ".
 import { purgeOrphanedSpeech } from "../voice/cache";
 import { eraseDeletedVoices, type EraseDb } from "../voice/erase";
 import { voiceEngine } from "../voice/engines";
+import { isSelfHostedVoiceEngine, type VoiceArtifactType } from "@cineforge/voice-contracts";
 import { S3Storage } from "../storage/storage";
 import { constraintsFor, productionOf } from "../director/production";
 import { intelligence } from "../intelligence";
@@ -361,6 +362,11 @@ export function startProjectPoller(intervalMs = Number(process.env.PROJECT_POLL_
           if (!e?.deleteVoice) return "not_supported";
           await e.deleteVoice({ artifactType: "provider_voice_id", uri: id });
           return "deleted";
+        },
+        // Self-hosted engines (docs/74) drop the deleted voice from their GPU's warm cache.
+        releaseArtifact: async (engine, a) => {
+          const e = isSelfHostedVoiceEngine(engine) ? voiceEngine(engine, process.env) : null;
+          if (e?.deleteVoice) await e.deleteVoice({ artifactType: a.type as VoiceArtifactType, uri: a.uri });
         },
       })
         .then((n) => (n.done || n.failed) && console.log(JSON.stringify({ event: "voice.erased", ...n })))

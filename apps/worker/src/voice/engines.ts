@@ -4,16 +4,18 @@
  *   fal-minimax  MiniMax voice clone + speech on fal (the Voice Lab's engine)
  *   openai-tts   OpenAI speech, stock voices only (no cloning)
  *
- * Self-hosted engines (qwen3-tts, cosyvoice-3, gpt-sovits) are registered in
- * @cineforge/voice-contracts but have no adapter here: model work waits on
- * Phase 1 (docs/39). An engine returns raw audio; mastering happens after,
- * outside the model (mastering.ts).
+ * Self-hosted engines (qwen3-tts, cosyvoice-3, gpt-sovits) run on CineForge's
+ * own GPU (apps/gpu-voice) through the Media Runtime Gateway — see
+ * selfhosted.ts (docs/74). An engine returns raw audio; mastering happens
+ * after, outside the model (mastering.ts).
  */
 import { readFile, writeFile } from "node:fs/promises";
 import { falFindUrl, falRunQueue, falUploadBytes } from "@cineforge/model-adapters";
 import { languageName, providerUrl } from "@cineforge/shared";
 import {
   ENGINE_REGISTRY,
+  isSelfHostedVoiceEngine,
+  SELF_HOSTED_VOICE_ENGINES,
   type EngineHealth,
   type SpeechSynthesisRequest,
   type SpeechSynthesisResult,
@@ -21,6 +23,7 @@ import {
   type VoiceEnrollmentRequest,
   type VoiceEnrollmentResult,
 } from "@cineforge/voice-contracts";
+import { SelfHostedVoiceEngine, type SelfHostedDeps } from "./selfhosted";
 
 type Env = Record<string, string | undefined>;
 
@@ -137,9 +140,14 @@ export class OpenAiTtsEngine implements VoiceEngine {
   async unload(): Promise<void> {}
 }
 
-/** The adapter for a routed engine id; gated or unknown engines have none. */
-export function voiceEngine(id: string, env: Env): VoiceEngine | null {
+/**
+ * The adapter for a routed engine id; unknown engines have none. A self-hosted
+ * engine has one when its GPU deployment URL is set (VOICE_GPU_<ENGINE>_URL);
+ * whether it may speak is the router's and the licence registry's decision.
+ */
+export function voiceEngine(id: string, env: Env, selfHostedDeps?: SelfHostedDeps): VoiceEngine | null {
   if (id === "fal-minimax") return new FalMinimaxEngine(env);
   if (id === "openai-tts") return new OpenAiTtsEngine(env);
+  if (isSelfHostedVoiceEngine(id) && env[SELF_HOSTED_VOICE_ENGINES[id].url]) return new SelfHostedVoiceEngine(id, env, selfHostedDeps);
   return null;
 }
