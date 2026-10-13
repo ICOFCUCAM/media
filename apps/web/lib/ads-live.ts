@@ -20,7 +20,7 @@ import { getSupabase } from "./supabase";
 import { loadConversation, sendInstruction, type ChatMessage } from "./workspace";
 import { listEditRequests, type EditRequestRow } from "./production";
 import { loadDegradations, type DegradationRow } from "./truth";
-import { BRAND_IMAGE_TYPES, sceneInstructions, type SceneDraft, type SiteAnalysis, type SiteFact } from "./ads-studio";
+import { BRAND_IMAGE_TYPES, sceneInstructions, type SceneDraft, type SiteAnalysis, type SiteFact, type WrittenScene } from "./ads-studio";
 
 export { sceneInstructions, type SceneDraft };
 
@@ -54,7 +54,48 @@ export async function analyseWebsite(url: string): Promise<SiteAnalysis> {
   return {
     url: String(body.url ?? url), title: body.title ?? null, brand: body.brand ?? null,
     facts: (body.facts ?? []) as SiteFact[], dropped: Number(body.dropped ?? 0), fetchedAt: String(body.fetchedAt ?? new Date().toISOString()),
+    images: Array.isArray(body.images) ? body.images.filter((u): u is string => typeof u === "string" && /^https?:\/\//.test(u)) : [],
+    logo: typeof body.logo === "string" ? body.logo : null,
+    method: body.method === "model" ? "model" : "extract",
   };
+}
+
+/* ── W32: the Ads Studio writer and production ─────────────────────────── */
+
+/** What the studio sends to the writer and to production. */
+export interface StudioInputs {
+  brief: string;
+  seconds: number;
+  style: string;
+  voice: "narrator" | "none";
+  source: { url: string; title: string | null; brand: string | null; fetchedAt: string; facts: SiteFact[] } | null;
+  productPhotos?: number;
+  logo?: boolean;
+}
+
+async function postJson<T>(path: string, body: unknown, auth = false): Promise<T> {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (auth) {
+    const sb = getSupabase();
+    const token = sb ? (await sb.auth.getSession()).data.session?.access_token : null;
+    if (!token) throw new Error("Sign in to CineForge first (same browser) to produce the ad.");
+    headers.authorization = `Bearer ${token}`;
+  }
+  const res = await fetch(path, { method: "POST", headers, body: JSON.stringify(body) });
+  const out = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (!res.ok) throw new Error(out.error ?? `The request failed (${res.status}).`);
+  return out;
+}
+
+/** The storyboard the Ads Studio writer makes from the studio's inputs (no model call). */
+export async function writeStoryboard(input: StudioInputs): Promise<{ scenes: WrittenScene[]; issues: string[] }> {
+  return postJson("/api/ads/storyboard", input);
+}
+
+/** Create the advert — one project per format — with its written plan, facts and brand files. */
+export async function produceAd(input: StudioInputs & { scenes: WrittenScene[]; formats: string[]; brandFiles: BrandFileRef[]; prompt: string; title?: string }): Promise<{ id: string; aspect: string }[]> {
+  const out = await postJson<{ projects: { id: string; aspect: string }[] }>("/api/ads/produce", input, true);
+  return out.projects;
 }
 
 /* ── A3: brand files ───────────────────────────────────────────────────── */

@@ -484,6 +484,9 @@ on its own domain (pay as you go from $10 per ad, or monthly). A1 done
 the real advert pipeline, own-domain routing. A2 website intelligence (rides
 on W2/W5), A3 brand assets into production (W4/W6), A4 standalone billing
 (after cost measurement), A5 scene-level editing of the live project (W3/W8).
+A6 (W32, 2026-10-13): the studio works without model credit — model-free page
+reading, the Ads Studio writer (storyboard and full plan from brief, facts,
+files, style, length, voice), one advert per format via supplied plans.
 Details: docs/47.
 
 ### W4 — Shot design and compilation

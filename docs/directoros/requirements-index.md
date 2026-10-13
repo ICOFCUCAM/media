@@ -1,6 +1,6 @@
 # DirectorOS requirements index
 
-One row per requirement ID in the source record. Status and workstream (W0–W12) come from the gap analysis: [gap-analysis.md](gap-analysis.md), dated 2026-10-08 against merge `9c957bf` (statuses updated through W30, 2026-10-11). A status is a section-level judgement unless the row says otherwise; the evidence is in the gap analysis.
+One row per requirement ID in the source record. Status and workstream (W0–W12) come from the gap analysis: [gap-analysis.md](gap-analysis.md), dated 2026-10-08 against merge `9c957bf` (statuses updated through W32, 2026-10-13). A status is a section-level judgement unless the row says otherwise; the evidence is in the gap analysis.
 
 **Status values:** `built` · `shallow` · `poorly built` · `not built` · `n/a` (author's note or recommendation, not a requirement).
 
@@ -531,3 +531,7 @@ The director chat applies tone, camera, lighting, music, ambience and line chang
 ### W26 — seasons, one voice screen, talking with an avatar, living pages (docs/71)
 
 Further seasons (0058); the one simple voice screen; a live conversation with an avatar — speech recognition, a reply in its persona, its voice, its portrait (0059, with owner-folder storage policies); character animation inside storybook and motion-comic pages (STILL_MOTION_ANIMATE). DOS-111.3, 117.4, 176.1, 178.2, 181.4 and 181.5 are now built.
+
+### W32 — the Ads Studio without a model (docs/47 §8)
+
+Website reading from the page's own structure when no model is available; the Ads Studio writer turns a brief, quoted page facts, brand files, direction, length and voice into an editable storyboard and a validated Film IR plan; "Produce" creates one advert per format with that plan (supplied_plan), its facts and brand files. Ads Studio A6 is now built.

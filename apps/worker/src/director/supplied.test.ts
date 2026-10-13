@@ -23,3 +23,17 @@ describe("a plan supplied instead of the Director (docs/76)", () => {
     }
   });
 });
+
+describe("an advert written by the Ads Studio (W32)", () => {
+  it("is planned under exactly the worker's advert constraints, and its plan is accepted as supplied", async () => {
+    const { advertConstraints, advertPackage, advertStoryboard } = await import("@cineforge/movie");
+    const { constraintsFor } = await import("./production");
+    for (const seconds of [15, 30, 60, 90]) {
+      const spec = { kind: "advert", medium: "live_action", animationStyle: null } as unknown as Parameters<typeof constraintsFor>[1];
+      expect(advertConstraints(seconds)).toEqual(constraintsFor(seconds, spec));
+      const b = { brief: "Get people to book a move with Flyttgo.", seconds, style: "Cinematic premium", voice: "narrator" as const, brand: "Flyttgo" };
+      const plan = suppliedPlan(advertPackage(b, advertStoryboard(b)), "ads-studio", constraintsFor(seconds, spec));
+      expect(plan.pkg.scenes.length).toBe(Math.round(seconds / 5));
+    }
+  });
+});

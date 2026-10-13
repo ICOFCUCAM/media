@@ -27,6 +27,11 @@ export interface SiteAnalysis {
   /** Facts the model proposed whose quote was not on the page. */
   dropped: number;
   fetchedAt: string;
+  /** The page's own pictures (share image, large images), shown on the storyboard. */
+  images?: string[];
+  logo?: string | null;
+  /** How the page was read: by the model, or from its own structure (no model, W32). */
+  method?: "model" | "extract";
 }
 
 export const FACT_LABEL: Record<SiteFact["kind"], string> = { product: "Product", benefit: "Benefit", audience: "Audience", call_to_action: "Call to action" };
@@ -55,6 +60,10 @@ export interface AdScene {
   span: string;
   /** File the user attached to this scene in this session. */
   asset?: string;
+  /** The beat this scene plays (W32: written by the Ads Studio writer). */
+  beat?: "opening" | "problem" | "solution" | "how" | "outcome" | "cta";
+  /** The product is in the picture (product photos guide the shot). */
+  showProduct?: boolean;
 }
 
 export const AD_SCENES: AdScene[] = [
@@ -66,7 +75,68 @@ export const AD_SCENES: AdScene[] = [
   { label: "Call to action", blurb: "Brand lock-up, offer and a direct CTA.", span: "51–60s", title: "Make the next step clear", duration: "9 seconds", visual: "Resolve the narrative with brand identity, a concise call to action and the approved destination URL.", message: "Take the next step.", image: "photo-1497366811353-6870744d04b2" },
 ];
 
-export const unsplash = (id: string, w: number, q: number) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=${q}`;
+/** A scene picture: a full URL (the advertiser's page, an attached file) as is, else an Unsplash id from the design. */
+export const unsplash = (id: string, w: number, q: number) => (/^(https?:|blob:)/.test(id) ? id : `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=${q}`);
+
+/* ── W32: the storyboard written by the Ads Studio writer (app/api/ads/storyboard) ── */
+
+export interface WrittenScene {
+  beat: NonNullable<AdScene["beat"]>;
+  title: string;
+  seconds: number;
+  visual: string;
+  message: string;
+  showProduct: boolean;
+}
+
+const BEAT_LABELS: Record<WrittenScene["beat"], string> = {
+  opening: "Opening", problem: "The problem", solution: "The solution", how: "How it works", outcome: "The outcome", cta: "Call to action",
+};
+const BEAT_BLURB: Record<WrittenScene["beat"], string> = {
+  opening: "Establish the world and the brand promise.", problem: "Make the audience recognise the problem.", solution: "Show the value in a clear, visual way.",
+  how: "Demonstrate the workflow or key features.", outcome: "Translate features into credible benefits.", cta: "Brand lock-up, offer and a direct CTA.",
+};
+const BEAT_IMAGE: Record<WrittenScene["beat"], string> = Object.fromEntries(
+  (["opening", "problem", "solution", "how", "outcome", "cta"] as const).map((b, i) => [b, AD_SCENES[i]!.image]),
+) as Record<WrittenScene["beat"], string>;
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/** The written storyboard as the page's scene cards; the page's own pictures replace the design's where there are some (pure). */
+export function cardsFrom(written: WrittenScene[], pageImages: string[] = []): AdScene[] {
+  let at = 0;
+  return written.map((w, i) => {
+    const from = at;
+    at += w.seconds;
+    return {
+      beat: w.beat, title: w.title, duration: `${w.seconds} seconds`, visual: w.visual, message: w.message, showProduct: w.showProduct,
+      label: BEAT_LABELS[w.beat], blurb: BEAT_BLURB[w.beat], span: `${pad(from)}–${pad(at)}s`,
+      image: pageImages.length ? pageImages[i % pageImages.length]! : BEAT_IMAGE[w.beat],
+    };
+  });
+}
+
+/** The page's scene cards back as the writer's storyboard (lengths in whole seconds) (pure). */
+export function writtenFrom(cards: AdScene[]): WrittenScene[] {
+  return cards.map((c, i) => ({
+    beat: c.beat ?? (["opening", "problem", "solution", "how", "outcome", "cta"] as const)[Math.min(i, 5)]!,
+    title: c.title, seconds: parseInt(c.duration, 10) || 5, visual: c.visual, message: c.message, showProduct: c.showProduct ?? true,
+  }));
+}
+
+/** Recompute the timecodes after a length changes (pure). */
+export function respan(cards: AdScene[]): AdScene[] {
+  let at = 0;
+  return cards.map((c) => {
+    const from = at;
+    at += parseInt(c.duration, 10) || 0;
+    return { ...c, span: `${pad(from)}–${pad(at)}s` };
+  });
+}
+
+/** The voice choice as the writer reads it: no narration, or a narrator speaking each scene's line. */
+export const voiceMode = (voice: string): "narrator" | "none" => (/^no narration/i.test(voice) ? "none" : "narrator");
+export const ASPECT_OF: Record<string, "16:9" | "9:16" | "1:1"> = { "16:9 Landscape": "16:9", "9:16 Vertical": "9:16", "1:1 Square": "1:1" };
 
 export interface AdStudioState {
   url: string;
