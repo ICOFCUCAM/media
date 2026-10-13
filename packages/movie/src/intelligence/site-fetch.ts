@@ -276,7 +276,7 @@ export function decodeEntities(s: string): string {
   });
 }
 
-function attr(tag: string, name: string): string | null {
+export function htmlAttr(tag: string, name: string): string | null {
   const m = tag.match(new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"));
   return m ? (m[2] ?? m[3] ?? m[4] ?? "") : null;
 }
@@ -289,9 +289,9 @@ export function htmlToText(html: string): { title: string | null; description: s
   const title = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1];
   let description: string | null = null;
   for (const tag of html.match(/<meta\b[^>]*>/gi) ?? []) {
-    const name = (attr(tag, "name") ?? attr(tag, "property") ?? "").toLowerCase();
+    const name = (htmlAttr(tag, "name") ?? htmlAttr(tag, "property") ?? "").toLowerCase();
     if (name === "description" || name === "og:description") {
-      const c = attr(tag, "content");
+      const c = htmlAttr(tag, "content");
       if (c?.trim()) { description = clean(c); break; }
     }
   }

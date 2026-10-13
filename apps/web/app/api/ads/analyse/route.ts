@@ -8,14 +8,17 @@
  * reads, and read by the intelligence layer (task site_analysis, prompt
  * ads.site_analysis). Only facts whose quote is found on the page come back.
  *
- * Needs ANTHROPIC_API_KEY (or a site_analysis route in INTELLIGENCE_ROUTES) on
- * the web server; without it the route says so (503) — nothing is invented.
+ * With ANTHROPIC_API_KEY (or a site_analysis route in INTELLIGENCE_ROUTES) on
+ * the web server the model reads the page; without a model, or when its call
+ * fails (e.g. spent credit), the page's own structure is read instead
+ * (extractSite, W32) — the same quote check applies either way, and the
+ * answer says which reading it is (`method`).
  * Each model call is logged as an `ai.decision` line in the server log (the web
  * has no service role to write ai_decisions; there is no project yet either).
  */
 import { createClient } from "@supabase/supabase-js";
 import {
-  AnthropicProvider, analyseSite, fetchPublicPage, htmlToText, IntelligenceError, IntelligenceRouter, OpenAIProvider, PageFetchError,
+  AnthropicProvider, analyseSite, extractSite, fetchPublicPage, htmlToText, IntelligenceError, IntelligenceRouter, OpenAIProvider, PageFetchError,
 } from "@cineforge/movie";
 
 export const runtime = "nodejs";
@@ -53,10 +56,6 @@ export async function POST(req: Request) {
   const router = new IntelligenceRouter([new AnthropicProvider(process.env), new OpenAIProvider(process.env)], process.env, (d) => {
     console.log(JSON.stringify({ event: "ai.decision", ...d, userId }));
   });
-  if (!router.available("site_analysis")) {
-    return json(503, { error: "Website analysis is not configured on this deployment (no model for site_analysis)." });
-  }
-
   let page;
   try {
     page = await fetchPublicPage(raw);
@@ -69,17 +68,20 @@ export async function POST(req: Request) {
     return json(422, { error: "The page has almost no readable text (it may be drawn by JavaScript). Try a page whose text is in its HTML.", code: "NO_TEXT" });
   }
 
-  try {
-    const r = await analyseSite(router, { url: page.url, title, text });
-    console.log(JSON.stringify({ event: "ads.site_analysis", userId, url: page.url, kept: r.facts.length, dropped: r.dropped.length }));
-    return json(200, {
-      url: page.url, title, brand: r.brand, facts: r.facts, dropped: r.dropped.length,
-      fetchedAt: new Date().toISOString(), textChars: text.length, model: r.model,
-    });
-  } catch (e) {
-    if (e instanceof IntelligenceError) {
-      return json(e.code === "PROVIDER_UNAVAILABLE" ? 503 : 502, { error: `The page could not be read by the model (${e.code}).`, code: e.code });
+  // The page's own pictures and structure, always (the storyboard shows them; they back the model up).
+  const extracted = extractSite(page.html, page.url);
+  const base = { url: page.url, title, fetchedAt: new Date().toISOString(), textChars: text.length, images: extracted.images, logo: extracted.logo };
+  let modelError: string | null = null;
+  if (router.available("site_analysis")) {
+    try {
+      const r = await analyseSite(router, { url: page.url, title, text });
+      console.log(JSON.stringify({ event: "ads.site_analysis", userId, url: page.url, method: "model", kept: r.facts.length, dropped: r.dropped.length }));
+      if (r.facts.length) return json(200, { ...base, brand: r.brand ?? extracted.brand, facts: r.facts, dropped: r.dropped.length, method: "model", model: r.model });
+    } catch (e) {
+      if (!(e instanceof IntelligenceError)) throw e;
+      modelError = e.code;
     }
-    throw e;
   }
+  console.log(JSON.stringify({ event: "ads.site_analysis", userId, url: page.url, method: "extract", kept: extracted.facts.length, modelError }));
+  return json(200, { ...base, brand: extracted.brand, facts: extracted.facts, dropped: 0, method: "extract", model: null, modelError });
 }

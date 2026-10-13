@@ -12,11 +12,11 @@ page — no studio chrome — so it can run on its own domain.
 |---|---|
 | Landing (hero, capabilities, workflow, plans) | The design, verbatim |
 | Studio panel: URL, brief, duration, direction, approach, voice, formats | Works in the browser |
-| **Website analysis ("Analyse")** | **Real (A2, 2026-10-10):** the page is fetched on our server and read by the model; only facts quoted from the page are kept (§5) |
+| **Website analysis ("Analyse")** | **Real (A2, 2026-10-10; W32 2026-10-13):** the page is fetched on our server and read by the model when one is configured — otherwise, or when the model call fails, from the page's own title, description, headings, lists and buttons; only facts quoted from the page are kept either way, and the page's own pictures come back for the storyboard (§5, §8) |
 | **Uploads** | **Real for images (A3):** a logo and up to 8 product photos (PNG / JPEG / WebP, ≤ 15 MB) are uploaded to the owner's account and recorded on the advert; other files (video, PDF, SVG, audio) stay in the browser and are marked so (§6) |
-| Storyboard + scene editor (6 scenes), script / assembly modals, JSON export | The page's plan preview, as in the design |
+| **Storyboard + scene editor** | **Real (W32):** written by the Ads Studio writer from whatever is given — a brief, the page's facts, brand files, direction, length, voice (a link is optional). Each scene's look and line can be edited, rewritten ("Regenerate scene plan") or given a picture ("Add image to this scene" sends it to production as a product photo). Script / assembly modals and JSON export as in the design (§8) |
 | **Storyboard on a produced ad** | **Real (A5):** pick one of your adverts in the storyboard selector (or open `/ads?project=<id>`, linked from an advert's production file); a scene edit goes to the Director chat and only the shots it touches regenerate (§7) |
-| **Produce this ad in CineForge** | **Real:** opens `/create/advert` with a Director-ready brief (objective, URL, the page's source facts, direction, approach, voice, the six-scene plan), the duration (15/30/60/90 s) and the first selected format (16:9 → YouTube pre-roll, 9:16 → TikTok/Reels/Shorts, 1:1 → Instagram feed); the facts and brand files travel with it and are recorded on the advert project before the worker can claim it |
+| **Produce this ad in CineForge** | **Real (W32):** the edited storyboard becomes the advert's full plan (Film IR, held to the Director's validators) and **one advert per selected format** is created with it (`projects.supplied_plan`), the page's facts and the brand files; the worker makes the scene stills, the video, the voice-over (unless "No narration"), music and sound, and renders the film with the logo card — no Director call. The produced ad opens in the storyboard selector (§8) |
 
 The page keeps the design's capability copy. Lines that described the page as
 an unconnected prototype were changed to say what is connected and what is
@@ -58,6 +58,7 @@ To launch it:
 | A3 | Brand assets into production: uploads stored per project; the logo as an exact insert on the closing card, product photos as generation references | done (2026-10-10) — §6 |
 | A4 | Billing for the standalone product (§3) | open — cost measurement after the deploy |
 | A5 | Scene-level edit/regenerate on the real project | done (2026-10-10) — §7 |
+| A6 | Works without model credit: website reading from the page's structure, storyboard and full plan written by the Ads Studio writer, one advert per format | done (2026-10-13, W32) — §8 |
 
 ## 5. Website intelligence (A2)
 
@@ -180,3 +181,37 @@ served on its own domain has its own session); the Director makes at most one
 change per instruction and decides how to read it; a scene's heading is not
 editable from here; edits to a film planned before the Film IR are answered
 with the Director's existing "re-plan it" reply.
+
+
+## 8. The studio without a model (W32, 2026-10-13)
+
+The studio produces a complete advert with no model call, from any of its
+inputs — a link is one option, not a requirement.
+
+- **Reading a page** (`packages/movie/src/intelligence/site-extract.ts`): with no
+  model for `site_analysis`, or when the model call fails (spent credit), the
+  page's own structure is read — description → product, short headings and list
+  items → benefits, a "for / built for / helps" sentence → audience, the first
+  button or link that asks to act → call to action. Every quote passes
+  `verifyFacts`, as a model's must. The page's share image, large images and
+  logo come back for the storyboard. The answer says which reading it was
+  (`method: model | extract`).
+- **Writing the storyboard** (`packages/movie/src/ads/advert-plan.ts`,
+  `POST /api/ads/storyboard`): the length decides the beats (15 s: opening,
+  solution, call to action; 30 s and longer: opening, problem, solution, how it
+  works, outcome, call to action) and how many five-second scenes each gets.
+  Each beat's line is the owner's brief or a quote from the page, chosen to fit
+  its time at a natural speaking pace (`AD_WORDS_PER_SCENE`); nothing is
+  claimed that the advertiser did not write.
+- **Producing** (`POST /api/ads/produce`): the edited storyboard becomes a Film IR
+  package — one five-second shot per scene (the worker's advert constraints,
+  `advertConstraints` = `constraintsFor`, tested), the customer where the story
+  is about them, `prop_product` wherever the product is shown (so product photos
+  are the shots' references), narration split across the beat's scenes, the
+  creative direction as palette, light, lens, camera and score. It must pass
+  `validateFilmPackage`; then one advert project per format is created as the
+  signed-in user with `supplied_plan`, `ad_source` and `brand_assets`.
+- **Still needing a model:** scene edits on a produced ad go through the
+  Director chat (§7), which needs a model; on an ad with no model, change the
+  storyboard on the page and produce it again. A cloned voice or uploaded
+  narration is not yet selectable here: the narrator reads the lines.

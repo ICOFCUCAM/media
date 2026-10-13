@@ -7,3 +7,4 @@ export * from "./cinema";
 export * from "./prompt";
 export * from "./edit";
 export * from "./sound";
+export * from "./ads";

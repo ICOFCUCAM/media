@@ -12,3 +12,4 @@ export * from "./coverage";
 export * from "./talk";
 export * from "./site";
 export * from "./site-fetch";
+export * from "./site-extract";

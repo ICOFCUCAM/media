@@ -5,24 +5,29 @@
  * CineForge page: same copy, same images, same layout and behaviour, styles
  * scoped under .cf-ads. Connected to production (docs/47):
  *
- *   - "Produce this ad in CineForge" hands the brief to the real Advert studio
- *     (/create/advert), where it is planned and filmed by the pipeline (A1);
- *   - "Analyse" fetches and reads the page on the server; only facts quoted
- *     from the page are kept, shown here and handed to the Director (A2);
+ *   - the storyboard is written by the Ads Studio writer from whatever the
+ *     owner gives — a brief, a website, brand files, a style, a length, a
+ *     voice choice (W32): each scene's look and line, editable here;
+ *   - "Produce this ad in CineForge" turns the edited storyboard into the
+ *     advert's full plan and creates one advert per output format; the worker
+ *     makes the stills, video, voice-over, music and sound, and renders it;
+ *   - "Analyse" fetches and reads the page on the server — by the model when
+ *     one is configured, else from the page's own structure; only facts quoted
+ *     from the page are kept, and they feed the storyboard (A2, W32);
  *   - a logo and product photographs are uploaded to the owner's brand folder
  *     and recorded on the advert: the logo closes the film as supplied, the
  *     photographs are the references for shots that show the product (A3);
  *   - once an advert is planned, the storyboard can open it and send a scene
  *     edit through the Director chat — the Director workspace's own path (A5).
  */
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  AD_SCENES, defaultBrandRole, FACT_LABEL, handoffHref, productionPlan, unsplash, type AdScene, type AdStudioState, type BrandRole, type SiteAnalysis,
+  AD_SCENES, ASPECT_OF, cardsFrom, defaultBrandRole, directorBrief, FACT_LABEL, productionPlan, respan, unsplash, voiceMode, writtenFrom,
+  type AdScene, type AdStudioState, type BrandRole, type SiteAnalysis,
 } from "../../lib/ads-studio";
 import {
-  analyseWebsite, brandFileProblem, listAdverts, loadLiveScenes, loadLiveState, PRODUCT_PHOTOS_MAX, reviseLiveScene, sceneInstructions, signedInUserId,
-  stashHandoff, uploadBrandFiles, type AdvertProject, type LiveScene, type LiveState, type SceneDraft,
+  analyseWebsite, brandFileProblem, listAdverts, loadLiveScenes, loadLiveState, produceAd, PRODUCT_PHOTOS_MAX, reviseLiveScene, sceneInstructions, signedInUserId,
+  uploadBrandFiles, writeStoryboard, type AdvertProject, type LiveScene, type LiveState, type SceneDraft, type StudioInputs,
 } from "../../lib/ads-live";
 import { signedUrl } from "../../lib/storyboard";
 
@@ -73,7 +78,9 @@ export function AdsStudio() {
   const [liveSel, setLiveSel] = useState(0);
   const [liveDraft, setLiveDraft] = useState<SceneDraft & { for: string | null }>({ visual: "", line: "", seconds: 0, for: null });
   const [liveBusy, setLiveBusy] = useState(false);
-  const router = useRouter();
+  // W32: the storyboard was written for these inputs (false = the design's concept cards).
+  const [written, setWritten] = useState(false);
+  const [writing, setWriting] = useState(false);
   const [status, setStatus] = useState("CONCEPT PREVIEW");
   const [quality, setQuality] = useState("Storyboard preview");
   const [meter, setMeter] = useState<string | undefined>(undefined);
@@ -85,6 +92,40 @@ export function AdsStudio() {
   const sceneUpload = useRef<HTMLInputElement>(null);
 
   const state: AdStudioState = { url, brief, duration, style, assets, voice, formats, uploaded, scenes, analysis };
+  const inputs = (a: SiteAnalysis | null = analysis): StudioInputs => ({
+    brief: [brief.trim(), assets !== "AI + my assets" ? `Production approach: ${assets}.` : ""].filter(Boolean).join(" "),
+    seconds: parseInt(duration, 10) || 30, style, voice: voiceMode(voice),
+    source: a ? { url: a.url, title: a.title, brand: a.brand, fetchedAt: a.fetchedAt, facts: a.facts } : null,
+    productPhotos: uploaded.filter((u) => u.role === "product").length, logo: uploaded.some((u) => u.role === "logo"),
+  });
+
+  /** W32: write the storyboard from the studio's inputs (brief, website facts, files, style, length, voice). */
+  async function writeBoard(a: SiteAnalysis | null = analysis, quiet = false): Promise<AdScene[] | null> {
+    if (!brief.trim() && !a?.facts.length) {
+      if (!quiet) toast("Describe what the ad should achieve, or analyse a website first.");
+      return null;
+    }
+    setWriting(true);
+    try {
+      const out = await writeStoryboard(inputs(a));
+      const cards = cardsFrom(out.scenes, a?.images ?? []);
+      setScenes(cards);
+      setWritten(true);
+      setSelected(0);
+      setDraft({ title: cards[0]!.title, duration: cards[0]!.duration, visual: cards[0]!.visual, message: cards[0]!.message });
+      setHero({ title: cards[0]!.message || cards[0]!.title, subtitle: `${cards.length} scenes · ${duration}`, image: cards[0]!.image });
+      setStatus("STORYBOARD READY");
+      setQuality(`Storyboard written · ${cards.length} scenes${a?.facts.length ? ` · ${a.facts.length} source facts` : ""}`);
+      setMeter("60%");
+      if (!quiet) toast(`Storyboard written: ${cards.length} scenes. Edit any scene, then produce the ad.`);
+      return cards;
+    } catch (e) {
+      if (!quiet) toast(e instanceof Error ? e.message : "The storyboard could not be written.");
+      return null;
+    } finally {
+      setWriting(false);
+    }
+  }
 
   function toast(msg: string) {
     setToastMsg(msg);
@@ -94,6 +135,10 @@ export function AdsStudio() {
   }
   const scrollToId = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
+  useEffect(() => {
+    // A new length needs a new storyboard (scene lengths must add up to it).
+    if (written) void writeBoard(analysis, true);
+  }, [duration]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setModal(null); };
     document.addEventListener("keydown", onKey);
@@ -107,14 +152,30 @@ export function AdsStudio() {
     toast(`Editing scene ${i + 1}: ${s.title}`);
   }
   function saveScene() {
-    setScenes((all) => all.map((s, i) => (i === selected ? { ...s, ...draft, blurb: draft.visual } : s)));
-    toast("Scene edits saved to this plan.");
+    // Lengths are whole five-second shots.
+    const secs = Math.max(5, Math.round((parseInt(draft.duration, 10) || 5) / 5) * 5);
+    const d = { ...draft, duration: `${secs} seconds` };
+    setDraft(d);
+    setScenes((all) => respan(all.map((s, i) => (i === selected ? { ...s, ...d } : s))));
+    toast("Scene edits saved to this storyboard; they go into production when you produce the ad.");
   }
-  function regenerateScene() {
-    const visual = "REVISED PLAN: " + draft.visual + " Preserve brand identity, use source-backed claims, and maintain continuity with neighbouring scenes.";
-    setDraft((d) => ({ ...d, visual }));
-    setScenes((all) => all.map((s, i) => (i === selected ? { ...s, visual } : s)));
-    toast("Plan revised on this page. To regenerate a produced ad's scene, open the ad in the storyboard selector.");
+  async function regenerateScene() {
+    // The writer's version of this scene, for the current inputs (your edits to the other scenes stay).
+    try {
+      setWriting(true);
+      const out = await writeStoryboard(inputs());
+      const cur = scenes[selected]!;
+      const fresh = out.scenes.find((w) => w.beat === cur.beat) ?? out.scenes[Math.min(selected, out.scenes.length - 1)];
+      if (!fresh) return toast("Nothing to rewrite yet: add a brief or analyse a website.");
+      const next = { ...cur, title: fresh.title, visual: fresh.visual, message: fresh.message, showProduct: fresh.showProduct };
+      setScenes((all) => all.map((s, i) => (i === selected ? next : s)));
+      setDraft({ title: next.title, duration: next.duration, visual: next.visual, message: next.message });
+      toast(`Scene ${selected + 1} rewritten from your brief${analysis?.facts.length ? " and the page's facts" : ""}.`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "The scene could not be rewritten.");
+    } finally {
+      setWriting(false);
+    }
   }
   async function analyseUrl() {
     const v = url.trim();
@@ -133,7 +194,11 @@ export function AdsStudio() {
       const a = await analyseWebsite(v);
       setAnalysis(a);
       setStatus(a.facts.length ? "SOURCE FACTS READY" : "NO FACTS FOUND");
-      toast(a.facts.length ? `${a.facts.length} fact(s) quoted from the page.` : "The page was read, but no fact could be quoted from it.");
+      // The storyboard follows the page: its facts become the scenes' lines, its pictures the cards'.
+      const cards = a.facts.length || brief.trim() ? await writeBoard(a, true) : null;
+      toast(a.facts.length
+        ? `${a.facts.length} fact(s) quoted from the page${cards ? ` · storyboard written (${cards.length} scenes)` : ""}.`
+        : "The page was read, but no fact could be quoted from it. Add a brief to write the storyboard.");
     } catch (e) {
       const m = e instanceof Error ? e.message : "The analysis failed.";
       setAnalysisError(m);
@@ -144,10 +209,10 @@ export function AdsStudio() {
     }
   }
 
-  function addFiles(list: File[]) {
+  function addFiles(list: File[], force?: BrandRole) {
     let hasLogo = uploaded.some((u) => u.role === "logo");
     const added = list.map((f) => {
-      const role = defaultBrandRole(f, hasLogo);
+      const role = force ?? defaultBrandRole(f, hasLogo);
       if (role === "logo") hasLogo = true;
       return { name: f.name, size: f.size, type: f.type, role };
     });
@@ -164,7 +229,7 @@ export function AdsStudio() {
     setUploaded((u) => u.map((a, j) => (j === i ? { ...a, role } : role === "logo" && a.role === "logo" ? { ...a, role: "product" } : a)));
   }
 
-  /** A1 + A2 + A3: upload the brand files, stash the facts and files for this tab, open the Advert studio. */
+  /** W32: write the plan from the storyboard and create one advert per output format, with the facts and brand files. */
   async function produce() {
     const send = uploaded.map((u, i) => ({ u, file: files.current[i] })).filter((x) => x.file && (x.u.role === "logo" || x.u.role === "product"));
     const bad = send.find((x) => brandFileProblem(x.file!));
@@ -176,16 +241,24 @@ export function AdsStudio() {
         toast("Sign in to CineForge first (same browser) so your logo and product photos can go with the ad.");
         return;
       }
+      if (!(await signedInUserId())) {
+        toast("Sign in to CineForge first (same browser) to produce the ad.");
+        return;
+      }
+      // The storyboard is written first when the page still shows the design's concept cards.
+      const board = written ? scenes : await writeBoard(analysis, false);
+      if (!board) return;
       const brandFiles = send.length ? await uploadBrandFiles(send.map((x) => ({ file: x.file!, role: x.u.role as "logo" | "product" }))) : [];
-      const id = analysis || brandFiles.length
-        ? stashHandoff({
-            source: analysis ? { url: analysis.url, title: analysis.title, brand: analysis.brand, fetchedAt: analysis.fetchedAt, facts: analysis.facts } : null,
-            brandFiles,
-          })
-        : "";
-      router.push(handoffHref(state, id || undefined));
+      const made = await produceAd({
+        ...inputs(), scenes: writtenFrom(board), formats: formats.map((f) => ASPECT_OF[f] ?? "16:9"), brandFiles,
+        prompt: directorBrief({ ...state, scenes: board }),
+      });
+      setAdverts(await listAdverts());
+      setLiveId(made[0]!.id);
+      toast(`Production started: ${made.length} ad${made.length > 1 ? "s" : ""} (${made.map((m) => m.aspect).join(", ")}). Scenes appear here as they are made.`);
+      scrollToId("studio");
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Could not send the brand files.");
+      toast(e instanceof Error ? e.message : "The ad could not be produced.");
     } finally {
       setSending(false);
     }
@@ -242,20 +315,11 @@ export function AdsStudio() {
       setLiveBusy(false);
     }
   }
-  function buildPlan() {
+  async function buildPlan() {
     const v = url.trim();
     if (v && !/^https?:\/\//i.test(v)) return toast("Please use a full URL beginning with https:// or http://");
-    setStatus("PLAN PREVIEW");
-    setQuality(analysis?.facts.length ? `Plan ready · ${analysis.facts.length} source facts` : "Plan ready · not yet produced");
-    setMeter("38%");
-    const b = brief.trim();
-    if (b) {
-      const message = b.length > 62 ? b.slice(0, 59) + "…" : b;
-      setScenes((all) => all.map((s, i) => (i === 0 ? { ...s, message } : s)));
-      if (selected === 0) setDraft((d) => ({ ...d, message }));
-    }
-    toast("Production brief prepared. Nothing is generated until you produce it in CineForge.");
-    setModal("plan");
+    const cards = await writeBoard();
+    if (cards) setModal("plan");
   }
   function exportPlan() {
     const blob = new Blob([JSON.stringify(productionPlan(state), null, 2)], { type: "application/json" });
@@ -291,7 +355,7 @@ export function AdsStudio() {
         <p>2. Create a structured script, storyboard and scene specifications.</p>
         <p>3. Generate image, video and audio jobs using real CineForge providers.</p>
         <p>4. Assemble approved media, run quality gates and export the master.</p>
-        <p><strong>What is connected:</strong> “Analyse” reads one public page on the server and keeps only facts it can quote from it; “Produce this ad in CineForge” plans and films the ad in the Advert studio with those facts, your logo (closing card) and product photos (references for product shots); a produced ad’s scenes can be edited here through the Director. The concept storyboard on this page is a plan preview.</p>
+        <p><strong>What is connected:</strong> “Analyse” reads one public page on the server and keeps only facts it can quote from it (a link is optional — a brief is enough); “Build my production plan” writes the storyboard from your brief, the page’s facts and your settings; “Produce this ad in CineForge” makes it — one ad per format, with your logo (closing card) and product photos (references for product shots). A produced ad’s scenes can be followed and edited here.</p>
       </>),
     },
     script: {
@@ -385,7 +449,7 @@ export function AdsStudio() {
                         {analysis.facts.map((f, i) => (<li key={i}><b>{FACT_LABEL[f.kind]}</b>{f.statement}<q>{f.quote}</q></li>))}
                       </ul>
                       <div className="hint">
-                        {analysis.facts.length ? `Quoted from ${analysis.url}. The Director plans from these facts and flags any line that claims more.` : `Nothing on ${analysis.url} could be quoted as a fact.`}
+                        {analysis.facts.length ? `Quoted from ${analysis.url}${analysis.method === "extract" ? " (read from the page’s own headings, lists and buttons)" : ""}. The storyboard speaks only these words and your brief.` : `Nothing on ${analysis.url} could be quoted as a fact.`}
                         {analysis.dropped > 0 && ` ${analysis.dropped} proposed fact(s) were dropped: their quote is not on the page.`}
                       </div>
                     </>
@@ -414,10 +478,10 @@ export function AdsStudio() {
                   ))}</div>
                 </div>
                 <div className="field"><label>Output formats</label><div className="chips">{FORMATS.map((f) => <button key={f} className={`chip${formats.includes(f) ? " active" : ""}`} onClick={() => toggleFormat(f)}>{f}</button>)}</div></div>
-                <button className="btn primary" style={{ width: "100%", padding: 14 }} onClick={buildPlan}>Build my production plan ↗</button>
-                <div className="hint">The plan preview is assembled in your browser; no media is generated by it.</div>
-                <button className="btn" disabled={sending} style={{ display: "block", width: "100%", padding: 14, marginTop: 12, textAlign: "center" }} onClick={() => void produce()}>{sending ? "Uploading brand files…" : "Produce this ad in CineForge ↗"}</button>
-                <div className="hint">Opens the Advert studio with this brief, length and format{analysis?.facts.length ? ", the page’s source facts" : ""}{uploaded.some((u) => u.role !== "other") ? " and your logo / product photos (uploaded to your account first)" : ""}. There the film is planned and generated on your plan.</div>
+                <button className="btn primary" style={{ width: "100%", padding: 14 }} disabled={writing} onClick={() => void buildPlan()}>{writing ? "Writing the storyboard…" : written ? "Rewrite my production plan ↗" : "Build my production plan ↗"}</button>
+                <div className="hint">Writes the storyboard from your brief{analysis?.facts.length ? ", the page’s facts" : ""} and settings: every scene’s look and line, ready to edit. Nothing is generated until you produce it.</div>
+                <button className="btn" disabled={sending || writing} style={{ display: "block", width: "100%", padding: 14, marginTop: 12, textAlign: "center" }} onClick={() => void produce()}>{sending ? "Starting production…" : "Produce this ad in CineForge ↗"}</button>
+                <div className="hint">Produces this storyboard as {formats.length > 1 ? `${formats.length} ads (one per format)` : "one ad"}: scene pictures, video, {voiceMode(voice) === "narrator" ? "voice-over, " : ""}music and sound, assembled into the film{uploaded.some((u) => u.role === "logo") ? " with your logo card" : ""}{uploaded.some((u) => u.role === "product") ? "; your product photos guide the product shots" : ""}. Runs on your CineForge plan (sign-in needed).</div>
               </aside>
 
               <section className="panel preview-panel">
@@ -479,7 +543,7 @@ export function AdsStudio() {
                 ) : (<>
                 <div className="storyboard">
                   {scenes.map((s, i) => (
-                    <article key={s.image} className={`scene${i === selected ? " selected" : ""}`}>
+                    <article key={`${i}-${s.beat ?? s.label}`} className={`scene${i === selected ? " selected" : ""}`}>
                       <div className="scene-img" style={{ backgroundImage: `url('${unsplash(s.image, 600, 80)}')` }}><span className="scene-num">{s.label}</span></div>
                       <div className="scene-body"><b>{s.title}</b><small>{s.blurb}</small><div className="scene-actions"><button onClick={() => selectScene(i)}>Edit scene ↗</button><span>{s.span}</span></div></div>
                     </article>
@@ -494,11 +558,17 @@ export function AdsStudio() {
                     <button className="btn" onClick={saveScene}>Save scene edits</button>
                     <button className="btn" onClick={() => sceneUpload.current?.click()}>Add image to this scene</button>
                     <button className="btn" onClick={regenerateScene}>Regenerate scene plan</button>
-                    <input ref={sceneUpload} type="file" accept="image/*,video/*" hidden onChange={(e) => {
+                    <input ref={sceneUpload} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => {
                       const f = e.target.files?.[0];
+                      e.target.value = "";
                       if (!f) return;
-                      setScenes((all) => all.map((s, i) => (i === selected ? { ...s, asset: f.name } : s)));
-                      toast(`“${f.name}” attached to scene ${selected + 1} in this session.`);
+                      const problem = brandFileProblem(f);
+                      if (problem) return toast(`${f.name}: ${problem}.`);
+                      // The picture goes to production as a product photo; this scene shows the product.
+                      addFiles([f], "product");
+                      const preview = URL.createObjectURL(f);
+                      setScenes((all) => all.map((s, i) => (i === selected ? { ...s, asset: f.name, image: preview, showProduct: true } : s)));
+                      toast(`“${f.name}” added as a product photo: it guides the product shots, and scene ${selected + 1} shows the product.`);
                     }} />
                   </div>
                 </div>
