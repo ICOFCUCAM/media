@@ -155,3 +155,13 @@
 }
 .cfh .nav-center a.is-active { color: var(--white); }
 .cfh .nav-center a.is-active::after { transform: none; }
+
+/* 10 · Brand mark: the diamond turns a quarter and the accent breathes on hover; links gain a hover hairline. */
+.cfh .logo-mark { transition: transform .8s cubic-bezier(.16, 1, .3, 1); }
+.cfh .logo-mark::after { transition: transform .8s cubic-bezier(.16, 1, .3, 1), box-shadow .8s ease; }
+.cfh .logo:hover .logo-mark { transform: rotate(135deg); }
+.cfh .logo:hover .logo-mark::after { transform: scale(1.25); box-shadow: 0 0 14px rgba(216,255,98,.7); }
+.cfh .nav-center a:hover::after { transform: none; background: rgba(244,242,237,.5); }
+.cfh .nav-center a.is-active:hover::after { background: var(--accent); }
+.cfh .nav-cta { transition: background .35s ease, color .35s ease, border-color .35s ease, box-shadow .35s ease; }
+.cfh .nav-cta:hover { box-shadow: 0 0 0 4px rgba(244,242,237,.08); }
