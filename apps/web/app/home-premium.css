@@ -494,3 +494,26 @@
   letter-spacing: .04em;
   font-variant-numeric: tabular-nums;
 }
+
+/* 31 · "Keep 90%" becomes a creator's badge: a glass pill with an accent dot. */
+.cfh .market .reel-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(216,255,98,.35);
+  background: rgba(10,10,10,.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  font-size: 10px;
+  letter-spacing: .16em;
+}
+.cfh .market .reel-tag::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(216,255,98,.8);
+}
