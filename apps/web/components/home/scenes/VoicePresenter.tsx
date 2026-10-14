@@ -90,7 +90,7 @@ export function VoicePresenter({ still }: { still?: string }) {
               <div className="vp-lane" aria-hidden>
                 <svg viewBox="0 0 64 10" preserveAspectRatio="none">
                   {wave(n, LENGTH[l.code] ?? 0.9).map((a, k) => (
-                    <rect key={k} x={k + 0.15} y={5 - a * 4.6} width="0.7" height={a * 9.2} />
+                    <rect key={k} x={k + 0.15} y={(5 - a * 4.6).toFixed(3)} width="0.7" height={(a * 9.2).toFixed(3)} />
                   ))}
                 </svg>
                 {on && <span key={`ph-${dub.code}`} className="vp-playhead" style={{ animationDuration: `${LINE_SEC}s` }} />}

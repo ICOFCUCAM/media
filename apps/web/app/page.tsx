@@ -113,13 +113,15 @@ function Nav() {
 
 /* ── Hero ──────────────────────────────────────────────────────────── */
 function Hero() {
+  const still = frame("hero");
+  const thumbs = (["hero-1", "hero-2", "hero-3"] as const).map((k) => frame(k));
   return (
-    <section className="hero">
+    <section className="hero hero-v2">
       <div className="hero-image" />
-      <HeroFrame masterStill={frame("hero")} />
+      <HeroFrame masterStill={still} wideStill={frame("hero-wide")} thumbs={thumbs} />
 
       <div className="hero-content">
-        <div className="eyebrow hero-kicker">The film production system / 01</div>
+        <div className="eyebrow hero-kicker"><i className="hero-kicker-rule" aria-hidden />The film production system</div>
 
         <h1 className="hero-title">
           MAKE<br />
@@ -137,15 +139,16 @@ function Hero() {
         </div>
       </div>
 
-      <a href="#studio" className="hero-scroll" aria-label="Scroll to the studio" />
-
       <div className="hero-bottom">
-        <span>{IDEA_TO_AUDIENCE.join(" / ")}</span>
-        <span>© {new Date().getFullYear()} Cineforge</span>
+        <span>{HERO_PATH.join(" / ")}</span>
+        <span className="hero-copy">© {new Date().getFullYear()} Cineforge<i aria-hidden /></span>
       </div>
     </section>
   );
 }
+
+/** The production path under the hero, as the benchmark names it. */
+const HERO_PATH = ["Idea", "Script", "Visualise", "Produce", "Final cut", "Distribute"];
 
 /* ── Metrics — figures the system itself backs ─────────────────────── */
 function Metrics() {

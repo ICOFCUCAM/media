@@ -2925,3 +2925,370 @@
   .cfh .eyebrow { margin-bottom: 22px; }
   .cfh footer { flex-direction: column; align-items: flex-start; }
 }
+
+/* ------------------------------
+   HERO v2 — the benchmark layout (2026-10-14): the master still bleeds
+   behind a straight frame, three stills from the same world beneath it,
+   and the production path as a line of stations.
+------------------------------ */
+
+.cfh .hero.hero-v2 {
+  min-height: max(100vh, 760px);
+  align-items: flex-start;
+  padding-top: clamp(130px, 19.5vh, 176px);
+}
+
+.cfh .hero-v2 .hero-backdrop {
+  position: absolute;
+  inset: 0 0 0 26vw;
+  background-size: cover;
+  background-position: 70% 40%;
+  opacity: .5;
+  filter: saturate(.9) brightness(.7);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 42%), linear-gradient(180deg, transparent 8%, #000 30%, #000 50%, transparent 80%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 42%), linear-gradient(180deg, transparent 8%, #000 30%, #000 50%, transparent 80%);
+  mask-composite: intersect;
+  pointer-events: none;
+}
+
+.cfh .hero-v2 .hero-stage {
+  top: clamp(100px, 12.3vh, 112px);
+  left: 37.75vw;
+  right: 2.7vw;
+  width: auto;
+  transform: none;
+  gap: 14px;
+}
+
+.cfh .hero-v2 .hero-frame {
+  aspect-ratio: 953 / 548;
+  border: 1px solid rgba(244,242,237,.62);
+  box-shadow: 0 50px 120px rgba(0,0,0,.6);
+  background: #0a0806;
+}
+
+.cfh .hero-v2 .hero-corner { display: none; }
+
+.cfh .hero-v2 .hero-frame-hud {
+  padding: 16px 20px;
+  font-size: 12px;
+  letter-spacing: .16em;
+  color: rgba(244,242,237,.86);
+}
+
+.cfh .hero-v2 .hero-frame-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 10px;
+  border: 1px solid rgba(244,242,237,.22);
+  background: rgba(10,8,6,.45);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.cfh .hero-v2 .hero-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(244,242,237,.4);
+}
+
+.cfh .hero-v2 .hero-dot.is-live { background: var(--white); box-shadow: 0 0 10px rgba(255,255,255,.6); }
+
+.cfh .hero-v2 .hero-prompt {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 54px;
+  padding: 14px 16px;
+  background: rgba(8,8,8,.72);
+  border: 1px solid rgba(244,242,237,.14);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.cfh .hero-v2 .hero-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  height: clamp(64px, 12vh, 110px);
+}
+
+.cfh .hero-v2 .hero-strip i {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(244,242,237,.16);
+  background: #12100d;
+}
+
+.cfh .hero-v2 .hero-strip i > * {
+  opacity: 0;
+  transition: opacity .6s ease;
+  transition-delay: inherit;
+}
+
+.cfh .hero-v2 .hero-strip i.is-on > * { opacity: 1; }
+
+.cfh .hero-v2 .hero-strip .still-fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cfh .hero-v2 .hero-flow {
+  gap: 0;
+  margin-top: 14px;
+  padding-left: 4px;
+  font-size: 13px;
+  letter-spacing: .16em;
+  color: #8f8c85;
+}
+
+.cfh .hero-v2 .hero-flow li {
+  display: flex;
+  align-items: center;
+}
+
+.cfh .hero-v2 .hero-flow li + li::before { content: none; }
+
+.cfh .hero-v2 .hero-flow-rule {
+  width: clamp(28px, 4.1vw, 64px);
+  height: 1px;
+  margin-left: 20px;
+  background: rgba(244,242,237,.28);
+}
+
+.cfh .hero-v2 .hero-flow-ring {
+  position: relative;
+  width: 15px;
+  height: 15px;
+  margin: 0 30px 0 6px;
+  border: 1px solid rgba(244,242,237,.55);
+  border-radius: 50%;
+}
+
+.cfh .hero-v2 .hero-flow li.is-done { color: #c9c6be; }
+.cfh .hero-v2 .hero-flow li.is-on { color: var(--accent); }
+.cfh .hero-v2 .hero-flow li.is-on .hero-flow-ring { border-color: var(--accent); }
+.cfh .hero-v2 .hero-flow li.is-on .hero-flow-ring::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(216,255,98,.55);
+}
+
+.cfh .hero-v2 .hero-content {
+  width: min(31vw, 520px);
+  min-width: 360px;
+  padding-bottom: 0;
+}
+
+.cfh .hero-v2 .hero-kicker {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 0 0 44px -6px;
+  font-size: 13px;
+  letter-spacing: .26em;
+  color: #c9c6be;
+}
+
+.cfh .hero-v2 .hero-kicker-rule {
+  width: 46px;
+  height: 2px;
+  background: rgba(244,242,237,.8);
+}
+
+.cfh .hero-v2 .hero-title {
+  font-size: clamp(80px, 11.6vw, 190px);
+  line-height: .75;
+  letter-spacing: -.07em;
+}
+
+.cfh .hero-v2 .hero-title em {
+  display: inline-block;
+  margin-top: .02em;
+  font-size: .97em;
+}
+
+.cfh .hero-v2 .hero-description {
+  max-width: 405px;
+  margin-top: 30px;
+  font-size: 17px;
+  line-height: 1.6;
+  color: #c4c1ba;
+}
+
+.cfh .hero-v2 .hero-actions {
+  gap: 34px;
+  margin-top: 36px;
+}
+
+.cfh .hero-v2 .primary {
+  padding: 19px 34px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .2em;
+}
+
+.cfh .hero-v2 .text-link {
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(244,242,237,.5);
+  font-size: 14px;
+  color: #e4e1da;
+}
+
+.cfh .hero-v2 .hero-bottom {
+  bottom: 26px;
+  left: 2.5vw;
+  right: 2.5vw;
+  font-size: 11px;
+  letter-spacing: .2em;
+  color: #6f6d67;
+  word-spacing: .35em;
+}
+
+.cfh .hero-v2 .hero-copy { display: inline-flex; align-items: center; gap: 18px; }
+.cfh .hero-v2 .hero-copy i { width: 30px; height: 1px; background: #6f6d67; }
+
+/* Tablets: the frame and its strip sit under the copy. */
+@media (max-width: 1100px) {
+  .cfh .hero.hero-v2 { flex-direction: column; padding-top: 110px; min-height: 0; padding-bottom: 80px; }
+  .cfh .hero-v2 .hero-backdrop { inset: 0; opacity: .32; }
+  .cfh .hero-v2 .hero-content { order: 1; width: 100%; min-width: 0; }
+  .cfh .hero-v2 .hero-stage { order: 2; position: relative; inset: auto; width: 100%; margin-top: 48px; }
+  .cfh .hero-v2 .hero-bottom { position: static; order: 3; margin-top: 36px; flex-wrap: wrap; gap: 10px; }
+}
+
+/* Phones */
+@media (max-width: 640px) {
+  .cfh .hero-v2 .hero-title { font-size: clamp(76px, 25vw, 120px); }
+  .cfh .hero-v2 .hero-description { font-size: 16px; }
+  .cfh .hero-v2 .hero-flow { font-size: 10px; letter-spacing: .1em; flex-wrap: wrap; row-gap: 8px; }
+  .cfh .hero-v2 .hero-flow-rule { width: 14px; margin-left: 10px; }
+  .cfh .hero-v2 .hero-flow-ring { margin-right: 10px; width: 11px; height: 11px; }
+  .cfh .hero-v2 .hero-strip { gap: 6px; }
+  .cfh .hero-v2 .hero-bottom span:first-child { display: none; }
+}
+
+/* The generation pass: a warm light sweeping down the frame, not a green wash. */
+.cfh .hero-v2 .hero-frame-scan { background: linear-gradient(180deg, rgba(255,214,150,.16), rgba(255,214,150,.03) 70%, transparent); }
+
+/* Short screens (laptops): the frame shrinks so the strip and the path still fit above the footer line. */
+@media (min-width: 1101px) {
+  .cfh .hero-v2 .hero-stage {
+    left: auto;
+    width: min(59.5vw, calc((100vh - 350px) * 1.739));
+    min-width: 520px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .cfh .hero-v2 .hero-backdrop { opacity: .2; }
+}
+
+@media (max-width: 640px) {
+  .cfh .hero-v2 .hero-kicker { font-size: 11px; letter-spacing: .18em; gap: 12px; margin-bottom: 30px; }
+  .cfh .hero-v2 .hero-kicker-rule { width: 28px; }
+  .cfh .hero-v2 .hero-actions { gap: 20px; flex-wrap: wrap; }
+  .cfh .hero-v2 .primary { padding: 16px 22px; font-size: 12px; letter-spacing: .16em; white-space: nowrap; }
+  .cfh .hero-v2 .text-link { white-space: nowrap; }
+  .cfh .hero-v2 .hero-strip { height: auto; }
+  .cfh .hero-v2 .hero-strip i { aspect-ratio: 16 / 10; }
+  .cfh .hero-v2 .hero-frame-meta { display: none; }
+}
+
+/* One continuous picture (owner review 2026-10-14): the still runs past the
+   frame on both sides and melts into the dark, so there is no seam between the
+   copy and the image — the frame is a fine line drawn over the world. */
+.cfh .hero-v2 .hero-frame-wrap { position: relative; }
+
+.cfh .hero-v2 .hero-bleed {
+  position: absolute;
+  z-index: 0;
+  top: -3%;
+  bottom: -9%;
+  left: -17vw;
+  right: -2.7vw;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.35) 12%, #000 30%), linear-gradient(180deg, transparent 0%, #000 7%, #000 84%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.35) 12%, #000 30%), linear-gradient(180deg, transparent 0%, #000 7%, #000 84%, transparent 100%);
+  mask-composite: intersect;
+}
+
+.cfh .hero-v2 .hero-bleed img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 64% 46%;
+  opacity: .2;
+  filter: blur(16px) saturate(.5);
+  transform: scale(1.04);
+  transition: opacity 1.2s ease, filter 1.4s ease, transform 1.4s ease;
+}
+
+.cfh .hero-v2 .hero-bleed.is-shown img { opacity: 1; filter: none; transform: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .cfh .hero-v2 .hero-bleed.is-shown img { animation: cfh-kb 30s ease-in-out infinite alternate; transform-origin: 66% 46%; }
+}
+
+.cfh .hero-v2 .hero-frame.is-open {
+  z-index: 1;
+  background: transparent;
+  box-shadow: none;
+  border-color: rgba(244,242,237,.34);
+}
+
+.cfh .hero-v2 .hero-frame.is-open .hero-corner {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border-color: rgba(244,242,237,.9);
+}
+.cfh .hero-v2 .hero-frame.is-open .hero-corner.tl { top: -1px; left: -1px; }
+.cfh .hero-v2 .hero-frame.is-open .hero-corner.tr { top: -1px; right: -1px; }
+.cfh .hero-v2 .hero-frame.is-open .hero-corner.bl { bottom: -1px; left: -1px; }
+.cfh .hero-v2 .hero-frame.is-open .hero-corner.br { bottom: -1px; right: -1px; }
+
+/* The copy sits on the picture's dark edge; a soft shadow keeps it crisp where they meet. */
+.cfh .hero-v2 .hero-title, .cfh .hero-v2 .hero-description { text-shadow: 0 2px 30px rgba(0,0,0,.55); }
+
+@media (max-width: 1100px) {
+  .cfh .hero-v2 .hero-bleed {
+    left: -5vw; right: -5vw;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 8%, #000 84%, transparent 100%);
+    mask-image: linear-gradient(180deg, transparent 0%, #000 8%, #000 84%, transparent 100%);
+  }
+}
+
+/* The wide still: the frame shows the master still exactly; its soft extensions carry the picture on. */
+@media (min-width: 1101px) {
+  .cfh .hero-v2 .hero-bleed.is-wide {
+    top: 0;
+    bottom: 0;
+    left: -25%;
+    right: -6.01%;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.18) 7%, rgba(0,0,0,.6) 14%, #000 19.1%, #000 95.4%, rgba(0,0,0,.35) 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.18) 7%, rgba(0,0,0,.6) 14%, #000 19.1%, #000 95.4%, rgba(0,0,0,.35) 100%);
+  }
+  .cfh .hero-v2 .hero-bleed.is-wide img { object-fit: fill; }
+  .cfh .hero-v2 .hero-bleed.is-wide.is-shown img { transform-origin: 62% 46%; }
+}
+
+.cfh .hero-v2 .hero-flow span { white-space: nowrap; }
+@media (max-width: 1500px) and (min-width: 1101px) {
+  .cfh .hero-v2 .hero-flow { font-size: 12px; letter-spacing: .14em; }
+  .cfh .hero-v2 .hero-flow-ring { margin-right: 20px; }
+  .cfh .hero-v2 .hero-flow-rule { margin-left: 14px; }
+}
+@media (max-width: 640px) {
+  .cfh .hero-v2 .hero-bleed { left: 0; right: 0; top: 0; bottom: 0; -webkit-mask-image: none; mask-image: none; }
+}
