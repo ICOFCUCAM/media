@@ -16,7 +16,7 @@ import { ReleaseScreens } from "../components/home/scenes/ReleaseScreens";
 import { VoicePresenter } from "../components/home/scenes/VoicePresenter";
 import { AssetVisual } from "../components/home/scenes/AssetVisual";
 import { STUDIO_MODES } from "../lib/creation";
-import { frame, type FrameSlot } from "../lib/frames";
+import { frame, frameVideo, type FrameSlot } from "../lib/frames";
 import {
   NAV,
   PRODUCTS,
@@ -134,7 +134,7 @@ function Hero() {
       {/* The largest paint on the page: fetch the hero picture first. */}
       {wide && <link rel="preload" as="image" href={wide} fetchPriority="high" />}
       <div className="hero-image" />
-      <HeroFrame masterStill={still} wideStill={wide} thumbs={thumbs} />
+      <HeroFrame masterStill={still} wideStill={wide} loop={frameVideo("hero-loop")} thumbs={thumbs} />
 
       <div className="hero-content">
         <div className="eyebrow hero-kicker"><i className="hero-kicker-rule" aria-hidden />The film production system</div>

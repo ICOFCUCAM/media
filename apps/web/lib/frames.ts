@@ -15,3 +15,13 @@ export function frame(slot: FrameSlot): string | undefined {
   const file = path.join(process.cwd(), "public", "frames", `${slot}.webp`);
   return fs.existsSync(file) ? `/frames/${slot}.webp` : undefined;
 }
+
+/**
+ * A homepage film loop (public/frames/<slot>.mp4), when one has been made —
+ * e.g. hero-loop.mp4: six seconds of the master shot generated from the hero
+ * still on the Wan 2.2 pod. Undefined until the file exists.
+ */
+export function frameVideo(slot: "hero-loop"): string | undefined {
+  const file = path.join(process.cwd(), "public", "frames", `${slot}.mp4`);
+  return fs.existsSync(file) ? `/frames/${slot}.mp4` : undefined;
+}

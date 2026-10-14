@@ -30,7 +30,7 @@ const HOLD = [1800, 1300, 1600, 2600];
  * right 6 % of its width): the frame shows exactly the master still and the
  * picture carries on past its edges into the dark.
  */
-export function HeroFrame({ masterStill, wideStill, thumbs = [] }: { masterStill?: string; wideStill?: string; thumbs?: (string | undefined)[] }) {
+export function HeroFrame({ masterStill, wideStill, loop, thumbs = [] }: { masterStill?: string; wideStill?: string; loop?: string; thumbs?: (string | undefined)[] }) {
   const [real, setReal] = useState<ShowcaseRow | null>(null);
   const [stage, setStage] = useState(3);
   const [typed, setTyped] = useState(PROMPT.length);
@@ -79,6 +79,11 @@ export function HeroFrame({ masterStill, wideStill, thumbs = [] }: { masterStill
           <img src={wideStill ?? masterStill} alt="" className="still-fill" fetchPriority="high" />
           <i className="cfh-grain cf-grain" aria-hidden />
         </div>
+      )}
+      {/* The master shot in motion: the generated loop plays over the still it was made from,
+          melting into it at the edges, so the world moves without a seam. */}
+      {!real && masterStill && loop && shown && (
+        <video className="hero-loop" src={loop} poster={masterStill} autoPlay muted loop playsInline preload="auto" aria-hidden />
       )}
       <div className={`hero-frame${!real && masterStill ? " is-open" : ""}`} role={!real && masterStill ? "img" : undefined}
         aria-label={!real && masterStill ? "Ashéron-Kor at dawn: the citadel backlit by the sun, the queen and her guard on the ridge" : undefined}>
