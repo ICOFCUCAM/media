@@ -115,11 +115,14 @@ function Nav() {
 /* ── Hero ──────────────────────────────────────────────────────────── */
 function Hero() {
   const still = frame("hero");
+  const wide = frame("hero-wide");
   const thumbs = (["hero-1", "hero-2", "hero-3"] as const).map((k) => frame(k));
   return (
     <section className="hero hero-v2">
+      {/* The largest paint on the page: fetch the hero picture first. */}
+      {wide && <link rel="preload" as="image" href={wide} fetchPriority="high" />}
       <div className="hero-image" />
-      <HeroFrame masterStill={still} wideStill={frame("hero-wide")} thumbs={thumbs} />
+      <HeroFrame masterStill={still} wideStill={wide} thumbs={thumbs} />
 
       <div className="hero-content">
         <div className="eyebrow hero-kicker"><i className="hero-kicker-rule" aria-hidden />The film production system</div>
