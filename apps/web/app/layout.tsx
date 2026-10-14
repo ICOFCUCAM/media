@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { DM_Mono, Inter, Manrope } from "next/font/google";
+import { DM_Mono, Instrument_Serif, Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import { PreviewBuildBadge } from "../components/PreviewBuildBadge";
 
@@ -8,6 +8,8 @@ import { PreviewBuildBadge } from "../components/PreviewBuildBadge";
 // render-blocking third-party stylesheet, and no failure when it is blocked.
 const inter = Inter({ subsets: ["latin"], weight: ["300", "400", "500", "600"], variable: "--font-inter", display: "swap" });
 const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-manrope", display: "swap" });
+// The display serif of the homepage's italic words ("worlds.", "AI tool." …).
+const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-serif-display", display: "swap" });
 const dmMono = DM_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-dm-mono", display: "swap" });
 
 export const metadata: Metadata = {
@@ -32,7 +34,7 @@ export const viewport = { themeColor: "#080808" };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${manrope.variable} ${dmMono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${manrope.variable} ${dmMono.variable} ${serif.variable}`}>
       <body className="antialiased">
         {children}
         <PreviewBuildBadge />

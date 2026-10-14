@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./home.css";
+import "./home-premium.css";
+import "./home-iconic.css";
 import { HomeMotion } from "../components/home/HomeMotion";
 import { HomeShowreel } from "../components/home/HomeShowreel";
 import { HeroFrame } from "../components/home/HeroFrame";
+import { HeroTitle } from "../components/home/HeroTitle";
 import { WorkspacePreview } from "../components/home/WorkspacePreview";
+import { ActHead, ProductionThread } from "../components/home/ProductionThread";
 import { CinemaArt, type Scene } from "../components/cf/CinemaArt";
 import { ClockIcon, ConfigCard, EngineIcon, FormatIcon } from "../components/cf/ConfigCard";
 import { MasterShot } from "../components/home/scenes/MasterShot";
@@ -13,8 +17,7 @@ import { StoryCloseUp } from "../components/home/scenes/StoryCloseUp";
 import { ReleaseScreens } from "../components/home/scenes/ReleaseScreens";
 import { VoicePresenter } from "../components/home/scenes/VoicePresenter";
 import { AssetVisual } from "../components/home/scenes/AssetVisual";
-import { STUDIO_MODES } from "../lib/creation";
-import { frame } from "../lib/frames";
+import { frame, frameVideo, type FrameSlot } from "../lib/frames";
 import {
   NAV,
   PRODUCTS,
@@ -29,16 +32,28 @@ import {
  * Layout and containers follow docs/design/homepage.html exactly (styles in ./home.css,
  * scoped under .cfh); every section is wired to the real studio routes and
  * product data in lib/products.
+ *
+ * The page is one film told in four acts — the world, the production, the
+ * release, the studio — all in the same world (Ashéron-Kor), joined by one
+ * motif: the production thread (Idea → Distribute) that opens every act.
+ * Immersive chapters alternate with quiet editorial ones.
  */
+
+const DESCRIPTION =
+  "Cineforge is a complete production environment for films, series, trailers, adverts, shorts and music videos — from the first idea to the finished release.";
 
 export const metadata: Metadata = {
   title: { absolute: "Cineforge — The Film Production System" },
+  description: DESCRIPTION,
+  openGraph: {
+    title: "Cineforge — Make worlds.",
+    description: DESCRIPTION,
+    type: "website",
+    images: [{ url: "/frames/hero.webp", width: 1896, height: 1086, alt: "Ashéron-Kor at dawn: the citadel backlit by the sun, the queen and her guard on the ridge" }],
+  },
+  twitter: { card: "summary_large_image", title: "Cineforge — Make worlds.", description: DESCRIPTION, images: ["/frames/hero.webp"] },
 };
 
-const LANGUAGES = [
-  "English", "Français", "Español", "Deutsch", "中文", "Русский", "العربية", "हिन्दी", "Kiswahili", "Yorùbá",
-  "Igbo", "Lingála", "Luganda", "isiZulu", "Naijá Pidgin", "Norsk", "Svenska", "Português", "日本語", "한국어",
-];
 
 const CHANNEL_FORMAT: Record<(typeof SOCIAL_CHANNELS)[number]["kind"], string> = {
   video: "16:9",
@@ -50,22 +65,24 @@ const navSection = (title: string) => NAV.find((s) => s.title === title)?.items 
 
 export default function Home() {
   return (
-    <div className="cfh">
+    <div className="cfh" id="top">
       <HomeMotion />
       <Nav />
       <main>
+        {/* Act I · The world */}
         <Hero />
-        <Metrics />
         <Manifesto />
         <WorldChapter />
-        <Workspace />
         <StoryChapter />
-        <Capabilities />
-        <Languages />
+        {/* Act II · The production */}
+        <Journey />
+        <Workspace />
+        <Voice />
+        {/* Act III · The release */}
         <Showreel />
         <Publish />
-        <Voice />
         <Marketplace />
+        {/* Act IV · The studio */}
         <Pricing />
         <FinalCta />
       </main>
@@ -84,8 +101,8 @@ function Nav() {
       </Link>
 
       <div className="nav-center">
+        <a href="#production">Production</a>
         <a href="#studio">Studio</a>
-        <a href="#capabilities">Capabilities</a>
         <a href="#films">Films</a>
         <a href="#marketplace">Marketplace</a>
         <a href="#pricing">Access</a>
@@ -98,8 +115,8 @@ function Nav() {
         <details className="nav-menu">
           <summary aria-label="Menu">Menu</summary>
           <div className="nav-menu-panel">
+            <a href="#production">Production</a>
             <a href="#studio">Studio</a>
-            <a href="#capabilities">Capabilities</a>
             <a href="#films">Films</a>
             <a href="#marketplace">Marketplace</a>
             <a href="#pricing">Access</a>
@@ -113,18 +130,20 @@ function Nav() {
 
 /* ── Hero ──────────────────────────────────────────────────────────── */
 function Hero() {
+  const still = frame("hero");
+  const wide = frame("hero-wide");
+  const thumbs = (["hero-1", "hero-2", "hero-3"] as const).map((k) => frame(k));
   return (
-    <section className="hero">
+    <section className="hero hero-v2">
+      {/* The largest paint on the page: fetch the hero picture first. */}
+      {wide && <link rel="preload" as="image" href={wide} fetchPriority="high" />}
       <div className="hero-image" />
-      <HeroFrame masterStill={frame("hero")} />
+      <HeroFrame masterStill={still} wideStill={wide} loop={frameVideo("hero-loop")} thumbs={thumbs} />
 
       <div className="hero-content">
-        <div className="eyebrow hero-kicker">The film production system / 01</div>
+        <div className="eyebrow hero-kicker"><i className="hero-kicker-rule" aria-hidden />The film production system</div>
 
-        <h1 className="hero-title">
-          MAKE<br />
-          <em>worlds.</em>
-        </h1>
+        <HeroTitle />
 
         <p className="hero-description">
           Cineforge is a complete production environment for creating films, series, trailers, adverts,
@@ -137,40 +156,23 @@ function Hero() {
         </div>
       </div>
 
-      <a href="#studio" className="hero-scroll" aria-label="Scroll to the studio" />
-
       <div className="hero-bottom">
-        <span>{IDEA_TO_AUDIENCE.join(" / ")}</span>
-        <span>© {new Date().getFullYear()} Cineforge</span>
+        <ProductionThread from={0} to={PRODUCTION_LAST} className="thread-hero" />
+        <span className="hero-copy">© {new Date().getFullYear()} Cineforge<i aria-hidden /></span>
       </div>
     </section>
   );
 }
 
-/* ── Metrics — figures the system itself backs ─────────────────────── */
-function Metrics() {
-  const items: [string, string][] = [
-    [String(LANGUAGES.length), "languages dubbed"],
-    [String(SOCIAL_CHANNELS.length), "publish channels"],
-    [String(STUDIO_MODES.length), "ways to start a film"],
-    ["1080p", "adaptive HLS streaming"],
-  ];
-  return (
-    <section className="metrics" aria-label="Cineforge in numbers">
-      {items.map(([v, k]) => (
-        <div key={k} className="metric">
-          <div className="metric-value">{v}</div>
-          <div className="metric-label">{k}</div>
-        </div>
-      ))}
-    </section>
-  );
-}
+const PRODUCTION_LAST = 5;
 
 /* ── Manifesto ─────────────────────────────────────────────────────── */
 function Manifesto() {
   return (
     <section className="section manifesto">
+      <div className="container">
+        <ActHead n="I" name="The world" from={0} to={0} />
+      </div>
       <div className="container manifesto-grid reveal">
         <div>
           <div className="eyebrow">A different kind of studio</div>
@@ -196,15 +198,18 @@ function Manifesto() {
 
 /* ── Chapter 01 · World — the real entry points into the studio ───── */
 function WorldChapter() {
+  // The world's own establishing shot, else the citadel from the hero film.
+  const world = frame("world") ?? frame("hero-spires");
   return (
     <section className="section chapter dark">
       <div className="container chapter-grid reveal">
         <div className="chapter-image chapter-atlas">
           <i className="cfh-grain cf-grain" aria-hidden />
-          {frame("world") ? (
+          <i className="cfp-corner tl" aria-hidden /><i className="cfp-corner tr" aria-hidden /><i className="cfp-corner bl" aria-hidden /><i className="cfp-corner br" aria-hidden />
+          {world ? (
             <>
               {/* Plain <img>: a static still from public/frames. */}
-              <img src={frame("world")} alt="Aerial establishing shot of the realm at dusk: river delta, red dunes, highland forest and the distant citadel" className="art-fill still-fill" loading="lazy" />
+              <img src={world} alt="Ashéron-Kor at dawn: the great spire crowned by its ring of light, the river falling from the citadel walls" className="art-fill still-fill" loading="lazy" />
               <div className="atlas-inset" aria-hidden>
                 <WorldAtlas className="art-fill" />
               </div>
@@ -254,12 +259,13 @@ const WS_PRESETS: { title: string; tags: string; scene: Scene }[] = [
 function Workspace() {
   const studio = navSection("Studio");
   const production = navSection("Production");
+  const heroStill = frame("hero");
   return (
     <section className="section workspace" id="studio">
       <div className="container">
         <div className="workspace-head reveal">
           <div>
-            <div className="eyebrow">02 / PRODUCTION</div>
+            <div className="eyebrow">03 / WORKSPACE</div>
             <h2>
               A real<br />
               <em>film workspace.</em>
@@ -303,7 +309,7 @@ function Workspace() {
                     {WS_PRESETS.map((p, i) => (
                       <span key={p.title} className="cf-preset" aria-pressed={i === 0}>
                         <span className="cf-preset-thumb">
-                          <CinemaArt seed={p.title} scene={p.scene} className="h-full w-full" />
+                          {i === 0 && heroStill ? <img src={heroStill} alt="" className="still-fill" loading="lazy" /> : <CinemaArt seed={p.title} scene={p.scene} className="h-full w-full" />}
                         </span>
                         <span className="cf-preset-title">{p.title}</span>
                         <span className="cf-preset-tags">{p.tags}</span>
@@ -321,14 +327,14 @@ function Workspace() {
                   <div className="ws-create">Create film</div>
                 </div>
                 <div className="ws-preview">
-                  <WorkspacePreview />
+                  <WorkspacePreview stills={(["hero-river", "hero-2", "hero-spires", "hero-ridge", "hero"] as const).map((k) => frame(k))} />
                 </div>
               </div>
             </div>
 
             <div className="pipeline">
               {IDEA_TO_AUDIENCE.map((step, i) => (
-                <span key={step}>
+                <span key={step} style={{ ["--i" as string]: i, ["--n" as string]: IDEA_TO_AUDIENCE.length }}>
                   {String(i + 1).padStart(2, "0")} {step}
                 </span>
               ))}
@@ -360,11 +366,19 @@ function Workspace() {
 
 /* ── Chapter 03 · Story ────────────────────────────────────────────── */
 function StoryChapter() {
+  // Amara's close-up when it exists, else her wide on the ridge from the hero film.
+  const own = frame("story");
+  const ridge = frame("hero-ridge");
+  const story = own
+    ? { src: own, alt: "Close-up: Amara in profile, firelit, in a burnt-orange gele", slate: "CU · AMARA", lens: "85MM" }
+    : ridge
+      ? { src: ridge, alt: "Amara and her guard on the ridge at sunset, the spires of Ashéron-Kor beyond", slate: "WS · AMARA ON THE RIDGE", lens: "35MM" }
+      : null;
   return (
     <section className="section chapter dark">
       <div className="container chapter-grid reveal">
         <div className="chapter-copy">
-          <div className="chapter-number">03 / STORY</div>
+          <div className="chapter-number">02 / CAST</div>
 
           <h2>
             Every shot<br />
@@ -381,10 +395,11 @@ function StoryChapter() {
 
         <div className="chapter-image chapter-portrait">
           <i className="cfh-grain cf-grain" aria-hidden />
-          {frame("story") ? (
+          <i className="cfp-corner tl" aria-hidden /><i className="cfp-corner tr" aria-hidden /><i className="cfp-corner bl" aria-hidden /><i className="cfp-corner br" aria-hidden />
+          {story ? (
             <>
-              <img src={frame("story")} alt="Close-up: Amara in profile, firelit, in a burnt-orange gele" className="art-fill still-fill" loading="lazy" />
-              <span className="still-slate" aria-hidden>CU · AMARA<br /><small>SC 12 · TK 3 · 85MM</small></span>
+              <img src={story.src} alt={story.alt} className="art-fill still-fill story-still" loading="lazy" />
+              <span className="still-slate" aria-hidden>{story.slate}<br /><small>SC 12 · TK 3 · {story.lens}</small></span>
               <span className="still-subtitle">— Then we will build it ourselves.</span>
             </>
           ) : (
@@ -396,80 +411,176 @@ function StoryChapter() {
   );
 }
 
-/* ── The System · Capabilities ─────────────────────────────────────── */
-const CAPABILITIES: { title: string; body: string; href: string; go: string }[] = [
-  {
-    title: "Create",
-    body: "Turn an idea into a production. Develop scripts, characters, scenes, locations and shots inside the same creative environment.",
-    href: "/create",
-    go: "New production",
-  },
-  {
-    title: "Direct",
-    body: "Shape the visual language of the film. Review scenes, adjust shots, replace material and guide the production rather than simply generating isolated clips.",
-    href: "/projects",
-    go: "Your productions",
-  },
-  {
-    title: "Perform",
-    body: "Voices, narration, multilingual dialogue and presenters become part of the production rather than separate tools.",
-    href: "/library/voices",
-    go: "Voice Studio",
-  },
-  {
-    title: "Finish",
-    body: "Bring picture, sound, narration and scenes together into a finished cinematic cut — then publish it and earn from it.",
-    href: "/publish",
-    go: "Publish & monetize",
-  },
+/* ── Act II · The production journey ─────────────────────────────── */
+/**
+ * One production, followed through the studio: each stage of the thread is a
+ * department the visitor can open, shown working on the same film the hero
+ * opens on. Frames come from the hero film; a stage without one shows its
+ * product surface (the brief, the script page, the edit and the mix) instead.
+ */
+const SCRIPT: [string, string][] = [
+  ["slug", "EXT. THE RIDGE ABOVE ASHÉRON-KOR — DAWN"],
+  ["action", "The sun breaks behind the spires. AMARA (40s) watches the citadel wake, her guard at her back."],
+  ["cue", "AMARA"],
+  ["line", "They will never give us a kingdom."],
+  ["cue", "KOFI"],
+  ["line", "Then what is left?"],
+  ["cue", "AMARA"],
+  ["line", "Then we will build it ourselves."],
 ];
 
-function Capabilities() {
-  return (
-    <section className="section capabilities" id="capabilities">
-      <div className="container">
-        <div className="eyebrow reveal">The system</div>
+/** Each stem's regions as start/end pairs, in % of the cut. */
+const STEMS: [string, number[]][] = [
+  ["DIA", [0, 18, 26, 44, 52, 70]],
+  ["MUS", [0, 100]],
+  ["AMB", [0, 64, 70, 100]],
+  ["SFX", [12, 16, 47, 50, 82, 86]],
+];
 
-        <div className="capability-track">
-          {CAPABILITIES.map((c, i) => (
-            <Link key={c.title} href={c.href} className="capability reveal">
-              <div className="capability-number">{String(i + 1).padStart(2, "0")}</div>
-              <h3>{c.title}</h3>
-              <div>
-                <p>{c.body}</p>
-                <span className="capability-go">{c.go} →</span>
-              </div>
-            </Link>
+const regions = (cuts: number[]) => cuts.flatMap((c, i) => (i % 2 ? [] : [[c, cuts[i + 1]!] as const]));
+
+function Journey() {
+  const [master, ridge, hall, valley, spires, river] = (["hero", "hero-1", "hero-2", "hero-3", "hero-spires", "hero-river"] as const).map((k) => frame(k));
+  const boards = [valley, ridge, hall, master];
+  const reel = [spires, frame("hero-ridge"), hall, river];
+  const steps: { title: string; body: string; href: string; go: string; visual: React.ReactNode }[] = [
+    {
+      title: "Idea",
+      body: "A sentence is enough. The studio turns it into a production: story, cast, world and length.",
+      href: "/create",
+      go: "Start a production",
+      visual: (
+        <div className="jv-brief">
+          <span className="jv-label">The brief</span>
+          <p>An epic about an African kingdom fighting for its independence, told over three generations.</p>
+          <span className="jv-meta">Film · 2 min · 1080p</span>
+        </div>
+      ),
+    },
+    {
+      title: "Script",
+      body: "A real screenplay — scenes, action and dialogue — that every later department reads from.",
+      href: "/create/film",
+      go: "Open the Director’s Room",
+      visual: (
+        <div className="jv-script" aria-hidden>
+          {SCRIPT.map(([k, t], i) => <p key={i} className={`jv-${k}`}>{t}</p>)}
+        </div>
+      ),
+    },
+    {
+      title: "Visualise",
+      body: "Storyboards and reference stills lock every character, costume and place before a frame is filmed.",
+      href: "/library/characters",
+      go: "Build your cast",
+      visual: (
+        <div className="jv-boards" aria-hidden>
+          {boards.map((b, i) => (
+            <span key={i}>
+              {b ? <img src={b} alt="" className="still-fill" loading="lazy" /> : <CinemaArt seed={`board ${i}`} className="art-fill" />}
+              <small>{String(i + 1).padStart(2, "0")}</small>
+            </span>
           ))}
         </div>
+      ),
+    },
+    {
+      title: "Produce",
+      body: "Each shot is generated from its board with the same faces, light and lens — and checked against canon.",
+      href: "/projects",
+      go: "Your productions",
+      visual: (
+        <div className="jv-shot" aria-hidden>
+          {river ? <img src={river} alt="" className="still-fill" loading="lazy" /> : <CinemaArt seed="produce" scene="kingdom" className="art-fill" />}
+          <span className="jv-slate">SC 04 · TK 2<br /><small>EXT. THE RIVER GATE · 50MM</small></span>
+          <span className="jv-check">Continuity ✓</span>
+        </div>
+      ),
+    },
+    {
+      title: "Final cut",
+      body: "The edit, voices, music, ambience and effects are cut and mixed to the picture, in sync.",
+      href: "/library/music",
+      go: "Score and sound",
+      visual: (
+        <div className="jv-edit" aria-hidden>
+          <div className="jv-reel">
+            {reel.map((b, i) => (
+              <span key={i}>{b ? <img src={b} alt="" className="still-fill" loading="lazy" /> : null}</span>
+            ))}
+            <i className="jv-head" />
+          </div>
+          {STEMS.map(([name, cuts]) => (
+            <div key={name} className="jv-stem">
+              <b>{name}</b>
+              <span>
+                {regions(cuts).map(([s, e]) => (
+                  <i key={s} style={{ left: `${s}%`, width: `${e - s}%` }} />
+                ))}
+              </span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      title: "Distribute",
+      body: "One master becomes every cut: every aspect ratio, every language, every channel — and your own.",
+      href: "/publish",
+      go: "Set up publishing",
+      visual: (
+        <div className="jv-release" aria-hidden>
+          {master ? <img src={master} alt="" className="still-fill" loading="lazy" /> : <MasterShot idPrefix="journey" className="art-fill" />}
+          <span className="jv-vertical">{master ? <img src={master} alt="" className="still-fill" loading="lazy" /> : null}</span>
+          <span className="jv-meta">16:9 · 9:16 · 20 languages</span>
+        </div>
+      ),
+    },
+  ];
+  return (
+    <section className="section journey" id="production">
+      <div className="container">
+        <ActHead n="II" name="The production" from={1} to={4} />
+        <div className="journey-head reveal">
+          <h2>
+            From idea<br />
+            <em>to finished film.</em>
+          </h2>
+          <p>
+            Follow one production — <span>Ashéron-Kor</span> — through the studio. Every stage is a department you can
+            open, and every department reads from the same story.
+          </p>
+        </div>
       </div>
+
+      <ol className="journey-track" aria-label="The production journey">
+        {steps.map((s, i) => (
+          <li key={s.title} className="journey-step reveal" style={{ ["--i" as string]: i }}>
+            <div className="journey-visual">{s.visual}</div>
+            <div className="journey-no"><i aria-hidden />{String(i + 1).padStart(2, "0")}</div>
+            <h3>{s.title}</h3>
+            <p>{s.body}</p>
+            <Link href={s.href} className="journey-go">{s.go} →</Link>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
-
-/* ── Languages ─────────────────────────────────────────────────────── */
-function Languages() {
-  return (
-    <div className="languages" aria-label={`${LANGUAGES.length} languages`}>
-      <div className="language-track">
-        {[...LANGUAGES, ...LANGUAGES].map((l, i) => (
-          <span key={i} className="language" aria-hidden={i >= LANGUAGES.length}>
-            {l}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* ── 04 · Showreel ─────────────────────────────────────────────────── */
+/** Each sample tile's own still, else a still from the same world (the hero film) until one is generated. */
+const REEL_STILLS: [FrameSlot, FrameSlot | null][] = [
+  ["work-1", "hero"], ["work-2", "hero-3"], ["work-3", "hero-1"], ["work-4", null], ["work-5", "hero-2"], ["work-6", null],
+];
+
 function Showreel() {
   return (
     <section className="section showreel" id="films">
       <div className="container">
+        <ActHead n="III" name="The release" from={5} to={5} />
         <div className="showreel-header reveal">
           <div>
-            <div className="eyebrow">04 / THE WORK</div>
+            <div className="eyebrow">05 / THE WORK</div>
             <h2>
               Made<br />
               <em>with Cineforge.</em>
@@ -478,7 +589,7 @@ function Showreel() {
           <Link href="/publish/streaming" className="text-link">View complete showreel →</Link>
         </div>
 
-        <HomeShowreel stills={(["work-1", "work-2", "work-3", "work-4", "work-5", "work-6"] as const).map((s) => frame(s))} />
+        <HomeShowreel stills={REEL_STILLS.map(([own, from]) => frame(own) ?? (from ? frame(from) : undefined))} />
       </div>
     </section>
   );
@@ -490,7 +601,7 @@ function Publish() {
     <section className="section publish">
       <div className="container publish-grid reveal">
         <div>
-          <div className="eyebrow">05 / RELEASE</div>
+          <div className="eyebrow">06 / RELEASE</div>
           <h2>
             One film.<br />
             <em>Every screen.</em>
@@ -543,7 +654,7 @@ function Voice() {
     <section className="section voice">
       <div className="container voice-grid reveal">
         <div>
-          <div className="eyebrow">06 / VOICE</div>
+          <div className="eyebrow">04 / VOICE</div>
           <h2>
             Give the<br />
             story a<br />
@@ -616,9 +727,10 @@ function Pricing() {
   return (
     <section className="section pricing" id="pricing">
       <div className="container">
+        <ActHead n="IV" name="The studio" from={0} to={PRODUCTION_LAST} />
         <div className="pricing-header reveal">
           <div>
-            <div className="eyebrow">ACCESS</div>
+            <div className="eyebrow">08 / ACCESS</div>
             <h2>
               Enter the<br />
               <em>studio.</em>
@@ -685,8 +797,8 @@ function FinalCta() {
       <div className="container reveal">
         <div className="eyebrow">CINEFORGE / {new Date().getFullYear()}</div>
         <h2>
-          YOUR STORY.<br />
-          <em>YOUR WORLD.</em>
+          Your story.<br />
+          <em>your world.</em>
         </h2>
         <p>Enter the production system and build something worth watching.</p>
         <Link href="/create" className="primary">Enter the studio</Link>
@@ -715,7 +827,10 @@ function Footer() {
         <Link href="/marketplace">Marketplace</Link>
         <Link href="/pricing">Pricing</Link>
       </nav>
-      <div className="footer-legal">© {new Date().getFullYear()} Cineforge</div>
+      <div className="footer-legal">
+        <a href="#top" className="footer-top">Back to top <i aria-hidden>↑</i></a>
+        <span>© {new Date().getFullYear()} Cineforge</span>
+      </div>
     </footer>
   );
 }

@@ -120,7 +120,7 @@ export function CinemaArt({
           </linearGradient>
         </defs>
         <rect width="1600" height="900" fill={`url(#${id}s)`} />
-        <SceneBody scene={s} r={r} pal={pal} id={id} />
+        <SceneBody scene={s} seed={h} pal={pal} id={id} />
         <rect width="1600" height="900" fill={`url(#${id}v)`} />
       </svg>
 
@@ -148,7 +148,10 @@ export function CinemaArt({
 
 /* ── Scenes ──────────────────────────────────────────────────── */
 
-function SceneBody({ scene, r, pal, id }: { scene: Scene; r: () => number; pal: [string, string, string, string]; id: string }) {
+function SceneBody({ scene, seed, pal, id }: { scene: Scene; seed: number; pal: [string, string, string, string]; id: string }) {
+  // Its own sequence (a render may run twice): skip the three draws the timecode took, so the frame is unchanged.
+  const r = rng(seed);
+  r(); r(); r();
   const [, , light, ground] = pal;
   const glow = `url(#${id}g)`;
   const sunX = 300 + r() * 1000;
@@ -160,7 +163,7 @@ function SceneBody({ scene, r, pal, id }: { scene: Scene; r: () => number; pal: 
         <g>
           <circle cx={sunX} cy={560} r={260} fill={glow} />
           <circle cx={sunX} cy={560} r={70} fill={light} opacity="0.9" />
-          <Ridge y={600} amp={70} r={r} fill={ground} opacity={0.55} />
+          {Ridge({ y: 600, amp: 70, r, fill: ground, opacity: 0.55 })}
           <g fill={ground}>
             {towers.map((t, i) => (
               <g key={i}>
@@ -170,8 +173,8 @@ function SceneBody({ scene, r, pal, id }: { scene: Scene; r: () => number; pal: 
             ))}
             <rect x={440} y={640} width={720} height={120} />
           </g>
-          <Ridge y={760} amp={40} r={r} fill={ground} opacity={1} />
-          <Birds r={r} color={ground} />
+          {Ridge({ y: 760, amp: 40, r, fill: ground, opacity: 1 })}
+          {Birds({ r, color: ground })}
         </g>
       );
     }
@@ -220,7 +223,7 @@ function SceneBody({ scene, r, pal, id }: { scene: Scene; r: () => number; pal: 
             <rect x="80" y="-60" width="6" height="110" />
             <path d="M88 -56 L150 30 L88 30 Z" opacity="0.9" />
           </g>
-          <Birds r={r} color={ground} />
+          {Birds({ r, color: ground })}
         </g>
       );
     }
@@ -229,11 +232,11 @@ function SceneBody({ scene, r, pal, id }: { scene: Scene; r: () => number; pal: 
         <g>
           <circle cx={sunX} cy={600} r={320} fill={glow} />
           <circle cx={sunX} cy={600} r={110} fill={light} opacity="0.95" />
-          <Ridge y={690} amp={20} r={r} fill={ground} opacity={1} />
+          {Ridge({ y: 690, amp: 20, r, fill: ground, opacity: 1 })}
           {Array.from({ length: 3 }, (_, i) => (
             <Acacia key={i} x={160 + i * 520 + r() * 200} y={700} s={0.8 + r() * 0.7} fill={ground} />
           ))}
-          <Birds r={r} color={ground} />
+          {Birds({ r, color: ground })}
         </g>
       );
     }

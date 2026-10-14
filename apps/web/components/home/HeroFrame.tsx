@@ -16,14 +16,21 @@ import { heroFilm, listShowcase, publicUrl, type ShowcaseRow } from "../../lib/s
 const SHOT = { slug: "EXT. ASHÉRON-KOR — DAWN", meta: "Day 1 · 06:12 · 35mm · f/2.8", number: "SHOT 01 / 28" };
 
 /** Scenes the storyboard tiles cycle through. */
-const BOARD: Scene[] = ["kingdom", "figure", "savannah", "interior", "kingdom", "sea", "figure", "forest", "kingdom"];
+const BOARD: Scene[] = ["figure", "interior", "kingdom"];
+/** What the three stills are, as a script supervisor would slate them. */
+const STRIP = ["SC 04 · The ridge", "SC 11 · Hall of pillars", "SC 19 · Twin suns"];
 
 const PROMPT = "An epic about an African kingdom fighting for its independence, told over three generations.";
 const STAGES = ["Prompt", "Storyboard", "Generation", "Final cut"] as const;
 // How long each stage holds, in ms.
 const HOLD = [1800, 1300, 1600, 2600];
 
-export function HeroFrame({ masterStill }: { masterStill?: string }) {
+/**
+ * `wideStill` is the master still with soft extensions on both sides (left 25 %,
+ * right 6 % of its width): the frame shows exactly the master still and the
+ * picture carries on past its edges into the dark.
+ */
+export function HeroFrame({ masterStill, wideStill, loop, thumbs = [] }: { masterStill?: string; wideStill?: string; loop?: string; thumbs?: (string | undefined)[] }) {
   const [real, setReal] = useState<ShowcaseRow | null>(null);
   const [stage, setStage] = useState(3);
   const [typed, setTyped] = useState(PROMPT.length);
@@ -34,17 +41,22 @@ export function HeroFrame({ masterStill }: { masterStill?: string }) {
     setStill(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }, []);
 
-  // Walk the production path on the master shot.
+  // Walk the production path once, on arrival, then hold the finished frame:
+  // a looping blur would keep pulling the whole picture out of focus.
+  const [played, setPlayed] = useState(false);
   useEffect(() => {
-    if (still || real) return;
+    if (still || real || played) return;
     const t = setTimeout(() => {
       if (stage === 3) {
         setTyped(0);
         setStage(0);
-      } else setStage(stage + 1);
-    }, HOLD[stage]);
+      } else {
+        if (stage === 2) setPlayed(true);
+        setStage(stage + 1);
+      }
+    }, stage === 3 ? 0 : HOLD[stage]);
     return () => clearTimeout(t);
-  }, [stage, still, real]);
+  }, [stage, still, real, played]);
 
   // Type the prompt during the first stage.
   useEffect(() => {
@@ -59,27 +71,47 @@ export function HeroFrame({ masterStill }: { masterStill?: string }) {
 
   return (
     <div className="hero-stage" aria-label="A film becoming a film">
-      <div className="hero-frame">
+      <div className="hero-frame-wrap">
+      {/* The master still is one continuous picture: it runs past the frame and fades into the dark,
+          so the frame is a line drawn over the world, not a box around it. */}
+      {!real && masterStill && (
+        <div className={`hero-bleed${wideStill ? " is-wide" : ""}${shown ? " is-shown" : ""}`} aria-hidden>
+          <img src={wideStill ?? masterStill} alt="" className="still-fill" fetchPriority="high" />
+          <i className="cfh-grain cf-grain" aria-hidden />
+        </div>
+      )}
+      {/* The master shot in motion: the generated loop plays over the still it was made from,
+          melting into it at the edges, so the world moves without a seam. */}
+      {!real && masterStill && loop && shown && (
+        <video className="hero-loop" src={loop} poster={masterStill} autoPlay muted loop playsInline preload="auto" aria-hidden />
+      )}
+      <div className={`hero-frame${!real && masterStill ? " is-open" : ""}`} role={!real && masterStill ? "img" : undefined}
+        aria-label={!real && masterStill ? "Ashéron-Kor at dawn: the citadel backlit by the sun, the queen and her guard on the ridge" : undefined}>
         {real ? (
           <video className="hero-frame-video" src={publicUrl(real.video_path)} autoPlay muted loop playsInline preload="metadata" aria-label={real.title} />
-        ) : (
+        ) : !masterStill ? (
           <div className={`hero-frame-image${shown ? " is-shown" : ""}`}>
-            {masterStill ? (
-              /* Plain <img>: the generated master still from public/frames. */
-              <img src={masterStill} alt="Ashéron-Kor at dawn: the citadel backlit by the sun, the queen and her guard on the ridge" className="art-fill still-fill" fetchPriority="high" />
-            ) : (
-              <MasterShot idPrefix="hero" className="art-fill" />
-            )}
+            <MasterShot idPrefix="hero" className="art-fill" />
+          </div>
+        ) : null}
+        {resolving && <i className="hero-frame-scan" aria-hidden />}
+        {!real && at < 2 && (
+          <div className="hero-prompt" aria-hidden>
+            <span>Prompt</span>
+            <p>
+              {PROMPT.slice(0, typed)}
+              {at === 0 && <i className="hero-caret" />}
+            </p>
           </div>
         )}
-        {resolving && <i className="hero-frame-scan" aria-hidden />}
         <i className="cfh-grain cf-grain" aria-hidden />
         <i className="hero-sweep" aria-hidden />
 
         <div className="hero-frame-hud">
           <div className="hero-frame-row">
             <span className="hero-frame-badge">
-              {real ? "● Real · generated here" : resolving ? "◐ Generating" : at === 3 ? "● 4K · Ready" : `○ ${STAGES[at]}`}
+              <i className={`hero-dot${at === 3 || real ? " is-live" : ""}`} aria-hidden />
+              {real ? "Real · generated here" : resolving ? "Generating" : at === 3 ? "4K · Ready" : STAGES[at]}
             </span>
             <span>{real ? real.tag : SHOT.number}</span>
           </div>
@@ -94,29 +126,27 @@ export function HeroFrame({ masterStill }: { masterStill?: string }) {
         <i className="hero-corner br" aria-hidden />
       </div>
 
-      {!real && (
-        <div className="hero-desk" aria-hidden>
-          <div className="hero-prompt">
-            <span>Prompt</span>
-            <p>
-              {PROMPT.slice(0, typed)}
-              {at === 0 && <i className="hero-caret" />}
-            </p>
-          </div>
-          <div className="hero-board">
-            {Array.from({ length: 9 }).map((_, k) => (
-              <i key={k} className={at >= 1 ? "is-on" : ""} style={{ transitionDelay: `${k * 90}ms` }}>
-                <CinemaArt seed={`${SHOT.slug} board ${k}`} scene={BOARD[k % BOARD.length]} className="art-fill" />
-              </i>
-            ))}
-          </div>
-        </div>
-      )}
+      </div>
+
+      {/* Three stills from the same world: they arrive at the storyboard stage. */}
+      <div className="hero-strip">
+        {[0, 1, 2].map((k) => (
+          <i key={k} className={real || at >= 1 ? "is-on" : ""} style={{ transitionDelay: `${k * 140}ms` }}>
+            {thumbs[k] ? (
+              <img src={thumbs[k]} alt="" className="art-fill still-fill" loading="lazy" />
+            ) : (
+              <CinemaArt seed={`${SHOT.slug} board ${k}`} scene={BOARD[k]} className="art-fill" />
+            )}
+            <b className="hero-strip-cap">{STRIP[k]}</b>
+          </i>
+        ))}
+      </div>
 
       <ol className="hero-flow" aria-label="Production path">
         {STAGES.map((name, k) => (
           <li key={name} className={k === at ? "is-on" : k < at ? "is-done" : ""}>
-            {name}
+            {k > 0 && <><i className="hero-flow-rule" aria-hidden /><i className="hero-flow-ring" aria-hidden /></>}
+            <span>{name}</span>
           </li>
         ))}
       </ol>

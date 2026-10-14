@@ -22,10 +22,60 @@ export function HomeMotion() {
     onNav();
     window.addEventListener("scroll", onNav, { passive: true });
 
+    // Stills fade in as they finish loading (no pop); ones already loaded show at once.
+    const stills = [...document.querySelectorAll<HTMLImageElement>(".cfh img.still-fill")];
+    const shown = (img: HTMLImageElement) => img.setAttribute("data-loaded", "");
+    stills.forEach((img) => (img.complete ? shown(img) : img.addEventListener("load", () => shown(img), { once: true })));
+    document.documentElement.classList.add("cfh-js");
+
+    // Scroll-spy: the nav marks the section being read.
+    const links = [...document.querySelectorAll<HTMLAnchorElement>(".cfh .nav-center a[href^='#']")];
+    const spy = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          links.forEach((a) => a.classList.toggle("is-active", a.getAttribute("href") === `#${entry.target.id}`));
+        });
+      },
+      { rootMargin: "-45% 0px -50% 0px" },
+    );
+    links.forEach((a) => {
+      const target = document.querySelector(a.getAttribute("href")!);
+      if (target) spy.observe(target);
+    });
+    const hero = document.querySelector(".cfh .hero");
+    const clearSpy = () => { if (window.scrollY < (hero?.clientHeight ?? 600) * 0.6) links.forEach((a) => a.classList.remove("is-active")); };
+    window.addEventListener("scroll", clearSpy, { passive: true });
+
     const reveals = document.querySelectorAll<HTMLElement>(".cfh .reveal");
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Figures count up once, the first time they are seen.
+    const counters = document.querySelectorAll<HTMLElement>(".cfh [data-count]");
+    const counted = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        counted.unobserve(entry.target);
+        const el = entry.target as HTMLElement;
+        const to = Number(el.dataset.count);
+        if (reduced || !Number.isFinite(to)) return;
+        const t0 = performance.now();
+        const tick = (t: number) => {
+          const k = Math.min(1, (t - t0) / 1400);
+          el.textContent = String(Math.round(to * (1 - Math.pow(1 - k, 3))));
+          if (k < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+    }, { threshold: 0.6 });
+    counters.forEach((el) => counted.observe(el));
+
+    if (reduced) {
       reveals.forEach((el) => el.classList.add("visible"));
       return () => {
+        counted.disconnect();
+        spy.disconnect();
+        window.removeEventListener("scroll", clearSpy);
         menu?.removeEventListener("click", closeMenu);
         window.removeEventListener("scroll", onNav);
       };
@@ -45,16 +95,26 @@ export function HomeMotion() {
     reveals.forEach((el) => observer.observe(el));
 
     const heroImage = document.querySelector<HTMLElement>(".cfh .hero-image");
+    // The picture behind the frame drifts a little against the pointer: depth, not motion.
+    const heroBleed = document.querySelector<HTMLElement>(".cfh .hero-bleed");
+    let raf = 0;
     const onMove = (e: MouseEvent) => {
-      if (!heroImage) return;
-      const x = (e.clientX / window.innerWidth - 0.5) * 8;
-      const y = (e.clientY / window.innerHeight - 0.5) * 5;
-      heroImage.style.transform = `translate(${x}px, ${y}px) scale(1.02)`;
+      const x = (e.clientX / window.innerWidth - 0.5);
+      const y = (e.clientY / window.innerHeight - 0.5);
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        if (heroImage) heroImage.style.transform = `translate(${x * 8}px, ${y * 5}px) scale(1.02)`;
+        if (heroBleed && !reduced && window.scrollY < window.innerHeight) heroBleed.style.translate = `${x * -14}px ${y * -8}px`;
+      });
     };
     window.addEventListener("mousemove", onMove, { passive: true });
 
     return () => {
       observer.disconnect();
+      counted.disconnect();
+      spy.disconnect();
+      window.removeEventListener("scroll", clearSpy);
+      cancelAnimationFrame(raf);
       window.removeEventListener("mousemove", onMove);
       menu?.removeEventListener("click", closeMenu);
       window.removeEventListener("scroll", onNav);
