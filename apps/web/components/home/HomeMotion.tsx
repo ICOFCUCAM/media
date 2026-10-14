@@ -42,9 +42,32 @@ export function HomeMotion() {
     window.addEventListener("scroll", clearSpy, { passive: true });
 
     const reveals = document.querySelectorAll<HTMLElement>(".cfh .reveal");
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Figures count up once, the first time they are seen.
+    const counters = document.querySelectorAll<HTMLElement>(".cfh [data-count]");
+    const counted = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        counted.unobserve(entry.target);
+        const el = entry.target as HTMLElement;
+        const to = Number(el.dataset.count);
+        if (reduced || !Number.isFinite(to)) return;
+        const t0 = performance.now();
+        const tick = (t: number) => {
+          const k = Math.min(1, (t - t0) / 1400);
+          el.textContent = String(Math.round(to * (1 - Math.pow(1 - k, 3))));
+          if (k < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+    }, { threshold: 0.6 });
+    counters.forEach((el) => counted.observe(el));
+
+    if (reduced) {
       reveals.forEach((el) => el.classList.add("visible"));
       return () => {
+        counted.disconnect();
         spy.disconnect();
         window.removeEventListener("scroll", clearSpy);
         menu?.removeEventListener("click", closeMenu);
@@ -82,6 +105,7 @@ export function HomeMotion() {
 
     return () => {
       observer.disconnect();
+      counted.disconnect();
       spy.disconnect();
       window.removeEventListener("scroll", clearSpy);
       cancelAnimationFrame(raf);

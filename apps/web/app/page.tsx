@@ -163,7 +163,7 @@ function Metrics() {
     <section className="metrics" aria-label="Cineforge in numbers">
       {items.map(([v, k]) => (
         <div key={k} className="metric">
-          <div className="metric-value">{v}</div>
+          <div className="metric-value" data-count={/^\d+$/.test(v) ? v : undefined}>{v}</div>
           <div className="metric-label">{k}</div>
         </div>
       ))}

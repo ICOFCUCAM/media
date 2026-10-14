@@ -165,3 +165,6 @@
 .cfh .nav-center a.is-active:hover::after { background: var(--accent); }
 .cfh .nav-cta { transition: background .35s ease, color .35s ease, border-color .35s ease, box-shadow .35s ease; }
 .cfh .nav-cta:hover { box-shadow: 0 0 0 4px rgba(244,242,237,.08); }
+
+/* 11 · Figures hold their width while they count. */
+.cfh .metric-value { font-variant-numeric: tabular-nums; }
