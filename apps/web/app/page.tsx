@@ -51,7 +51,7 @@ const navSection = (title: string) => NAV.find((s) => s.title === title)?.items 
 
 export default function Home() {
   return (
-    <div className="cfh">
+    <div className="cfh" id="top">
       <HomeMotion />
       <Nav />
       <main>
@@ -727,7 +727,10 @@ function Footer() {
         <Link href="/marketplace">Marketplace</Link>
         <Link href="/pricing">Pricing</Link>
       </nav>
-      <div className="footer-legal">© {new Date().getFullYear()} Cineforge</div>
+      <div className="footer-legal">
+        <a href="#top" className="footer-top">Back to top <i aria-hidden>↑</i></a>
+        <span>© {new Date().getFullYear()} Cineforge</span>
+      </div>
     </footer>
   );
 }
