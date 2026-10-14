@@ -460,3 +460,27 @@
   filter: blur(6px);
   pointer-events: none;
 }
+
+/* 29 · Voice chapter: a warm stage light breathes behind the presenter; the copy reads clearly against it. */
+.cfh .voice { position: relative; isolation: isolate; }
+.cfh .voice::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 10%;
+  top: 20%;
+  width: 45vw;
+  height: 45vw;
+  max-width: 720px;
+  max-height: 720px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(233,185,138,.12), transparent 65%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cfh .voice::before { animation: cfp-breathe 7s ease-in-out infinite alternate; }
+}
+@keyframes cfp-breathe { from { opacity: .55; transform: scale(.94); } to { opacity: 1; transform: scale(1.04); } }
+.cfh .voice-copy p { color: #b9b6ae; }
+.cfh .voice-copy p:first-child { color: #e4e1da; font-size: 18px; line-height: 1.6; }
