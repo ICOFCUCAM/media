@@ -340,3 +340,26 @@
   .cfh .chapter-portrait .cfp-letterbox::before,
   .cfh .chapter-portrait .cfp-letterbox::after { transform: none; transition: none; }
 }
+
+/* 21 · Capabilities: the row fills with ink from the left on hover and the title turns italic serif. */
+.cfh a.capability { position: relative; isolation: isolate; }
+.cfh a.capability::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 -5vw;
+  background: #111;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform .7s cubic-bezier(.65, 0, .35, 1);
+}
+.cfh a.capability h3,
+.cfh a.capability p,
+.cfh a.capability .capability-number,
+.cfh a.capability .capability-go { transition: color .5s ease, font-variation-settings .5s ease, letter-spacing .5s ease; }
+.cfh a.capability:hover::before { transform: none; }
+.cfh a.capability:hover h3 { color: #f4f2ed; font-family: var(--serif); font-style: italic; font-weight: 400; letter-spacing: -.03em; }
+.cfh a.capability:hover p { color: #b9b7b1; }
+.cfh a.capability:hover .capability-number { color: var(--accent); }
+.cfh a.capability:hover .capability-go { color: var(--accent); }
+@media (hover: none) { .cfh a.capability::before { display: none; } }
