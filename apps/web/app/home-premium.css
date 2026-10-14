@@ -819,3 +819,54 @@ html:has(.cfh)::-webkit-scrollbar-thumb:hover { background: #5a5850; }
 @media (min-width: 1101px) {
   .cfh .reel-scroll.is-film .reel-grid.reveal { opacity: 1; filter: none; transform: none; }
 }
+
+/* ── Film black (owner question: premium dark). The flat digital black becomes a warm cinema black,
+   each dark chapter sits on its own tone, faint light pools come from the pictures' colours, and a
+   fine grain turns the black into film stock. ── */
+.cfh {
+  --black: #0a0908;
+  --black-soft: #100e0c;
+  --ink-2: #14110e;
+  --ink-3: #1a1612;
+  background: var(--black);
+}
+/* Grain over the whole page — barely there, but it stops black from reading as an empty screen. */
+.cfh::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  opacity: .045;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode: overlay;
+}
+/* Tonal steps and light pools, chapter by chapter. */
+.cfh .chapter.dark {
+  background:
+    radial-gradient(ellipse 55% 60% at 85% 20%, rgba(233,170,100,.07), transparent 70%),
+    radial-gradient(ellipse 40% 50% at 10% 90%, rgba(120,90,60,.05), transparent 70%),
+    #0b0a09;
+}
+.cfh .workspace {
+  background:
+    radial-gradient(ellipse 50% 45% at 50% 60%, rgba(70,120,120,.07), transparent 70%),
+    #0d0c0a;
+}
+.cfh .showreel:not(.market) {
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 10%, rgba(233,170,100,.06), transparent 70%),
+    #090807;
+}
+.cfh .market {
+  background:
+    radial-gradient(ellipse 50% 50% at 80% 30%, rgba(216,255,98,.035), transparent 70%),
+    var(--black-soft);
+}
+.cfh .metrics { background: #0c0b09; }
+.cfh footer { background: #070605; }
+/* Warm charcoals instead of cold greys inside the dark sections. */
+.cfh .studio { background: var(--ink-2); }
+.cfh .studio-sidebar, .cfh .studio-right { background: rgba(255,240,220,.012); }
+.cfh .reel { background: linear-gradient(135deg, #2a231b, var(--ink-2)); }
+.cfh .reel-scroll.is-film .reel-strip { background: #070605; }
