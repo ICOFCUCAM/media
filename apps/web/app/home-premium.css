@@ -726,3 +726,8 @@ html:has(.cfh)::-webkit-scrollbar-thumb:hover { background: #5a5850; }
 /* The grain and light sweep live on the picture itself; inside the open frame they would outline its box. */
 .cfh .hero-v2 .hero-frame.is-open > .cf-grain,
 .cfh .hero-v2 .hero-frame.is-open > .hero-sweep { display: none; }
+
+/* No visible frame (owner review): the picture is the hero; only the viewfinder labels float over it. */
+.cfh .hero-v2 .hero-frame.is-open { border: 0; }
+.cfh .hero-v2 .hero-frame.is-open .hero-corner { display: none; }
+.cfh .hero-v2 .hero-frame.is-open .hero-frame-badge { background: rgba(10,8,6,.3); border-color: rgba(244,242,237,.18); }

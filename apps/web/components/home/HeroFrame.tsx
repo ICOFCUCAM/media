@@ -41,17 +41,22 @@ export function HeroFrame({ masterStill, wideStill, thumbs = [] }: { masterStill
     setStill(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }, []);
 
-  // Walk the production path on the master shot.
+  // Walk the production path once, on arrival, then hold the finished frame:
+  // a looping blur would keep pulling the whole picture out of focus.
+  const [played, setPlayed] = useState(false);
   useEffect(() => {
-    if (still || real) return;
+    if (still || real || played) return;
     const t = setTimeout(() => {
       if (stage === 3) {
         setTyped(0);
         setStage(0);
-      } else setStage(stage + 1);
-    }, HOLD[stage]);
+      } else {
+        if (stage === 2) setPlayed(true);
+        setStage(stage + 1);
+      }
+    }, stage === 3 ? 0 : HOLD[stage]);
     return () => clearTimeout(t);
-  }, [stage, still, real]);
+  }, [stage, still, real, played]);
 
   // Type the prompt during the first stage.
   useEffect(() => {
