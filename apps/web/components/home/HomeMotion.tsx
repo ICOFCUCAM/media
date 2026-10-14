@@ -22,10 +22,31 @@ export function HomeMotion() {
     onNav();
     window.addEventListener("scroll", onNav, { passive: true });
 
+    // Scroll-spy: the nav marks the section being read.
+    const links = [...document.querySelectorAll<HTMLAnchorElement>(".cfh .nav-center a[href^='#']")];
+    const spy = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          links.forEach((a) => a.classList.toggle("is-active", a.getAttribute("href") === `#${entry.target.id}`));
+        });
+      },
+      { rootMargin: "-45% 0px -50% 0px" },
+    );
+    links.forEach((a) => {
+      const target = document.querySelector(a.getAttribute("href")!);
+      if (target) spy.observe(target);
+    });
+    const hero = document.querySelector(".cfh .hero");
+    const clearSpy = () => { if (window.scrollY < (hero?.clientHeight ?? 600) * 0.6) links.forEach((a) => a.classList.remove("is-active")); };
+    window.addEventListener("scroll", clearSpy, { passive: true });
+
     const reveals = document.querySelectorAll<HTMLElement>(".cfh .reveal");
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       reveals.forEach((el) => el.classList.add("visible"));
       return () => {
+        spy.disconnect();
+        window.removeEventListener("scroll", clearSpy);
         menu?.removeEventListener("click", closeMenu);
         window.removeEventListener("scroll", onNav);
       };
@@ -61,6 +82,8 @@ export function HomeMotion() {
 
     return () => {
       observer.disconnect();
+      spy.disconnect();
+      window.removeEventListener("scroll", clearSpy);
       cancelAnimationFrame(raf);
       window.removeEventListener("mousemove", onMove);
       menu?.removeEventListener("click", closeMenu);
