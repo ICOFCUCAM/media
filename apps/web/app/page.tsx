@@ -15,7 +15,7 @@ import { ReleaseScreens } from "../components/home/scenes/ReleaseScreens";
 import { VoicePresenter } from "../components/home/scenes/VoicePresenter";
 import { AssetVisual } from "../components/home/scenes/AssetVisual";
 import { STUDIO_MODES } from "../lib/creation";
-import { frame } from "../lib/frames";
+import { frame, type FrameSlot } from "../lib/frames";
 import {
   NAV,
   PRODUCTS,
@@ -470,6 +470,11 @@ function Languages() {
 }
 
 /* ── 04 · Showreel ─────────────────────────────────────────────────── */
+/** Each sample tile's own still, else a still from the same world (the hero film) until one is generated. */
+const REEL_STILLS: [FrameSlot, FrameSlot | null][] = [
+  ["work-1", "hero"], ["work-2", "hero-3"], ["work-3", "hero-1"], ["work-4", null], ["work-5", "hero-2"], ["work-6", null],
+];
+
 function Showreel() {
   return (
     <section className="section showreel" id="films">
@@ -485,7 +490,7 @@ function Showreel() {
           <Link href="/publish/streaming" className="text-link">View complete showreel →</Link>
         </div>
 
-        <HomeShowreel stills={(["work-1", "work-2", "work-3", "work-4", "work-5", "work-6"] as const).map((s) => frame(s))} />
+        <HomeShowreel stills={REEL_STILLS.map(([own, from]) => frame(own) ?? (from ? frame(from) : undefined))} />
       </div>
     </section>
   );
