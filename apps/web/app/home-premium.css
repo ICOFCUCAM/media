@@ -625,3 +625,6 @@
 .cfh .footer-top:hover { color: var(--white); }
 .cfh .footer-top:hover i { border-color: var(--accent); transform: translateY(-3px); }
 .cfh .footer-legal { display: flex; align-items: center; gap: 28px; }
+
+/* 38 · Selected text takes the brand: accent highlight with ink text. */
+.cfh ::selection { background: var(--accent); color: #0b0b0b; }
