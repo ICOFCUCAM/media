@@ -363,3 +363,13 @@
 .cfh a.capability:hover .capability-number { color: var(--accent); }
 .cfh a.capability:hover .capability-go { color: var(--accent); }
 @media (hover: none) { .cfh a.capability::before { display: none; } }
+
+/* 22 · The language marquee fades at both edges and pauses under the pointer; every other language is set in the serif. */
+.cfh .languages {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.cfh .languages:hover .language-track { animation-play-state: paused; }
+.cfh .language:nth-child(even) { font-family: var(--serif); font-style: italic; font-weight: 400; }
+.cfh .language { transition: color .4s ease; }
+.cfh .language:hover { color: var(--accent); }
