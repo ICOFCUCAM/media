@@ -226,3 +226,16 @@
   .cfh .manifesto .reveal.visible .manifesto-copy > :nth-child(2) { transition-delay: .15s; }
   .cfh .manifesto .reveal.visible .manifesto-copy > :nth-child(3) { transition-delay: .3s; }
 }
+
+/* 15 · On dark chapters the italic word catches the light: a warm, low-contrast gradient. */
+.cfh .dark h2 em,
+.cfh .workspace h2 em,
+.cfh .showreel h2 em,
+.cfh .voice h2 em,
+.cfh .final h2 em {
+  background: linear-gradient(100deg, #f4f2ed 10%, #f0d9b5 55%, #e9b98a 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding-right: .06em;
+}
