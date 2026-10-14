@@ -541,3 +541,19 @@
   .cfh .price:not(.featured):hover { background: #fbfaf7; transform: translateY(-6px); box-shadow: 0 30px 60px -30px rgba(40,32,20,.35); z-index: 1; }
   .cfh .price:hover .price-value { transform: scale(1.06); }
 }
+
+/* 34 · Plan buttons fill from the bottom like a slate wipe; the featured one fills with accent. */
+.cfh .price-cta { position: relative; overflow: hidden; isolation: isolate; transition: color .45s ease, border-color .45s ease; }
+.cfh .price-cta::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: var(--black);
+  transform: translateY(101%);
+  transition: transform .5s cubic-bezier(.65, 0, .35, 1);
+}
+.cfh .price-cta:hover { background: transparent; color: var(--white); }
+.cfh .price-cta:hover::before { transform: none; }
+.cfh .price.featured .price-cta::before { background: var(--accent); }
+.cfh .price.featured .price-cta:hover { color: var(--black); border-color: var(--accent); }
