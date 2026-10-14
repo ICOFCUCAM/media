@@ -655,3 +655,11 @@ html:has(.cfh)::-webkit-scrollbar-thumb:hover { background: #5a5850; }
 /* 42 · A true display serif for the italic words: Instrument Serif, with Georgia as the fallback. */
 .cfh { --serif: var(--font-serif-display), Georgia, "Times New Roman", serif; }
 .cfh .hero-v2 .hero-title em { letter-spacing: -.035em; font-size: .98em; line-height: .9; }
+
+/* 43 · Cream sections are lit from below the dark ones: a soft shadow falls across their top edge. */
+.cfh .manifesto,
+.cfh .capabilities,
+.cfh .publish,
+.cfh .pricing {
+  box-shadow: inset 0 70px 80px -60px rgba(8,8,8,.22);
+}
