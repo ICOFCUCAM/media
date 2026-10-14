@@ -557,3 +557,21 @@
 .cfh .price-cta:hover::before { transform: none; }
 .cfh .price.featured .price-cta::before { background: var(--accent); }
 .cfh .price.featured .price-cta:hover { color: var(--black); border-color: var(--accent); }
+
+/* 35 · The closing frame is alive: the master shot drifts slowly under the end title, ringed by a deep vignette. */
+.cfh .final-frame .still-fill,
+.cfh .final-frame .art-fill { transform-origin: 62% 42%; }
+@media (prefers-reduced-motion: no-preference) {
+  .cfh .final-frame .still-fill,
+  .cfh .final-frame .art-fill { animation: cfp-drift 40s ease-in-out infinite alternate; }
+}
+@keyframes cfp-drift { from { transform: scale(1.04) translate(0, 0); } to { transform: scale(1.14) translate(-1.5%, 1%); } }
+.cfh .final::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 60% at 50% 45%, transparent 30%, rgba(5,5,5,.85) 100%);
+  pointer-events: none;
+}
+.cfh .final .container { position: relative; z-index: 1; }
