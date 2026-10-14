@@ -70,6 +70,7 @@ export function HeroFrame({ masterStill, wideStill, thumbs = [] }: { masterStill
       {!real && masterStill && (
         <div className={`hero-bleed${wideStill ? " is-wide" : ""}${shown ? " is-shown" : ""}`} aria-hidden>
           <img src={wideStill ?? masterStill} alt="" className="still-fill" fetchPriority="high" />
+          <i className="cfh-grain cf-grain" aria-hidden />
         </div>
       )}
       <div className={`hero-frame${!real && masterStill ? " is-open" : ""}`} role={!real && masterStill ? "img" : undefined}
