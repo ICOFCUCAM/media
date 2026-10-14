@@ -239,3 +239,27 @@
   color: transparent;
   padding-right: .06em;
 }
+
+/* 16 · Chapter pictures are framed like the hero: corner brackets that close in on hover, and a slow push. */
+.cfh .chapter-image { isolation: isolate; }
+.cfh .chapter-image > .art-fill,
+.cfh .chapter-image > .still-fill { transition: transform 2.4s cubic-bezier(.16, 1, .3, 1), filter 1s ease; }
+.cfh .chapter-image:hover > .art-fill,
+.cfh .chapter-image:hover > .still-fill { transform: scale(1.035); filter: saturate(1.08); }
+.cfh .chapter-image .cfp-corner {
+  position: absolute;
+  z-index: 3;
+  width: 26px;
+  height: 26px;
+  border: 0 solid rgba(244,242,237,.85);
+  transition: transform .7s cubic-bezier(.16, 1, .3, 1);
+  pointer-events: none;
+}
+.cfh .chapter-image .cfp-corner.tl { top: 14px; left: 14px; border-top-width: 1px; border-left-width: 1px; }
+.cfh .chapter-image .cfp-corner.tr { top: 14px; right: 14px; border-top-width: 1px; border-right-width: 1px; }
+.cfh .chapter-image .cfp-corner.bl { bottom: 14px; left: 14px; border-bottom-width: 1px; border-left-width: 1px; }
+.cfh .chapter-image .cfp-corner.br { bottom: 14px; right: 14px; border-bottom-width: 1px; border-right-width: 1px; }
+.cfh .chapter-image:hover .cfp-corner.tl { transform: translate(6px, 6px); }
+.cfh .chapter-image:hover .cfp-corner.tr { transform: translate(-6px, 6px); }
+.cfh .chapter-image:hover .cfp-corner.bl { transform: translate(6px, -6px); }
+.cfh .chapter-image:hover .cfp-corner.br { transform: translate(-6px, -6px); }

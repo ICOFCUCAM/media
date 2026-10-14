@@ -205,6 +205,7 @@ function WorldChapter() {
       <div className="container chapter-grid reveal">
         <div className="chapter-image chapter-atlas">
           <i className="cfh-grain cf-grain" aria-hidden />
+          <i className="cfp-corner tl" aria-hidden /><i className="cfp-corner tr" aria-hidden /><i className="cfp-corner bl" aria-hidden /><i className="cfp-corner br" aria-hidden />
           {frame("world") ? (
             <>
               {/* Plain <img>: a static still from public/frames. */}
@@ -385,6 +386,7 @@ function StoryChapter() {
 
         <div className="chapter-image chapter-portrait">
           <i className="cfh-grain cf-grain" aria-hidden />
+          <i className="cfp-corner tl" aria-hidden /><i className="cfp-corner tr" aria-hidden /><i className="cfp-corner bl" aria-hidden /><i className="cfp-corner br" aria-hidden />
           {frame("story") ? (
             <>
               <img src={frame("story")} alt="Close-up: Amara in profile, firelit, in a burnt-orange gele" className="art-fill still-fill" loading="lazy" />
