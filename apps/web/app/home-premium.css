@@ -277,3 +277,27 @@
 }
 .cfh .chapter-index a:hover { padding-left: 26px; background: linear-gradient(90deg, rgba(216,255,98,.06), transparent 70%); }
 .cfh .chapter-index a:hover::before { opacity: 1; transform: none; }
+
+/* 18 · The workspace mock floats: a lifted shadow, a top-edge highlight and a faint accent glow behind it. */
+.cfh .workspace .studio {
+  border-color: rgba(244,242,237,.12);
+  box-shadow:
+    0 1px 0 rgba(244,242,237,.08) inset,
+    0 60px 120px -30px rgba(0,0,0,.85),
+    0 0 0 1px rgba(0,0,0,.6);
+}
+.cfh .workspace .container { position: relative; }
+.cfh .workspace .container::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 20%;
+  right: 20%;
+  top: 38%;
+  height: 50%;
+  background: radial-gradient(ellipse at center, rgba(216,255,98,.07), transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+.cfh .workspace .studio,
+.cfh .workspace .workspace-head { position: relative; z-index: 1; }
