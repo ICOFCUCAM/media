@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CinemaArt, type Scene } from "../cf/CinemaArt";
 import { arrangeReel, listShowcase, publicUrl, type ShowcaseRow } from "../../lib/showcase";
 
@@ -30,7 +30,54 @@ export function HomeShowreel({ stills = [] }: { stills?: (string | undefined)[] 
 
   const frames = arrangeReel(rows);
 
+  // Wide screens: the six tiles run as one strip of film that advances frame by
+  // frame as the page scrolls (the section holds while it plays). Phones,
+  // tablets and reduced motion keep the grid.
+  const wrap = useRef<HTMLDivElement>(null);
+  const strip = useRef<HTMLDivElement>(null);
+  const [frameAt, setFrameAt] = useState(1);
+  const [film, setFilm] = useState(false);
+  useEffect(() => {
+    const wide = window.matchMedia("(min-width: 1101px)");
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const decide = () => setFilm(wide.matches && !reduced.matches);
+    decide();
+    wide.addEventListener("change", decide);
+    reduced.addEventListener("change", decide);
+    return () => { wide.removeEventListener("change", decide); reduced.removeEventListener("change", decide); };
+  }, []);
+
+  useEffect(() => {
+    const w = wrap.current;
+    const st = strip.current;
+    if (!w || !st) return;
+    if (!film) { w.style.height = ""; st.style.transform = ""; return; }
+    let travel = 0;
+    const onScroll = () => {
+      if (!travel) return;
+      const p = Math.min(1, Math.max(0, -w.getBoundingClientRect().top / travel));
+      st.style.transform = `translate3d(${-p * travel}px, 0, 0)`;
+      setFrameAt(Math.min(6, Math.round(p * 5) + 1));
+    };
+    // Measured after the strip is laid out as a row (and again when images or the window change it).
+    const measure = () => {
+      travel = Math.max(0, st.scrollWidth - window.innerWidth);
+      w.style.height = `${window.innerHeight + travel}px`;
+      onScroll();
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(st);
+    measure();
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { ro.disconnect(); window.removeEventListener("resize", measure); window.removeEventListener("scroll", onScroll); };
+  }, [film, rows.length]);
+
   return (
+    <div ref={wrap} className={`reel-scroll${film ? " is-film" : ""}`}>
+    <div className="reel-sticky">
+    <div ref={strip} className="reel-strip">
+    <i className="reel-perf" aria-hidden />
     <div className="reel-grid reveal">
       {frames.map((r, i) => {
         const p = { ...PLACEHOLDERS[i]!, still: stills[i] };
@@ -75,6 +122,11 @@ export function HomeShowreel({ stills = [] }: { stills?: (string | undefined)[] 
         </div>
         );
       })}
+    </div>
+    <i className="reel-perf" aria-hidden />
+    </div>
+    {film && <span className="reel-counter" aria-hidden>Frame {String(frameAt).padStart(2, "0")} / 06</span>}
+    </div>
     </div>
   );
 }

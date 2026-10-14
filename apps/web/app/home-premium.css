@@ -760,3 +760,62 @@ html:has(.cfh)::-webkit-scrollbar-thumb:hover { background: #5a5850; }
   .cfh .hero-v2 .hero-title-cycle .hero-verb { font-size: min(1em, calc(88vw / (var(--len) * .68))); }
   .cfh .hero-v2 .hero-title-cycle em { font-size: min(.98em, calc(92vw / (var(--len) * .47))); }
 }
+
+/* ── Signature 4 · The showreel is a strip of film: it advances frame by frame as you scroll. ── */
+.cfh .reel-perf { display: none; }
+@media (min-width: 1101px) {
+  .cfh .reel-scroll.is-film {
+    position: relative;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+  }
+  .cfh .reel-scroll.is-film .reel-sticky {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .cfh .reel-scroll.is-film .reel-strip {
+    width: max-content;
+    padding: 18px 5vw;
+    background: #050505;
+    will-change: transform;
+  }
+  .cfh .reel-scroll.is-film .reel-grid {
+    display: flex;
+    gap: 14px;
+  }
+  .cfh .reel-scroll.is-film .reel {
+    flex: none;
+    width: min(46vw, calc((100vh - 220px) * 1.6));
+  }
+  /* Sprocket holes along both edges of the strip. */
+  .cfh .reel-scroll.is-film .reel-perf {
+    display: block;
+    height: 12px;
+    margin: 0 0 14px;
+    background: repeating-linear-gradient(90deg, rgba(244,242,237,.16) 0 16px, transparent 16px 38px);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0 1px, #000 1px calc(100% - 1px), transparent calc(100% - 1px));
+    mask-image: linear-gradient(180deg, transparent 0 1px, #000 1px calc(100% - 1px), transparent calc(100% - 1px));
+    border-radius: 2px;
+  }
+  .cfh .reel-scroll.is-film .reel-perf:last-child { margin: 14px 0 0; }
+  .cfh .reel-counter {
+    position: absolute;
+    right: 5vw;
+    bottom: 6vh;
+    font: 500 12px/1 var(--font-inter), Inter, sans-serif;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: #8d8b84;
+    font-variant-numeric: tabular-nums;
+  }
+}
+/* `clip` hides sideways overflow without making the page a scroll box, so the strip can hold (sticky). */
+.cfh { overflow-x: clip; overflow-y: visible; }
+@media (min-width: 1101px) {
+  .cfh .reel-scroll.is-film .reel-grid.reveal { opacity: 1; filter: none; transform: none; }
+}
