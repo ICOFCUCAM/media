@@ -386,6 +386,7 @@ function StoryChapter() {
 
         <div className="chapter-image chapter-portrait">
           <i className="cfh-grain cf-grain" aria-hidden />
+          <i className="cfp-letterbox" aria-hidden />
           <i className="cfp-corner tl" aria-hidden /><i className="cfp-corner tr" aria-hidden /><i className="cfp-corner bl" aria-hidden /><i className="cfp-corner br" aria-hidden />
           {frame("story") ? (
             <>
