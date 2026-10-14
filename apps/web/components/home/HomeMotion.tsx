@@ -22,6 +22,12 @@ export function HomeMotion() {
     onNav();
     window.addEventListener("scroll", onNav, { passive: true });
 
+    // Stills fade in as they finish loading (no pop); ones already loaded show at once.
+    const stills = [...document.querySelectorAll<HTMLImageElement>(".cfh img.still-fill")];
+    const shown = (img: HTMLImageElement) => img.setAttribute("data-loaded", "");
+    stills.forEach((img) => (img.complete ? shown(img) : img.addEventListener("load", () => shown(img), { once: true })));
+    document.documentElement.classList.add("cfh-js");
+
     // Scroll-spy: the nav marks the section being read.
     const links = [...document.querySelectorAll<HTMLAnchorElement>(".cfh .nav-center a[href^='#']")];
     const spy = new IntersectionObserver(

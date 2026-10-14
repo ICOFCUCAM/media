@@ -687,3 +687,7 @@ html:has(.cfh)::-webkit-scrollbar-thumb:hover { background: #5a5850; }
   .cfh .capability.reveal:nth-child(3) { transition-delay: .16s; }
   .cfh .capability.reveal:nth-child(4) { transition-delay: .24s; }
 }
+
+/* 46 · Stills develop instead of popping: they fade up as they finish loading (only once scripts run). */
+.cfh-js .cfh :not(.hero-bleed) > img.still-fill { transition: opacity .9s ease; }
+.cfh-js .cfh img.still-fill:not([data-loaded]) { opacity: 0; }
