@@ -5,6 +5,7 @@ import "./home-premium.css";
 import { HomeMotion } from "../components/home/HomeMotion";
 import { HomeShowreel } from "../components/home/HomeShowreel";
 import { HeroFrame } from "../components/home/HeroFrame";
+import { HeroTitle } from "../components/home/HeroTitle";
 import { WorkspacePreview } from "../components/home/WorkspacePreview";
 import { CinemaArt, type Scene } from "../components/cf/CinemaArt";
 import { ClockIcon, ConfigCard, EngineIcon, FormatIcon } from "../components/cf/ConfigCard";
@@ -138,10 +139,7 @@ function Hero() {
       <div className="hero-content">
         <div className="eyebrow hero-kicker"><i className="hero-kicker-rule" aria-hidden />The film production system</div>
 
-        <h1 className="hero-title">
-          MAKE<br />
-          <em>worlds.</em>
-        </h1>
+        <HeroTitle />
 
         <p className="hero-description">
           Cineforge is a complete production environment for creating films, series, trailers, adverts,
