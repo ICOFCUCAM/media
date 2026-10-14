@@ -706,3 +706,23 @@ html:has(.cfh)::-webkit-scrollbar-thumb:hover { background: #5a5850; }
   .cfh .chapter-image:hover > * { transform: none !important; }
   .cfh .chapter-image .cfp-corner { transition: none; transform: none !important; }
 }
+
+/* 50 · No seam (owner review): the frame keeps only its corner brackets — no line runs between the copy
+   and the picture — and the picture's extensions dissolve on every side, top and bottom included. */
+.cfh .hero-v2 .hero-frame.is-open { border-color: transparent; }
+@media (min-width: 1101px) {
+  /* One continuous fade, no zones: dark at the copy, full picture from a third of the way in. */
+  .cfh .hero-v2 .hero-bleed.is-wide {
+    -webkit-mask-image:
+      linear-gradient(90deg, transparent 0%, rgba(0,0,0,.12) 10%, rgba(0,0,0,.5) 20%, rgba(0,0,0,.85) 28%, #000 36%, #000 93%, rgba(0,0,0,.6) 100%),
+      linear-gradient(180deg, rgba(0,0,0,.55) 0%, #000 9%, #000 90%, rgba(0,0,0,.35) 100%);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(90deg, transparent 0%, rgba(0,0,0,.12) 10%, rgba(0,0,0,.5) 20%, rgba(0,0,0,.85) 28%, #000 36%, #000 93%, rgba(0,0,0,.6) 100%),
+      linear-gradient(180deg, rgba(0,0,0,.55) 0%, #000 9%, #000 90%, rgba(0,0,0,.35) 100%);
+    mask-composite: intersect;
+  }
+}
+/* The grain and light sweep live on the picture itself; inside the open frame they would outline its box. */
+.cfh .hero-v2 .hero-frame.is-open > .cf-grain,
+.cfh .hero-v2 .hero-frame.is-open > .hero-sweep { display: none; }
