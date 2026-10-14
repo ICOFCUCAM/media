@@ -444,3 +444,19 @@
 .cfh .publish .channel:hover span:last-child { border-color: currentColor; }
 .cfh .voice .channel:hover { padding-left: 10px; background: linear-gradient(90deg, rgba(216,255,98,.05), transparent 70%); }
 .cfh .voice .channel:hover span:last-child { border-color: rgba(216,255,98,.6); color: var(--accent); }
+
+/* 28 · The release devices stand on a surface: a soft floor shadow grounds the cinema, tablet and phone. */
+.cfh .dv-tv,
+.cfh .dv-tablet,
+.cfh .dv-phone { filter: drop-shadow(0 34px 30px rgba(40,32,20,.28)); }
+.cfh .publish .dv-tv::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -26px;
+  height: 26px;
+  background: radial-gradient(ellipse at center, rgba(40,32,20,.32), transparent 70%);
+  filter: blur(6px);
+  pointer-events: none;
+}
