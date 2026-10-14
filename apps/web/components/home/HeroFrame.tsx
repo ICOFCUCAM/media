@@ -17,6 +17,8 @@ const SHOT = { slug: "EXT. ASHÉRON-KOR — DAWN", meta: "Day 1 · 06:12 · 35mm
 
 /** Scenes the storyboard tiles cycle through. */
 const BOARD: Scene[] = ["figure", "interior", "kingdom"];
+/** What the three stills are, as a script supervisor would slate them. */
+const STRIP = ["SC 04 · The ridge", "SC 11 · Hall of pillars", "SC 19 · Twin suns"];
 
 const PROMPT = "An epic about an African kingdom fighting for its independence, told over three generations.";
 const STAGES = ["Prompt", "Storyboard", "Generation", "Final cut"] as const;
@@ -117,7 +119,7 @@ export function HeroFrame({ masterStill, wideStill, thumbs = [] }: { masterStill
       </div>
 
       {/* Three stills from the same world: they arrive at the storyboard stage. */}
-      <div className="hero-strip" aria-hidden>
+      <div className="hero-strip">
         {[0, 1, 2].map((k) => (
           <i key={k} className={real || at >= 1 ? "is-on" : ""} style={{ transitionDelay: `${k * 140}ms` }}>
             {thumbs[k] ? (
@@ -125,6 +127,7 @@ export function HeroFrame({ masterStill, wideStill, thumbs = [] }: { masterStill
             ) : (
               <CinemaArt seed={`${SHOT.slug} board ${k}`} scene={BOARD[k]} className="art-fill" />
             )}
+            <b className="hero-strip-cap">{STRIP[k]}</b>
           </i>
         ))}
       </div>
