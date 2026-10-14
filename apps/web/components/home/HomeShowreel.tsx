@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CinemaArt, type Scene } from "../cf/CinemaArt";
+import type { Scene } from "../cf/CinemaArt";
 import { arrangeReel, listShowcase, publicUrl, type ShowcaseRow } from "../../lib/showcase";
 
 /** Placeholder frames shown until admins feature real films. */
@@ -100,14 +100,24 @@ export function HomeShowreel({ stills = [] }: { stills?: (string | undefined)[] 
             <span>{r.tag}</span>
           </div>
         </div>
+        ) : !p.still ? (
+        /* No frame yet: the tile is a slate for the film still being made, not a drawing. */
+        <div key={p.title} className="reel reel-next">
+          <span className="reel-next-card" aria-hidden>
+            <small>On the slate</small>
+            <b>{p.title}</b>
+            <em>{p.tag}</em>
+          </span>
+          <span className="reel-tag reel-tag-sample">In production</span>
+          <div className="reel-info">
+            <span>{p.title}</span>
+            <span>{p.tag}</span>
+          </div>
+        </div>
         ) : (
         <div key={p.title} className="reel">
-          {p.still ? (
-            /* Plain <img>: a generated example still from public/frames. */
-            <img src={p.still} alt="" className="art-fill still-fill" loading="lazy" />
-          ) : (
-            <CinemaArt seed={`${p.title} ${p.tag}`} scene={p.scene} className="art-fill" />
-          )}
+          {/* Plain <img>: a generated example still from public/frames. */}
+          <img src={p.still} alt="" className="art-fill still-fill" loading="lazy" />
           {/* Player chrome: these tiles show how a finished film sits in the reel. */}
           <span className="reel-play" aria-hidden>
             <svg viewBox="0 0 24 24" width="18" height="18"><path d="M8 5.5v13l11-6.5z" fill="currentColor" /></svg>

@@ -9,7 +9,7 @@ import path from "node:path";
  * build/render time).
  */
 
-export type FrameSlot = "hero" | "hero-wide" | "hero-1" | "hero-2" | "hero-3" | "world" | "story" | "voice" | "work-1" | "work-2" | "work-3" | "work-4" | "work-5" | "work-6";
+export type FrameSlot = "hero" | "hero-wide" | "hero-1" | "hero-2" | "hero-3" | "hero-ridge" | "hero-spires" | "hero-river" | "world" | "story" | "voice" | "work-1" | "work-2" | "work-3" | "work-4" | "work-5" | "work-6";
 
 export function frame(slot: FrameSlot): string | undefined {
   const file = path.join(process.cwd(), "public", "frames", `${slot}.webp`);

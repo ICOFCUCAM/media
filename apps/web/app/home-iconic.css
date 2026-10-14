@@ -1,0 +1,394 @@
+/*
+ * Cineforge homepage — coherence pass ("one film, four acts").
+ * Loaded after home.css and home-premium.css; everything is scoped under .cfh.
+ *
+ *  1. One type signature: every section title is the hero's — a bold, tight
+ *     uppercase sans line answered by an editorial serif italic.
+ *  2. One motif: the production thread (Idea → Distribute) under the hero and
+ *     at the head of every act.
+ *  3. Act II — the production journey: one film through the studio.
+ *  4. Rhythm: immersive chapters alternate with quiet editorial ones.
+ */
+
+/* ── 1 · Type signature ─────────────────────────────────────────────── */
+.cfh main .section h2 {
+  font-family: var(--font-manrope), Manrope, sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: clamp(46px, 6.2vw, 100px);
+  line-height: .88;
+  letter-spacing: -.055em;
+}
+.cfh main .section h2 em {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: -.03em;
+  font-size: 1.06em;
+  line-height: .9;
+}
+.cfh main .final h2 { font-size: clamp(62px, 10vw, 168px); }
+.cfh main .section h3 { letter-spacing: -.035em; }
+
+/* ── 2 · The production thread ──────────────────────────────────────── */
+.cfh .thread {
+  --thread-lit: var(--accent);
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+.cfh .thread li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  opacity: .42;
+  white-space: nowrap;
+}
+.cfh .thread li + li::before {
+  content: "";
+  width: clamp(14px, 2.4vw, 40px);
+  height: 1px;
+  margin: 0 12px 0 3px;
+  background: currentColor;
+  opacity: .5;
+}
+.cfh .thread li i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  flex: none;
+}
+.cfh .thread li.is-lit { opacity: 1; }
+.cfh .thread li.is-lit i { background: var(--thread-lit); border-color: var(--thread-lit); }
+.cfh .thread li.is-lit + li.is-lit::before { opacity: 1; background: var(--thread-lit); }
+
+/* Under the hero the whole path is promised; it lights stage by stage on load. */
+.cfh .hero-bottom .thread-hero { color: #a8a49a; }
+@media (prefers-reduced-motion: no-preference) {
+  .cfh .thread-hero li.is-lit { animation: cfi-light 1s ease both; animation-delay: calc(var(--n, 0) * 1ms); }
+  .cfh .thread-hero li:nth-child(1) { --n: 600; }
+  .cfh .thread-hero li:nth-child(2) { --n: 900; }
+  .cfh .thread-hero li:nth-child(3) { --n: 1200; }
+  .cfh .thread-hero li:nth-child(4) { --n: 1500; }
+  .cfh .thread-hero li:nth-child(5) { --n: 1800; }
+  .cfh .thread-hero li:nth-child(6) { --n: 2100; }
+}
+@keyframes cfi-light { from { opacity: .3; } to { opacity: 1; } }
+
+/* Act openings: a hairline, the act's name, and the thread lit for its stages. */
+.cfh .act-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  padding-top: 22px;
+  margin-bottom: clamp(56px, 7vw, 110px);
+  border-top: 1px solid currentColor;
+  border-top-color: color-mix(in srgb, currentColor 18%, transparent);
+}
+.cfh .act-name { display: flex; align-items: baseline; gap: 16px; }
+.cfh .act-name span {
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+.cfh .act-name em {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(24px, 2.4vw, 34px);
+  letter-spacing: -.02em;
+  line-height: 1;
+}
+.cfh .manifesto .act-head,
+.cfh .journey .act-head,
+.cfh .pricing .act-head { color: #0a0908; }
+.cfh .manifesto .thread,
+.cfh .journey .thread,
+.cfh .pricing .thread { --thread-lit: #0a0908; }
+.cfh .showreel .act-head { color: var(--white); }
+.cfh .manifesto .act-head { margin-bottom: 70px; }
+
+/* ── 3 · Act II · the production journey ────────────────────────────── */
+.cfh .journey {
+  background: var(--white);
+  color: #0a0908;
+}
+.cfh .journey-head {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 8vw;
+  align-items: end;
+  margin-bottom: clamp(56px, 6vw, 96px);
+}
+.cfh .journey-head h2 { margin: 0; }
+.cfh .journey-head p {
+  max-width: 440px;
+  margin: 0;
+  color: #5f5c56;
+  font-size: 17px;
+  line-height: 1.7;
+}
+.cfh .journey-head p span { color: #0a0908; font-family: var(--serif); font-style: italic; font-size: 1.15em; }
+
+.cfh .journey-track {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(48px, 5vw, 80px) clamp(24px, 2.6vw, 44px);
+  max-width: var(--cfi-max, 1440px);
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+.cfh .journey-step { position: relative; min-width: 0; }
+.cfh .journey-visual {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #0a0908;
+  color: var(--white);
+  border-radius: 2px;
+  box-shadow: 0 30px 60px -40px rgba(10, 9, 8, .55);
+}
+.cfh .journey-no {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 26px 0 12px;
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .2em;
+  color: #8a867e;
+}
+.cfh .journey-no i { order: 2; flex: 1; height: 1px; background: #d6d2c8; }
+.cfh .journey-step h3 {
+  margin: 0 0 10px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(30px, 2.6vw, 40px);
+  line-height: 1;
+}
+.cfh .journey-step > p { margin: 0; max-width: 380px; color: #5f5c56; font-size: 14.5px; line-height: 1.65; }
+.cfh .journey-go {
+  display: inline-block;
+  margin-top: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: #0a0908;
+  border-bottom: 1px solid transparent;
+  transition: border-color .3s ease;
+}
+.cfh .journey-go:hover { border-color: currentColor; }
+@media (prefers-reduced-motion: no-preference) {
+  .cfh .journey-step.reveal { transition-delay: calc(var(--i, 0) % 3 * 120ms); }
+  .cfh .journey-visual .still-fill { transition: transform 1.6s cubic-bezier(.16, 1, .3, 1); }
+  .cfh .journey-step:hover .journey-visual .still-fill { transform: scale(1.04); }
+}
+
+/* The stage pictures share one dark grade, like dailies from one shoot. */
+.cfh .jv-label,
+.cfh .jv-meta,
+.cfh .jv-slate,
+.cfh .jv-check,
+.cfh .jv-stem b {
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+.cfh .jv-brief {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 26px 28px;
+  background:
+    radial-gradient(120% 90% at 85% 110%, rgba(233, 185, 138, .22), transparent 60%),
+    #0d0b09;
+}
+.cfh .jv-brief .jv-label { color: #a8a49a; }
+.cfh .jv-brief p {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(21px, 1.9vw, 28px);
+  line-height: 1.18;
+  color: #f4f2ed;
+}
+.cfh .jv-brief p::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: .9em;
+  margin-left: 4px;
+  vertical-align: -.1em;
+  background: var(--accent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cfh .jv-brief p::after { animation: cfi-caret 1.1s steps(1) infinite; }
+}
+@keyframes cfi-caret { 50% { opacity: 0; } }
+.cfh .jv-brief .jv-meta { color: #e9b98a; }
+
+.cfh .jv-script {
+  position: absolute;
+  inset: 16px 18% -12px;
+  padding: 22px 24px;
+  background: #f7f4ec;
+  color: #1a1612;
+  font-family: "Courier Prime", "Courier New", Courier, monospace;
+  font-size: 10.5px;
+  line-height: 1.45;
+  box-shadow: 0 20px 40px -18px rgba(0, 0, 0, .7);
+}
+.cfh .jv-script p { margin: 0 0 8px; }
+.cfh .jv-script .jv-slug { font-weight: 700; text-transform: uppercase; }
+.cfh .jv-script .jv-cue { margin: 10px 0 0; padding-left: 38%; text-transform: uppercase; }
+.cfh .jv-script .jv-line { padding: 0 16%; }
+.cfh .jv-script .jv-line:last-child { background: linear-gradient(transparent 55%, rgba(216, 255, 98, .55) 55%); }
+
+.cfh .jv-boards {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 14px;
+  background: #e9e5da;
+}
+.cfh .jv-boards span { position: relative; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(10, 9, 8, .18); }
+.cfh .jv-boards .still-fill { filter: grayscale(1) contrast(1.5) brightness(1.18); mix-blend-mode: multiply; }
+.cfh .jv-boards small {
+  position: absolute;
+  left: 6px;
+  top: 5px;
+  padding: 1px 5px;
+  background: #fff;
+  color: #1a1612;
+  font: 600 9px/1.4 var(--font-inter), Inter, sans-serif;
+  letter-spacing: .12em;
+}
+
+.cfh .jv-shot { position: absolute; inset: 0; }
+.cfh .jv-shot::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, .45), transparent 30%, transparent 70%, rgba(0, 0, 0, .45)); }
+.cfh .jv-slate { position: absolute; z-index: 2; left: 16px; top: 14px; color: #f4f2ed; line-height: 1.6; }
+.cfh .jv-slate small { font-size: 8.5px; color: #c9c5bb; }
+.cfh .jv-check { position: absolute; z-index: 2; right: 14px; bottom: 14px; padding: 5px 8px; background: var(--accent); color: #0a0908; }
+
+.cfh .jv-edit {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 16px;
+  background: #0d0b09;
+}
+.cfh .jv-reel { position: relative; flex: 1; display: grid; grid-template-columns: 1.2fr .8fr 1fr 1fr; gap: 3px; min-height: 0; }
+.cfh .jv-reel span { position: relative; overflow: hidden; background: #1a1612; }
+.cfh .jv-head { position: absolute; top: -6px; bottom: -84px; left: 38%; width: 1px; background: var(--accent); z-index: 2; }
+.cfh .jv-head::before { content: ""; position: absolute; top: 0; left: -4px; border: 4.5px solid transparent; border-top: 6px solid var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .cfh .jv-head { animation: cfi-scrub 9s linear infinite; }
+}
+@keyframes cfi-scrub { from { left: 2%; } to { left: 98%; } }
+.cfh .jv-stem { display: flex; align-items: center; gap: 10px; height: 12px; }
+.cfh .jv-stem b { width: 26px; color: #8a867e; font-size: 8px; }
+.cfh .jv-stem span { position: relative; flex: 1; height: 100%; background: rgba(244, 242, 237, .05); }
+.cfh .jv-stem i { position: absolute; top: 2px; bottom: 2px; border-radius: 1px; background: #f4f2ed; opacity: .8; }
+.cfh .jv-stem:nth-of-type(2) i { background: var(--accent); }
+.cfh .jv-stem:nth-of-type(3) i { background: #e9b98a; }
+.cfh .jv-stem:nth-of-type(4) i { background: #8fa3a8; }
+
+.cfh .jv-release { position: absolute; inset: 0; }
+.cfh .jv-vertical {
+  position: absolute;
+  z-index: 2;
+  right: 16px;
+  bottom: 16px;
+  width: 24%;
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(244, 242, 237, .55), 0 20px 30px -12px rgba(0, 0, 0, .8);
+}
+.cfh .jv-vertical .still-fill { object-position: 52% 50%; }
+.cfh .jv-release .jv-meta { position: absolute; z-index: 2; left: 16px; bottom: 14px; color: #f4f2ed; text-shadow: 0 1px 8px rgba(0, 0, 0, .7); }
+
+/* ── 4 · Rhythm ─────────────────────────────────────────────────────── */
+/* Act I's two chapters play as one continuous sequence: no gap between them. */
+.cfh .chapter.dark + .chapter.dark { padding-top: 0; }
+.cfh .story-still { object-position: 40% 50%; }
+
+/* Voice is a quiet editorial page between the workspace and the films. */
+.cfh .voice { background: #eae8e1; color: #101010; box-shadow: inset 0 70px 80px -60px rgba(8, 8, 8, .22); }
+.cfh .voice::before { display: none; }
+.cfh .voice .eyebrow { color: #6d6b65; }
+.cfh main .voice h2 em { background: none; color: inherit; -webkit-text-fill-color: currentColor; }
+.cfh .voice-copy p { color: #67645e; }
+.cfh .voice-copy p:first-child { color: #1a1612; }
+.cfh .voice .channel-list { border-top-color: #c7c4bb; }
+.cfh .voice .channel { border-bottom-color: #c7c4bb; color: #1a1612; }
+.cfh .voice .channel span:last-child { color: #74716b; }
+.cfh .voice .text-link { color: #101010; }
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .cfh .journey-track { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cfh .act-head { flex-direction: column; align-items: flex-start; gap: 18px; }
+  .cfh .act-head .thread { flex-wrap: wrap; row-gap: 8px; }
+}
+@media (max-width: 760px) {
+  .cfh .journey-head { grid-template-columns: 1fr; gap: 24px; }
+  /* Phones swipe through the journey one stage at a time. */
+  .cfh .journey-track {
+    display: flex;
+    gap: 18px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    margin: 0 -6vw;
+    padding: 0 6vw 6px;
+    scroll-padding: 0 6vw;
+  }
+  .cfh .journey-track::-webkit-scrollbar { display: none; }
+  .cfh .journey-step { flex: 0 0 82%; scroll-snap-align: start; }
+  /* Phones keep the act's name; the full thread lives on wider screens. */
+  .cfh .act-head .thread { display: none; }
+  .cfh .act-head { margin-bottom: 48px; }
+}
+
+/* Showreel tiles without a frame yet are slates for films in production, not drawings. */
+.cfh .reel-next { background: #0d0b09; }
+.cfh .reel-next-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12%;
+  background:
+    radial-gradient(90% 70% at 70% 100%, rgba(233, 185, 138, .14), transparent 60%),
+    repeating-linear-gradient(90deg, transparent 0 18%, rgba(244, 242, 237, .035) 18% calc(18% + 1px));
+  color: #f4f2ed;
+}
+.cfh .reel-next-card small { font: 600 9.5px/1 var(--font-inter), Inter, sans-serif; letter-spacing: .22em; text-transform: uppercase; color: #8a867e; }
+.cfh .reel-next-card b { font: 700 clamp(26px, 2.4vw, 38px)/.95 var(--font-manrope), Manrope, sans-serif; letter-spacing: -.05em; text-transform: uppercase; }
+.cfh .reel-next-card em { font-family: var(--serif); font-style: italic; font-size: clamp(22px, 2vw, 30px); line-height: 1; color: #e9b98a; }
+.cfh .reel-next .reel-info { opacity: 0; }
