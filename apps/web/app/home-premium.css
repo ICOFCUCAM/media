@@ -517,3 +517,19 @@
   background: var(--accent);
   box-shadow: 0 0 8px rgba(216,255,98,.8);
 }
+
+/* 32 · The recommended plan glows: an accent line across its top and a soft halo beneath. */
+.cfh .price.featured {
+  box-shadow: 0 50px 90px -30px rgba(0,0,0,.55), 0 0 0 1px rgba(216,255,98,.18);
+  transform: translateY(-14px);
+}
+.cfh .price.featured::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+@media (max-width: 1100px) { .cfh .price.featured { transform: none; } }
