@@ -45,16 +45,23 @@ export function HomeMotion() {
     reveals.forEach((el) => observer.observe(el));
 
     const heroImage = document.querySelector<HTMLElement>(".cfh .hero-image");
+    // The picture behind the frame drifts a little against the pointer: depth, not motion.
+    const heroBleed = document.querySelector<HTMLElement>(".cfh .hero-bleed");
+    let raf = 0;
     const onMove = (e: MouseEvent) => {
-      if (!heroImage) return;
-      const x = (e.clientX / window.innerWidth - 0.5) * 8;
-      const y = (e.clientY / window.innerHeight - 0.5) * 5;
-      heroImage.style.transform = `translate(${x}px, ${y}px) scale(1.02)`;
+      const x = (e.clientX / window.innerWidth - 0.5);
+      const y = (e.clientY / window.innerHeight - 0.5);
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        if (heroImage) heroImage.style.transform = `translate(${x * 8}px, ${y * 5}px) scale(1.02)`;
+        if (heroBleed && window.scrollY < window.innerHeight) heroBleed.style.translate = `${x * -14}px ${y * -8}px`;
+      });
     };
     window.addEventListener("mousemove", onMove, { passive: true });
 
     return () => {
       observer.disconnect();
+      cancelAnimationFrame(raf);
       window.removeEventListener("mousemove", onMove);
       menu?.removeEventListener("click", closeMenu);
       window.removeEventListener("scroll", onNav);
