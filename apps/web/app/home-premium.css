@@ -315,31 +315,7 @@
   14%, 100% { color: #8d8f88; text-shadow: none; }
 }
 
-/* 20 · Amara's close-up plays in scope: letterbox bars close in when the chapter arrives. */
-.cfh .chapter-portrait .cfp-letterbox {
-  position: absolute;
-  z-index: 2;
-  inset: 0;
-  pointer-events: none;
-}
-.cfh .chapter-portrait .cfp-letterbox::before,
-.cfh .chapter-portrait .cfp-letterbox::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 9%;
-  background: #050505;
-  transition: transform 1.4s cubic-bezier(.65, 0, .35, 1) .3s;
-}
-.cfh .chapter-portrait .cfp-letterbox::before { top: 0; transform: translateY(-100%); }
-.cfh .chapter-portrait .cfp-letterbox::after { bottom: 0; transform: translateY(100%); }
-.cfh .reveal.visible .chapter-portrait .cfp-letterbox::before,
-.cfh .reveal.visible .chapter-portrait .cfp-letterbox::after { transform: none; }
-@media (prefers-reduced-motion: reduce) {
-  .cfh .chapter-portrait .cfp-letterbox::before,
-  .cfh .chapter-portrait .cfp-letterbox::after { transform: none; transition: none; }
-}
+/* 20 · (removed after review: scope bars covered the close-up's subtitle and slate.) */
 
 /* 21 · Capabilities: the row fills with ink from the left on hover and the title turns italic serif. */
 .cfh a.capability { position: relative; isolation: isolate; }
