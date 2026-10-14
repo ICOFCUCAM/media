@@ -67,7 +67,7 @@ export function HomeShowreel({ stills = [] }: { stills?: (string | undefined)[] 
           </span>
           <span className="reel-quality" aria-hidden>{p.quality}</span>
           <span className="reel-progress" aria-hidden><i style={{ width: `${p.progress}%` }} /></span>
-          <span className="reel-tag">Example frame · your film here</span>
+          <span className="reel-tag reel-tag-sample">Sample frame</span>
           <div className="reel-info">
             <span>{p.title}</span>
             <span>{p.tag}</span>
