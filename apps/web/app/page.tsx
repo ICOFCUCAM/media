@@ -32,8 +32,19 @@ import {
  * product data in lib/products.
  */
 
+const DESCRIPTION =
+  "Cineforge is a complete production environment for films, series, trailers, adverts, shorts and music videos — from the first idea to the finished release.";
+
 export const metadata: Metadata = {
   title: { absolute: "Cineforge — The Film Production System" },
+  description: DESCRIPTION,
+  openGraph: {
+    title: "Cineforge — Make worlds.",
+    description: DESCRIPTION,
+    type: "website",
+    images: [{ url: "/frames/hero.webp", width: 1896, height: 1086, alt: "Ashéron-Kor at dawn: the citadel backlit by the sun, the queen and her guard on the ridge" }],
+  },
+  twitter: { card: "summary_large_image", title: "Cineforge — Make worlds.", description: DESCRIPTION, images: ["/frames/hero.webp"] },
 };
 
 const LANGUAGES = [
