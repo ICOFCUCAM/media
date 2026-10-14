@@ -301,3 +301,16 @@
 }
 .cfh .workspace .studio,
 .cfh .workspace .workspace-head { position: relative; z-index: 1; }
+
+/* 19 · The pipeline under the workspace plays: each step lights in turn, idea to revenue. */
+@media (prefers-reduced-motion: no-preference) {
+  .cfh .pipeline span {
+    animation: cfp-step calc(var(--n) * 1.1s) linear infinite;
+    animation-delay: calc(var(--i) * 1.1s);
+  }
+  .cfh .pipeline span:first-child { color: #8d8f88; }
+}
+@keyframes cfp-step {
+  0%, 9% { color: var(--accent); text-shadow: 0 0 12px rgba(216,255,98,.45); }
+  14%, 100% { color: #8d8f88; text-shadow: none; }
+}

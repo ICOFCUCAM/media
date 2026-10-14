@@ -333,7 +333,7 @@ function Workspace() {
 
             <div className="pipeline">
               {IDEA_TO_AUDIENCE.map((step, i) => (
-                <span key={step}>
+                <span key={step} style={{ ["--i" as string]: i, ["--n" as string]: IDEA_TO_AUDIENCE.length }}>
                   {String(i + 1).padStart(2, "0")} {step}
                 </span>
               ))}
