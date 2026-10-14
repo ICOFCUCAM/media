@@ -187,3 +187,22 @@
 .cfh .metric:hover { background: rgba(244,242,237,.025); }
 .cfh .metric:hover::before { transform: none; }
 .cfh .metric-label { letter-spacing: .16em; color: #85837d; }
+
+/* 13 · Section eyebrows carry the hero's leading rule, so every chapter opens the same way. */
+.cfh main .section .eyebrow:not(.hero-kicker),
+.cfh main .section .chapter-number {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  letter-spacing: .22em;
+}
+.cfh main .section .eyebrow:not(.hero-kicker)::before,
+.cfh main .section .chapter-number::before {
+  content: "";
+  width: 32px;
+  height: 1px;
+  flex: none;
+  background: currentColor;
+  opacity: .7;
+}
+.cfh .final .eyebrow { justify-content: center; }
