@@ -575,3 +575,11 @@
   pointer-events: none;
 }
 .cfh .final .container { position: relative; z-index: 1; }
+
+/* 36 · The end title is revealed like a title card: the words rise from behind a line, the italic follows. */
+@media (prefers-reduced-motion: no-preference) {
+  .cfh .final h2 { clip-path: inset(0 0 100% 0); transform: translateY(30px); transition: clip-path 1.4s cubic-bezier(.65, 0, .35, 1), transform 1.4s cubic-bezier(.16, 1, .3, 1); }
+  .cfh .final .reveal.visible h2 { clip-path: inset(-10% -5% -15% -5%); transform: none; }
+  .cfh .final h2 em { display: inline-block; opacity: 0; transform: translateY(20px); transition: opacity 1s ease .6s, transform 1.2s cubic-bezier(.16, 1, .3, 1) .6s; }
+  .cfh .final .reveal.visible h2 em { opacity: 1; transform: none; }
+}
