@@ -691,3 +691,18 @@ html:has(.cfh)::-webkit-scrollbar-thumb:hover { background: #5a5850; }
 /* 46 · Stills develop instead of popping: they fade up as they finish loading (only once scripts run). */
 .cfh-js .cfh :not(.hero-bleed) > img.still-fill { transition: opacity .9s ease; }
 .cfh-js .cfh img.still-fill:not([data-loaded]) { opacity: 0; }
+
+/* 49 · Reduced motion, audited: nothing in the premium layer moves on its own; hover states change colour, not position. */
+@media (prefers-reduced-motion: reduce) {
+  .cfh *,
+  .cfh *::before,
+  .cfh *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
+  .cfh .hero-v2 .hero-bleed { transition: none; translate: none !important; }
+  .cfh .reel:hover,
+  .cfh .price:hover,
+  .cfh .price.featured { transform: none !important; }
+  .cfh .reel:hover > *,
+  .cfh .hero-v2 .hero-strip i:hover .still-fill,
+  .cfh .chapter-image:hover > * { transform: none !important; }
+  .cfh .chapter-image .cfp-corner { transition: none; transform: none !important; }
+}

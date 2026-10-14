@@ -104,7 +104,7 @@ export function HomeMotion() {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         if (heroImage) heroImage.style.transform = `translate(${x * 8}px, ${y * 5}px) scale(1.02)`;
-        if (heroBleed && window.scrollY < window.innerHeight) heroBleed.style.translate = `${x * -14}px ${y * -8}px`;
+        if (heroBleed && !reduced && window.scrollY < window.innerHeight) heroBleed.style.translate = `${x * -14}px ${y * -8}px`;
       });
     };
     window.addEventListener("mousemove", onMove, { passive: true });
