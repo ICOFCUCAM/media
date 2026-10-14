@@ -639,3 +639,8 @@
 }
 .cfh .reel:focus-visible,
 .cfh .capability:focus-visible { outline-offset: -2px; }
+
+/* 40 · In-page links glide and land below the fixed nav. */
+html:has(.cfh) { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html:has(.cfh) { scroll-behavior: auto; } }
+.cfh section[id] { scroll-margin-top: 84px; }
