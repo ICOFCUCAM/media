@@ -663,3 +663,14 @@ html:has(.cfh)::-webkit-scrollbar-thumb:hover { background: #5a5850; }
 .cfh .pricing {
   box-shadow: inset 0 70px 80px -60px rgba(8,8,8,.22);
 }
+
+/* 44 · Type rendering: kerning, ligatures and grayscale smoothing everywhere on the page. */
+.cfh {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-kerning: normal;
+  font-feature-settings: "kern", "liga", "calt";
+}
+.cfh h1, .cfh h2, .cfh h3 { text-wrap: balance; }
+.cfh p { text-wrap: pretty; }
