@@ -707,3 +707,11 @@ html:has(.cfh)::-webkit-scrollbar-thumb:hover { background: #5a5850; }
 .cfh .hero-v2 .hero-frame.is-open { border: 0; }
 .cfh .hero-v2 .hero-frame.is-open .hero-corner { display: none; }
 .cfh .hero-v2 .hero-frame.is-open .hero-frame-badge { background: rgba(10,8,6,.3); border-color: rgba(244,242,237,.18); }
+
+/* Phones and tablets (review): no grey glow band behind the stacked frame, and the stills' slates stay one line. */
+@media (max-width: 1100px) {
+  .cfh .hero-v2 .hero-image { background: var(--black); }
+}
+@media (max-width: 640px) {
+  .cfh .hero-v2 .hero-strip-cap { display: none; }
+}
